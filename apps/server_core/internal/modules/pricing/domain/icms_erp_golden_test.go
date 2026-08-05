@@ -42,6 +42,13 @@ func TestICMSERPGolden(t *testing.T) {
 		cell := &ICMSCell{
 			UFDestino: "BA", CodTrib: intp(0), Ambiguo: false,
 			Origprod: intp(0), AliquotaInterna: strptr("20.5"),
+			// Task A4 (D2): par completo -- "0" explicito (BA nesta nota
+			// nao tem FCP), nao nil. AliquotaInterna presente com
+			// FcpEmbutido nil e um estado que a fonte real nunca produz;
+			// numericamente identico (fcp=0 nos dois casos), so a
+			// REALISMO do fixture muda -- nenhum valor esperado abaixo
+			// muda.
+			FcpEmbutido: strptr("0"),
 		}
 		got := TaxesForItem("299.90", cell)
 		assertMoney(t, "ICMS", got.ICMSSaida, "20.99")
@@ -77,6 +84,8 @@ func TestICMSERPGolden(t *testing.T) {
 		cell := &ICMSCell{
 			UFDestino: "BA", CodTrib: intp(0), Ambiguo: false,
 			Origprod: intp(0), AliquotaInterna: strptr("17"),
+			// Task A4 (D2): par completo -- ver comentario do case1 acima.
+			FcpEmbutido: strptr("0"),
 		}
 		got := TaxesForItem("299.90", cell)
 		assertMoney(t, "ICMS", got.ICMSSaida, "20.99")
@@ -96,6 +105,8 @@ func TestICMSERPGolden(t *testing.T) {
 		cell := &ICMSCell{
 			UFDestino: "GO", CodTrib: intp(0), Ambiguo: false,
 			Origprod: intp(0), AliquotaInterna: strptr("19"),
+			// Task A4 (D2): par completo -- ver comentario do case1 acima.
+			FcpEmbutido: strptr("0"),
 		}
 		got := TaxesForItem("299.90", cell)
 		assertMoney(t, "DIFAL", got.Difal, "35.99")
@@ -163,6 +174,8 @@ func TestICMSERPGolden(t *testing.T) {
 		cell := &ICMSCell{
 			UFDestino: "MG", CodTrib: intp(0), Ambiguo: false,
 			Origprod: intp(0), AliquotaInterna: strptr("18"),
+			// Task A4 (D2): par completo -- ver comentario do case1 acima.
+			FcpEmbutido: strptr("0"),
 		}
 		got := TaxesForItem("136.66", cell)
 		assertMoney(t, "ICMS", got.ICMSSaida, "24.60")
@@ -299,8 +312,11 @@ func basePCFromComponents(t *testing.T, preco string, icms, difal *string, stAnt
 	return s
 }
 
-// assertUnknown pins the D-37/Ambiguo shape: icms_saida/difal/pis_cofins nil
-// and named in Unknown, nunca um zero fabricado (ADR-17).
+// assertUnknown pins the D-37/Ambiguo shape: icms_saida/difal/fcp/pis_cofins
+// nil and named in Unknown, nunca um zero fabricado (ADR-17). Task A4 review
+// finding: FCP costumava ficar nil e SEM NOME nestes caminhos (nem zero nem
+// desconhecido) — corrigido, "fcp" agora entra em Unknown junto dos outros
+// três, na ordem em que são computados (icms_saida, difal, fcp, pis_cofins).
 func assertUnknown(t *testing.T, got TaxComponents) {
 	t.Helper()
 	if got.ICMSSaida != nil {
@@ -309,10 +325,13 @@ func assertUnknown(t *testing.T, got TaxComponents) {
 	if got.Difal != nil {
 		t.Errorf("Difal = %s, want nil", *got.Difal)
 	}
+	if got.FCP != nil {
+		t.Errorf("FCP = %s, want nil", *got.FCP)
+	}
 	if got.PisCofins != nil {
 		t.Errorf("PisCofins = %s, want nil", *got.PisCofins)
 	}
-	want := []string{"icms_saida", "difal", "pis_cofins"}
+	want := []string{"icms_saida", "difal", "fcp", "pis_cofins"}
 	if !reflect.DeepEqual(got.Unknown, want) {
 		t.Errorf("Unknown = %v, want %v", got.Unknown, want)
 	}

@@ -41,6 +41,12 @@ func TestTaxesForItemPureFormula(t *testing.T) {
 			cell: &ICMSCell{
 				UFDestino: "MG", CodTrib: intp(0), Ambiguo: false,
 				Origprod: intp(0), AliquotaInterna: strptr("18"),
+				// Task A4 (D2): par completo -- "0" explicito, nao nil.
+				// AliquotaInterna presente com FcpEmbutido nil e um estado
+				// que a fonte real nunca produz; sem este campo o gate novo
+				// nomearia pis_cofins como desconhecido e este caso deixaria
+				// de exercitar a formula que ele pretende pinar.
+				FcpEmbutido:     strptr("0"),
 				RestituicaoUnit: strptr("50.00"),
 				FiscalDtRef:     strptr("2026-07-01"),
 			},
@@ -69,6 +75,8 @@ func TestTaxesForItemPureFormula(t *testing.T) {
 			cell: &ICMSCell{
 				UFDestino: "SP", CodTrib: intp(0), Ambiguo: false,
 				AliquotaInterna: strptr("18"), Origprod: intp(0),
+				// Task A4 (D2): par completo -- ver comentario do caso A.
+				FcpEmbutido:     strptr("0"),
 				StRetidoEntrada: strptr("50.00"), RestituicaoUnit: strptr("25.00"),
 				FiscalDtRef: strptr("2026-08-01"),
 			},
@@ -87,7 +95,7 @@ func TestTaxesForItemPureFormula(t *testing.T) {
 			// PIS/COFINS = 0,0925×760,00 = 70,30 exato.
 			// UF=RJ≠MG ⇒ restituição = 15,00 (prova que restituição não depende
 			// do ramo ST).
-			name:  "C: ST no destino — ICMS/DIFAL 0.00 explicito, PIS/COFINS deduz S",
+			name:  "C: ST no destino — ICMS/DIFAL/FCP 0.00 explicito, PIS/COFINS deduz S",
 			preco: "800.00",
 			cell: &ICMSCell{
 				UFDestino: "RJ", CodTrib: intp(60), Ambiguo: false,
@@ -95,7 +103,14 @@ func TestTaxesForItemPureFormula(t *testing.T) {
 				StRetidoEntrada: strptr("40.00"), RestituicaoUnit: strptr("15.00"),
 			},
 			want: TaxComponents{
+				// Task A4 review finding: FCP costumava ficar nil e SEM NOME
+				// neste ramo (nem zero fabricado nem desconhecido nomeado —
+				// um terceiro estado que ADR-17 não admite). FCP é uma fatia
+				// do ICMS de saída, e o ICMS de saída em si já é 0 explícito
+				// no ramo ST (o próprio já está no custo) — a fatia dele
+				// também é 0 explícito, mesma justificativa.
 				ICMSSaida: strptr("0.00"), Difal: strptr("0.00"),
+				FCP:       strptr("0.00"),
 				PisCofins: strptr("70.30"), RestituicaoST: strptr("15.00"),
 			},
 		},
@@ -112,7 +127,9 @@ func TestTaxesForItemPureFormula(t *testing.T) {
 			},
 			want: TaxComponents{
 				RestituicaoST: strptr("10.00"),
-				Unknown:       []string{"icms_saida", "difal", "pis_cofins"},
+				// Task A4 review finding: "fcp" entra na lista — FCP também
+				// fica nil aqui e antes desta correção ficava sem nome.
+				Unknown: []string{"icms_saida", "difal", "fcp", "pis_cofins"},
 			},
 		},
 		{
@@ -128,7 +145,9 @@ func TestTaxesForItemPureFormula(t *testing.T) {
 			},
 			want: TaxComponents{
 				RestituicaoST: strptr("5.00"),
-				Unknown:       []string{"icms_saida", "difal", "pis_cofins"},
+				// Task A4 review finding: "fcp" entra na lista — mesmo motivo
+				// do caso D.
+				Unknown: []string{"icms_saida", "difal", "fcp", "pis_cofins"},
 			},
 		},
 		{
@@ -165,7 +184,10 @@ func TestTaxesForItemPureFormula(t *testing.T) {
 			preco: "100.00",
 			cell:  nil,
 			want: TaxComponents{
-				Unknown: []string{"icms_saida", "difal", "pis_cofins", "restituicao_st"},
+				// Task A4 review finding: "fcp" entra na lista — cell nil
+				// significa "o quadro fiscal inteiro é desconhecido",
+				// inclusive a fatia de FCP.
+				Unknown: []string{"icms_saida", "difal", "fcp", "pis_cofins", "restituicao_st"},
 			},
 		},
 	}
@@ -215,6 +237,9 @@ func TestTaxesForItemMaxZeroClampsBase(t *testing.T) {
 	cell := &ICMSCell{
 		UFDestino: "MG", CodTrib: intp(0), Ambiguo: false,
 		Origprod: intp(0), AliquotaInterna: strptr("18"),
+		// Task A4 (D2): par completo -- ver comentario do caso A em
+		// TestTaxesForItemPureFormula.
+		FcpEmbutido:     strptr("0"),
 		StRetidoEntrada: strptr("500.00"),
 	}
 	got := TaxesForItem("200.00", cell)

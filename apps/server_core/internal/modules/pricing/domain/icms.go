@@ -80,6 +80,18 @@ type ICMSCell struct {
 	// das UFs não tem FCP geral e a coluna vem 0, não ausente — só é
 	// consultado quando AliquotaInterna também é, mesma linha vigente).
 	FcpEmbutido *string
+	// Task A4 (D2): nil aqui so e legitimo quando AliquotaInterna tambem e
+	// nil (D-37, "UF sem linha" -- os dois viajam juntos, ver
+	// pricing/ports/tax_matrix.go:18-22 e
+	// orders/adapters/pricingtax/reader.go:201-208: AliquotaInternaFor
+	// devolve o par da MESMA linha vigente; FcpEmbutidoPct e uma STRING
+	// nao-ponteiro dentro do struct nao-nil -- "0" para UF sem FCP geral,
+	// nunca ausente). AliquotaInterna presente com FcpEmbutido nil e um
+	// estado que a fonte real nunca produz; so existe porque este campo e
+	// *string e nao acompanha AliquotaInterna num tipo unico (mudanca de
+	// forma adiada -- exigiria mexer em reader.go:201, fora do escopo desta
+	// task). TaxesForItem trata essa combinacao como desconhecido nomeado
+	// (fcp e pis_cofins), nunca como zero.
 
 	// StRetidoEntrada is products_mirror.st_retido_entrada ("S"), string
 	// decimal em dinheiro. nil é tratado como 0 — a própria fonte Oracle não
@@ -107,10 +119,15 @@ type TaxComponents struct {
 	// FCP is P × fcp_embutido — a fatia do ICMS devido que corresponde ao
 	// FCP, informativa (já está DENTRO de ICMSSaida+Difal, que somam
 	// a_custo; somar FCP de novo no cálculo de margem dobraria a conta).
-	// Só existe nos ramos que consultam AliquotaInterna/FcpEmbutido (MG
-	// interno e interestadual); nil no ramo ST e nas células não resolvidas
-	// — nunca nomeado em Unknown (o golden ERP fixa Unknown em 3 elementos
-	// para essas células, ver icms_erp_golden_test.go cases 9/10).
+	// Task A4 review finding: até esta revisão FCP ficava nil e SEM NOME em
+	// sete caminhos de retorno antecipado (violação do próprio ADR-17 que
+	// este campo deveria seguir) — corrigido: toda vez que o fato-fonte
+	// falta, "fcp" entra em Unknown junto de icms_saida/difal/pis_cofins;
+	// no ramo ST o ICMS de saída (e portanto sua fatia FCP) é 0 explícito,
+	// não desconhecido, mesma lógica de ICMSSaida/Difal nesse ramo. FCP só
+	// é computado (nem nil nem 0 fabricado) no ramo MG-interno/interestadual
+	// resolvido, quando FcpEmbutido está presente e dentro do invariante
+	// 0 ≤ fcp ≤ aCusto (D2/D3).
 	FCP           *string
 	PisCofins     *string
 	RestituicaoST *string
@@ -123,15 +140,30 @@ type TaxComponents struct {
 // separation between pre-resolved inputs and formula.
 func TaxesForItem(preco string, cell *ICMSCell) TaxComponents {
 	if cell == nil {
-		return TaxComponents{Unknown: []string{"icms_saida", "difal", "pis_cofins", "restituicao_st"}}
+		return TaxComponents{Unknown: []string{"icms_saida", "difal", "fcp", "pis_cofins", "restituicao_st"}}
+	}
+
+	// D4 (Task A4): UF vazia não é UF — não existe operação sem destino
+	// conhecido. Antes deste gate, "" caía direto no default interestadual
+	// de 7% (aInterFor não trata "" como especial, só como "fora do
+	// conjunto dos 12%"), fabricando ICMS/DIFAL/PIS-COFINS a partir de um
+	// destino que não existe. A comparação UFDestino==ufOrigemMG que decide
+	// a restituição também não é um fato válido sem UF — mesma forma do
+	// cell==nil (4 componentes, incluindo restituicao_st), preservando
+	// FiscalDtRef (o cell em si existe, só o destino não).
+	if cell.UFDestino == "" {
+		return TaxComponents{
+			FiscalDtRef: cell.FiscalDtRef,
+			Unknown:     []string{"icms_saida", "difal", "fcp", "pis_cofins", "restituicao_st"},
+		}
 	}
 
 	p := mustRat(preco)
 	out := TaxComponents{FiscalDtRef: cell.FiscalDtRef}
 
 	// restituição: independente da resolução da célula (codtrib/ambiguo) —
-	// só depende da UF de destino e do valor unitário. R_aplicável = R se
-	// UF ≠ MG, senão 0.
+	// só depende da UF de destino (já garantida não-vazia acima) e do valor
+	// unitário. R_aplicável = R se UF ≠ MG, senão 0.
 	if cell.UFDestino == ufOrigemMG {
 		s, _ := round2(new(big.Rat))
 		out.RestituicaoST = &s
@@ -140,28 +172,39 @@ func TaxesForItem(preco string, cell *ICMSCell) TaxComponents {
 		out.RestituicaoST = &s
 	}
 
-	isST := cell.CodTrib != nil && *cell.CodTrib == codTribST
+	// D1 (Task A4): o portão de célula-não-resolvida (ausente ou ambígua)
+	// tem que rodar ANTES de qualquer decisão de ramo, inclusive o ramo ST
+	// — antes deste conserto, `isST` era decidido primeiro (CodTrib==60
+	// bate mesmo com Ambiguo=true) e uma célula AMBÍGUA com CST 60 devolvia
+	// ICMS/DIFAL "0.00" explícito com Unknown vazio: indistinguível do zero
+	// LEGÍTIMO do ramo ST resolvido. Uma célula ambígua é uma célula que o
+	// resolvedor NÃO conseguiu resolver — nunca escolhe às cegas.
+	if cell.CodTrib == nil || cell.Ambiguo {
+		out.Unknown = append(out.Unknown, "icms_saida", "difal", "fcp", "pis_cofins")
+		return out
+	}
+
+	isST := *cell.CodTrib == codTribST
 
 	if isST {
 		// a = 0: ICMS de saída e DIFAL são 0 EXPLÍCITO — zero legítimo (o
 		// próprio já está no custo), não desconhecido. PIS/COFINS ainda
-		// roda com a=0: BASE_PC = MAX(0, P − S).
+		// roda com a=0: BASE_PC = MAX(0, P − S). FCP é uma FATIA do ICMS de
+		// saída (P × fcp_embutido, ver comentário do campo FCP acima) — no
+		// ramo ST o ICMS de saída em si é 0 explícito, então a fatia dele
+		// também é 0 explícito, mesma justificativa que já vale para
+		// ICMSSaida/Difal neste ramo, nunca desconhecido (Task A4 review
+		// finding: FCP ficava nil e sem nome aqui, nem zero nem Unknown).
 		zeroICMS, _ := round2(new(big.Rat))
 		zeroDifal, _ := round2(new(big.Rat))
+		zeroFCP, _ := round2(new(big.Rat))
 		out.ICMSSaida = &zeroICMS
 		out.Difal = &zeroDifal
+		out.FCP = &zeroFCP
 		base := new(big.Rat).Sub(p, zeroIfNil(cell.StRetidoEntrada))
 		out.PisCofins = pisCofinsFrom(base)
 		return out
 	}
-
-	// célula não resolvida (ausente ou ambígua): nunca escolhe às cegas.
-	if cell.CodTrib == nil || cell.Ambiguo {
-		out.Unknown = append(out.Unknown, "icms_saida", "difal", "pis_cofins")
-		return out
-	}
-
-	aInter := aInterFor(cell)
 
 	// D-37: UF sem linha na tabela legal vira pendência explícita — nunca
 	// cai na alíquota interna como aproximação. A2 (d): isso agora vale
@@ -169,7 +212,7 @@ func TaxesForItem(preco string, cell *ICMSCell) TaxComponents {
 	// icms_aliquota_interna como qualquer outra UF (constante de negócio em
 	// código é gate de auto-revisão do projeto).
 	if cell.AliquotaInterna == nil {
-		out.Unknown = append(out.Unknown, "icms_saida", "difal", "pis_cofins")
+		out.Unknown = append(out.Unknown, "icms_saida", "difal", "fcp", "pis_cofins")
 		return out
 	}
 
@@ -183,15 +226,6 @@ func TaxesForItem(preco string, cell *ICMSCell) TaxComponents {
 	// §1.1.
 	aCusto := new(big.Rat).Quo(mustRat(*cell.AliquotaInterna), cem)
 
-	// aCusto inclui o FCP (a tabela legal embute o FCP na alíquota headline
-	// onde ele é geral — D-43).
-	// aBase EXCLUI o FCP porque, medido, o ERP abate ICMS + DIFAL da base do
-	// PIS/COFINS e DEIXA O FCP DENTRO: 6 itens do RJ com resíduo exatamente
-	// igual a −FCP (roundV.txt V2). Uma fonte, duas alíquotas, nunca dois
-	// cálculos independentes.
-	fcp := new(big.Rat).Quo(zeroIfNil(cell.FcpEmbutido), cem)
-	aBase := new(big.Rat).Sub(aCusto, fcp)
-
 	var icmsOper, difal *big.Rat
 	if cell.UFDestino == ufOrigemMG {
 		// Destino = origem é operação INTERNA: o ICMS de saída é a alíquota
@@ -199,13 +233,26 @@ func TaxesForItem(preco string, cell *ICMSCell) TaxComponents {
 		// desconhecido). A derivação interestadual (ICMS = P×a_inter, DIFAL
 		// = P×aCusto − ICMS) só vale quando há duas UFs; aplicada a MG→MG
 		// ela devolvia ICMS 7% + DIFAL 11%, soma certa e quebra errada — e é
-		// a quebra que aparece na tela.
+		// a quebra que aparece na tela. Este ramo NUNCA consulta Origprod
+		// (D5): a_inter não entra na conta intra-UF.
 		icmsOper = new(big.Rat).Mul(p, aCusto)
 		difal = new(big.Rat)
 	} else {
+		// D5 (Task A4): a_inter (aInterFor) DEPENDE de Origprod para
+		// decidir nacional×4 eixos importados versus a quebra por UF —
+		// antes deste gate, Origprod nil era tratado como "fora do
+		// conjunto importado", ou seja, nacional CONHECIDO por omissão.
+		// Origem desconhecida é desconhecida; só bloqueia AQUI, no ramo que
+		// efetivamente consulta o fato — o ramo intra-MG acima nunca chama
+		// aInterFor e fica intocado.
+		if cell.Origprod == nil {
+			out.Unknown = append(out.Unknown, "icms_saida", "difal", "fcp", "pis_cofins")
+			return out
+		}
 		// Exibição: ICMS_oper = P × a_inter, DIFAL = P × aCusto − ICMS_oper.
 		// Uma fonte (aCusto), duas linhas — nunca dois cálculos
 		// independentes.
+		aInter := aInterFor(cell)
 		icmsOper = new(big.Rat).Mul(p, aInter)
 		icmsTotal := new(big.Rat).Mul(p, aCusto)
 		difal = new(big.Rat).Sub(icmsTotal, icmsOper)
@@ -215,6 +262,42 @@ func TaxesForItem(preco string, cell *ICMSCell) TaxComponents {
 	difalStr, _ := round2(difal)
 	out.ICMSSaida = &icmsOperStr
 	out.Difal = &difalStr
+
+	// D2 (Task A4): AliquotaInterna presente com FcpEmbutido nil é um
+	// estado que a fonte real nunca produz — a porta devolve os dois da
+	// MESMA linha vigente, sempre juntos (pricing/ports/tax_matrix.go,
+	// orders/adapters/pricingtax/reader.go:201-208: FcpEmbutidoPct é uma
+	// STRING não-ponteiro dentro do struct não-nil, "0" para UF sem FCP
+	// geral, nunca ausente). Antes deste gate, zeroIfNil tratava nil como 0
+	// legítimo e fabricava FCP="0.00"/PisCofins a partir de um fato que não
+	// foi lido. Escopo estreito: só PIS/COFINS (via aBase=aCusto−fcp) fica
+	// desconhecido — ICMSSaida/Difal já foram calculados acima e não
+	// dependem de FcpEmbutido, continuam conhecidos.
+	if cell.FcpEmbutido == nil {
+		out.Unknown = append(out.Unknown, "fcp", "pis_cofins")
+		return out
+	}
+
+	fcp := new(big.Rat).Quo(mustRat(*cell.FcpEmbutido), cem)
+
+	// D3 (Task A4): 0 ≤ fcp ≤ aCusto é invariante da própria fonte (FCP é
+	// uma FATIA da alíquota headline, nunca pode superá-la nem ser
+	// negativa). Violação é dado inválido, não entrada exótica — antes
+	// deste gate, fcp > aCusto produzia aBase negativo e PIS/COFINS sobre
+	// uma base MAIOR que o preço, sem bloquear. Mesmo escopo estreito do
+	// D2: só PIS/COFINS fica desconhecido.
+	if fcp.Sign() < 0 || fcp.Cmp(aCusto) > 0 {
+		out.Unknown = append(out.Unknown, "fcp", "pis_cofins")
+		return out
+	}
+
+	// aCusto inclui o FCP (a tabela legal embute o FCP na alíquota headline
+	// onde ele é geral — D-43).
+	// aBase EXCLUI o FCP porque, medido, o ERP abate ICMS + DIFAL da base do
+	// PIS/COFINS e DEIXA O FCP DENTRO: 6 itens do RJ com resíduo exatamente
+	// igual a −FCP (roundV.txt V2). Uma fonte, duas alíquotas, nunca dois
+	// cálculos independentes.
+	aBase := new(big.Rat).Sub(aCusto, fcp)
 
 	fcpMoney := new(big.Rat).Mul(p, fcp)
 	fcpStr, _ := round2(fcpMoney)
