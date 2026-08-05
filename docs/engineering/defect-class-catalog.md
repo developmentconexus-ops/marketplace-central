@@ -243,6 +243,55 @@ manufacture a zero.
 
 ---
 
+## Class V8 — Failure With No Path To A Pixel
+
+**Symptom.** Something fails unattended, every layer handles it politely, and the operator's
+screen stays green. The system is not lying about a test — it is lying about **production**.
+
+**Evidence.** The most operationally expensive class in this repo.
+- **Mercado Livre token-refresh failure is invisible at every layer**, and the cockpit
+  reports health. The operator's account can be disconnected while the screen says
+  connected (`mis008-design-closed`).
+- A hand-rolled scheduler was specified beside `syncapp.Scheduler`, discarding
+  `RecordFailure` — the one thing that feeds the operator's sync-health card. A broken
+  collection would have rendered green (`anti-patterns.md`, Planning).
+- A long ticker with no initial tick and no persisted due-time: silent starvation
+  (HARNESS-DEBTS D-16). An installation connected after boot never gets a scheduler (D-20).
+
+**Root cause.** Error handling is written to keep the process alive, and "alive" is then
+rendered as "healthy". Nobody owns the path from a caught error to a rendered state.
+
+**Prevention (rung 3 + planning gate).** For anything that can fail unattended, the plan
+**names the path from failure to pixel** — which record captures it, which query reads it,
+which component renders it. A slice whose failure mode is invisible is incomplete, not
+"hardened later". Reuse of an existing seam (a scheduler with `RecordFailure`) buys this
+path for free, which is usually the decisive argument for reuse over a parallel build.
+
+**Detection.** Kill the dependency — revoke the token, stop the container, break the
+credential — and look at the screen. If it is green, the class is present.
+
+---
+
+## Class V9 — The Third Patch
+
+**Symptom.** The same defect shape is fixed a third time, in a third place, by a third
+targeted patch. Each fix is correct. The class survives all of them.
+
+**Evidence.** Ratified into the profile at `1889d0dd` after the second occurrence
+(`stop-the-line-class-rule`, HARNESS-DEBTS C-1). Instances that forced it: the error-surface
+divergence across modules, the freshness-formatter copies, the repeated
+false-accusation hook (D-7, which reached a **third** occurrence during the very session
+convened to fix it).
+
+**Root cause.** A targeted patch is always cheaper than a class fix *at the moment of the
+patch*, and the accumulated cost is paid by someone else later.
+
+**Prevention (process, hard rule).** **The second occurrence of a shape stops the line.**
+Root-cause it, then either fix the class or register the debt with the measurement that
+proves its size. A third targeted patch of the same shape is a process defect, not a fix.
+
+---
+
 # Part II — Planning and specification
 
 ## Class P1 — The Plan As Unmeasured Allegation
@@ -659,6 +708,10 @@ catalog's Appendix A; read both.
 - [ ] Preflight prints absolute path + tip SHA + container build time, and **fails if the
       container predates the tip** (§V4)
 - [ ] Every zero-result check ships a positive control in the same run (§V7)
+- [ ] Every unattended failure has a named path to a pixel; kill-the-dependency drill is
+      part of acceptance (§V8)
+- [ ] Second occurrence of a defect shape stops the line — class fix or registered debt,
+      never a third patch (§V9)
 - [ ] Every reported number ships the command that produced it, as an artifact (§V3)
 - [ ] Estimator sources are banned from verdicts by name (§V3)
 - [ ] A verdict that carries a count requires a second, independent instrument (§V3)
@@ -704,8 +757,9 @@ too. This axis adds **two more**, which do not appear until an agent is doing th
 7. **The signal that proves work was done is cheaper to fabricate than the work.**
    A green lane that ran nothing, an assertion that cannot fail, a zero from a blind
    instrument, a self-certified criterion, a stale binary. Every one of these is reachable
-   without doing the task, and none of them looks different from success.
-   → §V1, §V2, §V4, §V5, §V7, §P3
+   without doing the task, and none of them looks different from success — including in
+   production, where "the process is alive" is rendered as "the system is healthy".
+   → §V1, §V2, §V4, §V5, §V7, §V8, §P3
 
 **The factory's design principle, in one line:** the two causes above are not fixed by
 better prompts or better agents. They are fixed by making the honest signal the cheapest

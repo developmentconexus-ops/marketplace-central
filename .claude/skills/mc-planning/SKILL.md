@@ -94,6 +94,24 @@ settle it.
 Write the eight answers into the plan itself, in a `## Medição` section above the tasks. The
 executor inherits your measurements; without them they will re-derive and get it wrong.
 
+### Instrument discipline
+
+Measuring is not enough — **the instrument has to be able to be wrong.** Every wrong verdict
+this repo has produced from a measurement came from an instrument that answered a different
+question and returned confidently (`anti-patterns.md`, Measurement; catalog §V3). Three rules,
+all cheap:
+
+1. **State the universe with every count.** "42 orphan SDK methods" is meaningless without
+   *"across `apps/web/src` + `packages/feature-*` + `packages/web-query`"*. A count whose
+   universe is unstated is not a measurement.
+2. **A count that carries a verdict needs a second, independent instrument** — not a re-run of
+   the first. `n_live_tup` said `listings = 0`; `count(*)` said 34.
+3. **Ban estimators from verdicts:** `n_live_tup`, `reltuples`, `EXPLAIN` row estimates,
+   `LIMIT`-N samples. They are fine for orientation and never for a claim.
+
+And before quoting any number, ask: *what would this instrument report if the answer were the
+opposite?* If it would report the same thing, it is blind — measure something else.
+
 ## Phase 2 — Anti-redundancy sweep
 
 Before any task creates a calculation, helper, hook, component, endpoint, port, table or
@@ -203,6 +221,15 @@ Re-read the finished plan against these. Any "no" sends you back to the measurin
       explicit state and surface as such.
 - [ ] No mock or stub stands in for an integration seam. Mocks prove contract behavior only.
       Composition roots ship no permanent stub/nil wiring on a live path.
+- [ ] **The plan names its composition site** — the production call path that reaches the new
+      code, ending in a database row or a rendered string. A slice whose only caller is a
+      `_test.go` ships zero rows with every lane green (§P3).
+- [ ] **Acceptance is an observable, not a green test.** `count(*)` in the database, or exact
+      text on a screen. Green proves the unit; the row proves the feature.
+- [ ] Every count the plan quotes states its universe, and any count carrying a verdict was
+      taken twice with independent instruments (Phase 1, instrument discipline).
+- [ ] Any check the plan adds that can report zero ships a **positive control** in the same run.
+      A zero from an instrument that cannot demonstrate a catch means "unmeasured".
 - [ ] Every assertion in the plan's tests would **fail** on the current code. Presence
       assertions that pass with any value are not tests of value.
 - [ ] Someone else's test that the plan changes is **restored or restated**, never deleted.
@@ -231,4 +258,7 @@ and commit the plan.
   contents. Read the sections your change touches.
 - `references/anti-patterns.md` — the catalogue of defects this repo actually shipped, each
   with the measurement that would have caught it. Read when a plan feels finished, as a
-  last adversarial pass.
+  last adversarial pass. It is the **planning-time projection** of
+  `docs/engineering/defect-class-catalog.md`, which owns the evidence, the prevention rung and
+  the CI gate for each class. A new defect gets its class written there first; only then is it
+  projected here, and only if it changes how a plan is written.
