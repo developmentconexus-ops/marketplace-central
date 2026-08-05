@@ -204,11 +204,21 @@ func (in SolveInput) ceilingPct() string {
 // deliberately rejected as the derivation strategy for that reason; this
 // closed-form re-encoding is the only exact option that does not touch
 // icms.go. TaxesForItem (icms.go:124-234) is the single source of truth this
-// function tracks: whenever aCusto, aBase/FCP folding, isST's zeroing, or
-// pisCofinsRate change there, re-derive this function's four bullets above
-// against the new formula before merging — a drift here reproduces exactly
-// the Finding-1 class of bug (asymptote silently diverges from the real
-// D-41 formula).
+// function tracks: whenever aCusto, aBase/FCP folding, isST's zeroing, or the
+// PIS/COFINS RATES OR FORMULA change there, re-derive this function's four
+// bullets above against the new formula before merging — a drift here
+// reproduces exactly the Finding-1 class of bug (asymptote silently diverges
+// from the real D-41 formula).
+//
+// That trigger used to name only the constant `pisCofinsRate`, and Task A8
+// walked straight through the hole: it changed the pis_cofins FORMULA (one
+// combined round2 became two separate ones) without touching that constant,
+// so nothing here said to re-check. The asymptote survived it — rounding
+// washes out as preço→∞, leaving (pisRate+cofinsRate)×(1−aBase) — but only
+// because pisRate+cofinsRate is EXACTLY pisCofinsRate. That identity is now
+// asserted by TestPisCofinsRatesSumToTheSolverAsymptoteRate, because editing
+// one of the two split rates would break this asymptote while leaving the
+// named trigger untouched, and prose cannot catch that.
 func (in SolveInput) icmsCellAsymptoticRatePct() *big.Rat {
 	aCusto, aBase := in.icmsCellRates()
 	oneMinusABase := new(big.Rat).Sub(big.NewRat(1, 1), aBase)
@@ -474,13 +484,17 @@ func ceilRatToCents(x *big.Rat) int64 {
 //     file's kPct uses (icmsCellAsymptoticRatePct's doc comment) — each
 //     independent round2 call is its own up-to-half-cent error source, so
 //     ICMSSaida and Difal are TWO terms, not one "aCusto" term.
-//   - PisCofins = round2(pisCofinsRate×base) (icms.go:339-341) — genuinely
-//     rounded from a computed base, EXCEPT in the clamped sub-region: there
-//     base is forced to exactly 0 first (icms.go:336-337, "base.Sign()<0 ⇒
-//     base=0"), so PisCofins is round2(0) = "0.00" with ZERO uncertainty —
-//     it is not a placeholder slot standing in for future rounding, it
-//     genuinely contributes no slack in that sub-region and is correctly
-//     excluded from roundedTermsClamped.
+//   - PisCofins = round2(pisRate×base) + round2(cofinsRate×base) (icms.go,
+//     pisCofinsFrom) — Task A8: PIS and COFINS are TWO independently-rounded
+//     terms, not one. The base is clamped to MAX(0, base) once, before either
+//     rate (icms.go's "base.Sign()<0 ⇒ base=0"); in the clamped sub-region
+//     that forces base to exactly 0, so BOTH round2(0×pisRate) and
+//     round2(0×cofinsRate) are "0.00" with ZERO uncertainty — neither is a
+//     placeholder slot standing in for future rounding, both genuinely
+//     contribute no slack in that sub-region and are correctly excluded from
+//     roundedTermsClamped. In the unclamped sub-region the base is positive
+//     and BOTH round2 calls are real, independent up-to-half-cent error
+//     sources — two terms, not one.
 //   - Comissão = round2(comissãoPct×preço) (decompose.go:144) — rounded in
 //     BOTH regimes, present in every count below.
 //   - RestituicaoST = round2(cell.RestituicaoUnit) (icms.go:171) is
@@ -494,21 +508,20 @@ func ceilRatToCents(x *big.Rat) int64 {
 // So per regime:
 //   - roundedTermsLegacy = 3: comissão + imposto (AliquotaPct) + difal (the
 //     OLD, non-ICMSCell path — decompose.go:144/165/196-201 — unaffected by
-//     this review, unchanged).
-//   - roundedTermsClamped = 3: comissão + ICMSSaida + Difal (PIS/COFINS is
-//     exactly, not approximately, zero here — see above).
-//   - roundedTermsUnclamped = 4: comissão + ICMSSaida + Difal + PisCofins
-//     (PIS/COFINS is now genuinely rounded from a positive base).
-//
-// The NUMERIC counts (3, 3, 4) are unchanged from before this review — only
-// the enumeration was wrong, not the totals. If PIS/COFINS were ever rounded
-// a SECOND time separately from the base computation (it currently is not —
-// icms.go:339-341 rounds once, at the end), the unclamped count would need
-// re-deriving against the new formula at that point; do not bump it
-// pre-emptively without re-counting against decompose.go/icms.go as they
-// then read.
+//     Task A8, unchanged).
+//   - roundedTermsClamped = 3: comissão + ICMSSaida + Difal (PIS and COFINS
+//     are exactly, not approximately, zero here — see above; the split into
+//     two terms does not change this count because both are zero-uncertainty
+//     in this sub-region).
+//   - roundedTermsUnclamped = 5: comissão + ICMSSaida + Difal + PIS + COFINS
+//     — Task A8: PIS and COFINS are now genuinely rounded SEPARATELY from a
+//     positive base (pisCofinsFrom's two independent round2 calls), so what
+//     was one PisCofins term is now two. Re-derived directly against
+//     icms.go's pisCofinsFrom as it now reads (not bumped pre-emptively —
+//     this is the re-count a prior revision of this comment said would be
+//     needed once PIS/COFINS rounded separately, and that point is now).
 const roundedTermsClamped = 3
-const roundedTermsUnclamped = 4
+const roundedTermsUnclamped = 5
 const roundedTermsLegacy = 3
 
 // windowNumeratorCents is the DERIVED window numerator (Task A5 C3): 50 cents

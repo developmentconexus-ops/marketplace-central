@@ -61,26 +61,29 @@ func TestICMSERPGolden(t *testing.T) {
 	t.Run("case2: nota 895507 (BA) reproduzido com dado do ERP (interna=17)", func(t *testing.T) {
 		// Mesma nota 895507, mas com o dado que o ERP de fato usou (interna=17,
 		// nao 20.5). ICMS e DIFAL reproduzem TGFDIN ao centavo — o METODO de
-		// diferenca simples esta provado. PIS/COFINS NAO reproduz: divergimos em
-		// R$0.01. O plano afirma reproducao ao centavo para este caso; a afirmacao
-		// e falsa e a divergencia esta assumida aqui, nao escondida.
+		// diferenca simples esta provado.
 		// ICMS = 299.90×0.07 = 20.993 -> 20.99.
 		// DIFAL (diferenca simples) = 299.90×(0.17−0.07) = 29.99.
 		// base PC (soma dos componentes JA arredondados, para bater com
 		// TGFDIN.BASERED) = 299.90−20.99−29.99 = 248.92.
 		//
-		// CAUSA, medida — divergimos do ERP em DOIS eixos independentes, e o 23.02
-		// so aparece com os DOIS simultaneamente. Matriz completa (base exata =
+		// PIS/COFINS — Task A8 fecha o centavo. CAUSA, medida antes da A8 —
+		// divergiamos do ERP em DOIS eixos independentes, e o 23.02 so aparecia
+		// com os DOIS simultaneamente. Matriz completa (base exata =
 		// 299.90×(1−0.17) = 248.917; base do ERP = 248.92 arredondada):
 		//   ERP        = separado  sobre base arredondada -> 4.11 + 18.92 = 23.03
 		//                combinado sobre base arredondada -> 23.0251      -> 23.03
 		//                separado  sobre base exata       -> 4.11 + 18.92 = 23.03
-		//   nosso      = combinado sobre base exata       -> 23.0248225   -> 23.02
-		// Portanto NAO e "a ordem de arredondamento da base" isolada, nem "taxa
-		// combinada vs separada" isolada: cada desvio sozinho ja devolve 23.03.
-		// O conserto robusto e aplicar PIS e COFINS SEPARADOS, cada um arredondado
-		// (icms.go:223-227), porque isso fecha 23.03 sobre as DUAS bases e nao
-		// obriga a decidir se a base se arredonda. Adiado — ver progress.md.
+		//   nosso(antes)= combinado sobre base exata       -> 23.0248225   -> 23.02
+		// Portanto NAO era "a ordem de arredondamento da base" isolada, nem "taxa
+		// combinada vs separada" isolada: cada desvio sozinho ja devolvia 23.03.
+		// A8 aplica PIS e COFINS SEPARADOS sobre a base EXATA (nao arredondada —
+		// esse eixo continua em aberto, ver icms_task_a8_test.go), cada um
+		// arredondado por si (icms.go pisCofinsFrom):
+		//   PIS    = round2(248.917 × 0.0165) = round2(4.1071320...)  = 4.11
+		//   COFINS = round2(248.917 × 0.0760) = round2(18.9176920...) = 18.92
+		//   soma   = 4.11 + 18.92 = 23.03 — bate a linha "separado sobre base
+		//   exata" da matriz acima, fecha o centavo que faltava.
 		cell := &ICMSCell{
 			UFDestino: "BA", CodTrib: intp(0), Ambiguo: false,
 			Origprod: intp(0), AliquotaInterna: strptr("17"),
@@ -92,7 +95,7 @@ func TestICMSERPGolden(t *testing.T) {
 		assertMoney(t, "DIFAL", got.Difal, "29.99")
 		bp := basePCFromComponents(t, "299.90", got.ICMSSaida, got.Difal, "0.00")
 		assertMoneyStr(t, "base PC", bp, "248.92")
-		assertMoney(t, "PIS/COFINS", got.PisCofins, "23.02")
+		assertMoney(t, "PIS/COFINS", got.PisCofins, "23.03")
 	})
 
 	t.Run("case3: GO tipico", func(t *testing.T) {

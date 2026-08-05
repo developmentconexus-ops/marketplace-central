@@ -33,9 +33,26 @@ const codTribST = 60
 // (PAN_GET_CUSVAR_MNOBRE); intra-MG ela é 0 explícito.
 const ufOrigemMG = "MG"
 
-// pisCofinsRate is the STF Tema 69 (exclusão do ICMS da base) + STJ Tema 1125
-// (exclusão do ICMS-ST retido) crédito: 9,25% é hardcoded no CUSSEMICM do
-// ERP — D-39, espelhamos o número, não a regra.
+// pisRate e cofinsRate são o crédito do STF Tema 69 (exclusão do ICMS da
+// base) + STJ Tema 1125 (exclusão do ICMS-ST retido), na forma como o ERP de
+// fato apura: PIS e COFINS são DOIS tributos, cada um com sua própria
+// alíquota, cada um arredondado separadamente antes de somar — 1,65% e 7,60%
+// são hardcoded no CUSSEMICM do ERP, D-39, espelhamos os números, não
+// derivamos a regra. Task A8: medido contra o ERP (base=248,917,
+// icms_erp_golden_test.go case2) que arredondar a soma UMA vez (o que
+// pisCofinsFrom fazia até aqui) diverge do ERP em 1 centavo sistemático —
+// 4,11+18,92=23,03 separado contra round2(23,0248225)=23,02 combinado.
+var pisRate = big.NewRat(165, 10000)
+var cofinsRate = big.NewRat(760, 10000)
+
+// pisCofinsRate é a SOMA pisRate+cofinsRate (9,25%, mesma proveniência D-39
+// acima) — sobrevive só para o bracket assintótico do solver (solve.go), que
+// aproxima o D-41 sobre a base EXATA (não arredondada) para achar a região
+// de busca; a folga de janela (roundedTermsUnclamped, solve.go:448+) já
+// absorve a diferença entre "somar dois arredondados" e "arredondar a soma
+// uma vez". O caminho de dinheiro real (pisCofinsFrom, abaixo) NUNCA usa esta
+// constante combinada desde a A8 — só pisRate e cofinsRate, cada um
+// arredondado por si.
 var pisCofinsRate = big.NewRat(925, 10000)
 
 // ICMSCell is the already-resolved input for TaxesForItem: the matrix cell
@@ -337,15 +354,23 @@ func aInterFor(cell *ICMSCell) *big.Rat {
 	return big.NewRat(7, 100)
 }
 
-// pisCofinsFrom applies MAX(0, base) then 9,25% — o MAX não é cosmético: S
-// retido pode exceder o líquido, e sem o clamp sai base negativa e crédito
-// fantasma.
+// pisCofinsFrom applies MAX(0, base) UMA VEZ, antes de qualquer alíquota — o
+// MAX não é cosmético: S retido pode exceder o líquido, e sem o clamp sai
+// base negativa e crédito fantasma. A partir daí, Task A8: PIS e COFINS são
+// DOIS tributos que o ERP apura e arredonda SEPARADAMENTE, cada um sobre a
+// MESMA base (já clampada), e só depois soma — não uma alíquota combinada
+// arredondada uma vez só. Quando a base já é 0 (clamp ativo), os dois
+// arredondam para "0.00" com zero incerteza; quando é positiva, cada
+// round2 é sua própria fonte de erro de até meio centavo, então a soma pode
+// (e no caso medido, deve) diferir do que round2(base×9,25%) devolveria.
 func pisCofinsFrom(base *big.Rat) *string {
 	if base.Sign() < 0 {
 		base = big.NewRat(0, 1)
 	}
-	pc := new(big.Rat).Mul(pisCofinsRate, base)
-	s, _ := round2(pc)
+	_, pis := round2(new(big.Rat).Mul(pisRate, base))
+	_, cofins := round2(new(big.Rat).Mul(cofinsRate, base))
+	sum := new(big.Rat).Add(pis, cofins)
+	s, _ := round2(sum)
 	return &s
 }
 
