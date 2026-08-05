@@ -53,19 +53,27 @@ func TestICMSERPGolden(t *testing.T) {
 
 	t.Run("case2: nota 895507 (BA) reproduzido com dado do ERP (interna=17)", func(t *testing.T) {
 		// Mesma nota 895507, mas com o dado que o ERP de fato usou (interna=17,
-		// nao 20.5). ICMS/DIFAL/base reproduzem TGFDIN ao centavo aqui; o METODO
-		// de diferenca simples esta provado correto para ICMS e DIFAL. A divergencia
-		// entra em PIS/COFINS por ROUNDING-ORDER: o ERP redonda a base antes de
-		// aplicar PIS e COFINS separadamente, enquanto TaxesForItem aplica a taxa
-		// combinada (9.25%) a uma base nao-arredondada.
+		// nao 20.5). ICMS e DIFAL reproduzem TGFDIN ao centavo — o METODO de
+		// diferenca simples esta provado. PIS/COFINS NAO reproduz: divergimos em
+		// R$0.01. O plano afirma reproducao ao centavo para este caso; a afirmacao
+		// e falsa e a divergencia esta assumida aqui, nao escondida.
 		// ICMS = 299.90×0.07 = 20.993 -> 20.99.
 		// DIFAL (diferenca simples) = 299.90×(0.17−0.07) = 29.99.
 		// base PC (soma dos componentes JA arredondados, para bater com
 		// TGFDIN.BASERED) = 299.90−20.99−29.99 = 248.92.
 		//
-		// PIS/COFINS (racional de icms.go:223-227): base_exata = 299.90×(1−0.17) = 248.917.
-		// ERP: redonda base para 248.92, depois PIS=248.92×1.65%=4.11 e COFINS=248.92×7.60%=18.92, total 23.03.
-		// TaxesForItem: 0.0925×248.917 = 23.0248225 -> 23.02. Delta = R$0.01 (rounding-order).
+		// CAUSA, medida — divergimos do ERP em DOIS eixos independentes, e o 23.02
+		// so aparece com os DOIS simultaneamente. Matriz completa (base exata =
+		// 299.90×(1−0.17) = 248.917; base do ERP = 248.92 arredondada):
+		//   ERP        = separado  sobre base arredondada -> 4.11 + 18.92 = 23.03
+		//                combinado sobre base arredondada -> 23.0251      -> 23.03
+		//                separado  sobre base exata       -> 4.11 + 18.92 = 23.03
+		//   nosso      = combinado sobre base exata       -> 23.0248225   -> 23.02
+		// Portanto NAO e "a ordem de arredondamento da base" isolada, nem "taxa
+		// combinada vs separada" isolada: cada desvio sozinho ja devolve 23.03.
+		// O conserto robusto e aplicar PIS e COFINS SEPARADOS, cada um arredondado
+		// (icms.go:223-227), porque isso fecha 23.03 sobre as DUAS bases e nao
+		// obriga a decidir se a base se arredonda. Adiado — ver progress.md.
 		cell := &ICMSCell{
 			UFDestino: "BA", CodTrib: intp(0), Ambiguo: false,
 			Origprod: intp(0), AliquotaInterna: strptr("17"),
