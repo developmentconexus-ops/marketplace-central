@@ -80,8 +80,21 @@ func SolveTargetPrice(in SolveInput) SolveResult {
 	}
 
 	ceiling := in.ceilingPct()
-	// target at or above the asymptote can never be reached.
-	if cmpPct(in.TargetMargemPct, ceiling) >= 0 {
+	// target at or above the asymptote can never be reached — LEGACY PATH
+	// ONLY. Task A5 (C1): this short-circuit assumed every summed component
+	// is a cost, so the asymptote is approached from BELOW and is a true
+	// upper bound. That holds for the legacy path (fixed = taxa_fixa/frete +
+	// tarifa_full + custo, all ≥0, no credit term — Fnet = −fixed ≤ 0
+	// always). It does NOT hold once ICMSCell is set: RestituicaoST is
+	// SUBTRACTED from the summed tax load (decompose.go ~line 233, "a única
+	// linha positiva da seção"), so a credit large enough (RestituicaoUnit,
+	// or StRetidoEntrada once it clamps PisCofins to 0 — see
+	// searchSegmentICMSCellBracket) can push margem_pct ABOVE this asymptote
+	// at a finite preço, approaching it from ABOVE instead of below. For
+	// ICMSCell this check is skipped and the real search below (which
+	// reasons per sub-interval about the sign of its own net fixed
+	// coefficient) decides reachability instead.
+	if in.ICMSCell == nil && cmpPct(in.TargetMargemPct, ceiling) >= 0 {
 		return SolveResult{CeilingPct: ceiling}
 	}
 
@@ -97,7 +110,38 @@ func SolveTargetPrice(in SolveInput) SolveResult {
 	// target needs the high segment (preço ≥ limiar), where produto frete is
 	// consulted. If it is unknown, block ONLY this segment (ADR-17) — do not
 	// fabricate a frete of 0.
+	//
+	// Coordinator review (post-A5, Achado 1 — REFUTED): an earlier version of
+	// this gate probed reachability by substituting a synthetic frete=0
+	// (icmsCellPossiblyReachableAboveCeiling, now deleted). That was wrong on
+	// two counts, both measured: (1) it fabricated a concrete value for an
+	// unknown fact — ADR-17 backwards — and (2) when the probe reported
+	// "unreachable", it returned CeilingPct, the very asymptote this task's
+	// own C1 fix proved is NOT a true ceiling once a credit is present; the
+	// code asserted a limit it had itself just disproven. Measured
+	// counter-example: target at the cell's real ceiling with a credit
+	// present reported CeilingPct even though a real (larger) frete reaches
+	// it.
+	//
+	// Fix: decide from the credit terms directly, which are known WITHOUT
+	// frete (icmsCellCreditsAndFixed reads R/S from the cell, not from
+	// FreteProduto). fnet = R + pisCofinsRate·S − fixed0, and frete only ADDS
+	// to fixed0 (Money ≥ 0) — so its sign only matters when R and S could
+	// make fnet positive in the first place:
+	//   - R == 0 ∧ S == 0 ⇒ fnet = −fixed0 ≤ 0 for EVERY real frete ≥ 0 ⇒ the
+	//     asymptote is a true ceiling regardless of the unknown frete's
+	//     actual value ⇒ CeilingPct is honest (same conclusion the legacy
+	//     path already reaches for its own Fnet ≤ 0 always).
+	//   - R > 0 ∨ S > 0 ⇒ whether fnet ends up positive or negative genuinely
+	//     depends on the real (unknown) frete ⇒ FreteDesconhecido, without
+	//     guessing a value.
 	if in.FreteProduto == nil {
+		if in.ICMSCell != nil {
+			r, s, _ := in.icmsCellCreditsAndFixed()
+			if r.Sign() <= 0 && s.Sign() <= 0 {
+				return SolveResult{CeilingPct: ceiling}
+			}
+		}
 		return SolveResult{FreteDesconhecido: true}
 	}
 	if p, ok := in.searchSegment(limiar, solveMaxCents); ok {
@@ -166,11 +210,24 @@ func (in SolveInput) ceilingPct() string {
 // the Finding-1 class of bug (asymptote silently diverges from the real
 // D-41 formula).
 func (in SolveInput) icmsCellAsymptoticRatePct() *big.Rat {
+	aCusto, aBase := in.icmsCellRates()
+	oneMinusABase := new(big.Rat).Sub(big.NewRat(1, 1), aBase)
+	rate := new(big.Rat).Mul(pisCofinsRate, oneMinusABase)
+	rate.Add(rate, aCusto)
+	rate.Mul(rate, cem)
+	return rate
+}
+
+// icmsCellRates extracts the D-41 rate pair (aCusto, aBase) from the cell —
+// shared by icmsCellAsymptoticRatePct (the asymptote, above) and
+// searchSegmentICMSCellBracket (Task A5: the clamped/unclamped regime
+// coefficients need the SAME rates, not a re-derivation, to stay coupled to
+// TaxesForItem exactly as icmsCellAsymptoticRatePct's doc comment requires).
+func (in SolveInput) icmsCellRates() (aCusto, aBase *big.Rat) {
 	cell := in.ICMSCell
 	isST := cell.CodTrib != nil && *cell.CodTrib == codTribST
-
-	aCusto := new(big.Rat)
-	aBase := new(big.Rat)
+	aCusto = new(big.Rat)
+	aBase = new(big.Rat)
 	if !isST {
 		aCusto.Quo(mustRat(*cell.AliquotaInterna), cem)
 		fcp := new(big.Rat)
@@ -179,12 +236,7 @@ func (in SolveInput) icmsCellAsymptoticRatePct() *big.Rat {
 		}
 		aBase.Sub(aCusto, fcp)
 	}
-
-	oneMinusABase := new(big.Rat).Sub(big.NewRat(1, 1), aBase)
-	rate := new(big.Rat).Mul(pisCofinsRate, oneMinusABase)
-	rate.Add(rate, aCusto)
-	rate.Mul(rate, cem)
-	return rate
+	return aCusto, aBase
 }
 
 func (in SolveInput) difalApplied() bool {
@@ -235,6 +287,16 @@ func (in SolveInput) searchSegment(loCents, hiCents int64) (string, bool) {
 	limiar := in.limiarCents()
 	scanLo, scanHi := loCents, hiCents
 	if hiCents-loCents > lowSegmentSpanCents {
+		// Task A5: ICMSCell's credit term (RestituicaoST) can flip the sign
+		// of the net fixed coefficient within the segment (C1/C2), so the
+		// legacy single-bracket-per-segment approach below is unsound for
+		// it — it assumes one monotone direction across the WHOLE segment.
+		// Dispatch to a dedicated per-regime bracket instead (C3: it also
+		// derives its own window from the ICMSCell term count, not this
+		// branch's legacy 150).
+		if in.ICMSCell != nil {
+			return in.searchSegmentICMSCellBracket(loCents, hiCents, limiar)
+		}
 		// High segment: bracket the round2(exact.pct)=target crossing by bisection
 		// (exact margem_pct is strictly increasing), then scan a window around it
 		// against the real Decompose. round2(exact) ≥ target ⇔ exact ≥ target−0.005,
@@ -260,7 +322,7 @@ func (in SolveInput) searchSegment(loCents, hiCents int64) (string, bool) {
 		if cStar > hiCents {
 			return "", false // crossing beyond the search cap — unreachable
 		}
-		winCents := ceilRatToCents(new(big.Rat).Quo(big.NewRat(150, 1), gStar)) + windowMarginCents
+		winCents := ceilRatToCents(new(big.Rat).Quo(big.NewRat(windowNumeratorCents(roundedTermsLegacy), 1), gStar)) + windowMarginCents
 		scanLo = cStar - winCents
 		if scanLo < loCents {
 			scanLo = loCents
@@ -279,15 +341,21 @@ func (in SolveInput) searchSegment(loCents, hiCents int64) (string, bool) {
 	return "", false
 }
 
-// firstCentExactAtLeast returns the smallest cents in [lo,hi] whose EXACT
-// (unrounded, strictly-increasing) margem_pct is ≥ bound, or hi+1 if none.
-func (in SolveInput) firstCentExactAtLeast(lo, hi, limiar int64, bound *big.Rat) int64 {
-	if in.exactMargemPctRat(hi, limiar).Cmp(bound) < 0 {
+// firstCentSatisfying returns the smallest cents in [lo,hi] for which
+// predicate is true, given predicate is false-then-true (monotone) over the
+// range, or hi+1 if it is never true. Generic bisection core shared by the
+// legacy ascending bracket (firstCentExactAtLeast) and the ICMSCell regime
+// bracket (searchMonotoneRegime, Task A5 C2/C3) — the latter's predicate
+// direction flips per sub-interval depending on the sign of that regime's
+// net fixed coefficient (fnet), so the DIRECTION is chosen by the caller,
+// never baked into the bisection itself.
+func firstCentSatisfying(lo, hi int64, predicate func(int64) bool) int64 {
+	if !predicate(hi) {
 		return hi + 1
 	}
 	for lo < hi {
 		mid := lo + (hi-lo)/2
-		if in.exactMargemPctRat(mid, limiar).Cmp(bound) < 0 {
+		if !predicate(mid) {
 			lo = mid + 1
 		} else {
 			hi = mid
@@ -296,31 +364,38 @@ func (in SolveInput) firstCentExactAtLeast(lo, hi, limiar int64, bound *big.Rat)
 	return lo
 }
 
-// exactMargemPctRat is the UNROUNDED margem_pct at preço=cents for the segment
-// selected by limiar: 100·k − 100·F/preço, where k = 1 − Σpct/100 (comissão +
-// fiscal load) and F is the fixed-cost sum (taxa_fixa below limiar / produto
-// frete at-or-above, plus tarifa_full when full and custo). Strictly
-// increasing in preço because F ≥ 0 — unlike Decompose's rounded margem_pct, so
-// it is safe to bisect. Used ONLY to bracket the search window.
+// firstCentExactAtLeast returns the smallest cents in [lo,hi] whose EXACT
+// (unrounded, strictly-increasing) margem_pct is ≥ bound, or hi+1 if none.
+func (in SolveInput) firstCentExactAtLeast(lo, hi, limiar int64, bound *big.Rat) int64 {
+	return firstCentSatisfying(lo, hi, func(c int64) bool {
+		return in.exactMargemPctRat(c, limiar).Cmp(bound) >= 0
+	})
+}
+
+// exactMargemPctRat is the UNROUNDED margem_pct at preço=cents for the LEGACY
+// segment only: 100·k − 100·F/preço, where k = 1 − comissão/100 −
+// AliquotaPct/100 − applied difal/100, and F is the fixed-cost sum (taxa_fixa
+// below limiar / produto frete at-or-above, plus tarifa_full when full and
+// custo). Strictly increasing in preço because F ≥ 0 for the legacy path (no
+// credit term). Used ONLY to bracket the legacy high-segment search window.
 //
-// The fiscal load is the SAME source ceilingPct uses (Task A3 review Finding
-// 1): icmsCellAsymptoticRatePct when ICMSCell is set, otherwise the legacy
-// AliquotaPct + applied difal. Before this fix this always used the legacy
-// path even with ICMSCell set, so the bracket was built around the fabricated
-// asymptote — the high-segment scan converged on the wrong crossing and
-// wrongly reported UNREACHABLE_TARGET for targets only reachable via the real
-// cell ceiling (see TestSolveTargetPriceICMSCellBAHighSegment).
+// Task A5: this used to also branch on ICMSCell, sharing one bracket with the
+// legacy path. That coupling was the root of C1/C2 — RestituicaoST (and,
+// past the PIS/COFINS clamp, StRetidoEntrada's rate) can flip the sign of the
+// net fixed coefficient within the ICMSCell domain, so a single
+// ascending-only bracket over the WHOLE segment is unsound there. The
+// ICMSCell path now gets its own dedicated per-regime bracket
+// (searchSegmentICMSCellBracket / searchMonotoneRegime) that reasons about
+// that sign per sub-interval instead. searchSegment dispatches ICMSCell
+// inputs there before ever reaching this function — it is never called with
+// in.ICMSCell != nil.
 func (in SolveInput) exactMargemPctRat(cents, limiar int64) *big.Rat {
 	preco := big.NewRat(cents, 100)
 	pct := new(big.Rat).Set(cem)
 	pct.Sub(pct, mustRat(in.ComissaoPct))
-	if in.ICMSCell != nil {
-		pct.Sub(pct, in.icmsCellAsymptoticRatePct())
-	} else {
-		pct.Sub(pct, mustRat(in.AliquotaPct))
-		if in.difalApplied() {
-			pct.Sub(pct, mustRat(in.EfetivoPct))
-		}
+	pct.Sub(pct, mustRat(in.AliquotaPct))
+	if in.difalApplied() {
+		pct.Sub(pct, mustRat(in.EfetivoPct))
 	}
 	fixed := new(big.Rat)
 	if cents < limiar {
@@ -339,25 +414,22 @@ func (in SolveInput) exactMargemPctRat(cents, limiar int64) *big.Rat {
 	return pct.Sub(pct, fOverP)
 }
 
-// exactCeilingRat is the UNROUNDED margem_pct asymptote (100 − comissão −
-// fiscal load) as preço→∞ — the exact analogue of ceilingPct, which rounds to
-// 2dp. The window derivation needs the unrounded value: the 2dp ceiling gate
-// can admit a target only ~0.005 below the true asymptote when a >2dp
-// comissão is supplied, so a rounded gap would understate the window.
+// exactCeilingRat is the UNROUNDED legacy-path margem_pct asymptote (100 −
+// comissão − AliquotaPct − applied difal) as preço→∞. The window derivation
+// needs the unrounded value: the 2dp ceiling gate can admit a target only
+// ~0.005 below the true asymptote when a >2dp comissão is supplied, so a
+// rounded gap would understate the window.
 //
-// The fiscal load branches on ICMSCell exactly like ceilingPct (Task A3
-// review Finding 1) — icmsCellAsymptoticRatePct when set, otherwise the
-// legacy AliquotaPct + applied difal. Never mixes the two sources.
+// Task A5: see exactMargemPctRat's comment — ICMSCell no longer flows through
+// this function. Its asymptote/regime coefficients live in
+// icmsCellAsymptoticRatePct and searchSegmentICMSCellBracket's own
+// kClamped/kUnclamped instead.
 func (in SolveInput) exactCeilingRat() *big.Rat {
 	ceil := new(big.Rat).Set(cem)
 	ceil.Sub(ceil, mustRat(in.ComissaoPct))
-	if in.ICMSCell != nil {
-		ceil.Sub(ceil, in.icmsCellAsymptoticRatePct())
-	} else {
-		ceil.Sub(ceil, mustRat(in.AliquotaPct))
-		if in.difalApplied() {
-			ceil.Sub(ceil, mustRat(in.EfetivoPct))
-		}
+	ceil.Sub(ceil, mustRat(in.AliquotaPct))
+	if in.difalApplied() {
+		ceil.Sub(ceil, mustRat(in.EfetivoPct))
 	}
 	return ceil
 }
@@ -371,6 +443,260 @@ func ceilRatToCents(x *big.Rat) int64 {
 		q.Add(q, big.NewInt(1))
 	}
 	return q.Int64()
+}
+
+// roundedTermsClamped/Unclamped/Legacy count the components that are
+// INDEPENDENTLY rounded to 2dp from a computed (not merely copied) value
+// before Decompose sums them — Task A5 (C3): the window numerator is DERIVED
+// from this count (windowNumeratorCents), never a bare literal, because the
+// bound comes from the same "≤50 cents of rounding error per term, divided
+// by the slope gStar" argument searchSegment's legacy comment spells out
+// (150 = 3×50). A term only counts if summing its ROUNDED value can differ
+// from summing its EXACT value by up to half a cent — copying an
+// already-2dp money field through round2 (a no-op) does not qualify.
+//
+// Coordinator review (post-A5, Achado 2): the original derivation here
+// enumerated the wrong three/four terms (folded ICMSSaida+Difal into one
+// "ICMS (aCusto)" slot, and treated PIS/COFINS as a placeholder in the
+// clamped regime instead of recognizing it is exactly, not approximately,
+// absent there) and asserted a false claim about how Decompose rounds the
+// D-41 tax load. Re-derived directly against decompose.go:216-233, which
+// sums four ALREADY-ROUNDED-INSIDE-TaxesForItem components separately —
+// mustRat(*tax.ICMSSaida), mustRat(*tax.Difal), mustRat(*tax.PisCofins) (each
+// added), mustRat(*tax.RestituicaoST) (subtracted) — never "the exact tax
+// load summed once then rounded":
+//   - ICMSSaida = round2(P×aInter or P×aCusto) (icms.go:261, zero-exact in
+//     the isST branch, icms.go:198-202) — genuinely rounded from a
+//     price-proportional computation.
+//   - Difal = round2(icmsTotal−icmsOper) (icms.go:262, zero-exact in the
+//     isST branch) — rounded SEPARATELY from ICMSSaida even though the two
+//     telescope to P×aCusto exactly in the unrounded/exact model this
+//     file's kPct uses (icmsCellAsymptoticRatePct's doc comment) — each
+//     independent round2 call is its own up-to-half-cent error source, so
+//     ICMSSaida and Difal are TWO terms, not one "aCusto" term.
+//   - PisCofins = round2(pisCofinsRate×base) (icms.go:339-341) — genuinely
+//     rounded from a computed base, EXCEPT in the clamped sub-region: there
+//     base is forced to exactly 0 first (icms.go:336-337, "base.Sign()<0 ⇒
+//     base=0"), so PisCofins is round2(0) = "0.00" with ZERO uncertainty —
+//     it is not a placeholder slot standing in for future rounding, it
+//     genuinely contributes no slack in that sub-region and is correctly
+//     excluded from roundedTermsClamped.
+//   - Comissão = round2(comissãoPct×preço) (decompose.go:144) — rounded in
+//     BOTH regimes, present in every count below.
+//   - RestituicaoST = round2(cell.RestituicaoUnit) (icms.go:171) is
+//     EXCLUDED from every count: RestituicaoUnit is already a decimal-money
+//     string from its source (products_mirror.restituicao_unit, icms.go:100-
+//     103), not derived from a price-proportional formula, so round2 here
+//     is a no-op with no real information loss — a flat credit, never a
+//     rounded proportional term (decompose.go:230-233, the credit is
+//     SUBTRACTED from sum, the one non-cost line in the section).
+//
+// So per regime:
+//   - roundedTermsLegacy = 3: comissão + imposto (AliquotaPct) + difal (the
+//     OLD, non-ICMSCell path — decompose.go:144/165/196-201 — unaffected by
+//     this review, unchanged).
+//   - roundedTermsClamped = 3: comissão + ICMSSaida + Difal (PIS/COFINS is
+//     exactly, not approximately, zero here — see above).
+//   - roundedTermsUnclamped = 4: comissão + ICMSSaida + Difal + PisCofins
+//     (PIS/COFINS is now genuinely rounded from a positive base).
+//
+// The NUMERIC counts (3, 3, 4) are unchanged from before this review — only
+// the enumeration was wrong, not the totals. If PIS/COFINS were ever rounded
+// a SECOND time separately from the base computation (it currently is not —
+// icms.go:339-341 rounds once, at the end), the unclamped count would need
+// re-deriving against the new formula at that point; do not bump it
+// pre-emptively without re-counting against decompose.go/icms.go as they
+// then read.
+const roundedTermsClamped = 3
+const roundedTermsUnclamped = 4
+const roundedTermsLegacy = 3
+
+// windowNumeratorCents is the DERIVED window numerator (Task A5 C3): 50 cents
+// of worst-case rounding slack per proportional/rounded term, summed across
+// termCount terms. Replaces the legacy bracket's former bare `150` literal
+// (now windowNumeratorCents(roundedTermsLegacy), same value, same math, just
+// no longer hardcoded) and supplies the ICMSCell regimes' 150/200.
+func windowNumeratorCents(termCount int) int64 {
+	return 50 * int64(termCount)
+}
+
+// icmsCellCreditsAndFixed extracts the D-41 credit terms (R = RestituicaoST,
+// zeroed for UFDestino=MG per icms.go's MG-interno branch; S =
+// StRetidoEntrada) and the flat non-tax fixed-cost sum (frete + tarifa_full +
+// custo — NOT taxa_fixa, which is segment-selected by the caller) that
+// searchSegmentICMSCellBracket's two regimes both build their net fixed
+// coefficient (fnet) from.
+func (in SolveInput) icmsCellCreditsAndFixed() (r, s, fixed0 *big.Rat) {
+	cell := in.ICMSCell
+	if cell.UFDestino == ufOrigemMG {
+		r = big.NewRat(0, 1)
+	} else {
+		r = zeroIfNil(cell.RestituicaoUnit)
+	}
+	s = zeroIfNil(cell.StRetidoEntrada)
+	fixed0 = new(big.Rat)
+	if in.FreteProduto != nil {
+		fixed0.Add(fixed0, mustRat(in.FreteProduto.Amount))
+	}
+	if in.Modalidade == ModalidadeFull && in.TarifaFull != nil {
+		fixed0.Add(fixed0, mustRat(in.TarifaFull.Amount))
+	}
+	if in.Custo != nil {
+		fixed0.Add(fixed0, mustRat(in.Custo.Amount))
+	}
+	return r, s, fixed0
+}
+
+// icmsCellClampBoundaryCents is the preço (in cents, ceil-rounded) at which
+// the PIS/COFINS base P×(1−aBase) − S crosses 0 — Task A5 (C2)'s second
+// discontinuity, independent of and additional to the existing taxa_fixa/
+// frete limiar step. Below the boundary PIS/COFINS is clamped to 0 (MAX(0,·)
+// in icms.go); at/above it, PIS/COFINS = pisCofinsRate×(P×(1−aBase) − S).
+// s≤0 ⇒ no clamp region ever exists (boundary=0, always in the unclamped
+// regime). aBase≥1 (pathological: FCP-adjusted rate ≥100%) ⇒ the base can
+// never turn positive, so every preço is clamped (alwaysClamped=true).
+func icmsCellClampBoundaryCents(aBase, s *big.Rat) (boundaryCents int64, alwaysClamped bool) {
+	if s.Sign() <= 0 {
+		return 0, false
+	}
+	denom := new(big.Rat).Sub(big.NewRat(1, 1), aBase)
+	if denom.Sign() <= 0 {
+		return 0, true
+	}
+	pclamp := new(big.Rat).Quo(s, denom)
+	pclamp.Mul(pclamp, cem)
+	return ceilRatToCents(pclamp), false
+}
+
+// searchMonotoneRegime brackets and scans ONE monotone sub-interval of the
+// ICMSCell domain: exact(P) = kPct + 100·fnet/P. Task A5 (C1/C2): unlike the
+// legacy bracket, fnet is not assumed ≤0 — its SIGN determines the search
+// direction. fnet≤0 ⇒ exact(P) rises toward kPct from BELOW as P grows (same
+// shape as the legacy asymptote, kPct is a true ceiling in this
+// sub-interval). fnet>0 ⇒ exact(P) FALLS toward kPct from ABOVE as P grows
+// (the C1 credit-driven mechanism: kPct is a floor here, and targets ABOVE
+// kPct are reachable at small-enough P within this sub-interval — exactly
+// the case the old unconditional ceiling short-circuit wrongly rejected).
+// Both directions reduce to the same false-then-true bisection
+// (firstCentSatisfying) by choosing the comparison operator that keeps the
+// predicate monotone as cents increase.
+func (in SolveInput) searchMonotoneRegime(lo, hi int64, kPct, fnet *big.Rat, termCount int) (string, bool) {
+	if lo > hi {
+		return "", false
+	}
+	half := big.NewRat(5, 1000) // 0.005 = round2 half-band, same as legacy
+	exact := func(c int64) *big.Rat {
+		preco := big.NewRat(c, 100)
+		term := new(big.Rat).Quo(fnet, preco)
+		term.Mul(term, cem)
+		return new(big.Rat).Add(kPct, term)
+	}
+	var bound, gStar *big.Rat
+	var predicate func(int64) bool
+	if fnet.Sign() <= 0 {
+		// rising toward kPct from below: first cent whose exact value is
+		// ≥ (target−half) is the crossing, same shape as the legacy bracket.
+		bound = new(big.Rat).Sub(mustRat(in.TargetMargemPct), half)
+		gStar = new(big.Rat).Sub(kPct, bound)
+		predicate = func(c int64) bool { return exact(c).Cmp(bound) >= 0 }
+	} else {
+		// falling toward kPct from above: first cent whose exact value has
+		// dropped to ≤ (target+half) is the crossing — the mirror image.
+		bound = new(big.Rat).Add(mustRat(in.TargetMargemPct), half)
+		gStar = new(big.Rat).Sub(bound, kPct)
+		predicate = func(c int64) bool { return exact(c).Cmp(bound) <= 0 }
+	}
+	if gStar.Sign() <= 0 {
+		// target at/past kPct in this sub-interval's direction — no crossing
+		// exists HERE (a different sub-interval, or CeilingPct, may still
+		// reach it; that is the caller's decision, not this function's).
+		return "", false
+	}
+	cStar := firstCentSatisfying(lo, hi, predicate)
+	if cStar > hi {
+		return "", false
+	}
+	win := ceilRatToCents(new(big.Rat).Quo(big.NewRat(windowNumeratorCents(termCount), 1), gStar)) + windowMarginCents
+	return in.scanWindow(lo, hi, cStar, win)
+}
+
+// scanWindow runs the real Decompose exhaustively over [center-win,
+// center+win] ∩ [lo,hi] — the same exact-match contract as searchSegment's
+// legacy scan, factored out so both the legacy and ICMSCell paths return a
+// price only when the ACTUAL rounded Decompose margem_pct matches, never the
+// analytic approximation.
+func (in SolveInput) scanWindow(lo, hi, center, win int64) (string, bool) {
+	scanLo := center - win
+	if scanLo < lo {
+		scanLo = lo
+	}
+	scanHi := center + win
+	if scanHi > hi {
+		scanHi = hi
+	}
+	for c := scanLo; c <= scanHi; c++ {
+		if m := in.margemAt(c); m != "" && cmpPct(m, in.TargetMargemPct) == 0 {
+			return centsToStr(c), true
+		}
+	}
+	return "", false
+}
+
+// searchSegmentICMSCellBracket is the ICMSCell replacement for the legacy
+// single-bracket searchSegment body (Task A5, C1+C2+C3). The D-41 margem_pct
+// is piecewise over TWO independent discontinuities: the existing taxa_fixa/
+// frete limiar (selected by the caller via loCents/hiCents, unchanged) and
+// the NEW PIS/COFINS clamp boundary (icmsCellClampBoundaryCents) — so within
+// one taxa_fixa/frete segment there can still be a clamped sub-region
+// (PIS/COFINS≡0) below the boundary and an unclamped sub-region at/above it.
+// Each sub-region gets its own kPct/fnet pair and is searched independently
+// via searchMonotoneRegime; the clamped sub-region is tried first (cheaper
+// prices).
+func (in SolveInput) searchSegmentICMSCellBracket(loCents, hiCents, limiar int64) (string, bool) {
+	r, s, fixed0 := in.icmsCellCreditsAndFixed()
+	aCusto, aBase := in.icmsCellRates()
+	boundary, alwaysClamped := icmsCellClampBoundaryCents(aBase, s)
+
+	// Clamped sub-region: PIS/COFINS ≡ 0 (base ≤ 0), so the fiscal load is
+	// just aCusto (ICMS) — HIGHER margem than the unclamped asymptote since
+	// no PIS/COFINS is charged. fnet = R − fixed0 (only the credit and the
+	// non-tax fixed costs; S does not appear because PIS/COFINS is zero
+	// here, C2's "before the clamp opens, do not use the asymptotic rate").
+	kClamped := new(big.Rat).Sub(cem, mustRat(in.ComissaoPct))
+	kClamped.Sub(kClamped, new(big.Rat).Mul(aCusto, cem))
+	fnetClamped := new(big.Rat).Sub(r, fixed0)
+
+	clampedHi := hiCents
+	if !alwaysClamped && boundary-1 < clampedHi {
+		clampedHi = boundary - 1
+	}
+	if clampedHi >= loCents {
+		if p, ok := in.searchMonotoneRegime(loCents, clampedHi, kClamped, fnetClamped, roundedTermsClamped); ok {
+			return p, true
+		}
+	}
+	if alwaysClamped {
+		return "", false
+	}
+
+	// Unclamped sub-region: PIS/COFINS = pisCofinsRate×(P×(1−aBase) − S),
+	// contributing pisCofinsRate·S/preço to fnet (C2) once P is large enough
+	// for the base to be positive. kPct here is icmsCellAsymptoticRatePct's
+	// exact ceiling (the true D-41 asymptote for this cell).
+	unclampedLo := loCents
+	if boundary > unclampedLo {
+		unclampedLo = boundary
+	}
+	if unclampedLo > hiCents {
+		return "", false
+	}
+	kUnclamped := new(big.Rat).Sub(cem, mustRat(in.ComissaoPct))
+	kUnclamped.Sub(kUnclamped, in.icmsCellAsymptoticRatePct())
+	fnetUnclamped := new(big.Rat).Mul(pisCofinsRate, s)
+	fnetUnclamped.Add(fnetUnclamped, r)
+	fnetUnclamped.Sub(fnetUnclamped, fixed0)
+
+	return in.searchMonotoneRegime(unclampedLo, hiCents, kUnclamped, fnetUnclamped, roundedTermsUnclamped)
 }
 
 // margemAt returns the margem_pct string at a candidate preço (in cents). The

@@ -4,6 +4,7 @@ import (
 	"math/big"
 	"reflect"
 	"testing"
+	"time"
 )
 
 // baseSolve returns a fully-resolved SolveInput (classico, SIMPLES 4%, difal
@@ -289,6 +290,12 @@ func icmsCellBA() *ICMSCell {
 	return &ICMSCell{
 		UFDestino: "BA", CodTrib: intp(0), Ambiguo: false,
 		Origprod: intp(0), AliquotaInterna: strptr("20.5"),
+		// Task A4 (D2): par completo -- "0" explicito, nao nil.
+		// AliquotaInterna presente com FcpEmbutido nil e um estado que a
+		// fonte real nunca produz; numericamente identico (fcp=0 nos dois
+		// casos, ja que BA nesta fixture nao tem FCP geral), so a REALISMO
+		// do fixture muda -- nenhum valor esperado nos goldens abaixo muda.
+		FcpEmbutido: strptr("0"),
 	}
 }
 
@@ -459,5 +466,291 @@ func TestSolveTargetPriceICMSCellAmbiguaBlocks(t *testing.T) {
 	}
 	if !reflect.DeepEqual(res.Desconhecidos, wantICMSCellUnknown) {
 		t.Fatalf("Desconhecidos = %v, want %v", res.Desconhecidos, wantICMSCellUnknown)
+	}
+}
+
+// --- Task A5: solver stops rejecting reachable targets when credits exist ---
+//
+// C1 (solve.go): ceilingPct/exactCeilingRat treat "100 − carga proporcional"
+// as an upper bound on margem_pct. That only holds while every summed term
+// is a COST. With ICMSCell, RestituicaoST is the one component that
+// SUBTRACTS from the sum (decompose.go:233) — a large enough credit pushes
+// margem_pct ABOVE the asymptote at a finite preço; the curve approaches the
+// asymptote from ABOVE instead of from below. C2: the old high-segment
+// bracket (exactMargemPctRat) never accounted for RestituicaoST, nor for
+// StRetidoEntrada's effect once the PIS/COFINS MAX(0,…) clamp opens, nor did
+// it know the asymptotic PIS/COFINS rate does NOT apply BELOW the clamp.
+//
+// Both goldens below are the brief's MEASURED reproduction — verbatim
+// verified via zz_probe_codex_test.go (TestProbeClaimA_Restituicao100_
+// Price18819 / TestProbeClaimA_StRetido500_Price45402): before the Task A5
+// fix, SolveTargetPrice(target) returned {Preco:<nil> Reached:false
+// CeilingPct:60.15} for BOTH, even though Decompose at the cited preço
+// genuinely yields exactly that margem_pct (confirmed by brute force over
+// [R$0.01, R$20000.00]).
+
+// TestSolveTargetPriceICMSCellRestituicaoReachesAboveCeiling is the first
+// measured golden. RestituicaoUnit=100 against Fixed0=frete(15)+custo(10)=25
+// flips the high segment's net fixed coefficient negative (Fnet=25−100=−75),
+// so margem_pct approaches the 60.15 ceiling from ABOVE (decreasing in
+// preço) and exceeds it for every preço below the (very large) crossing —
+// target 100.00 is reached at preço 188.19, the brute-forced cheapest.
+func TestSolveTargetPriceICMSCellRestituicaoReachesAboveCeiling(t *testing.T) {
+	in := baseSolveICMSCell()
+	in.FreteProduto = money("15.00")
+	in.ICMSCell.RestituicaoUnit = strptr("100")
+	in.TargetMargemPct = "100.00"
+
+	res := SolveTargetPrice(in)
+	if !res.Reached || res.Preco == nil {
+		t.Fatalf("target 100.00 (RestituicaoUnit=100, real ceiling 60.15) must be reachable ABOVE the ceiling via the credit; got %+v", res)
+	}
+	if *res.Preco != "188.19" {
+		t.Fatalf("solved preço = %s, want 188.19 (measured cheapest, zz_probe_codex_test.go)", *res.Preco)
+	}
+	if got := resim(in, *res.Preco); got != "100.00" {
+		t.Fatalf("re-sim margem_pct = %q at preço %q, want 100.00 EXACT", got, *res.Preco)
+	}
+}
+
+// TestSolveTargetPriceICMSCellStRetidoClampReachesAboveCeiling is the second
+// measured golden. StRetidoEntrada=500 clamps PIS/COFINS to zero for a wide
+// band of preço (base = P×0.795 − 500 < 0 below preço ≈ 629.56), so within
+// that band the effective ceiling is 67.50 (no PIS/COFINS term at all, not
+// 60.15) and the net fixed coefficient there is POSITIVE (Fixed0=25, no
+// RestituicaoST credit) — an ordinary increasing crossing, but toward the
+// WRONG (higher, un-clamped-blind) asymptote if the old bracket's single
+// always-active PIS/COFINS rate is used. Target 62.00 is reached at preço
+// 454.02, the brute-forced cheapest, well inside the clamped band.
+func TestSolveTargetPriceICMSCellStRetidoClampReachesAboveCeiling(t *testing.T) {
+	in := baseSolveICMSCell()
+	in.FreteProduto = money("15.00")
+	in.ICMSCell.StRetidoEntrada = strptr("500")
+	in.TargetMargemPct = "62.00"
+
+	res := SolveTargetPrice(in)
+	if !res.Reached || res.Preco == nil {
+		t.Fatalf("target 62.00 (StRetidoEntrada=500, real ceiling 60.15, clamped effective ceiling 67.50) must be reachable; got %+v", res)
+	}
+	if *res.Preco != "454.02" {
+		t.Fatalf("solved preço = %s, want 454.02 (measured cheapest, zz_probe_codex_test.go)", *res.Preco)
+	}
+	if got := resim(in, *res.Preco); got != "62.00" {
+		t.Fatalf("re-sim margem_pct = %q at preço %q, want 62.00 EXACT", got, *res.Preco)
+	}
+}
+
+// TestSolveTargetPriceLegacyCeilingUnchanged is the Task A5 non-regression
+// control (brief item 3). The legacy (ICMSCell=nil) branch of Decompose has
+// NO credit term at all — comissão, taxa_fixa, imposto, frete, difal,
+// tarifa_full, custo are ALL added to sum, never subtracted (decompose.go's
+// `in.ICMSCell == nil` arm) — so ceilingPct is a PROVEN upper bound there
+// unconditionally (verified by brute force over [R$0.01, R$20000.00] in
+// zz_probe_codex_test.go's TestProbeClaimA_LegacyPathCeilingCounterfactual,
+// using this exact fixture). C1's fix must not touch this path: 84.00 stays
+// the ceiling and a target at/above it stays UNREACHABLE_TARGET via the
+// SAME early short-circuit as before Task A5.
+func TestSolveTargetPriceLegacyCeilingUnchanged(t *testing.T) {
+	in := SolveInput{
+		ComissaoPct: "12", AliquotaPct: "4", Modalidade: ModalidadeClassico,
+		Custo:        money("10.00"),
+		FreteProduto: money("15.00"),
+	}
+	if got := in.ceilingPct(); got != "84.00" {
+		t.Fatalf("legacy ceilingPct() = %q, want 84.00 (fixture unchanged by Task A5)", got)
+	}
+	in.TargetMargemPct = "84.00"
+	res := SolveTargetPrice(in)
+	if res.Reached || res.Preco != nil {
+		t.Fatalf("target 84.00 (AT the legacy ceiling) must be UNREACHABLE; got %+v", res)
+	}
+	if res.CeilingPct != "84.00" {
+		t.Fatalf("CeilingPct = %q, want 84.00", res.CeilingPct)
+	}
+}
+
+// icmsCellRegimeGrid is the Task A5 property test's four regimes (brief item
+// 2): no credit (baseline — proves the fix does not regress the ordinary
+// increasing-toward-ceiling case), RestituicaoUnit (C1, decreasing
+// throughout — same fixture as the mandated golden above), StRetidoEntrada
+// large enough to clamp PIS/COFINS to zero over part of the high segment
+// (C1+C2, increasing-then-decreasing across the clamp transition), and the
+// ST branch (isST — a_custo/a_base fold to 0 per icms.go:184-194, a
+// completely different rate but the SAME two-regime shape). capCents is
+// chosen per regime to comfortably straddle its PIS/COFINS clamp transition
+// (Pclamp = S/(1−aBase) dollars) where one exists, so the sample below
+// exercises BOTH monotone pieces, not just one:
+//   - "sem crédito": no StRetidoEntrada ⇒ never clamped, single increasing
+//     piece throughout.
+//   - "RestituicaoUnit": StRetidoEntrada also unset ⇒ never clamped, single
+//     DEcreasing piece (the C1 case).
+//   - "StRetidoEntrada clampa PIS/COFINS": aBase=0.205 (BA) ⇒ Pclamp =
+//     500/0.795 ≈ R$629.56 (cents 62956); capCents=100000 straddles it.
+//   - "ramo ST": aBase=0 (isST) ⇒ Pclamp = S = R$200.00 exactly (cents
+//     20000); capCents=60000 straddles it.
+func icmsCellRegimeGrid() []struct {
+	name     string
+	in       SolveInput
+	capCents int64
+} {
+	withFrete := func(cell *ICMSCell) SolveInput {
+		in := baseSolveICMSCell()
+		in.ICMSCell = cell
+		in.FreteProduto = money("15.00")
+		return in
+	}
+	return []struct {
+		name     string
+		in       SolveInput
+		capCents int64
+	}{
+		{"sem credito", withFrete(icmsCellBA()), 50_000},
+		{"RestituicaoUnit", withFrete(&ICMSCell{
+			UFDestino: "BA", CodTrib: intp(0), Ambiguo: false,
+			Origprod: intp(0), AliquotaInterna: strptr("20.5"), FcpEmbutido: strptr("0"),
+			RestituicaoUnit: strptr("100"),
+		}), 40_000},
+		{"StRetidoEntrada clampa PIS/COFINS", withFrete(&ICMSCell{
+			UFDestino: "BA", CodTrib: intp(0), Ambiguo: false,
+			Origprod: intp(0), AliquotaInterna: strptr("20.5"), FcpEmbutido: strptr("0"),
+			StRetidoEntrada: strptr("500"),
+		}), 100_000},
+		{"ramo ST", withFrete(&ICMSCell{
+			UFDestino: "RJ", CodTrib: intp(60), Ambiguo: false,
+			StRetidoEntrada: strptr("200.00"), RestituicaoUnit: strptr("15.00"),
+		}), 60_000},
+	}
+}
+
+// TestSolveMatchesBruteForceICMSCellFourRegimes is the Task A5 mandated
+// strong acceptance test (brief item 2): for each regime, brute-force EVERY
+// cent from 1 to capCents through the real Decompose, record the cheapest
+// preço reaching each distinct margem_pct, then — for an evenly-strided
+// sample of those cents (kept small so the lane runs in acceptable time,
+// per the brief) — ask SolveTargetPrice for that exact target and require
+// Reached=true at EXACTLY the brute-forced cheapest preço. Zero exceptions:
+// every mismatch is reported via t.Errorf (not the first-only t.Fatalf), so
+// a run names every failing target instead of stopping at one.
+func TestSolveMatchesBruteForceICMSCellFourRegimes(t *testing.T) {
+	const samplesPerRegime = 40 // brief: "grade pequena o suficiente para rodar em tempo aceitável"
+	start := time.Now()
+	totalSamples, totalMismatches := 0, 0
+	for _, regime := range icmsCellRegimeGrid() {
+		regime := regime
+		t.Run(regime.name, func(t *testing.T) {
+			cheapest := map[string]int64{}
+			for c := int64(1); c <= regime.capCents; c++ {
+				m := resim(regime.in, centsToStr(c))
+				if m == "<unknown>" {
+					continue
+				}
+				if _, seen := cheapest[m]; !seen {
+					cheapest[m] = c
+				}
+			}
+			stride := regime.capCents / samplesPerRegime
+			if stride < 1 {
+				stride = 1
+			}
+			samples, mismatches := 0, 0
+			for c := int64(1); c <= regime.capCents; c += stride {
+				target := resim(regime.in, centsToStr(c))
+				if target == "<unknown>" {
+					continue
+				}
+				wantCents := cheapest[target]
+				in := regime.in
+				in.TargetMargemPct = target
+				res := SolveTargetPrice(in)
+				samples++
+				if !res.Reached || res.Preco == nil {
+					t.Errorf("target=%s must reach (brute cheapest %s); got %+v", target, centsToStr(wantCents), res)
+					mismatches++
+					continue
+				}
+				if *res.Preco != centsToStr(wantCents) {
+					t.Errorf("target=%s solver=%s brute-cheapest=%s", target, *res.Preco, centsToStr(wantCents))
+					mismatches++
+				}
+			}
+			t.Logf("%s: %d distinct margins in [1,%d], %d samples, %d mismatches", regime.name, len(cheapest), regime.capCents, samples, mismatches)
+			totalSamples += samples
+			totalMismatches += mismatches
+		})
+	}
+	t.Logf("TestSolveMatchesBruteForceICMSCellFourRegimes TOTAL wall-clock = %s, samples=%d, mismatches=%d",
+		time.Since(start), totalSamples, totalMismatches)
+}
+
+// --- Coordinator review (post-A5) — Achado 1: frete=0 fabrication ---------
+
+// TestSolveTargetPriceICMSCellCreditFreteUnknownStaysAmbiguous is the red
+// test for the coordinator's Achado 1 (REFUTED
+// icmsCellPossiblyReachableAboveCeiling): when ICMSCell has a credit term
+// (RestituicaoUnit here, R>0) and FreteProduto is nil, the OLD code probed
+// reachability by substituting a FABRICATED frete=0 — which is ADR-17
+// backwards (an unknown fact silently became a concrete value) and, when the
+// probe came back "unreachable", asserted CeilingPct — the very asymptote
+// the fixture's own C1 fix proved is NOT a true ceiling once a credit is
+// present. The correct answer never depends on frete's actual (unknown)
+// value at all: fnet's sign is decided entirely by the credit terms R/S,
+// which are known without frete (icmsCellCreditsAndFixed does not need
+// FreteProduto to read them) — R>0 (or S>0) means frete is genuinely needed
+// to know which regime/price applies, so the honest answer is
+// FreteDesconhecido, never a guessed ceiling.
+//
+// Target is pinned to "60.15" — the fixture's own real ceiling (see
+// TestCeilingPctICMSCellBALiteral) — because at frete=0 the analytic probe's
+// bracket sits exactly on its own gStar=0 boundary for this fixture,
+// reporting "not reachable at frete=0" (a degenerate coincidence of the
+// fabricated substitution, not a fact about the real, unknown frete) and so
+// exercises exactly the wrong CeilingPct branch the old code took.
+func TestSolveTargetPriceICMSCellCreditFreteUnknownStaysAmbiguous(t *testing.T) {
+	in := baseSolveICMSCell()
+	in.ICMSCell.RestituicaoUnit = strptr("100")
+	in.TargetMargemPct = "60.15"
+	// in.FreteProduto stays nil — the fact under test.
+
+	res := SolveTargetPrice(in)
+	if !res.FreteDesconhecido {
+		t.Fatalf("célula COM crédito (RestituicaoUnit=100) + FreteProduto desconhecido + alvo na assíntota real: "+
+			"frete é genuinamente necessário para decidir (fnet muda de sinal conforme o frete real) — "+
+			"esperava FreteDesconhecido=true, got %+v", res)
+	}
+	if res.CeilingPct != "" {
+		t.Fatalf("FreteDesconhecido=true não deve vir acompanhado de CeilingPct (o solver não pode afirmar um teto "+
+			"que não investigou) — got CeilingPct=%q", res.CeilingPct)
+	}
+	if res.Reached || res.Preco != nil {
+		t.Fatalf("não deveria ter Reached/Preco junto de FreteDesconhecido; got %+v", res)
+	}
+}
+
+// TestSolveTargetPriceICMSCellNoCreditFreteUnknownStillCeilings is the
+// non-regression control for Achado 1's fix: célula SEM crédito nenhum
+// (icmsCellBA "as-is", nem RestituicaoUnit nem StRetidoEntrada — the SAME
+// fixture TestSolveTargetPriceICMSCellBABetweenCeilings already uses) means
+// R=0 ∧ S=0, so fnet = −fixed0 ≤ 0 for EVERY real frete≥0 (frete only adds
+// to fixed0, never subtracts) — the asymptote 60.15 is a true ceiling
+// regardless of the unknown frete's actual value, so CeilingPct (not
+// FreteDesconhecido) remains the honest, provable answer. This duplicates
+// TestSolveTargetPriceICMSCellBABetweenCeilings's assertion deliberately —
+// it is the control half of Achado 1's red/green pair, kept next to the new
+// credit test so the sign-based branch (R==0∧S==0 vs R>0∨S>0) is pinned by
+// two tests that sit side by side, not one alone in a different file section.
+func TestSolveTargetPriceICMSCellNoCreditFreteUnknownStillCeilings(t *testing.T) {
+	in := baseSolveICMSCell()
+	in.TargetMargemPct = "70.00" // acima da assíntota real 60.15
+
+	res := SolveTargetPrice(in)
+	if res.FreteDesconhecido {
+		t.Fatalf("célula SEM crédito (R=0, S=0): frete não pode mudar o veredito (fnet=−fixed0≤0 para todo "+
+			"frete≥0) — esperava CeilingPct honesto, got FreteDesconhecido=true, %+v", res)
+	}
+	if res.CeilingPct != "60.15" {
+		t.Fatalf("CeilingPct = %q, want 60.15 (assíntota real da célula, sem crédito)", res.CeilingPct)
+	}
+	if res.Reached || res.Preco != nil {
+		t.Fatalf("target 70.00 acima da assíntota real 60.15 não deveria ser Reached; got %+v", res)
 	}
 }
