@@ -118,9 +118,11 @@ func TestMatrixReaderCellForAmbiguoCarriesNoCodTrib(t *testing.T) {
 }
 
 // TestMatrixReaderAliquotaInternaForReadsVigenteAndFoldsFCP proves
-// AliquotaInternaFor reads the vigente row and returns the headline aliquota
-// column (FCP already folded in per D-43) — it must NOT separately surface
-// or add fcp_embutido.
+// AliquotaInternaFor reads the vigente row and returns BOTH the headline
+// aliquota (FCP already folded in per D-43) AND fcp_embutido from that same
+// row — Task A2: the old claim that fcp_embutido was informational-only and
+// not read here was refuted by measurement (roundV.txt V2), so this test now
+// pins both fields instead of just the headline one.
 func TestMatrixReaderAliquotaInternaForReadsVigenteAndFoldsFCP(t *testing.T) {
 	ctx := context.Background()
 	pool, _ := testpostgres.OpenPool(t, "tenant_harness_matrix_reader")
@@ -149,8 +151,14 @@ func TestMatrixReaderAliquotaInternaForReadsVigenteAndFoldsFCP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AliquotaInternaFor: %v", err)
 	}
-	if got == nil || *got != "22.000" {
-		t.Fatalf("AliquotaInternaFor(%q) = %v, want \"22.000\" (a vigente, FCP ja embutido, nao a fechada 18.0)", uf, got)
+	if got == nil {
+		t.Fatalf("AliquotaInternaFor(%q) = nil, want the vigente row", uf)
+	}
+	if got.AliquotaPct != "22.000" {
+		t.Fatalf("AliquotaInternaFor(%q).AliquotaPct = %v, want \"22.000\" (a vigente, nao a fechada 18.0)", uf, got.AliquotaPct)
+	}
+	if got.FcpEmbutidoPct != "2.000" {
+		t.Fatalf("AliquotaInternaFor(%q).FcpEmbutidoPct = %v, want \"2.000\" (fcp_embutido da mesma linha vigente, agora lido — D-43 revisado)", uf, got.FcpEmbutidoPct)
 	}
 }
 

@@ -158,7 +158,7 @@ func (r *Reader) TaxesForItems(ctx context.Context, items []ordersports.TaxItem,
 // uniform "this item's tax picture is unknown" signal that TaxesForItem
 // already understands; the caller (TaxesForItems) never special-cases the
 // unlinked case separately from a linked-but-factless one.
-func (r *Reader) resolveItem(ctx context.Context, destinoUF string, aliquotaInterna *string, item ordersports.TaxItem) (*pricingdomain.ICMSCell, string, error) {
+func (r *Reader) resolveItem(ctx context.Context, destinoUF string, aliquotaInterna *pricingports.AliquotaInterna, item ordersports.TaxItem) (*pricingdomain.ICMSCell, string, error) {
 	if item.InternalProductID == nil || item.UnitPrice == nil {
 		return nil, "0.00", nil
 	}
@@ -198,12 +198,22 @@ func (r *Reader) resolveItem(ctx context.Context, destinoUF string, aliquotaInte
 		}
 	}
 
+	// aliquotaInterna carries BOTH facts (headline + fcp_embutido) from the
+	// same vigente row (Task A2) — nil means "UF sem linha" (D-37) and both
+	// ICMSCell fields stay nil together, never one without the other.
+	var aliquotaPct, fcpEmbutidoPct *string
+	if aliquotaInterna != nil {
+		aliquotaPct = &aliquotaInterna.AliquotaPct
+		fcpEmbutidoPct = &aliquotaInterna.FcpEmbutidoPct
+	}
+
 	cell := &pricingdomain.ICMSCell{
 		UFDestino:       destinoUF,
 		CodTrib:         codTrib,
 		Ambiguo:         ambiguo,
 		Origprod:        facts.Origprod,
-		AliquotaInterna: aliquotaInterna,
+		AliquotaInterna: aliquotaPct,
+		FcpEmbutido:     fcpEmbutidoPct,
 		StRetidoEntrada: stScaled,
 		RestituicaoUnit: restScaled,
 		FiscalDtRef:     facts.FiscalDtRef,

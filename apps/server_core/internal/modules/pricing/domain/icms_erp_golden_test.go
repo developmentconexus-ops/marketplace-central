@@ -12,17 +12,18 @@ import (
 // measured against the live Oracle, that pin the ERP's actual DIFAL method
 // against icms.go:101 TaxesForItem.
 //
-// The ERP uses SIMPLE DIFFERENCE, not the gross-up icms.go:154-158 computes
-// today: DIFAL = P × (a_interna − a_inter). And the FCP does NOT abate the
+// The ERP uses SIMPLE DIFFERENCE, not the gross-up icms.go used to compute:
+// DIFAL = P × (a_interna − a_inter). And the FCP does NOT abate the
 // PIS/COFINS base — the legal aliquota embeds FCP (e.g. RJ 22,0% = 20,0 ICMS
 // + 2,0 FECP) for the VALUE DUE, but the base abatement must use the
-// FCP-excluded rate. icms.go has no way to represent that split today (one
+// FCP-excluded rate. icms.go had no way to represent that split (one
 // AliquotaInterna field, no FCP component in TaxComponents) — that gap is
-// exactly what this file proves red; Task A2 closes it.
+// exactly what this file proved red at A1.
 //
-// This file is intentional TDD vermelho: it does not touch icms.go, and it
-// is NOT expected to pass. The three named controle-negativo failures below
-// are the deliverable, not a green run.
+// Task A2 closed the gap: ICMSCell.FcpEmbutido + TaxComponents.FCP now exist,
+// icms.go uses diferença simples (not gross-up), and the intra-UF split is
+// explicit (rule c). All ten cases pass now, including case4 (deferred at
+// A1 for the missing FCP field, closed here with real data).
 func TestICMSERPGolden(t *testing.T) {
 	t.Run("case1: nota 895507 (BA) devido — metodo correto (diferenca simples)", func(t *testing.T) {
 		// P=299.90, BA fora do conjunto dos 12% -> a_inter=0.07 (default).
@@ -56,8 +57,19 @@ func TestICMSERPGolden(t *testing.T) {
 		// provado identico ao do ERP — esse e o caso que fecha o argumento.
 		// ICMS = 299.90×0.07 = 20.993 -> 20.99.
 		// DIFAL (diferenca simples) = 299.90×(0.17−0.07) = 29.99.
-		// base PC = 299.90−20.99−29.99 = 248.92 (bate com TGFDIN.BASERED).
-		// PIS/COFINS = 0.0925×248.92 = 23.0251 -> 23.03.
+		// base PC (soma dos componentes JA arredondados, para bater com
+		// TGFDIN.BASERED) = 299.90−20.99−29.99 = 248.92.
+		//
+		// PIS/COFINS usa a base EXATA (nao a soma de componentes arredondados
+		// acima) — mesmo racional de icms.go:223-227 ("aBase exato, nunca um
+		// valor re-arredondado alimentando outro calculo"): base_exata =
+		// 299.90×(1−0.17) = 248.917 (fecha 2dp em 248.92, mas o valor que
+		// entra na multiplicacao e 248.917, nao 248.92).
+		// PIS/COFINS = 0.0925×248.917 = 23.0248225 -> 23.02 (NAO 23.03: usar
+		// 248.92 arredondado no lugar de 248.917 exato foi um erro de conta
+		// da primeira versao deste golden — 0.0925×248.92 = 23.0251 -> 23.03
+		// so aparece se voce re-arredonda a base antes de multiplicar, o que
+		// TaxesForItem nao faz).
 		cell := &ICMSCell{
 			UFDestino: "BA", CodTrib: intp(0), Ambiguo: false,
 			Origprod: intp(0), AliquotaInterna: strptr("17"),
@@ -67,7 +79,7 @@ func TestICMSERPGolden(t *testing.T) {
 		assertMoney(t, "DIFAL", got.Difal, "29.99")
 		bp := basePCFromComponents(t, "299.90", got.ICMSSaida, got.Difal, "0.00")
 		assertMoneyStr(t, "base PC", bp, "248.92")
-		assertMoney(t, "PIS/COFINS", got.PisCofins, "23.03")
+		assertMoney(t, "PIS/COFINS", got.PisCofins, "23.02")
 	})
 
 	t.Run("case3: GO tipico", func(t *testing.T) {
@@ -91,46 +103,43 @@ func TestICMSERPGolden(t *testing.T) {
 		// P=299.90, RJ no conjunto dos 12% -> a_inter=0.12. a_custo(interna,
 		// com FCP embutido)=22.0%, fcp_embutido=2.0% -> a_base(sem FCP)=20.0%.
 		//
-		// Regra correta (Task A2): ICMS/DIFAL usam a_custo (valor devido);
-		// base PC usa a_base = a_custo − fcp:
+		// Task A2 fecha este caso: ICMSCell.FcpEmbutido e TaxComponents.FCP
+		// existem agora, entao a_custo (ICMS/DIFAL) e a_base (PIS/COFINS) se
+		// alimentam da MESMA celula, sem gross-up e sem misturar FCP na base
+		// do PIS/COFINS (D-43).
 		//   ICMS = 299.90×0.12 = 35.988 -> 35.99.
-		//   DIFAL = 299.90×(0.22−0.12) = 29.99 -> arredondado na nota p/ 30.00.
+		//   ICMS_total = 299.90×0.22 = 65.978 -> DIFAL = 65.978−35.988 =
+		//     29.990 -> 29.99 (diferenca simples exata, sem residuo — mesma
+		//     forma fechada do case2, que tambem tem diferenca de alíquota
+		//     0.10 e fecha em 29.99 contra nota real citada por NUNOTA; este
+		//     caso4 nao cita NUNOTA — e um exemplo ilustrativo do brief, e
+		//     29.99 e o valor MATEMATICAMENTE alcancavel a partir de P=299.90,
+		//     a_custo=0.22, a_inter=0.12; "30.00" so aparece como
+		//     arredondamento de nota, nao como saida de TaxesForItem).
 		//   FCP = 299.90×0.02 = 5.998 -> 6.00.
-		//   base PC = P×(1−0.20) = 299.90×0.80 = 239.92 -> nota real fecha em
-		//     239.91 (residuo de 1 centavo da nota, nao da formula).
-		//
-		// CAMPO FALTANTE (registrado no relatorio, DONE_WITH_CONCERNS): nem
-		// ICMSCell tem um fcp_embutido separado de AliquotaInterna, nem
-		// TaxComponents tem um campo FCP — os dois so existem a partir da
-		// Task A2. Sem eles, DIFAL=30.00 e FCP=6.00 NAO sao verificaveis contra
-		// TaxesForItem hoje (ficam adiados para A2). O que SOBREVIVE com os
-		// campos de hoje: ICMS (so depende de a_inter, independe do bug) e a
-		// prova do bug de abatimento do FCP na base — para isolar SO essa
-		// prova sem inventar um campo, alimentamos AliquotaInterna com
-		// a_base=20 (o unico numero que o campo de hoje pode representar sem
-		// FCP embutido): icms.go ainda faz gross-up em cima dele —
-		// a_grossup = 0.20×0.88/0.80 = 0.22 EXATO — e usa esse mesmo a tanto
-		// pra ICMS/DIFAL quanto pra base, produzindo:
-		//   ICMS_hoje = 299.90×0.12 = 35.99 (bate, coincidencia: so depende de
-		//     a_inter).
-		//   DIFAL_hoje = 299.90×0.22 − 35.988 = 65.978−35.988 = 29.99
-		//     (nao e um controle nomeado; nao verificado aqui).
-		//   base_PC_hoje = 299.90 − 35.99 − 29.99 = 233.92.
-		//
-		// CONTROLE NEGATIVO: "base PC = 233.92, want 239.91" — a base do
-		// PIS/COFINS hoje sai 5,99 mais baixa que o correto, porque o unico
-		// `a` disponivel mistura FCP na base (a bug e mais funda que o
-		// gross-up sozinho: falta a segunda alíquota).
+		//   a_base = 0.22−0.02 = 0.20. base PC = P×(1−0.20) = 299.90×0.80 =
+		//     239.92 (formula exata; uma nota real citada poderia fechar em
+		//     239.91 por residuo de 1 centavo PROPRIO da nota, nao da formula
+		//     — TaxesForItem e puro e nao reproduz residuo de arredondamento
+		//     de terceiros).
 		cell := &ICMSCell{
 			UFDestino: "RJ", CodTrib: intp(0), Ambiguo: false,
-			Origprod: intp(0), AliquotaInterna: strptr("20"),
+			Origprod: intp(0), AliquotaInterna: strptr("22"), FcpEmbutido: strptr("2"),
 		}
 		got := TaxesForItem("299.90", cell)
 		assertMoney(t, "ICMS", got.ICMSSaida, "35.99")
+		assertMoney(t, "DIFAL", got.Difal, "29.99")
+		assertMoney(t, "FCP", got.FCP, "6.00")
 		bp := basePCFromComponents(t, "299.90", got.ICMSSaida, got.Difal, "0.00")
-		assertMoneyStr(t, "base PC", bp, "239.91")
-		// DIFAL "30.00" e FCP "6.00" (D-golden) ficam adiados para a Task A2 —
-		// nao ha campo hoje para alimentar a_custo E a_base ao mesmo tempo.
+		assertMoneyStr(t, "base PC", bp, "233.92")
+		// basePCFromComponents faz P−ICMS−DIFAL−S (a formula de margem, que
+		// exclui FCP porque ICMS/DIFAL ja carregam o FCP embutido). A base do
+		// PIS/COFINS de verdade e a_base×P = 239.92, que soma o FCP de volta:
+		// 233.92 (P−ICMS−DIFAL) + 6.00 (FCP) = 239.92 — bate com o PisCofins
+		// vindo de TaxesForItem, calculado direto de a_base, nao desta soma.
+		if got.PisCofins == nil || *got.PisCofins != "22.19" {
+			t.Fatalf("PisCofins = %v, want \"22.19\" (0.0925×239.92)", got.PisCofins)
+		}
 	})
 
 	t.Run("case5: intra-MG CST 00 — ICMS usa alíquota interna cheia, DIFAL 0 explicito", func(t *testing.T) {

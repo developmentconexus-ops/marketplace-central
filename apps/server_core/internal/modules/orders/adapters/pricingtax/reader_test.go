@@ -19,7 +19,7 @@ func floatp(f float64) *float64 { return &f }
 // pulling in the Postgres-backed MatrixReader (Task 4, a different layer).
 type fakeMatrix struct {
 	cells     map[string]pricingports.MatrixCell
-	aliquotas map[string]string
+	aliquotas map[string]pricingports.AliquotaInterna
 }
 
 func (f *fakeMatrix) CellFor(_ context.Context, _tenantID, ufOrigem, ufDestino string, grupoICMS int) (pricingports.MatrixCell, error) {
@@ -31,7 +31,7 @@ func (f *fakeMatrix) CellFor(_ context.Context, _tenantID, ufOrigem, ufDestino s
 	return cell, nil
 }
 
-func (f *fakeMatrix) AliquotaInternaFor(_ context.Context, uf string) (*string, error) {
+func (f *fakeMatrix) AliquotaInternaFor(_ context.Context, uf string) (*pricingports.AliquotaInterna, error) {
 	a, ok := f.aliquotas[uf]
 	if !ok {
 		return nil, nil
@@ -87,7 +87,9 @@ func TestTaxesForItemsSumsPerItemAcrossICMSGroups(t *testing.T) {
 			"MG|RJ|10": {Found: true, CodTrib: intp(60), Ambiguo: false}, // ST
 			"MG|RJ|20": {Found: true, CodTrib: intp(0), Ambiguo: false},  // normal
 		},
-		aliquotas: map[string]string{"RJ": "22"},
+		// RJ real data (migrations/0094_icms_matrix.sql:104): aliquota=22.0,
+		// fcp_embutido=2.0.
+		aliquotas: map[string]pricingports.AliquotaInterna{"RJ": {AliquotaPct: "22", FcpEmbutidoPct: "2"}},
 	}
 	products := &fakeProducts{
 		facts: map[string]pricingports.ProductFiscalFacts{
@@ -119,11 +121,19 @@ func TestTaxesForItemsSumsPerItemAcrossICMSGroups(t *testing.T) {
 	if !floatEq(got.ICMSSaida, "40.00") {
 		t.Fatalf("ICMSSaida = %s, want 40.00 (only item B — item A's ST contribution is an explicit 0.00)", dumpTaxes(got))
 	}
-	if !floatEq(got.Difal, "230.77") {
-		t.Fatalf("Difal = %s, want 230.77 (0.00 + 230.77)", dumpTaxes(got))
+	// Task A2 recompute (gross-up replaced by diferença simples, D-41):
+	// item 102's DIFAL is P×(aCusto−aInter) = 1000×(0.22−0.04) = 180.00
+	// (was 230.77 under the old gross-up formula). Item 101 (ST) still
+	// contributes 0.00 explicit. Sum = 0.00+180.00 = 180.00.
+	if !floatEq(got.Difal, "180.00") {
+		t.Fatalf("Difal = %s, want 180.00 (0.00 + 180.00)", dumpTaxes(got))
 	}
-	if !floatEq(got.PisCofins, "137.75") {
-		t.Fatalf("PisCofins = %s, want 137.75 (70.30 + 67.45)", dumpTaxes(got))
+	// item 102's PIS/COFINS base now uses aBase = aCusto−fcp = 0.22−0.02 =
+	// 0.20: base = 1000×(1−0.20) = 800.00, PisCofins = 0.0925×800.00 = 74.00
+	// (was 67.45 under the old gross-up `a`). Item 101 (ST branch,
+	// untouched by this task) stays 70.30. Sum = 70.30+74.00 = 144.30.
+	if !floatEq(got.PisCofins, "144.30") {
+		t.Fatalf("PisCofins = %s, want 144.30 (70.30 + 74.00)", dumpTaxes(got))
 	}
 	if !floatEq(got.RestituicaoST, "15.00") {
 		t.Fatalf("RestituicaoST = %s, want 15.00 (15.00 + 0.00)", dumpTaxes(got))
@@ -145,7 +155,7 @@ func TestTaxesForItemsRejectsRateOnTotalBug(t *testing.T) {
 			"MG|RJ|20": {Found: true, CodTrib: intp(0), Ambiguo: false},  // normal, first in this order
 			"MG|RJ|10": {Found: true, CodTrib: intp(60), Ambiguo: false}, // ST, second
 		},
-		aliquotas: map[string]string{"RJ": "22"},
+		aliquotas: map[string]pricingports.AliquotaInterna{"RJ": {AliquotaPct: "22", FcpEmbutidoPct: "2"}},
 	}
 	products := &fakeProducts{
 		facts: map[string]pricingports.ProductFiscalFacts{
@@ -195,6 +205,12 @@ func TestTaxesForItemsUnlinkedItemNilsWholeOrder(t *testing.T) {
 		cells: map[string]pricingports.MatrixCell{
 			"MG|MG|1": {Found: true, CodTrib: intp(0), Ambiguo: false},
 		},
+		// MG real data (migrations/0094_icms_matrix.sql:98): aliquota=18.0,
+		// fcp_embutido=0. Task A2 (d): MG no longer bypasses this lookup —
+		// without this entry item 201 would ALSO resolve to unknown
+		// (D-37), defeating this test's premise that it is the ONE fully
+		// resolvable item, contrasted against the unlinked second item.
+		aliquotas: map[string]pricingports.AliquotaInterna{"MG": {AliquotaPct: "18", FcpEmbutidoPct: "0"}},
 	}
 	products := &fakeProducts{
 		facts: map[string]pricingports.ProductFiscalFacts{

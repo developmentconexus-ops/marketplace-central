@@ -15,6 +15,16 @@ type MatrixCell struct {
 	Ambiguo bool
 }
 
+// AliquotaInterna é o par (alíquota headline, FCP embutido) de
+// icms_aliquota_interna para uma UF. Os dois vêm da MESMA linha vigente:
+// nil significa "UF sem linha" (D-37) e nunca "FCP zero" — quando a struct é
+// não-nil, FcpEmbutidoPct é sempre um fato lido (pode ser "0" para UFs sem
+// FCP geral, nunca omitido).
+type AliquotaInterna struct {
+	AliquotaPct    string
+	FcpEmbutidoPct string
+}
+
 // TaxMatrixReader resolves the two facts pricing/domain.TaxesForItem needs
 // beyond the product's own fiscal columns (origprod, st_retido_entrada,
 // restituicao_unit — read by the caller, Task 5's per-item adapter):
@@ -29,9 +39,12 @@ type TaxMatrixReader interface {
 	// fabricated codtrib.
 	CellFor(ctx context.Context, tenantID, ufOrigem, ufDestino string, grupoICMS int) (MatrixCell, error)
 
-	// AliquotaInternaFor returns icms_aliquota_interna.aliquota (FCP já
-	// embutido onde geral, D-43) for uf as a decimal-percent string, or nil
-	// when no vigente row exists for that UF (D-37 — never falls back to a
-	// neighboring UF or a default).
-	AliquotaInternaFor(ctx context.Context, uf string) (*string, error)
+	// AliquotaInternaFor returns the vigente icms_aliquota_interna row for uf
+	// as (alíquota headline, fcp_embutido) — Task A2: both now travel
+	// together, because the domain needs the FCP-excluded rate for the
+	// PIS/COFINS base while still using the FCP-included headline rate for
+	// ICMS/DIFAL (D-43, measured against roundV.txt V2). nil when no vigente
+	// row exists for that UF (D-37 — never falls back to a neighboring UF or
+	// a default).
+	AliquotaInternaFor(ctx context.Context, uf string) (*AliquotaInterna, error)
 }

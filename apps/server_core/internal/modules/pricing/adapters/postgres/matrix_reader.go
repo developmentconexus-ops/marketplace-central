@@ -46,22 +46,31 @@ func (r *MatrixReader) CellFor(ctx context.Context, tenantID, ufOrigem, ufDestin
 	return ports.MatrixCell{Found: true, CodTrib: codTrib, Ambiguo: ambiguo}, nil
 }
 
-// AliquotaInternaFor returns the vigente icms_aliquota_interna.aliquota for
-// uf as a decimal-percent string, or nil when no vigente row exists (D-37).
-// fcp_embutido is not read here — D-43: it is informational/audit-only,
-// already folded into the headline aliquota column where general.
-func (r *MatrixReader) AliquotaInternaFor(ctx context.Context, uf string) (*string, error) {
-	var aliquota string
+// AliquotaInternaFor returns the vigente icms_aliquota_interna row for uf as
+// (alíquota headline, fcp_embutido), or nil when no vigente row exists
+// (D-37). icms_aliquota_interna is a GLOBAL table (a lei não é por tenant) —
+// this is the one query in this reader with no tenant_id predicate, by
+// design.
+//
+// The old version of this comment said fcp_embutido was informational/
+// audit-only and "not read here" because it was already folded into the
+// headline aliquota — that claim is REFUTED by measurement (Task A2):
+// against 6 real RJ invoice items (roundV.txt V2), the ERP abates ICMS+DIFAL
+// (which use the FCP-included headline rate) from the PIS/COFINS base but
+// leaves the FCP portion IN that base. Reproducing that split needs BOTH
+// numbers from the same vigente row, so fcp_embutido is read here now.
+func (r *MatrixReader) AliquotaInternaFor(ctx context.Context, uf string) (*ports.AliquotaInterna, error) {
+	var aliquota, fcpEmbutido string
 	err := r.pool.QueryRow(ctx, `
-		SELECT aliquota::text
+		SELECT aliquota::text, fcp_embutido::text
 		FROM icms_aliquota_interna
 		WHERE uf = $1 AND vigente_ate IS NULL
-	`, uf).Scan(&aliquota)
+	`, uf).Scan(&aliquota, &fcpEmbutido)
 	if err == pgx.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	return &aliquota, nil
+	return &ports.AliquotaInterna{AliquotaPct: aliquota, FcpEmbutidoPct: fcpEmbutido}, nil
 }

@@ -23,24 +23,30 @@ func TestTaxesForItemPureFormula(t *testing.T) {
 		want  TaxComponents
 	}{
 		{
-			// P=1000, MG (a=0,18 fixo), origprod=0 (fora de {1,2,3,8}) e MG não
-			// está no conjunto {SP,RJ,PR,SC,RS} ⇒ a_inter=0,07.
-			// ICMS_oper = 1000×0,07 = 70,00. ICMS_total = 1000×0,18 = 180,00.
-			// DIFAL = 180,00−70,00 = 110,00. BASE_PC = 1000×0,82−0 = 820,00.
-			// PIS/COFINS = 0,0925×820,00 = 75,85. UF=MG ⇒ restituição 0,00
-			// explícito mesmo com restituicao_unit=50,00 (gatilho é a UF, não o
-			// valor) — AliquotaInterna fica nil de propósito: a intra-MG NÃO
-			// consulta a tabela legal (a=0,18 é fixo), e se o código exigir o
-			// campo, este caso reprova.
-			name:  "A: MG interno — a fixo 0.18, sem consultar alíquota interna",
+			// P=1000, MG intra-UF (destino=origem): Task A2 rule (c) — operação
+			// interna usa a alíquota interna INTEIRA para o ICMS, e o DIFAL é
+			// 0,00 EXPLÍCITO (não a subtração interestadual aplicada por
+			// engano). Rule (d): MG não tem mais bypass — lê
+			// icms_aliquota_interna como qualquer UF (aqui 18%, fcp_embutido
+			// nil ⇒ 0).
+			// aCusto = 18/100 = 0,18. ICMS_oper = 1000×0,18 = 180,00.
+			// DIFAL = 0,00 (UFDestino==UFOrigem=MG, ramo explícito).
+			// FCP = 1000×0 = 0,00 (fcp_embutido nil ⇒ zeroIfNil=0).
+			// aBase = aCusto−fcp = 0,18−0 = 0,18. BASE_PC = 1000×0,82−0 = 820,00.
+			// PIS/COFINS = 0,0925×820,00 = 75,85 (inalterado — a_base não mudou).
+			// UF=MG ⇒ restituição 0,00 explícito mesmo com restituicao_unit=
+			// 50,00 (gatilho é a UF, não o valor).
+			name:  "A: MG interno — ICMS pela alíquota interna inteira, DIFAL 0 explícito",
 			preco: "1000.00",
 			cell: &ICMSCell{
 				UFDestino: "MG", CodTrib: intp(0), Ambiguo: false,
-				Origprod: intp(0), RestituicaoUnit: strptr("50.00"),
-				FiscalDtRef: strptr("2026-07-01"),
+				Origprod: intp(0), AliquotaInterna: strptr("18"),
+				RestituicaoUnit: strptr("50.00"),
+				FiscalDtRef:     strptr("2026-07-01"),
 			},
 			want: TaxComponents{
-				ICMSSaida: strptr("70.00"), Difal: strptr("110.00"),
+				ICMSSaida: strptr("180.00"), Difal: strptr("0.00"),
+				FCP:       strptr("0.00"),
 				PisCofins: strptr("75.85"), RestituicaoST: strptr("0.00"),
 				FiscalDtRef: strptr("2026-07-01"),
 			},
@@ -48,15 +54,17 @@ func TestTaxesForItemPureFormula(t *testing.T) {
 		{
 			// P=500, SP (não-MG, não-ST): origprod=0 não cai em {1,2,3,8}, e SP
 			// está no conjunto dos 12% ⇒ a_inter=0,12. a_int=18% (tabela legal
-			// SP). Gross-up: a = 0,18×0,88/0,82 = 198/1025.
+			// SP, fcp_embutido nil ⇒ 0). Task A2 rule (a): DIFAL é a diferença
+			// simples ICMS_total−ICMS_oper (o jeito que o ERP calcula,
+			// TGFDIN.BASERED), não mais gross-up.
 			// ICMS_oper = 500×0,12 = 60,00 exato.
-			// ICMS_total = 500×198/1025 = 3960/41 = 96,585365... → 96,59.
-			// DIFAL = (3960/41 − 60) = 1500/41 = 36,585365... → 36,59.
-			// BASE_PC = 500×(1−198/1025) − 50 = 16540/41 − 50 = 14490/41.
-			// PIS/COFINS = 0,0925×14490/41 = 13403250/410000 = 32,69 (exato,
-			// sem arredondar: quociente 3269 resto 140/1640 < metade).
+			// ICMS_total = 500×0,18 = 90,00 exato.
+			// DIFAL = 90,00−60,00 = 30,00.
+			// FCP = 500×0 = 0,00 (fcp_embutido nil ⇒ zeroIfNil=0).
+			// aBase = 0,18−0 = 0,18. BASE_PC = 500×0,82−50 = 360,00.
+			// PIS/COFINS = 0,0925×360,00 = 33,30.
 			// UF≠MG ⇒ restituição = restituicao_unit = 25,00.
-			name:  "B: interestadual SP gross-up — a_int da tabela legal",
+			name:  "B: interestadual SP — diferença simples, a_int da tabela legal",
 			preco: "500.00",
 			cell: &ICMSCell{
 				UFDestino: "SP", CodTrib: intp(0), Ambiguo: false,
@@ -65,8 +73,9 @@ func TestTaxesForItemPureFormula(t *testing.T) {
 				FiscalDtRef: strptr("2026-08-01"),
 			},
 			want: TaxComponents{
-				ICMSSaida: strptr("60.00"), Difal: strptr("36.59"),
-				PisCofins: strptr("32.69"), RestituicaoST: strptr("25.00"),
+				ICMSSaida: strptr("60.00"), Difal: strptr("30.00"),
+				FCP:       strptr("0.00"),
+				PisCofins: strptr("33.30"), RestituicaoST: strptr("25.00"),
 				FiscalDtRef: strptr("2026-08-01"),
 			},
 		},
@@ -125,13 +134,16 @@ func TestTaxesForItemPureFormula(t *testing.T) {
 		{
 			// origprod ∈ {1,2,3,8} vence a UF mesmo quando a UF de destino está
 			// no conjunto dos 12% (RJ) — a_inter=0,04, não 0,12.
-			// a_int=22% (RJ, tabela legal, FCP já embutido D-43).
-			// a = 0,22×0,96/0,78 = 88/325 = 0,270769...
+			// a_int=22% (RJ, tabela legal), fcp_embutido=2% (D-43 — aCusto e
+			// aBase derivam da MESMA linha). Task A2 rule (a): diferença
+			// simples, não gross-up.
+			// aCusto = 22/100 = 0,22. fcp = 2/100 = 0,02.
 			// ICMS_oper = 1000×0,04 = 40,00.
-			// ICMS_total = 1000×88/325 = 3520/13 = 270,769230... → 270,77.
-			// DIFAL = 3520/13−40 = 3000/13 = 230,769230... → 230,77.
-			// BASE_PC = 1000×(1−88/325) = 9480/13 = 729,230769...
-			// PIS/COFINS = 0,0925×9480/13 = 8769/130 = 67,453846... → 67,45.
+			// ICMS_total = 1000×0,22 = 220,00.
+			// DIFAL = 220,00−40,00 = 180,00.
+			// FCP = 1000×0,02 = 20,00.
+			// aBase = 0,22−0,02 = 0,20. BASE_PC = 1000×(1−0,20) = 800,00.
+			// PIS/COFINS = 0,0925×800,00 = 74,00.
 			// restituicao_unit nil ⇒ tratado como 0 (produto sem fato de
 			// restituição registrado, não "desconhecido" — Oracle não distingue
 			// as duas coisas para este fato, T4 escopo).
@@ -139,11 +151,13 @@ func TestTaxesForItemPureFormula(t *testing.T) {
 			preco: "1000.00",
 			cell: &ICMSCell{
 				UFDestino: "RJ", CodTrib: intp(0), Ambiguo: false,
-				AliquotaInterna: strptr("22"), Origprod: intp(1),
+				AliquotaInterna: strptr("22"), FcpEmbutido: strptr("2"),
+				Origprod: intp(1),
 			},
 			want: TaxComponents{
-				ICMSSaida: strptr("40.00"), Difal: strptr("230.77"),
-				PisCofins: strptr("67.45"), RestituicaoST: strptr("0.00"),
+				ICMSSaida: strptr("40.00"), Difal: strptr("180.00"),
+				FCP:       strptr("20.00"),
+				PisCofins: strptr("74.00"), RestituicaoST: strptr("0.00"),
 			},
 		},
 		{
@@ -192,23 +206,26 @@ func strJoin(ss []string) string {
 
 // TestTaxesForItemMaxZeroClampsBase proves MAX(0,…) is not cosmetic: S retido
 // maior que o líquido não pode virar base negativa / crédito fantasma.
-// P=200, MG, origprod=0 ⇒ a_inter=0,07, a=0,18 fixo.
-// P×(1−a) = 200×0,82 = 164,00. S=500,00 (muito maior) ⇒ BASE_PC = MAX(0,−336) = 0.
+// P=200, MG intra-UF (rule d: MG lê a tabela, 18%, fcp_embutido nil ⇒ 0).
+// ICMS_oper = 200×0,18 = 36,00. DIFAL = 0,00 explícito (intra-MG, rule c).
+// aBase = 0,18−0 = 0,18. P×(1−aBase) = 200×0,82 = 164,00. S=500,00 (muito
+// maior) ⇒ BASE_PC = MAX(0,−336) = 0.
 // PIS/COFINS = 0,0925×0 = 0,00 — CONHECIDO (zero legítimo por clamp), não nil.
 func TestTaxesForItemMaxZeroClampsBase(t *testing.T) {
 	cell := &ICMSCell{
 		UFDestino: "MG", CodTrib: intp(0), Ambiguo: false,
-		Origprod: intp(0), StRetidoEntrada: strptr("500.00"),
+		Origprod: intp(0), AliquotaInterna: strptr("18"),
+		StRetidoEntrada: strptr("500.00"),
 	}
 	got := TaxesForItem("200.00", cell)
 	if got.PisCofins == nil || *got.PisCofins != "0.00" {
 		t.Fatalf("PisCofins = %v, want \"0.00\" (MAX(0,...) clamp) — sem o MAX sairia base negativa", dumpTax(got))
 	}
-	if got.ICMSSaida == nil || *got.ICMSSaida != "14.00" {
-		t.Fatalf("ICMSSaida = %v, want 14.00 (200x0.07)", dumpTax(got))
+	if got.ICMSSaida == nil || *got.ICMSSaida != "36.00" {
+		t.Fatalf("ICMSSaida = %v, want 36.00 (200x0.18, intra-MG usa a alíquota inteira)", dumpTax(got))
 	}
-	if got.Difal == nil || *got.Difal != "22.00" {
-		t.Fatalf("Difal = %v, want 22.00 (200x0.18 - 14.00)", dumpTax(got))
+	if got.Difal == nil || *got.Difal != "0.00" {
+		t.Fatalf("Difal = %v, want 0.00 (intra-MG explícito, rule c)", dumpTax(got))
 	}
 }
 

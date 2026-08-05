@@ -23,38 +23,46 @@ func TestDecomposeICMSGolden(t *testing.T) {
 		want Decomposition
 	}{
 		{
-			// MG interno: a fixo 0,18 (não consulta AliquotaInterna).
+			// MG intra-UF: Task A2 rule (c)+(d) — MG lê a tabela (18%,
+			// fcp_embutido nil ⇒ 0) e ICMS usa a alíquota interna INTEIRA;
+			// DIFAL é 0,00 explícito (destino=origem). ICMS+DIFAL total
+			// (180,00) é o MESMO valor de antes (70+110=180) — a correção
+			// só redistribui entre os dois campos, então Sum/Margem/Pct NÃO
+			// mudam.
 			// Comissao=1000x0.12=120.00. TaxaFixa=0 (>=79). Frete=30.00.
 			// Imposto=1000x0.04=40.00 (mostrado, NAO somado).
-			// ICMSSaida=70.00 Difal=110.00 PisCofins=75.85 RestituicaoST=0.00 (UF=MG).
-			// Sum = 120+0+30+70+110+75.85+0(tarifa)+200(custo) - 0(restituicao) = 605.85.
+			// ICMSSaida=180.00 Difal=0.00 PisCofins=75.85 RestituicaoST=0.00 (UF=MG).
+			// Sum = 120+0+30+180+0+75.85+0(tarifa)+200(custo) - 0(restituicao) = 605.85.
 			// Margem = 1000-605.85 = 394.15. Pct = 394.15/1000*100 = 39.415 -> 39.42 (tie, half-up).
-			name: "ICMS-1: interno MG — a fixo, restituicao 0 explicito (UF=MG)",
+			name: "ICMS-1: interno MG — ICMS pela alíquota interna inteira, DIFAL 0 explícito",
 			in: DecomposeInput{
 				Preco: "1000.00", ComissaoPct: "12", AliquotaPct: "4",
 				Modalidade: ModalidadeClassico, Custo: money("200.00"),
 				FreteProduto: money("30.00"),
 				ICMSCell: &ICMSCell{
 					UFDestino: "MG", CodTrib: intp(0), Ambiguo: false,
-					Origprod: intp(0), RestituicaoUnit: strptr("50.00"),
+					Origprod: intp(0), AliquotaInterna: strptr("18"),
+					RestituicaoUnit: strptr("50.00"),
 				},
 			},
 			want: Decomposition{
 				Preco: "1000.00", Comissao: "120.00", TaxaFixa: "0.00",
 				Frete: strptr("30.00"), Imposto: "40.00",
-				Difal: strptr("110.00"), TarifaFull: strptr("0.00"), Custo: strptr("200.00"),
-				ICMSSaida: strptr("70.00"), PisCofins: strptr("75.85"), RestituicaoST: strptr("0.00"),
+				Difal: strptr("0.00"), TarifaFull: strptr("0.00"), Custo: strptr("200.00"),
+				ICMSSaida: strptr("180.00"), PisCofins: strptr("75.85"), RestituicaoST: strptr("0.00"),
 				MargemValor: strptr("394.15"), MargemPct: strptr("39.42"),
 			},
 		},
 		{
-			// Interestadual SP, gross-up pela tabela legal (a_int=18%, a_inter=12% pq SP no
-			// conjunto dos 12%). Comissao=500x0.10=50.00. Frete=20.00. Imposto=500x0.04=20.00
-			// (mostrado, nao somado). ICMSSaida=60.00 Difal=36.59 PisCofins=32.69
-			// RestituicaoST=25.00 (UF!=MG).
-			// Sum = 50+0+20+60+36.59+32.69+0+150 - 25 = 324.28.
-			// Margem = 500-324.28 = 175.72. Pct = 175.72/500*100 = 35.144 -> 35.14.
-			name: "ICMS-2: interestadual SP — gross-up da tabela legal, restituicao subtrai do sum",
+			// Interestadual SP, diferença simples pela tabela legal (Task A2 rule (a):
+			// a_int=18%, fcp_embutido nil ⇒ 0, a_inter=12% pq SP no conjunto dos 12%).
+			// ICMS_oper=500x0.12=60.00. ICMS_total=500x0.18=90.00. DIFAL=90-60=30.00.
+			// Comissao=500x0.10=50.00. Frete=20.00. Imposto=500x0.04=20.00
+			// (mostrado, nao somado). ICMSSaida=60.00 Difal=30.00 PisCofins=33.30
+			// (base=500x0.82-50=360.00, x0.0925=33.30) RestituicaoST=25.00 (UF!=MG).
+			// Sum = 50+0+20+60+30.00+33.30+0+150 - 25 = 318.30.
+			// Margem = 500-318.30 = 181.70. Pct = 181.70/500*100 = 36.34.
+			name: "ICMS-2: interestadual SP — diferença simples da tabela legal, restituicao subtrai do sum",
 			in: DecomposeInput{
 				Preco: "500.00", ComissaoPct: "10", AliquotaPct: "4",
 				Modalidade: ModalidadeClassico, Custo: money("150.00"),
@@ -68,9 +76,9 @@ func TestDecomposeICMSGolden(t *testing.T) {
 			want: Decomposition{
 				Preco: "500.00", Comissao: "50.00", TaxaFixa: "0.00",
 				Frete: strptr("20.00"), Imposto: "20.00",
-				Difal: strptr("36.59"), TarifaFull: strptr("0.00"), Custo: strptr("150.00"),
-				ICMSSaida: strptr("60.00"), PisCofins: strptr("32.69"), RestituicaoST: strptr("25.00"),
-				MargemValor: strptr("175.72"), MargemPct: strptr("35.14"),
+				Difal: strptr("30.00"), TarifaFull: strptr("0.00"), Custo: strptr("150.00"),
+				ICMSSaida: strptr("60.00"), PisCofins: strptr("33.30"), RestituicaoST: strptr("25.00"),
+				MargemValor: strptr("181.70"), MargemPct: strptr("36.34"),
 			},
 		},
 		{
@@ -124,12 +132,15 @@ func TestDecomposeICMSGolden(t *testing.T) {
 			},
 		},
 		{
-			// MAX(0,...) nao e cosmetico: S=500 excede o liquido em MG (P=200, a=0.18 fixo).
-			// P*(1-a)=164, 164-500=-336 -> clamp a 0 -> PisCofins=0.00 CONHECIDO (zero
-			// legitimo por clamp, nao desconhecido). ICMSSaida=200x0.07=14.00 (a_inter, MG fora
-			// do conjunto dos 12%). Difal=200x0.18-14=22.00. RestituicaoST=0.00 (UF=MG).
+			// MAX(0,...) nao e cosmetico: S=500 excede o liquido em MG intra-UF
+			// (P=200, alíquota interna 18%, fcp_embutido nil ⇒ 0). aBase=0.18.
+			// P*(1-aBase)=164, 164-500=-336 -> clamp a 0 -> PisCofins=0.00 CONHECIDO
+			// (zero legitimo por clamp, nao desconhecido). ICMSSaida=200x0.18=36.00
+			// (intra-MG, alíquota inteira). Difal=0.00 explícito (intra-MG).
+			// ICMS+DIFAL total (36,00) é o MESMO de antes (14+22=36) — a correção só
+			// redistribui, Sum/Margem/Pct nao mudam. RestituicaoST=0.00 (UF=MG).
 			// Comissao=200x0.10=20.00. Frete=10.00. Imposto=200x0.04=8.00 (mostrado, nao somado).
-			// Sum = 20+0+10+14+22+0+0+50 - 0 = 116.00. Margem=200-116=84.00. Pct=42.00 exato.
+			// Sum = 20+0+10+36+0+0+0+50 - 0 = 116.00. Margem=200-116=84.00. Pct=42.00 exato.
 			name: "ICMS-5: MAX(0) clamp na base do PIS/COFINS — S excede o liquido",
 			in: DecomposeInput{
 				Preco: "200.00", ComissaoPct: "10", AliquotaPct: "4",
@@ -137,14 +148,15 @@ func TestDecomposeICMSGolden(t *testing.T) {
 				FreteProduto: money("10.00"),
 				ICMSCell: &ICMSCell{
 					UFDestino: "MG", CodTrib: intp(0), Ambiguo: false,
-					Origprod: intp(0), StRetidoEntrada: strptr("500.00"),
+					Origprod: intp(0), AliquotaInterna: strptr("18"),
+					StRetidoEntrada: strptr("500.00"),
 				},
 			},
 			want: Decomposition{
 				Preco: "200.00", Comissao: "20.00", TaxaFixa: "0.00",
 				Frete: strptr("10.00"), Imposto: "8.00",
-				Difal: strptr("22.00"), TarifaFull: strptr("0.00"), Custo: strptr("50.00"),
-				ICMSSaida: strptr("14.00"), PisCofins: strptr("0.00"), RestituicaoST: strptr("0.00"),
+				Difal: strptr("0.00"), TarifaFull: strptr("0.00"), Custo: strptr("50.00"),
+				ICMSSaida: strptr("36.00"), PisCofins: strptr("0.00"), RestituicaoST: strptr("0.00"),
 				MargemValor: strptr("84.00"), MargemPct: strptr("42.00"),
 			},
 		},
@@ -189,6 +201,15 @@ func assertSomaFechaICMS(t *testing.T, d Decomposition) {
 // 40.00) — proves RestituicaoST is subtracted from the sum (added to
 // margem) dollar-for-dollar, not the other way around. If the sign were
 // flipped, margem_R40 would be LOWER than margem_R0, not higher.
+//
+// Task A2 recompute (rule a, diferença simples — BA não está no conjunto dos
+// 12%, a_inter=7%; fcp_embutido nil ⇒ 0, aBase=aCusto=0.205):
+// ICMS_oper=400x0.07=28.00. ICMS_total=400x0.205=82.00. DIFAL=82-28=54.00.
+// BASE_PC=400x(1-0.205)=318.00. PIS/COFINS=0.0925x318.00=29.415 -> 29.42
+// (meio exato, half-up sobe). Sum(sem restituição) = 40(comissao)+0(taxa)+
+// 15(frete)+28.00(icms)+54.00(difal)+29.42(pis)+0(tarifa)+100(custo)-0 =
+// 266.42. Margem = 400-266.42 = 133.58. Com restituição 40.00: Sum=226.42,
+// Margem=173.58 (133.58+40.00).
 func TestDecomposeICMSRestituicaoIncreasesMargem(t *testing.T) {
 	base := func(restituicao string) DecomposeInput {
 		return DecomposeInput{
@@ -215,11 +236,11 @@ func TestDecomposeICMSRestituicaoIncreasesMargem(t *testing.T) {
 	if withoutR.MargemValor == nil || withR.MargemValor == nil {
 		t.Fatalf("margem should be known in both cases: withoutR=%v withR=%v", withoutR.MargemValor, withR.MargemValor)
 	}
-	if *withoutR.MargemValor != "120.95" {
-		t.Fatalf("withoutR.MargemValor = %s, want 120.95", *withoutR.MargemValor)
+	if *withoutR.MargemValor != "133.58" {
+		t.Fatalf("withoutR.MargemValor = %s, want 133.58", *withoutR.MargemValor)
 	}
-	if *withR.MargemValor != "160.95" {
-		t.Fatalf("withR.MargemValor = %s, want 160.95 (120.95 + 40.00 restituicao)", *withR.MargemValor)
+	if *withR.MargemValor != "173.58" {
+		t.Fatalf("withR.MargemValor = %s, want 173.58 (133.58 + 40.00 restituicao)", *withR.MargemValor)
 	}
 
 	diff := new(big.Rat).Sub(ratOf(t, *withR.MargemValor), ratOf(t, *withoutR.MargemValor))
