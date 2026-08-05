@@ -68,9 +68,15 @@ type DecomposeInput struct {
 	// identical to pre-P2.b output). Non-nil switches Decompose onto the D-41
 	// formula: ICMSSaida/Difal/PisCofins/RestituicaoST are computed via
 	// TaxesForItem and enter the sum in ICMSSaida/Difal/PisCofins/
-	// RestituicaoST's place — Imposto is still computed and shown (D-38: the
-	// field survives for the 7 simulator sites) but stops being summed, so it
-	// is never double-counted alongside ICMSSaida.
+	// RestituicaoST's place.
+	//
+	// Task A6: when ICMSCell is non-nil the legacy AliquotaPct path does not
+	// exist at all — AliquotaPct is never parsed (an empty string is valid
+	// input and does not panic) and Imposto comes back as the named-absent
+	// nil, never a fabricated "4.00" shown next to the real ICMSSaida/Difal
+	// (D1: the fabricated flat rate no longer rides along in the output next
+	// to the real components; D2: a caller that resolved the cell is no
+	// longer forced to invent a legacy value to avoid a panic).
 	ICMSCell *ICMSCell
 }
 
@@ -86,12 +92,15 @@ type Decomposition struct {
 	TaxaFixa string
 	Frete    *string
 	// Imposto is the CalcProfile regime aliquota × preço (SIMPLES/PRESUMIDO
-	// placeholder, D-38). Always computed and shown for the simulator sites
-	// that still read it. Summed into MargemValor ONLY when ICMSCell is nil
-	// (today's behavior); when ICMSCell is present, ICMSSaida replaces it in
-	// the sum — Imposto keeps rendering but a silently-double-counted
-	// component is exactly how the fabricated 4% survived this long.
-	Imposto    string
+	// placeholder, D-38) — legacy-path ONLY. Computed and summed into
+	// MargemValor exclusively when ICMSCell is nil (today's behavior,
+	// byte-for-byte). When ICMSCell is present the legacy path does not run
+	// at all (Task A6): AliquotaPct is not parsed and Imposto is the
+	// named-absent nil, never a fabricated number rendered alongside the
+	// real ICMSSaida/Difal/PisCofins/RestituicaoST. nil here is a structural
+	// "does not apply on this path", NOT an ADR-17 unknown — it never enters
+	// ComponentesDesconhecidos and never blocks MargemValor.
+	Imposto    *string
 	Difal      *string
 	TarifaFull *string
 	Custo      *string
@@ -133,7 +142,6 @@ func decomposeWithLimiar(in DecomposeInput, limiar *big.Rat) Decomposition {
 	preco := mustRat(in.Preco)
 
 	comissao, comissaoRat := pctOfPrice(in.ComissaoPct, preco)
-	imposto, impostoRat := pctOfPrice(in.AliquotaPct, preco)
 
 	var taxaFixa string
 	var taxaFixaRat *big.Rat
@@ -147,17 +155,22 @@ func decomposeWithLimiar(in DecomposeInput, limiar *big.Rat) Decomposition {
 		Preco:    FormatRatHalfUp(preco, 2),
 		Comissao: comissao,
 		TaxaFixa: taxaFixa,
-		Imposto:  imposto,
 	}
 
 	// running sum of the KNOWN component rats (for the exact soma-fecha).
-	// impostoRat joins the sum only when ICMSCell is nil (D-38/D-41): when
-	// the matrix cell is present, ICMSSaida takes Imposto's place below —
-	// summing both would double-count the same tax.
 	sum := new(big.Rat).Add(comissaoRat, taxaFixaRat)
 	if in.ICMSCell == nil {
+		// legacy path (D-38): AliquotaPct is parsed and Imposto is summed,
+		// byte-for-byte identical to pre-P2.b/pre-D-41 output.
+		imposto, impostoRat := pctOfPrice(in.AliquotaPct, preco)
+		out.Imposto = &imposto
 		sum.Add(sum, impostoRat)
 	}
+	// Task A6: when ICMSCell != nil, AliquotaPct is NEVER parsed — the
+	// legacy field is not read at all, so an empty AliquotaPct (D2: a caller
+	// that resolved the cell and has no legacy value) cannot panic. Imposto
+	// stays the zero value (nil) — named-absent, not double-counted
+	// alongside ICMSSaida below.
 	var unknown []string
 
 	// frete: applied only when preço ≥ limiar.

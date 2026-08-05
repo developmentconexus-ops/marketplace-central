@@ -2361,10 +2361,42 @@ describe("sdk runtime", () => {
     expect(createScenario.id).toBe("sc1");
     // ADR-17: unknown cost stays null (never fabricated 0) and surfaces as SEM_CUSTO.
     expect(gotDecompose.decomposition.custo).toBeNull();
+    // Task A7: imposto is nullable now but still round-trips its legacy value
+    // unchanged when the wire sends one (negative control for the null case below).
+    expect(gotDecompose.decomposition.imposto).toBe("4.00");
     expect(gotDecompose.blocking_state).toBe("SEM_CUSTO");
     // Unreachable target is a 200 with an explicit code, not a thrown error.
     expect(gotSolve.reached).toBe(false);
     expect(gotSolve.code).toBe("UNREACHABLE_TARGET");
+  });
+
+  // Task A7: PricingDecomposition.imposto widened from string to string | null
+  // (OpenAPI + SDK, same commit as the backend DTO/handler change). null means
+  // the D-41 per-cell fiscal path is active for this item — the SDK must pass
+  // it through untouched, never coercing to "0.00"/"" (ADR-17).
+  it("passes a null pricing decompose imposto through untouched (nullable field parity)", async () => {
+    const decompose: PricingDecomposeResponse = {
+      decomposition: {
+        preco: "100.00",
+        comissao: "12.00",
+        taxa_fixa: "0",
+        frete: "15.00",
+        imposto: null,
+        difal: "8.00",
+        tarifa_full: null,
+        custo: "40.00",
+        margem_valor: null,
+        margem_pct: null,
+        componentes_desconhecidos: [],
+      },
+      blocking_state: null,
+    };
+    const client = createMarketplaceCentralClient({
+      baseUrl: "http://localhost:8080",
+      fetchImpl: async () => new Response(JSON.stringify(decompose), { status: 200 }),
+    });
+    const got = await client.pricingDecompose({ preco: "100.00", comissao_pct: "12", modalidade: "classico" });
+    expect(got.decomposition.imposto).toBeNull();
   });
 });
 

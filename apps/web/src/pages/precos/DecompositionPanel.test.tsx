@@ -78,6 +78,36 @@ describe("DecompositionPanel", () => {
     expect(within(panel).queryByText("0%")).toBeNull();
   });
 
+  // Task A7: imposto is now nullable (null ⇒ the D-41 per-cell fiscal path
+  // is active for this item; the legacy flat rate is never shown alongside
+  // icms_saida/difal/pis_cofins). This asserts the RENDERED STATE of the
+  // imposto row specifically (its own placeholder span, not merely "a dash
+  // exists somewhere on the panel" — difal/tarifa_full are also null by
+  // default in the `decomposition()` fixture, so a panel-wide dash count
+  // would pass even if imposto itself fell back to a fabricated value).
+  it("renders imposto as the unknown-value placeholder (not a fabricated 0) when null", () => {
+    const d = decomposition({ imposto: null, difal: "3.50", tarifa_full: "0.00" });
+    render(<DecompositionPanel decomposition={d} profile={profile} blockingState={null} />);
+
+    const label = screen.getByText("(−) Imposto");
+    const row = label.parentElement as HTMLElement;
+    const placeholder = within(row).getByText("—");
+    expect(placeholder).toHaveClass("text-faint");
+    // No numeric value (fabricated or otherwise) renders in the imposto row.
+    expect(row).not.toHaveTextContent("4.00");
+    expect(row).not.toHaveTextContent("0.00");
+  });
+
+  it("renders imposto as the legacy known value (unchanged) when non-null — negative control for the null case above", () => {
+    const d = decomposition({ imposto: "4.00" });
+    render(<DecompositionPanel decomposition={d} profile={profile} blockingState={null} />);
+
+    const label = screen.getByText("(−) Imposto");
+    const row = label.parentElement as HTMLElement;
+    expect(within(row).getByText("4.00")).toBeInTheDocument();
+    expect(within(row).queryByText("—")).toBeNull();
+  });
+
   it("classifies the margin by the operator's CalcProfile thresholds, not hard-coded bands", () => {
     // margem 12% is below the operator's verde 18 but at/above amarelo 10 ⇒ tight.
     const tightProfile: PricingCalcProfile = { ...profile, limiar_verde_pct: "18", limiar_amarelo_pct: "10" };

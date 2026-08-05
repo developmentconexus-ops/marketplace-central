@@ -374,6 +374,78 @@ func TestDecomposeNoCost200SemCusto(t *testing.T) {
 	}
 }
 
+// Task A7: imposto's *string widen must not touch the legacy value on the
+// path that still produces one. application.CalcService does not wire
+// ICMSCell yet (that wiring is Fatia B, out of scope here — DecomposeInput
+// literal in calc_service.go never sets it), so every real HTTP decompose
+// today takes the ICMSCell==nil branch and imposto stays the legacy
+// regime-aliquota number. This is the negative control demanded by the task
+// brief: if it breaks, the A7 cross-cut killed the legacy path wholesale
+// instead of just widening the pointer.
+func TestDecomposeImpostoLegacyPresentNoCell(t *testing.T) {
+	mux := newCalcMux(newRepoStub(), costStub{}, nil)
+	w := do(t, mux, http.MethodPost, "/pricing/decompose",
+		`{"preco":"100.00","comissao_pct":"12","modalidade":"classico","custo":"10.00","frete_produto":"15.00"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body=%s", w.Code, w.Body.String())
+	}
+	var body struct {
+		Decomposition struct {
+			Imposto *string `json:"imposto"`
+		} `json:"decomposition"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Decomposition.Imposto == nil || *body.Decomposition.Imposto != "4.00" {
+		t.Fatalf("imposto = %v, want \"4.00\" (default SIMPLES aliquota — legacy path unaffected)", body.Decomposition.Imposto)
+	}
+}
+
+// TestDecompositionDTOImpostoNullWithICMSCell proves the transport DTO/JSON
+// contract site (calc_handler.go:266,282): when domain.Decompose runs the
+// D-41 ICMSCell path, Imposto is the named-absent nil (Task A6), and
+// toDecompositionDTO/json.Marshal must carry that through as JSON null —
+// never "0.00" and never "". application.CalcService does not resolve/pass
+// an ICMSCell yet (Fatia B wiring, explicitly out of this task's scope per
+// the brief), so this drives domain.Decompose directly with the same fixture
+// as domain/decompose_icms_golden_test.go's "ICMS-1" case (read-only reuse —
+// no edits to pricing/domain in this task) rather than the full HTTP path.
+func TestDecompositionDTOImpostoNullWithICMSCell(t *testing.T) {
+	in := domain.DecomposeInput{
+		Preco: "1000.00", ComissaoPct: "12", AliquotaPct: "4",
+		Modalidade:   domain.ModalidadeClassico,
+		Custo:        &domain.Money{Amount: "200.00", Currency: "BRL"},
+		FreteProduto: &domain.Money{Amount: "30.00", Currency: "BRL"},
+		ICMSCell: &domain.ICMSCell{
+			UFDestino: "MG", CodTrib: intPtr(0), Ambiguo: false,
+			Origprod: intPtr(0), AliquotaInterna: strPtr("18"),
+			FcpEmbutido:     strPtr("0"),
+			RestituicaoUnit: strPtr("50.00"),
+		},
+	}
+	decomp := domain.Decompose(in)
+	if decomp.Imposto != nil {
+		t.Fatalf("precondition: domain.Decompose returned Imposto = %q, want nil (Task A6 ICMSCell path)", *decomp.Imposto)
+	}
+
+	raw, err := json.Marshal(toDecompositionDTO(decomp))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatal(err)
+	}
+	val, present := got["imposto"]
+	if !present {
+		t.Fatalf("imposto key absent from JSON, want present with null value")
+	}
+	if val != nil {
+		t.Fatalf("imposto = %v (%T), want JSON null (ICMSCell path, D-41 — use icms_saida/difal/pis_cofins)", val, val)
+	}
+}
+
 func TestSolveUnreachable200Code(t *testing.T) {
 	mux := newCalcMux(newRepoStub(), costStub{}, nil)
 	// Default profile: DIFAL off, aliquota 4. Ceiling = 100-16-4 = 80; 95% > ceiling.
@@ -565,6 +637,8 @@ func TestDecomposeWithResolverSurfacesTarifa(t *testing.T) {
 }
 
 func strPtr(s string) *string { return &s }
+
+func intPtr(i int) *int { return &i }
 
 func TestDeleteScenarioNotFound404(t *testing.T) {
 	mux := newCalcMux(newRepoStub(), costStub{}, nil)

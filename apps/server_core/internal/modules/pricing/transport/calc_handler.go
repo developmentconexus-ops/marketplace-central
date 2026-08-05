@@ -263,7 +263,11 @@ type decompositionDTO struct {
 	Comissao                 string   `json:"comissao"`
 	TaxaFixa                 string   `json:"taxa_fixa"`
 	Frete                    *string  `json:"frete"`
-	Imposto                  string   `json:"imposto"`
+	// Imposto is the legacy D-38 regime-aliquota field, in retirement (Task
+	// A7): nullable and no longer required. nil means the D-41 per-cell tax
+	// path is active for this item (ICMSCell present) — never a fabricated
+	// "0.00"/"" ; read icms_saida/difal/pis_cofins instead (ADR-17).
+	Imposto                  *string  `json:"imposto"`
 	Difal                    *string  `json:"difal"`
 	TarifaFull               *string  `json:"tarifa_full"`
 	Custo                    *string  `json:"custo"`

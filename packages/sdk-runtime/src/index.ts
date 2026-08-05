@@ -1584,7 +1584,13 @@ export interface PricingDecomposition {
   comissao: string;
   taxa_fixa: string;
   frete: string | null;
-  imposto: string;
+  /**
+   * Legacy D-38 regime-aliquota field, in retirement (Task A7). null means
+   * the D-41 per-cell fiscal path is active for this item — read
+   * icms_saida/difal/pis_cofins instead (ADR-17); never a fabricated
+   * "0.00"/"".
+   */
+  imposto: string | null;
   difal: string | null;
   tarifa_full: string | null;
   custo: string | null;

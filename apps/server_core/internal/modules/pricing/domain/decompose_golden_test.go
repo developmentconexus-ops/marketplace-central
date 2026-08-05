@@ -35,7 +35,7 @@ func TestDecomposeGolden(t *testing.T) {
 			},
 			want: Decomposition{
 				Preco: "150.00", Comissao: "18.00", TaxaFixa: "0.00",
-				Frete: strptr("15.00"), Imposto: "6.00", Difal: strptr("9.00"),
+				Frete: strptr("15.00"), Imposto: strptr("6.00"), Difal: strptr("9.00"),
 				TarifaFull: strptr("0.00"), Custo: strptr("40.00"),
 				MargemValor: strptr("62.00"), MargemPct: strptr("41.33"),
 				ComponentesDesconhecidos: nil,
@@ -51,7 +51,7 @@ func TestDecomposeGolden(t *testing.T) {
 			},
 			want: Decomposition{
 				Preco: "78.90", Comissao: "9.47", TaxaFixa: "6.50",
-				Frete: strptr("0.00"), Imposto: "3.16", Difal: strptr("4.73"),
+				Frete: strptr("0.00"), Imposto: strptr("3.16"), Difal: strptr("4.73"),
 				TarifaFull: strptr("0.00"), Custo: strptr("40.00"),
 				MargemValor: strptr("15.04"), MargemPct: strptr("19.06"),
 			},
@@ -66,7 +66,7 @@ func TestDecomposeGolden(t *testing.T) {
 			},
 			want: Decomposition{
 				Preco: "79.00", Comissao: "11.06", TaxaFixa: "0.00",
-				Frete: strptr("15.00"), Imposto: "7.31", Difal: strptr("10.67"),
+				Frete: strptr("15.00"), Imposto: strptr("7.31"), Difal: strptr("10.67"),
 				TarifaFull: strptr("0.00"), Custo: strptr("40.00"),
 				MargemValor: strptr("-5.04"), MargemPct: strptr("-6.38"),
 			},
@@ -81,7 +81,7 @@ func TestDecomposeGolden(t *testing.T) {
 			},
 			want: Decomposition{
 				Preco: "150.00", Comissao: "24.00", TaxaFixa: "0.00",
-				Frete: strptr("15.00"), Imposto: "6.00", Difal: strptr("9.00"),
+				Frete: strptr("15.00"), Imposto: strptr("6.00"), Difal: strptr("9.00"),
 				TarifaFull: strptr("8.00"), Custo: strptr("40.00"),
 				MargemValor: strptr("48.00"), MargemPct: strptr("32.00"),
 			},
@@ -96,7 +96,7 @@ func TestDecomposeGolden(t *testing.T) {
 			},
 			want: Decomposition{
 				Preco: "150.00", Comissao: "24.00", TaxaFixa: "0.00",
-				Frete: strptr("15.00"), Imposto: "6.00", Difal: strptr("9.00"),
+				Frete: strptr("15.00"), Imposto: strptr("6.00"), Difal: strptr("9.00"),
 				TarifaFull: nil, Custo: strptr("40.00"),
 				MargemValor: nil, MargemPct: nil,
 				ComponentesDesconhecidos: []string{"tarifa_full"},
@@ -112,7 +112,7 @@ func TestDecomposeGolden(t *testing.T) {
 			},
 			want: Decomposition{
 				Preco: "150.00", Comissao: "18.00", TaxaFixa: "0.00",
-				Frete: strptr("15.00"), Imposto: "6.00", Difal: strptr("9.00"),
+				Frete: strptr("15.00"), Imposto: strptr("6.00"), Difal: strptr("9.00"),
 				TarifaFull: strptr("0.00"), Custo: nil,
 				MargemValor: nil, MargemPct: nil,
 				ComponentesDesconhecidos: []string{"custo_erp"},
@@ -128,7 +128,7 @@ func TestDecomposeGolden(t *testing.T) {
 			},
 			want: Decomposition{
 				Preco: "78.90", Comissao: "9.47", TaxaFixa: "6.50",
-				Frete: strptr("0.00"), Imposto: "3.16", Difal: strptr("4.73"),
+				Frete: strptr("0.00"), Imposto: strptr("3.16"), Difal: strptr("4.73"),
 				TarifaFull: strptr("0.00"), Custo: strptr("40.00"),
 				MargemValor: strptr("15.04"), MargemPct: strptr("19.06"),
 			},
@@ -143,7 +143,7 @@ func TestDecomposeGolden(t *testing.T) {
 			},
 			want: Decomposition{
 				Preco: "150.00", Comissao: "18.00", TaxaFixa: "0.00",
-				Frete: nil, Imposto: "6.00", Difal: strptr("9.00"),
+				Frete: nil, Imposto: strptr("6.00"), Difal: strptr("9.00"),
 				TarifaFull: strptr("0.00"), Custo: strptr("40.00"),
 				MargemValor: nil, MargemPct: nil,
 				ComponentesDesconhecidos: []string{"frete"},
@@ -159,7 +159,7 @@ func TestDecomposeGolden(t *testing.T) {
 			},
 			want: Decomposition{
 				Preco: "150.00", Comissao: "18.00", TaxaFixa: "0.00",
-				Frete: strptr("15.00"), Imposto: "6.00", Difal: strptr("0.00"),
+				Frete: strptr("15.00"), Imposto: strptr("6.00"), Difal: strptr("0.00"),
 				TarifaFull: strptr("0.00"), Custo: strptr("40.00"),
 				MargemValor: strptr("71.00"), MargemPct: strptr("47.33"),
 			},
@@ -174,7 +174,7 @@ func TestDecomposeGolden(t *testing.T) {
 			},
 			want: Decomposition{
 				Preco: "150.00", Comissao: "18.00", TaxaFixa: "0.00",
-				Frete: strptr("15.00"), Imposto: "6.00", Difal: nil,
+				Frete: strptr("15.00"), Imposto: strptr("6.00"), Difal: nil,
 				TarifaFull: strptr("0.00"), Custo: strptr("40.00"),
 				MargemValor: nil, MargemPct: nil,
 				ComponentesDesconhecidos: []string{"difal"},
@@ -190,7 +190,7 @@ func TestDecomposeGolden(t *testing.T) {
 			},
 			want: Decomposition{
 				Preco: "150.00", Comissao: "24.00", TaxaFixa: "0.00",
-				Frete: strptr("15.00"), Imposto: "6.00", Difal: strptr("9.00"),
+				Frete: strptr("15.00"), Imposto: strptr("6.00"), Difal: strptr("9.00"),
 				TarifaFull: nil, Custo: nil,
 				MargemValor: nil, MargemPct: nil,
 				ComponentesDesconhecidos: []string{"tarifa_full", "custo_erp"},
@@ -206,7 +206,7 @@ func TestDecomposeGolden(t *testing.T) {
 			},
 			want: Decomposition{
 				Preco: "79.00", Comissao: "9.48", TaxaFixa: "0.00",
-				Frete: strptr("15.00"), Imposto: "7.31", Difal: strptr("4.74"),
+				Frete: strptr("15.00"), Imposto: strptr("7.31"), Difal: strptr("4.74"),
 				TarifaFull: strptr("0.00"), Custo: strptr("40.00"),
 				MargemValor: strptr("2.47"), MargemPct: strptr("3.13"),
 			},
@@ -234,7 +234,7 @@ func assertSomaFecha(t *testing.T, d Decomposition) {
 	sum := ratOf(t, d.Comissao)
 	sum.Add(sum, ratOf(t, d.TaxaFixa))
 	sum.Add(sum, ratOf(t, *d.Frete))
-	sum.Add(sum, ratOf(t, d.Imposto))
+	sum.Add(sum, ratOf(t, *d.Imposto))
 	sum.Add(sum, ratOf(t, *d.Difal))
 	sum.Add(sum, ratOf(t, *d.TarifaFull))
 	sum.Add(sum, ratOf(t, *d.Custo))

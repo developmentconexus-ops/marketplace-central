@@ -32,13 +32,20 @@ var _ CalcEngine = engineAdapter{}
 //
 // P2.b Task 4 amendment: ICMSSaida, PisCofins, RestituicaoST added (D-41 ex
 // ante tax components) — deliberate, coordinated per the plan's Task 4 scope.
+//
+// Task A7 amendment: Imposto is now *string. Task A6 made the legacy D-38
+// regime-aliquota field a named-absent nil whenever ICMSCell is present (the
+// real per-item tax path — ICMSSaida/Difal/PisCofins/RestituicaoST — wins and
+// the legacy flat rate is never parsed/shown alongside it); the port surface
+// has to carry that nullability through, deliberate and coordinated per this
+// task's contract-seam scope, never an incidental widen.
 func TestDecompositionShapeFrozen(t *testing.T) {
 	want := map[string]string{
 		"Preco":                    "string",
 		"Comissao":                 "string",
 		"TaxaFixa":                 "string",
 		"Frete":                    "*string",
-		"Imposto":                  "string",
+		"Imposto":                  "*string",
 		"Difal":                    "*string",
 		"TarifaFull":               "*string",
 		"Custo":                    "*string",

@@ -7,15 +7,16 @@ import (
 )
 
 // TestDecomposeICMSGolden pins Decompose's D-41 path (ICMSCell present) end
-// to end: Imposto stays computed/shown but stops being summed; ICMSSaida,
-// Difal (now sourced from TaxesForItem instead of DifalEnabled/DestinoUF/
-// EfetivoPct), PisCofins and RestituicaoST enter the sum in its place.
-// RestituicaoST is the one component that SUBTRACTS from the running sum
-// (ADDS to margem) — Task 6 calls it "a única linha positiva da seção".
-// Every expected value is hand-computed with exact big.Rat fractions
-// (documented inline); the mandated four (interno, interestadual, ST,
-// ambígua) plus a MAX(0) vector and a dedicated restituição-increases-margem
-// pair.
+// to end: Imposto is the named-absent nil (Task A6 — the legacy AliquotaPct
+// path does not run at all when ICMSCell is present, so it is never parsed
+// and never shown); ICMSSaida, Difal (now sourced from TaxesForItem instead
+// of DifalEnabled/DestinoUF/EfetivoPct), PisCofins and RestituicaoST enter
+// the sum in Imposto's former place. RestituicaoST is the one component
+// that SUBTRACTS from the running sum (ADDS to margem) — Task 6 calls it "a
+// única linha positiva da seção". Every expected value is hand-computed with
+// exact big.Rat fractions (documented inline); the mandated four (interno,
+// interestadual, ST, ambígua) plus a MAX(0) vector and a dedicated
+// restituição-increases-margem pair.
 func TestDecomposeICMSGolden(t *testing.T) {
 	cases := []struct {
 		name string
@@ -30,7 +31,8 @@ func TestDecomposeICMSGolden(t *testing.T) {
 			// só redistribui entre os dois campos, então Sum/Margem/Pct NÃO
 			// mudam.
 			// Comissao=1000x0.12=120.00. TaxaFixa=0 (>=79). Frete=30.00.
-			// Imposto=1000x0.04=40.00 (mostrado, NAO somado).
+			// Imposto: ICMSCell present ⇒ legacy AliquotaPct=4 is never
+			// parsed/shown — named-absent nil (Task A6).
 			// ICMSSaida=180.00 Difal=0.00 PisCofins=75.85 RestituicaoST=0.00 (UF=MG).
 			// Sum = 120+0+30+180+0+75.85+0(tarifa)+200(custo) - 0(restituicao) = 605.85.
 			// Margem = 1000-605.85 = 394.15. Pct = 394.15/1000*100 = 39.415 -> 39.42 (tie, half-up).
@@ -42,12 +44,15 @@ func TestDecomposeICMSGolden(t *testing.T) {
 				ICMSCell: &ICMSCell{
 					UFDestino: "MG", CodTrib: intp(0), Ambiguo: false,
 					Origprod: intp(0), AliquotaInterna: strptr("18"),
+					// Task A4 (D2): par completo -- "0" explicito, nao nil
+					// (ver icms.go:FcpEmbutido / icms_test.go caso A).
+					FcpEmbutido:     strptr("0"),
 					RestituicaoUnit: strptr("50.00"),
 				},
 			},
 			want: Decomposition{
 				Preco: "1000.00", Comissao: "120.00", TaxaFixa: "0.00",
-				Frete: strptr("30.00"), Imposto: "40.00",
+				Frete: strptr("30.00"), Imposto: nil,
 				Difal: strptr("0.00"), TarifaFull: strptr("0.00"), Custo: strptr("200.00"),
 				ICMSSaida: strptr("180.00"), PisCofins: strptr("75.85"), RestituicaoST: strptr("0.00"),
 				MargemValor: strptr("394.15"), MargemPct: strptr("39.42"),
@@ -57,8 +62,9 @@ func TestDecomposeICMSGolden(t *testing.T) {
 			// Interestadual SP, diferença simples pela tabela legal (Task A2 rule (a):
 			// a_int=18%, fcp_embutido nil ⇒ 0, a_inter=12% pq SP no conjunto dos 12%).
 			// ICMS_oper=500x0.12=60.00. ICMS_total=500x0.18=90.00. DIFAL=90-60=30.00.
-			// Comissao=500x0.10=50.00. Frete=20.00. Imposto=500x0.04=20.00
-			// (mostrado, nao somado). ICMSSaida=60.00 Difal=30.00 PisCofins=33.30
+			// Comissao=500x0.10=50.00. Frete=20.00. Imposto: legacy
+			// AliquotaPct=4 never parsed/shown (ICMSCell present, Task A6).
+			// ICMSSaida=60.00 Difal=30.00 PisCofins=33.30
 			// (base=500x0.82-50=360.00, x0.0925=33.30) RestituicaoST=25.00 (UF!=MG).
 			// Sum = 50+0+20+60+30.00+33.30+0+150 - 25 = 318.30.
 			// Margem = 500-318.30 = 181.70. Pct = 181.70/500*100 = 36.34.
@@ -70,12 +76,14 @@ func TestDecomposeICMSGolden(t *testing.T) {
 				ICMSCell: &ICMSCell{
 					UFDestino: "SP", CodTrib: intp(0), Ambiguo: false,
 					AliquotaInterna: strptr("18"), Origprod: intp(0),
+					// Task A4 (D2): par completo -- ver comentario do ICMS-1.
+					FcpEmbutido:     strptr("0"),
 					StRetidoEntrada: strptr("50.00"), RestituicaoUnit: strptr("25.00"),
 				},
 			},
 			want: Decomposition{
 				Preco: "500.00", Comissao: "50.00", TaxaFixa: "0.00",
-				Frete: strptr("20.00"), Imposto: "20.00",
+				Frete: strptr("20.00"), Imposto: nil,
 				Difal: strptr("30.00"), TarifaFull: strptr("0.00"), Custo: strptr("150.00"),
 				ICMSSaida: strptr("60.00"), PisCofins: strptr("33.30"), RestituicaoST: strptr("25.00"),
 				MargemValor: strptr("181.70"), MargemPct: strptr("36.34"),
@@ -85,7 +93,8 @@ func TestDecomposeICMSGolden(t *testing.T) {
 			// ST no destino (RJ, codtrib=60): ICMSSaida/Difal = 0.00 explicito. PisCofins
 			// deduz S do liquido (a=0): 800-40=760, x0.0925=70.30. RestituicaoST=15.00 (UF!=MG,
 			// independente do ramo ST). Comissao=800x0.11=88.00. Frete=25.00.
-			// Imposto=800x0.04=32.00 (mostrado, nao somado).
+			// Imposto: legacy AliquotaPct=4 never parsed/shown (ICMSCell
+			// present, Task A6).
 			// Sum = 88+0+25+0+0+70.30+0+300 - 15 = 468.30.
 			// Margem = 800-468.30 = 331.70. Pct = 331.70/800*100 = 41.4625 -> 41.46.
 			name: "ICMS-3: ST no destino — ICMS/DIFAL zero explicito, PIS/COFINS deduz S",
@@ -100,7 +109,7 @@ func TestDecomposeICMSGolden(t *testing.T) {
 			},
 			want: Decomposition{
 				Preco: "800.00", Comissao: "88.00", TaxaFixa: "0.00",
-				Frete: strptr("25.00"), Imposto: "32.00",
+				Frete: strptr("25.00"), Imposto: nil,
 				Difal: strptr("0.00"), TarifaFull: strptr("0.00"), Custo: strptr("300.00"),
 				ICMSSaida: strptr("0.00"), PisCofins: strptr("70.30"), RestituicaoST: strptr("15.00"),
 				MargemValor: strptr("331.70"), MargemPct: strptr("41.46"),
@@ -110,7 +119,9 @@ func TestDecomposeICMSGolden(t *testing.T) {
 			// Celula ambigua (PR): ICMSSaida/Difal/PisCofins ficam nil e nomeados —
 			// RestituicaoST continua conhecida (10.00, independente da resolucao da celula).
 			// Margem/Pct ficam nil (ADR-17: componente desconhecido nunca vira 0). Imposto
-			// continua mostrado (600x0.04=24.00) mesmo com margem indisponivel.
+			// e nil (named-absent, ICMSCell present ⇒ legacy nao roda) — mas NAO entra em
+			// ComponentesDesconhecidos: sua ausencia e estrutural (Task A6), nao um fato
+			// fiscal que faltou (que ja sao icms_saida/difal/pis_cofins acima).
 			name: "ICMS-4: ambiguo=true — icms/difal/pis_cofins unknown, restituicao continua conhecida",
 			in: DecomposeInput{
 				Preco: "600.00", ComissaoPct: "10", AliquotaPct: "4",
@@ -124,7 +135,7 @@ func TestDecomposeICMSGolden(t *testing.T) {
 			},
 			want: Decomposition{
 				Preco: "600.00", Comissao: "60.00", TaxaFixa: "0.00",
-				Frete: strptr("10.00"), Imposto: "24.00",
+				Frete: strptr("10.00"), Imposto: nil,
 				Difal: nil, TarifaFull: strptr("0.00"), Custo: strptr("200.00"),
 				ICMSSaida: nil, PisCofins: nil, RestituicaoST: strptr("10.00"),
 				MargemValor: nil, MargemPct: nil,
@@ -139,7 +150,8 @@ func TestDecomposeICMSGolden(t *testing.T) {
 			// (intra-MG, alíquota inteira). Difal=0.00 explícito (intra-MG).
 			// ICMS+DIFAL total (36,00) é o MESMO de antes (14+22=36) — a correção só
 			// redistribui, Sum/Margem/Pct nao mudam. RestituicaoST=0.00 (UF=MG).
-			// Comissao=200x0.10=20.00. Frete=10.00. Imposto=200x0.04=8.00 (mostrado, nao somado).
+			// Comissao=200x0.10=20.00. Frete=10.00. Imposto: legacy AliquotaPct=4
+			// never parsed/shown (ICMSCell present, Task A6).
 			// Sum = 20+0+10+36+0+0+0+50 - 0 = 116.00. Margem=200-116=84.00. Pct=42.00 exato.
 			name: "ICMS-5: MAX(0) clamp na base do PIS/COFINS — S excede o liquido",
 			in: DecomposeInput{
@@ -149,12 +161,14 @@ func TestDecomposeICMSGolden(t *testing.T) {
 				ICMSCell: &ICMSCell{
 					UFDestino: "MG", CodTrib: intp(0), Ambiguo: false,
 					Origprod: intp(0), AliquotaInterna: strptr("18"),
+					// Task A4 (D2): par completo -- ver comentario do ICMS-1.
+					FcpEmbutido:     strptr("0"),
 					StRetidoEntrada: strptr("500.00"),
 				},
 			},
 			want: Decomposition{
 				Preco: "200.00", Comissao: "20.00", TaxaFixa: "0.00",
-				Frete: strptr("10.00"), Imposto: "8.00",
+				Frete: strptr("10.00"), Imposto: nil,
 				Difal: strptr("0.00"), TarifaFull: strptr("0.00"), Custo: strptr("50.00"),
 				ICMSSaida: strptr("36.00"), PisCofins: strptr("0.00"), RestituicaoST: strptr("0.00"),
 				MargemValor: strptr("84.00"), MargemPct: strptr("42.00"),
@@ -219,6 +233,8 @@ func TestDecomposeICMSRestituicaoIncreasesMargem(t *testing.T) {
 			ICMSCell: &ICMSCell{
 				UFDestino: "BA", CodTrib: intp(0), Ambiguo: false,
 				AliquotaInterna: strptr("20.5"), Origprod: intp(0),
+				// Task A4 (D2): par completo -- ver comentario do ICMS-1.
+				FcpEmbutido:     strptr("0"),
 				RestituicaoUnit: strptr(restituicao),
 			},
 		}
