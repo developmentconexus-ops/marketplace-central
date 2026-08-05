@@ -2,6 +2,7 @@ package domain
 
 import (
 	"math/big"
+	"reflect"
 	"testing"
 )
 
@@ -16,13 +17,17 @@ func baseSolve() SolveInput {
 }
 
 // resim is the oracle: re-Decompose the solved preço under the SAME inputs and
-// return the margem_pct the simulator would show.
+// return the margem_pct the simulator would show. ICMSCell is forwarded
+// (Task A3) so the oracle reflects the SAME D-41 path margemDecompose now
+// feeds — a solved preço is only a true fixed point if re-decomposing it
+// through the real tax cell reproduces the target exactly.
 func resim(in SolveInput, preco string) string {
 	d := Decompose(DecomposeInput{
 		Preco: preco, ComissaoPct: in.ComissaoPct, AliquotaPct: in.AliquotaPct,
 		Modalidade: in.Modalidade, TarifaFull: in.TarifaFull,
 		FreteProduto: in.FreteProduto, Custo: in.Custo,
 		DifalEnabled: in.DifalEnabled, DestinoUF: in.DestinoUF, EfetivoPct: in.EfetivoPct,
+		ICMSCell: in.ICMSCell,
 	})
 	if d.MargemPct == nil {
 		return "<unknown>"
@@ -270,5 +275,120 @@ func TestSolveHighSegmentNearCeilingCheapest(t *testing.T) {
 					tgt, centsToStr(c), *res.Preco)
 			}
 		}
+	}
+}
+
+// --- Task A3: solver enters the D-41 (ICMSCell) path ---------------------
+
+// icmsCellBA is a RESOLVED, unambiguous cell for a BA destino (a_interna
+// 20,5%, matching icms_erp_golden_test.go's case1/TestDecomposeICMSRestitui-
+// caoIncreasesMargem fixture) — BA is outside the 12% a_inter set, so
+// a_inter=7% default; fcp_embutido nil ⇒ 0 (BA has no general FCP in this
+// fixture).
+func icmsCellBA() *ICMSCell {
+	return &ICMSCell{
+		UFDestino: "BA", CodTrib: intp(0), Ambiguo: false,
+		Origprod: intp(0), AliquotaInterna: strptr("20.5"),
+	}
+}
+
+// baseSolveICMSCell is a SolveInput exercising the D-41 path. AliquotaPct
+// stays populated ("4") because Decompose ALWAYS computes the Imposto field
+// (D-38, decompose.go:150) even when ICMSCell is present — but it is
+// functionally dead for the margin once ICMSCell is set: ICMSSaida/Difal/
+// PisCofins/RestituicaoST from TaxesForItem take its place in the sum
+// (decompose.go:190-222). DifalEnabled/DestinoUF/EfetivoPct are left at
+// their zero value for the same reason — the legacy difal branch is not
+// consulted at all once ICMSCell is non-nil.
+func baseSolveICMSCell() SolveInput {
+	return SolveInput{
+		ComissaoPct: "12", AliquotaPct: "4", Modalidade: ModalidadeClassico,
+		Custo:    money("10.00"),
+		ICMSCell: icmsCellBA(),
+	}
+}
+
+// TestSolveTargetPriceICMSCellBA is the task's mandated contract golden:
+// "alvo de margem 20% para BA". Before Task A3, margemDecompose never
+// forwarded SolveInput.ICMSCell into DecomposeInput, so the solver searched
+// for the preço whose margem — computed with the LEGACY AliquotaPct="4"
+// fabricated SIMPLES rate (D-38) as the only tax — hit 20%. That preço, when
+// actually re-decomposed through the real tax cell (BA's alíquota interna
+// 20,5%, D-41), does NOT sit at margem 20% — the same "decomposição certa,
+// alvo com 4% fabricado, na mesma tela" bug the brief describes. After the
+// fix, margemDecompose forwards ICMSCell and ceilingPct derives its
+// asymptote from the SAME cell (icmsCellAsymptoticRatePct), so the solved
+// preço's REAL margem_pct (re-simulated through the D-41 path, not the
+// legacy one) is exactly the target.
+func TestSolveTargetPriceICMSCellBA(t *testing.T) {
+	in := baseSolveICMSCell()
+	in.TargetMargemPct = "20.00"
+
+	res := SolveTargetPrice(in)
+	if !res.Reached || res.Preco == nil {
+		t.Fatalf("target 20.00 (BA, alíquota interna 20.5) must be reachable; got %+v", res)
+	}
+	if got := resim(in, *res.Preco); got != "20.00" {
+		t.Fatalf("re-sim (real ICMSCell decompose) margem_pct = %q at preço %q, want 20.00 EXACT — "+
+			"the solver must use the SAME D-41 formula Decompose uses, never the legacy 4%% AliquotaPct",
+			got, *res.Preco)
+	}
+	// This golden is scoped to the exhaustive low-segment scanner (span
+	// 7898 cents, always run to completion — searchSegment never brackets
+	// it), which always tests candidates against the REAL Decompose
+	// (margemAt→margemDecompose) regardless of ICMSCell. The high-segment
+	// bracket math (exactCeilingRat/exactMargemPctRat) still assumes the
+	// legacy AliquotaPct/EfetivoPct source and is untouched by Task A3 (out
+	// of scope — Fatia C removes the legacy path entirely), so this
+	// fixture is deliberately built to land below the taxa_fixa/frete
+	// limiar (79) rather than exercise that bracket.
+	if p := ratOf(t, *res.Preco); p.Cmp(taxaFixaLimiar) >= 0 {
+		t.Fatalf("solved preço %q is at/above 79 — expected low segment for this fixture", *res.Preco)
+	}
+}
+
+// wantICMSCellUnknown is the Unknown list Decompose/TaxesForItem produce for
+// an unresolved OR ambíguo cell (icms.go:158-162, decompose.go:202-216) — the
+// same three components icms_erp_golden_test.go's assertUnknown pins for
+// TaxesForItem directly.
+var wantICMSCellUnknown = []string{"icms_saida", "difal", "pis_cofins"}
+
+// TestSolveTargetPriceICMSCellAusenteBlocks is the brief's first blocking
+// control: célula AUSENTE (CodTrib nil — "célula não resolvida (ausente OU
+// nunca lida)", icms.go:52-54). The solver must block with the desconhecido
+// nomeado Decompose/TaxesForItem already produce — never a preço, never a
+// ceiling, and never falling back to the 4% fabricated aliquota.
+func TestSolveTargetPriceICMSCellAusenteBlocks(t *testing.T) {
+	in := baseSolveICMSCell()
+	in.ICMSCell = &ICMSCell{UFDestino: "AC", CodTrib: nil, Ambiguo: false, Origprod: intp(0)}
+	in.TargetMargemPct = "20.00"
+
+	res := SolveTargetPrice(in)
+	if res.Reached || res.Preco != nil || res.CeilingPct != "" || res.FreteDesconhecido {
+		t.Fatalf("célula ausente (CodTrib nil) must block (no preço, no ceiling); got %+v", res)
+	}
+	if !reflect.DeepEqual(res.Desconhecidos, wantICMSCellUnknown) {
+		t.Fatalf("Desconhecidos = %v, want %v", res.Desconhecidos, wantICMSCellUnknown)
+	}
+}
+
+// TestSolveTargetPriceICMSCellAmbiguaBlocks is the brief's second blocking
+// control: célula AMBÍGUA (Ambiguo=true), even with CodTrib/AliquotaInterna
+// both present and resolved — icms.go:158-162 treats Ambiguo the same as
+// CodTrib nil, never choosing a candidate blindly. Same blocking shape as
+// the ausente control.
+func TestSolveTargetPriceICMSCellAmbiguaBlocks(t *testing.T) {
+	in := baseSolveICMSCell()
+	cell := icmsCellBA()
+	cell.Ambiguo = true
+	in.ICMSCell = cell
+	in.TargetMargemPct = "20.00"
+
+	res := SolveTargetPrice(in)
+	if res.Reached || res.Preco != nil || res.CeilingPct != "" || res.FreteDesconhecido {
+		t.Fatalf("célula ambígua must block (no preço, no ceiling); got %+v", res)
+	}
+	if !reflect.DeepEqual(res.Desconhecidos, wantICMSCellUnknown) {
+		t.Fatalf("Desconhecidos = %v, want %v", res.Desconhecidos, wantICMSCellUnknown)
 	}
 }
