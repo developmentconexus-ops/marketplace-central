@@ -14,7 +14,8 @@
 > (Hand-Synced Enumerations). Read it first; rung numbers below refer to it.
 > **This file's axis is different and complementary: verification, evidence, and
 > agent-authored work.** Where a class overlaps, the overlap is named explicitly.
-> **Last verified:** 2026-08-05
+> **Last verified:** 2026-08-06 — 27 classes. V10, V11, P6, P7 and F5 were added from the
+> foundation-kernel work; root cause 8 with them.
 
 ---
 
@@ -292,6 +293,86 @@ proves its size. A third targeted patch of the same shape is a process defect, n
 
 ---
 
+## Class V10 — The Census That Only Counts The Enrolled
+
+**Symptom.** A checker iterates a **declaration** — a registry, a manifest, an evidence
+pack, a route table — and reports on what it finds there. Anything that exists in the
+territory but was never declared produces **no finding at all**. The failure mode is not a
+wrong number; it is silence, which reads as compliance.
+
+Distinct from Class V3: a blind instrument answers the wrong question loudly. This one
+answers the right question over the wrong universe, quietly.
+
+**Evidence.**
+- `scripts/harness/Policy.psm1:308` (`Test-GovernanceDrift`) iterates
+  `$moduleRegistry.modules` and requires each root to be exactly
+  `apps/server_core/internal/modules/<id>`. A directory under `internal/contexts/` with no
+  registry entry yields zero issues. The rule cannot see what nobody enrolled
+  (`registry-walks-registry-not-tree`).
+- The merge gate read the chip's evidence **pack** rather than the diff, so anything the
+  chip did not narrate was outside the gate's universe (`gate-reads-diff-not-pack`).
+- A module-scoped sweep validated inside the module while the caller — the site that
+  decided the value — sat outside it (`chip-fim-closed`).
+- `apps/web/src` treated as "the frontend"; `packages/feature-*` and `packages/web-query`
+  also consume the SDK (`varredura-maximo-global-instrumentos`).
+
+**Root cause.** Declaration-driven checks are cheap to write and their coverage is invisible
+in their output. A passing run and an empty universe are byte-identical.
+
+**Prevention (rung 2/3).**
+1. **Every registry rule needs a paired tree rule.** For each declaration that is checked,
+   walk the filesystem and emit a finding for every entity present but unenrolled
+   (`GOV_CONTEXT_UNREGISTERED` is the concrete instance). The pair is the invariant, not
+   either half.
+2. **A checker must print its universe**, not just its verdict: *"scanned 21 registry
+   entries, 22 directories, 1 unenrolled"*. A verdict without a denominator is not a
+   measurement.
+3. **Prove the tree rule with a decoy.** Create an unenrolled entity, require FAIL, remove
+   it. A rule that has only ever returned zero has never been exercised.
+
+**Detection.** Ask: *if I added a whole new subsystem and told the checker nothing, what
+would it say?* If the answer is "nothing", the checker measures obedience, not reality.
+
+---
+
+## Class V11 — The Must-Fail Proof Against A Red Baseline
+
+**Symptom.** A negative control — inject a violation, require the gate to reject it — is run
+while the tree is already failing for an unrelated reason. It fails. The failure is recorded
+as proof the guard works. It proves nothing: the observed FAIL is not **attributable** to
+the injected violation.
+
+**Evidence.** `main @532811b4` carried two independent reds: `go build ./...` rejected
+`internal/composition/catalog_wiring.go:9` (`use of internal package .../catalog/internal/postgres
+not allowed`), and `TestCanonicalSourceListsEveryMigrationByFullFilename` reported *"got 84
+canonical migrations, want 83"*. Two planned proofs — an unregistered context directory
+required to FAIL, and an edited OpenAPI required to diff — were scheduled against that
+baseline. Neither would have been attributable. The build break additionally prevented the
+full unit suite from running, so the migration red had been invisible since the task that
+introduced it.
+
+Same family as the attributable-token finding: `status=passed` does not prove execution,
+`failure_token=test=` does (`integration-lane-failure-token`).
+
+**Root cause.** A negative control is only valid against a known-green baseline, and
+"baseline is green" is an assumption nobody is assigned to verify. It is also the assumption
+most likely to be false precisely when work is in flight.
+
+**Prevention (rung 2/3).**
+1. **Green-before-red is a gate step, not etiquette.** Any must-fail proof runs
+   `build + unit` first and records the exit code. A non-zero baseline aborts the proof.
+2. **The FAIL must name the injected thing.** Not "the gate failed" — the gate's output must
+   contain the decoy's identifier (`tmporphan`, `probeField`, `probe_float.go`). An
+   unattributable FAIL is not evidence.
+3. **Sequence work that shares a gate file.** Two plans editing `arch-gate.sh` in disjoint
+   places still need an order, because the second one's proofs run against the first one's
+   tree.
+
+**Detection.** Ask of every must-fail proof: *would this have failed anyway?* If you cannot
+answer from a recorded pre-injection run, the proof is unfinished.
+
+---
+
 # Part II — Planning and specification
 
 ## Class P1 — The Plan As Unmeasured Allegation
@@ -416,6 +497,78 @@ whose new-artifact count exceeds its citation count.
 
 **Overlaps** sibling §9 (Second Copy of a Critical Path) and §14 (Optimizing Inside a Local
 Maximum). Same family; this is the *planning-time* entry point to both.
+
+---
+
+## Class P6 — The Plan Whose Code Was Never Compiled
+
+**Symptom.** A plan contains complete, confident, well-formed code — the good kind of plan,
+with no placeholders — and that code has never been through a compiler. It ships defects
+that the language would have rejected in milliseconds, and it ships them **with authority**,
+because a plan is read as a decision rather than as a draft.
+
+**Evidence.** A 5.774-line plan specified `internal/composition/catalog_wiring.go` importing
+`contexts/catalog/internal/postgres`. Go's `internal/` rule forbids it. The implementer wrote
+exactly what the plan said, and `go build ./...` rejected it:
+`use of internal package .../catalog/internal/postgres not allowed`. The same plan document,
+eleven tasks earlier, had introduced that very rule as its central guarantee.
+
+Earlier variants in the same family: a plan whose reader and writer had no caller outside
+`_test.go` (`plan-gate-composition-site`); an agent narrating a RED it never ran
+(`red-before-code-pristine-tree`).
+
+**Root cause.** Prose and code are interleaved in one artifact, and only one of them has a
+verifier. Writing plausible Go and writing correct Go are indistinguishable in a Markdown
+file — which is root cause #7 (the signal is cheaper than the work) applied to planning
+rather than to testing.
+
+**Prevention (rung 2).**
+1. **Any plan whose guarantee is compiler-enforced must contain a compiled skeleton.** Not
+   the whole plan — the *seams*: the facade signatures, the wiring, the import graph. A
+   throwaway module that builds is a few minutes and catches this whole class.
+2. **The composition site is where boundary rules break.** If a plan introduces an
+   `internal/`, its wiring code is the first thing to compile, not the last.
+3. **Treat a plan's code blocks as untested by default** in the implementer's brief, so a
+   compiler rejection reads as expected feedback rather than as a reason to work around the
+   rule. Working around it is how the guarantee dies.
+
+**Detection.** For every code block in a plan, ask: *has this exact text been through a
+compiler, or does it merely look like the language?*
+
+---
+
+## Class P7 — The Rule Stated For An Instance Instead Of The Property
+
+**Symptom.** A rule is discovered in one concrete setting, written down naming that setting,
+and therefore not applied where the same property holds. The author violates their own rule
+almost immediately — not from carelessness, but because the rule as written does not appear
+to cover the new case.
+
+**Evidence.** Rule 2.2-a was ratified as *"each vendor exposes a single root package…"*,
+derived from an experiment on `adapters/marketplace/mercadolivre`. The actual property is
+weaker and broader: **any tree containing an `internal/` forces a facade, because nothing
+outside can name what lives inside** — contexts included. Written as a vendor rule, it was
+not applied to `contexts/catalog`, and the very next composition-root file violated it (see
+Class P6). Two artifacts, one author, one working session.
+
+Related but distinct: Class D3 is prose promising *more* than the guard delivers. This is
+prose promising **less** than the mechanism already enforces, so the mechanism's reach goes
+unused and its violations feel legal.
+
+**Root cause.** A rule is usually discovered through a single measurement, and the
+measurement's subject gets baked into the rule's wording. Generalising requires a separate,
+deliberate step that nothing prompts.
+
+**Prevention (rung 3 + process).**
+1. **After ratifying any rule, state the mechanism that enforces it and ask what else that
+   mechanism already covers.** If the enforcing mechanism is broader than the rule's
+   wording, the wording is wrong. Name the property, then list the instances beneath it.
+2. **Write the rule at the level of the enforcer.** "Any package tree with an `internal/`"
+   is checkable; "each vendor" is a category the compiler has never heard of.
+3. When two rules are enforced by the same mechanism, they are one rule. Merge them.
+
+**Detection.** Read each rule and ask: *what does the compiler/linter actually reject here,
+and is that set larger than the set this sentence describes?*
 
 ---
 
@@ -687,6 +840,42 @@ one layer down, at the tooling rather than the test.
 
 ---
 
+## Class F5 — The Rule Specified Against A Language That Cannot Express It
+
+**Symptom.** A standard mandates a construct the implementation language cannot compile. It
+is ratified, cited, and planned against; the contradiction only surfaces when someone finally
+types it. Every artifact that referenced the rule in the meantime is now wrong.
+
+**Evidence.** Spec Rule 4.4 required that arithmetic over `Fact[T]` live in **methods** of
+`Fact[T]`. Go does not permit a method to declare its own type parameters, so
+`func (f Fact[T]) Map[U](...)` does not compile; the operation must be a package-level
+function. Rule 4.1 in the same spec asserted "there is no struct literal", but `Fact[T]{}`
+compiles from any package — an empty composite literal names no fields, so unexported fields
+do not block it. The real guard is `Evidence().IsZero()`. Both were ratified without a
+compiling probe.
+
+Adjacent: a criterion vacuous against the type it constrained
+(`criterion-unfalsifiable-against-type`) — there the type was too weak to violate the rule;
+here the type system forbids the rule outright.
+
+**Root cause.** Specification and compilation are separated by days. Design documents are
+reviewed by readers, and readers cannot typecheck. The more sophisticated the type-level
+guarantee, the more likely the language has a rule about it that prose does not know.
+
+**Prevention (rung 1/2).**
+1. **Any rule that mandates a language construct ships a compiling snippet in the spec.**
+   Five lines in a scratch module. If it does not build, the rule is not ratifiable.
+2. **Highest risk lives at generics, embedding, interface satisfaction, visibility and
+   initialisation order** — the places where every language has a surprising restriction.
+   Treat a rule touching those as unproven until compiled.
+3. **A false sentence in a ratified document is deleted, not annotated.** An amendment
+   alongside the falsehood leaves two readings and the reader picks one.
+
+**Detection.** For each normative sentence about code shape, ask: *has anyone compiled an
+example of this?* Absent an artifact, the rule is a hypothesis.
+
+---
+
 ## Appendix A — Day-0 Factory Checklist
 
 Each line prevents a class already observed **in this repo**. Complementary to the sibling
@@ -701,6 +890,10 @@ catalog's Appendix A; read both.
       pixel (§P3)
 - [ ] Declared risks carry the measurement that would settle them (§P4)
 - [ ] `tools(reviewer) ⊇ capabilities required by its assigned criteria` (§V5)
+- [ ] A plan whose guarantee is compiler-enforced ships a **compiled skeleton of its seams**
+      — facade signatures, wiring, import graph (§P6)
+- [ ] The composition site compiles **first**, not last, whenever a plan introduces an
+      `internal/` (§P6)
 
 **Lanes and evidence**
 - [ ] A lane reporting **zero executed units fails** (§V1)
@@ -717,6 +910,11 @@ catalog's Appendix A; read both.
 - [ ] A verdict that carries a count requires a second, independent instrument (§V3)
 - [ ] Merge gates diff against the **tip of the target**, always (§V6)
 - [ ] Every shared facility has a loud liveness probe at session start (§F4)
+- [ ] Every registry/manifest rule has a **paired tree rule** that walks the filesystem and
+      reports entities present but unenrolled (§V10)
+- [ ] Checkers print their **universe**, not just their verdict — scanned N, found M (§V10)
+- [ ] A must-fail proof records a **green baseline first**; a non-zero baseline aborts it,
+      and the FAIL output must name the injected decoy (§V11)
 
 **Tests**
 - [ ] Red-before-green enforced by artifact: the recorded failure names the test added (§V2)
@@ -740,13 +938,18 @@ catalog's Appendix A; read both.
       legal-but-different spellings in their test suite (§F2)
 - [ ] Protocol ordering is enforced by the transport, not by memory (§F1)
 - [ ] Measure where a guarded value comes from **before** sizing the guard (§D3)
+- [ ] A rule mandating a language construct ships a **compiling snippet**; generics,
+      embedding, visibility and init order are unproven until compiled (§F5)
+- [ ] After ratifying a rule, state its enforcing mechanism and widen the wording to
+      everything that mechanism already covers (§P7)
+- [ ] A false sentence in a ratified document is **deleted**, never annotated (§F5)
 
 ---
 
 ## Appendix B — Recurring Root Causes
 
 The sibling catalog reduces its 25 classes to five underlying causes. Those five hold here
-too. This axis adds **two more**, which do not appear until an agent is doing the work:
+too. This axis adds **three more**, which do not appear until an agent is doing the work:
 
 6. **The agent produced text about the repository instead of reading the repository.**
    Plausible, well-formed, and false — column names, line anchors, lane commands, symbol
@@ -761,6 +964,13 @@ too. This axis adds **two more**, which do not appear until an agent is doing th
    production, where "the process is alive" is rendered as "the system is healthy".
    → §V1, §V2, §V4, §V5, §V7, §V8, §P3
 
-**The factory's design principle, in one line:** the two causes above are not fixed by
+8. **A rule written in prose is never executed, so nothing objects when it is false,
+   unexpressible, or narrower than the mechanism that enforces it.** Code has a compiler;
+   standards have readers. Every normative document accumulates sentences that would not
+   survive one minute of execution, and they are cited as authority in the meantime — by
+   the author most of all.
+   → §P6, §P7, §F5, §D3, §F1
+
+**The factory's design principle, in one line:** the causes above are not fixed by
 better prompts or better agents. They are fixed by making the honest signal the cheapest
 one available — which is an engineering problem, and therefore solvable.
