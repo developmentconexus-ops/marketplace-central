@@ -703,3 +703,29 @@ tratando camada vazia como `root`, e decidir explicitamente se `root` entra na l
 `adapters|transport|registry` da checagem de camada. Antes de ligar, medir quantas arestas
 novas aparecem: são 16 arquivos, e algumas provavelmente viram exceção declarada em vez de
 conserto.
+
+---
+
+**D-28. `ScanVendorTokens` dispara em fixture de teste legítima do kernel** (Onda 1,
+Tarefa 6, `internal/arch`, 2026-08-06) — ABERTA.
+
+`internal/arch/repo_test.go:TestNoVendorTokenInKernel` esperava PASS puro (Step 7 do brief
+da Tarefa 6 diz "TestNoVendorTokenInKernel PASS"). Medido: FAIL, 6 achados, todos em
+`internal/kernel/channel/channel_test.go` — linhas 16, 20, 21, 33, 43, 51 — literais de
+string `"MercadoLivre"` / `"mercadolivre"` usadas como dado de teste genérico para
+`channel.ParseCode`/`channel.Code`. `channel.Code` é um tipo de valor deliberadamente aberto
+(qualquer string de canal é um `Code` válido); o teste usa um nome de marketplace real só
+como exemplo plausível, não como acoplamento de vendor.
+
+O detetor está a fazer exatamente o que foi desenhado para fazer — achar o token em
+qualquer literal de string, sem distinguir "dado de exemplo num teste de tipo genérico" de
+"acoplamento de vendor num caminho de produção". Isto NÃO foi corrigido (nem o teste do
+kernel, nem o detetor, nem a fixture) — nenhuma das duas coisas está no escopo aditivo da
+Tarefa 6, e a instrução do plano é nunca enfraquecer detector nem fixture para ficar verde.
+
+Consequência de classe: qualquer teste futuro no kernel (ou fora de `contexts/`/`adapters/`)
+que use um nome de marketplace real como dado de exemplo vai reprovar `TestNoVendorTokenInKernel`.
+Decisão pendente do operador: (a) trocar os literais do teste do kernel por um nome de canal
+fictício, (b) restringir `ScanVendorTokens` a produção (excluir `_test.go`) quando chamado
+sem `Suffix`, ou (c) aceitar `TestNoVendorTokenInKernel` como conhecido-vermelho até (a)/(b).
+Nenhuma das três foi escolhida por esta tarefa.

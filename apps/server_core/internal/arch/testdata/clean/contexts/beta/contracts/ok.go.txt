@@ -1,0 +1,11 @@
+package contracts
+
+import (
+	"marketplace-central/apps/server_core/internal/kernel/exact"
+	_ "marketplace-central/apps/server_core/internal/contexts/gamma/contracts"
+)
+
+type Quote struct {
+	Commission exact.Money
+	Reference  string
+}

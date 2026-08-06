@@ -33,6 +33,12 @@ import (
 //
 // This test is the RED that opens Wave 1. It reports counts broken down by origin layer,
 // because the wave's acceptance is a measurement and not a green test.
+//
+// Corrigido em 2026-08-06: esta caminhada saltava todo o ficheiro _test.go e por
+// isso reportava um número que não era o do repositório — 100 imports cruzados
+// em 67 ficheiros de teste ficavam de fora. Um teste é código e vive sob as
+// mesmas regras. A contagem sobe porque o instrumento passou a ver, não porque
+// o código piorou.
 const modulesImportPrefix = "marketplace-central/apps/server_core/internal/modules/"
 
 // sharedCore is carve-out 3. It is a closed list; ADR-023 §5 requires an amendment to grow
@@ -90,7 +96,7 @@ func TestModuleBoundaryADR023(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+		if d.IsDir() || !strings.HasSuffix(path, ".go") {
 			return nil
 		}
 

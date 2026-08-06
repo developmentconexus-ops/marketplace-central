@@ -1,0 +1,103 @@
+package arch_test
+
+import (
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"marketplace-central/apps/server_core/internal/arch"
+)
+
+const fixtureSuffix = ".go.txt"
+
+func violations() string { return filepath.Join("testdata", "violations") }
+func clean() string      { return filepath.Join("testdata", "clean") }
+
+func TestCrossContextInternalFiresOnFixture(t *testing.T) {
+	got, err := arch.ScanCrossContextInternalSuffix(violations(), fixtureSuffix)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("found %d findings, want exactly 1: %v", len(got), got)
+	}
+	if got[0].Rule != arch.RuleCrossContextInternal {
+		t.Fatalf("rule = %q, want %q", got[0].Rule, arch.RuleCrossContextInternal)
+	}
+	if got[0].Line != 4 {
+		t.Fatalf("line = %d, want 4 (the beta/internal/domain import)", got[0].Line)
+	}
+}
+
+func TestCrossContextInternalIsSilentOnCleanFixture(t *testing.T) {
+	got, err := arch.ScanCrossContextInternalSuffix(clean(), fixtureSuffix)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("found %d findings on the clean fixture, want 0: %v", len(got), got)
+	}
+}
+
+func TestFloatInContractsFiresOnFixture(t *testing.T) {
+	got, err := arch.ScanFloatInContractsSuffix(violations(), fixtureSuffix)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("found %d findings, want 2 (float64 and float32): %v", len(got), got)
+	}
+}
+
+func TestFloatInContractsIsSilentOnCleanFixture(t *testing.T) {
+	got, err := arch.ScanFloatInContractsSuffix(clean(), fixtureSuffix)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("found %d findings on the clean fixture, want 0: %v", len(got), got)
+	}
+}
+
+// The detector must see the token in a string literal, not only in identifiers.
+// The measured defect IS a literal: orders/application/ingest_service.go:334
+// compares the string "mercado_livre" in the application layer. A detector that
+// only reads identifiers walks straight past it.
+func TestVendorTokenFiresOnStringLiteral(t *testing.T) {
+	got, err := arch.ScanVendorTokensSuffix(violations(), arch.VendorTokens, fixtureSuffix)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("found %d findings, want exactly 1: %v", len(got), got)
+	}
+	if got[0].Rule != arch.RuleVendorToken {
+		t.Fatalf("rule = %q, want %q", got[0].Rule, arch.RuleVendorToken)
+	}
+	if !strings.Contains(got[0].Detail, "string literal") {
+		t.Fatalf("detail = %q, want it to name the string literal", got[0].Detail)
+	}
+}
+
+func TestVendorTokenFiresOnIdentifier(t *testing.T) {
+	got, err := arch.ScanVendorTokensSuffix(violations(), []string{"channelisdefault"}, fixtureSuffix)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("found %d findings, want exactly 1 identifier hit: %v", len(got), got)
+	}
+	if !strings.Contains(got[0].Detail, "identifier") {
+		t.Fatalf("detail = %q, want it to name the identifier", got[0].Detail)
+	}
+}
+
+func TestVendorTokensAreSilentOnCleanFixture(t *testing.T) {
+	got, err := arch.ScanVendorTokensSuffix(clean(), arch.VendorTokens, fixtureSuffix)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("found %d findings on the clean fixture, want 0: %v", len(got), got)
+	}
+}
