@@ -1,7 +1,10 @@
 # ADR-023: The module protocol — private internals, one published consumable
 
 **Date:** 2026-08-05
-**Status:** accepted
+**Status:** accepted, amended 2026-08-05 — §2 carve-outs cut from three to two, the
+`adapters/` exclusion reversed (81 imports), `wiring` ruled root-only (11 imports).
+Re-measured against `a5b112a8` by `internal/composition/module_boundary_arch_test.go`:
+**128 violations**, not the 35 the plan estimated.
 **Measured against:** `d57ea44b`. Every count below was measured in the repository, not
 estimated. The measurement lives in
 `docs/superpowers/plans/2026-08-05-arquitetura-protocolo-de-modulo-plan.md` §1 and
@@ -17,10 +20,14 @@ concludes there is a protocol. There is not.
 
 What was actually measured:
 
-- **121 cross-module imports** in non-test code. 76 originate in `adapters/`, which is the
-  sanctioned translation point and not a violation. **35 remain**, and they are not spread
-  thin: 24 of them target just three modules — `connectors/domain` (12), `internal_read/domain`
-  (8), `sync/application` (4).
+- **128 cross-module imports** in non-test code reach a layer other than `ports`. *(This
+  figure is the corrected one, measured 2026-08-05 against `a5b112a8` by
+  `internal/composition/module_boundary_arch_test.go`. The original text of this ADR said
+  "35 remain", because it excluded 81 imports originating in `adapters/` and 12 more under
+  carve-outs since narrowed. The 35 was never the size of the problem — it was the size of
+  what the measurement was willing to look at.)*
+  They are not spread thin: `connectors/domain` (23), `internal_read/domain` (19),
+  `connectors/application` (10) and `listings/domain` (8) absorb 60 of the 128.
 - **9 of those 35 originate in `X/ports`.** A module's port — the thing that is supposed to
   BE the boundary — is typed with another module's `domain`. The boundary is the leak.
 - **12 distinct layer-directory names** in use, of which 8 directories contain a single
@@ -49,10 +56,48 @@ modules speak to it only through the consumable, and always the same way.
 One line, and a grep can check it. The 35 measured violations are exactly the violations of
 this line.
 
-**Carve-out, sanctioned and singular:** `apps/server_core/internal/composition` is the
-composition root. Assembling the dependency graph is its entire job, so it may import any
-layer of any module. It is the only package with this exemption, and the exemption does not
-transit: a module may not reach another module's internals by way of the root.
+**Carve-outs — amended 2026-08-05.** There are exactly two, and they are dispositive:
+
+| # | Carve-out | Covers | Authority |
+|---|---|---|---|
+| 1 | `apps/server_core/internal/composition` — the composition root — may import any layer of any module. Assembling the graph is its whole job and it must name concrete types to do it. | 140 imports | original clause |
+| 2 | The shared core (§5) — today `sourcekind` — is importable by any module at any layer. | 5 imports | §5 |
+
+Neither transits: a module may not reach another module's internals by way of the root or by
+way of the shared core.
+
+**`adapters/` is NOT a carve-out — reversed 2026-08-05.** The Context paragraph of this ADR,
+and §1.3 of the plan it was measured from, both treated an import *originating* in a module's
+`adapters/` as the sanctioned translation point and excluded it from the count. That exclusion
+was inherited from the measurement convention, never argued, and it is wrong. It covered
+**81 imports — 63% of the real violation set.**
+
+An adapter translates between our domain and a **foreign** system: provider HTTP, Oracle,
+postgres, a queue. That has nothing to do with the module boundary. An adapter reaching into a
+sibling module's `domain` is coupling with an extra step, and the extra step is what makes it
+invisible. `listings/adapters/connectors/backfill.go` reads
+`connectors/adapters/mercado_livre.ItemMultigetDTO` — that is `listings` bound to Mercado
+Livre's JSON shape, through two modules' internals, and calling it "translation" launders it.
+
+The shape that proves no carve-out is needed already exists: `inventory/adapters/internalread`
+consumes `internal_read/ports`. An adapter that implements its own module's port by consuming
+another module is exactly where `Y/ports` should be read.
+
+Excluding adapters was also the failure mode this ADR exists to stop — the plan's §1.8 names
+it: *declaring an edge legal once legalises it forever*, with no reason and no owner. This
+amendment declines to do that at the scale of 81 edges.
+
+**`wiring` is not a carve-out — ratified 2026-08-05.** §7 makes in-module `wiring` (formerly
+`composition`) canonical and explains that it exists so a ready scheduler can be obtained
+without importing `adapters/postgres`. That sentence was read as making `wiring` importable
+module-to-module. It is not. **`X/wiring` is public to the composition root only.** A module
+that needs another module's assembled object receives it from the root; it does not reach for
+it. Otherwise D-1's "one public consumable" becomes two, and the second one is precisely the
+layer that carries infrastructure types — which is the coupling §3 exists to prevent.
+
+The 11 measured module-to-module `wiring` imports are therefore work, not legality. They are
+in scope for Wave 1 and concentrate in two files: `listings/composition/scheduler.go` and
+`orders/composition/scheduler.go`.
 
 ### §3 — A port must stand on its own
 
