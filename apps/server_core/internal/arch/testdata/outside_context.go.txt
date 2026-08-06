@@ -1,0 +1,5 @@
+package composition
+
+import (
+	_ "marketplace-central/apps/server_core/internal/contexts/catalog/internal/postgres"
+)

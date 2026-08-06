@@ -127,24 +127,34 @@ func importedContextInternal(importPath string) (string, bool) {
 func ScanCrossContextInternalSuffix(root, suffix string) (Findings, error) {
 	var out Findings
 	err := walk(root, suffix, func(path string, fset *token.FileSet, file *ast.File) error {
-		here, inContext := contextOf(path)
-		if !inContext {
-			return nil
-		}
+		// here is "" for a file that lives outside any context — the composition
+		// root, an adapter, a cmd. Those are NOT skipped: the one import that
+		// ever broke this rule came from exactly there, and a detector that
+		// starts by skipping them can only ever report zero.
+		here, _ := contextOf(path)
 		for _, imp := range file.Imports {
 			value, uErr := strconv.Unquote(imp.Path.Value)
 			if uErr != nil {
 				continue
 			}
 			target, reaches := importedContextInternal(value)
-			if !reaches || target == here {
+			if !reaches {
 				continue
+			}
+			// A context reaching into its OWN internal is the design; anything
+			// else, including here == "", is a finding.
+			if here != "" && target == here {
+				continue
+			}
+			from := here
+			if from == "" {
+				from = "outside any context"
 			}
 			out = append(out, Finding{
 				File:   filepath.ToSlash(path),
 				Line:   fset.Position(imp.Pos()).Line,
 				Rule:   RuleCrossContextInternal,
-				Detail: here + " imports " + value,
+				Detail: from + " imports " + value,
 			})
 		}
 		return nil

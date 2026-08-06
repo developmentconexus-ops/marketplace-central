@@ -101,3 +101,27 @@ func TestVendorTokensAreSilentOnCleanFixture(t *testing.T) {
 		t.Fatalf("found %d findings on the clean fixture, want 0: %v", len(got), got)
 	}
 }
+
+// TestCrossContextInternalSeesOutsideContexts is the positive control for the
+// blindness that shipped: the composition root imported catalog/internal/postgres
+// and the detector reported zero findings, because it skipped every file that was
+// not itself inside contexts/.
+func TestCrossContextInternalSeesOutsideContexts(t *testing.T) {
+	got, err := arch.ScanCrossContextInternalSuffix("testdata", ".go.txt")
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	var hit *arch.Finding
+	for i := range got {
+		if strings.HasSuffix(got[i].File, "outside_context.go.txt") {
+			hit = &got[i]
+			break
+		}
+	}
+	if hit == nil {
+		t.Fatalf("test=TestCrossContextInternalSeesOutsideContexts: no finding for a file outside contexts/ importing catalog/internal; got %d finding(s): %+v", len(got), got)
+	}
+	if hit.Rule != arch.RuleCrossContextInternal {
+		t.Fatalf("rule = %q, want %q", hit.Rule, arch.RuleCrossContextInternal)
+	}
+}
