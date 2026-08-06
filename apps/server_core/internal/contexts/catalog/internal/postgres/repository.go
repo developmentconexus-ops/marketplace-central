@@ -353,16 +353,21 @@ func (r *Repository) ByProductID(ctx context.Context, t tenant.ID, productID str
 	return out, found, err
 }
 
-// summarise flattens an aggregate for a consumer. An Unknown description
-// becomes the empty string ONLY here, at the edge, and the caller is told the
-// product exists rather than being handed a fabricated name.
+// summarise flattens an aggregate for a consumer. The knowledge state travels
+// with the value: this is the ONLY place the empty string is allowed to stand
+// for an unknown description, and it is allowed only because DescriptionState
+// says so beside it.
 func summarise(p domain.Product) port.Summary {
-	desc, _ := p.Description().Value()
+	desc, known := p.Description().Value()
+	if !known {
+		desc = ""
+	}
 	return port.Summary{
-		ProductID:   p.ID().String(),
-		Description: desc,
-		Identifiers: p.Identifiers(),
-		Version:     p.Version(),
+		ProductID:        p.ID().String(),
+		Description:      desc,
+		DescriptionState: p.Description().State().String(),
+		Identifiers:      p.Identifiers(),
+		Version:          p.Version(),
 	}
 }
 

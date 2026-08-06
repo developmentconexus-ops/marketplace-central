@@ -1104,3 +1104,57 @@ de `adapters/`, mesmo molde que T3/T4 já aplicaram ao detector), (b) decidir ex
 `channel_test.go` deve trocar `"MercadoLivre"`/`"mercadolivre"` por um nome de canal fictício
 (opção (a) do D-28) ou se `TestNoVendorTokenInKernel` deve restringir-se a não-`_test.go`, e
 (c) só depois disso medir `bash scripts/arch-gate.sh` outra vez à espera de PASS real.
+
+---
+
+**D-36. `ScanFactValueDiscard` (Regra 4.2, Tarefa 5) acusa 2 sítios em ficheiros `_test.go` que
+o brief não previu — nenhum é o defeito que a regra existe para apanhar** (Fecho da Fundação,
+Tarefa 5, `internal/arch/scan.go`, 2026-08-06) — ABERTA, fora do escopo aditivo desta tarefa.
+
+O brief nomeou UM sítio real, `repository.go:360` (`desc, _ := p.Description().Value()`, em
+produção, sem verificação de estado antes) — esse é o defeito de D-g e está fechado por esta
+tarefa (`summarise` agora lê os dois valores e propaga `DescriptionState`). O detector é
+sintático por desenho ("não pode saber o tipo do recetor sem um type checker... reporta todo
+`.Value()` de dois resultados cujo segundo é descartado. Um sítio que legitimamente faz isso
+renomeia o método" — comentário do próprio `ScanFactValueDiscardSuffix`) e por isso, corrido
+sobre as 4 raízes reais, também acusa dois sítios de TESTE que descartam o bool depois de já
+terem confirmado o estado por outro caminho:
+
+```
+$ go run ./internal/arch/cmd/archscan -root internal/contexts
+internal/contexts/catalog/internal/domain/product_test.go:158: facts/value-discarded: the bool from .Value() is discarded: unknown would read as the zero value
+archscan: 1 finding(s)
+
+$ go run ./internal/arch/cmd/archscan -root internal/adapters
+internal/adapters/erp/sankhyaoracle/catalogfeed/mapper_test.go:37: facts/value-discarded: the bool from .Value() is discarded: unknown would read as the zero value
+archscan: 1 finding(s)
+
+$ go run ./internal/arch/cmd/archscan -root internal/kernel      # facts/value-discarded: 0 (só D-28, vendor token)
+$ go run ./internal/arch/cmd/archscan -root internal/composition # facts/value-discarded: 0 (só D-35, vendor token)
+```
+
+Ambos os dois são leituras de facto onde o `Known` já foi estabelecido pela construção do
+próprio teste, não pela leitura ao vivo de um facto potencialmente `Unknown`:
+
+1. `product_test.go:158` (`TestApplyDoesNotMutateTheReceiver`) — o produto é construído em
+   `obs(t, "original", "sha256:ab91")` com descrição `Known` por construção; `desc, _ :=
+   p.Description().Value()` na linha 158 lê essa descrição de volta só para comparar a string
+   `"original"`. Não há caminho por onde `Unknown` chegue aqui.
+2. `mapper_test.go:37` (mapper do adaptador Sankhya) — a linha 34, três linhas acima, já falha o
+   teste explicitamente se `obs.Description.State() != fact.Known`; a linha 37 discard o bool
+   depois de o estado já ter sido verificado à parte.
+
+Nenhum dos dois é "desconhecido vira zero" (constraint 9): em ambos o valor só é lido depois de
+o estado `Known` já estar garantido por outro caminho no mesmo teste. São exactamente o caso que
+o comentário do detector já previa ("um sítio que legitimamente faz isso") — mas o brief da
+Tarefa 5 não deu instrução sobre COMO um sítio legítimo deve ficar silencioso perante um
+detector puramente sintático (a única saída sem enfraquecer o detector é reescrever a chamada
+para nomear o segundo valor, ex. `desc, known := ...; if !known { t.Fatal(...) }`, e essa
+reescrita não estava no escopo desta tarefa nem foi pedida).
+
+Consequência de classe: como D-35, um detector sintático correto por desenho destapa sítios reais
+que a spec que o encomendou não tinha medido. `archscan` sobre as 4 raízes não fecha em 0 achados
+totais para `facts/value-discarded` — fecha em 0 no sítio de PRODUÇÃO que a tarefa tinha mandato
+de corrigir, mais 2 em teste, pré-existentes, fora do escopo aditivo. Conserto candidato (fora
+desta tarefa): reescrever as duas chamadas para capturar o segundo valor com nome e afirmá-lo
+explicitamente, em vez de o descartar — nenhuma mudança de produção necessária.

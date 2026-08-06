@@ -150,3 +150,19 @@ func TestCrossContextInternalSeesOutsideContexts(t *testing.T) {
 		t.Fatalf("rule = %q, want %q", hit.Rule, arch.RuleCrossContextInternal)
 	}
 }
+
+// TestFactValueDiscardIsCaught is the level-2 instrument for Regra 4.2. The
+// package that exists to stop "unknown becomes zero" shipped exactly one call
+// site doing `v, _ := f.Value()`, and nothing looked.
+func TestFactValueDiscardIsCaught(t *testing.T) {
+	got, err := arch.ScanFactValueDiscardSuffix("testdata", ".go.txt")
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("test=TestFactValueDiscardIsCaught: want exactly 1 finding, got %d: %+v", len(got), got)
+	}
+	if !strings.HasSuffix(got[0].File, "discarded_value.go.txt") || got[0].Rule != arch.RuleFactValueDiscard {
+		t.Fatalf("finding = %+v", got[0])
+	}
+}

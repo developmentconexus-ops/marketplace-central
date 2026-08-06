@@ -25,6 +25,7 @@ const (
 	RuleCrossContextInternal = "context/internal-import"
 	RuleFloatInContracts     = "numbers/float-in-contracts"
 	RuleVendorToken          = "adapters/vendor-token-outside-adapters"
+	RuleFactValueDiscard     = "facts/value-discarded"
 )
 
 // VendorTokens is the closed list of marketplace names that may not appear
@@ -271,4 +272,51 @@ func ScanVendorTokensSuffix(root string, tokens []string, suffix string) (Findin
 // ScanVendorTokens scans real Go files.
 func ScanVendorTokens(root string, tokens []string) (Findings, error) {
 	return ScanVendorTokensSuffix(root, tokens, ".go")
+}
+
+// ScanFactValueDiscardSuffix reports every `v, _ := something.Value()`.
+//
+// The blank is the whole defect. Fact.Value returns (T, bool) precisely so that
+// an Unknown cannot be read as a value; discarding the bool hands back the zero
+// value of T, which is the mistake the fact package exists to prevent. This is
+// a syntactic detector on purpose: it cannot know the receiver's type without a
+// type checker, so it reports every two-result .Value() call whose second result
+// is discarded. A call site that legitimately does that renames its method.
+func ScanFactValueDiscardSuffix(root, suffix string) (Findings, error) {
+	var out Findings
+	err := walk(root, suffix, func(path string, fset *token.FileSet, file *ast.File) error {
+		ast.Inspect(file, func(n ast.Node) bool {
+			assign, ok := n.(*ast.AssignStmt)
+			if !ok || len(assign.Lhs) != 2 || len(assign.Rhs) != 1 {
+				return true
+			}
+			blank, ok := assign.Lhs[1].(*ast.Ident)
+			if !ok || blank.Name != "_" {
+				return true
+			}
+			call, ok := assign.Rhs[0].(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			sel, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok || sel.Sel.Name != "Value" {
+				return true
+			}
+			out = append(out, Finding{
+				File:   filepath.ToSlash(path),
+				Line:   fset.Position(assign.Pos()).Line,
+				Rule:   RuleFactValueDiscard,
+				Detail: "the bool from .Value() is discarded: unknown would read as the zero value",
+			})
+			return true
+		})
+		return nil
+	})
+	out.sortInPlace()
+	return out, err
+}
+
+// ScanFactValueDiscard scans real Go files.
+func ScanFactValueDiscard(root string) (Findings, error) {
+	return ScanFactValueDiscardSuffix(root, ".go")
 }

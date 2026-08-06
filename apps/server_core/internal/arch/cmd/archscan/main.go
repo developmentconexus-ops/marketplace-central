@@ -21,6 +21,7 @@ func main() {
 		func(root string) (arch.Findings, error) {
 			return arch.ScanVendorTokens(root, arch.VendorTokens)
 		},
+		arch.ScanFactValueDiscard,
 	} {
 		got, err := scan(*root)
 		if err != nil {

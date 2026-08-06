@@ -14,11 +14,16 @@ import (
 
 // Summary answers "what is this product?", flattened for a consumer that has no
 // business knowing Catalog's internal model.
+//
+// DescriptionState is not decoration. A consumer handed Description == "" cannot
+// tell "the source says it has no name" from "we never learned it", and that is
+// the difference that decides whether a screen shows a blank or an alert.
 type Summary struct {
-	ProductID   string
-	Description string
-	Identifiers []contracts.Identifier
-	Version     int
+	ProductID        string
+	Description      string
+	DescriptionState string
+	Identifiers      []contracts.Identifier
+	Version          int
 }
 
 // Reader answers identity questions about products.
