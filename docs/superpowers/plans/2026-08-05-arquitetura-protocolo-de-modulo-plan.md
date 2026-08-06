@@ -36,25 +36,41 @@ verificação própria (76 dos "122 bypasses" eram `adapters/`, que é o ponto s
 construído sobre alegação não verificada é a própria classe de defeito que esta missão existe
 para matar.
 
-### 1.1 ADRs — 12 números citados, 0 documentos
+### 1.1 ADRs — 17 números citados, 8 documentos já existiram, 9 nunca existiram
+
+Números normalizados (`ADR-04` e `ADR-004` são o mesmo). Citações contadas fora de
+`scripts/.runs/*/snapshot/`, que duplica árvores inteiras e inflaria tudo.
 
 | Medida | Valor |
 |---|---|
-| Arquivos ADR em `docs/architecture/decisions/` | **5** (004, 005, 006, 007, 008) |
-| Números de ADR citados no repo | **17** (`ADR-01` … `ADR-17`) |
-| Números citados **sem documento nenhum** | **12** (01, 02, 03, 09, 10, 11, 12, 13, 14, 15, 16, 17) |
-| Citações de `ADR-17` sozinho | **1.068** |
+| Números de ADR citados | **17** (`ADR-1` … `ADR-17`) |
+| Documentos ADR que **já existiram**, em qualquer ponto da história do git | **8** (001–008) |
+| Arquivos vivos hoje em `docs/architecture/decisions/` | **5** (004–008) |
+| Números que **nunca existiram, em forma nenhuma** | **9** (09, 10, 11, 12, 13, 14, 15, 16, 17) |
+| Citações somadas desses 9 órfãos | **1.365** |
+| Citações de `ADR-17` sozinho | **1.076** |
 | Citações de `ADR-17` **dentro do OpenAPI publicado** | **11** (`contracts/api/marketplace-central.openapi.yaml:5721…5920`) |
-| Esquemas de numeração convivendo | **2** — `ADR-04` (89 citações) e `ADR-004` (13). Só o de 3 dígitos tem arquivo |
+| Esquemas de numeração convivendo | **2** — `ADR-04` e `ADR-004`. Só o de 3 dígitos tem arquivo |
 
-`git log --diff-filter=A` no diretório de decisões confirma: **nunca existiu** um arquivo `017-*`.
-Nenhum `.md` do repo tem `ADR-17` como título ou definição — todas as 1.068 ocorrências são
-citações a um documento que não existe.
+`git log --all --diff-filter=A` sobre todos os diretórios de decisão do repo devolve exatamente
+oito arquivos: `001`…`008`. **Nenhum `009`–`017` jamais foi criado.** Nenhum `.md` do repo tem
+`ADR-17` como título — as 1.076 ocorrências são citações a um documento que nunca houve.
 
-**Leitura:** a arquitetura deste sistema é governada por folclore. As regras são conhecidas — estão
-repetidas 1.068 vezes — mas não há o que ler. Um agente novo (ou um humano novo) não consegue
-descobrir o que ADR-17 exige a não ser inferindo de citações. É a causa-raiz mais barata de
-consertar e a que mais rende: **as regras já existem, só não estão escritas.**
+**Os três primeiros têm história, e o caso de cada um é diferente** (deletados pelo commit
+`99540107` "refactor(governance): retire brain knowledge store", quando o `.brain/` foi aposentado
+e 004–006 foram movidos para `docs/architecture/decisions/`):
+
+| Número | Estado declarado no próprio documento | Citações vivas | O que fazer |
+|---|---|---|---|
+| ADR-001 | `superseded on 2026-07-07` | 28 | deleção legítima. Restaurar como **superseded**, só para a citação não apontar para o nada |
+| ADR-002 | `superseded on 2026-07-07` | 36 | idem |
+| ADR-003 | **`accepted`** | 57 | **deletado por engano** junto do `.brain/`. Restaurar |
+
+**Leitura:** a arquitetura deste sistema é governada por folclore. Nove regras — incluindo a mais
+citada do repo, repetida 1.076 vezes e citada dentro do contrato publicado — não têm o que ler. Um
+agente novo (ou uma pessoa nova) só descobre o que ADR-17 exige inferindo das citações. É a
+causa-raiz mais barata de consertar e a que mais rende: **as regras já existem, só não estão
+escritas.** E três delas nem precisam ser escritas — só recuperadas do git.
 
 ### 1.2 Vocabulário de camada — 12 nomes, 8 diretórios vazios
 
@@ -308,8 +324,9 @@ Ordem obrigatória. Cada onda fecha antes da próxima abrir.
 
 | # | Task | Aceite (medição, não teste verde) |
 |---|---|---|
-| 0.1 | Colher as 1.068 citações de ADR-17 e as dos outros 11 números órfãos; agrupar por o que cada uma afirma | Um arquivo por número, listando as afirmações distintas com `file:line` |
-| 0.2 | Escrever os **12 ADRs faltantes** a partir do que as citações afirmam. Onde as citações se contradizerem, a contradição vai escrita no ADR e o operador decide | `ls docs/architecture/decisions/` cobre todos os números citados |
+| 0.0 | Restaurar ADR-001/002/003 de `99540107^` — 001 e 002 marcados `superseded`, 003 é `accepted` e caiu por engano | 3 arquivos de volta; 121 citações deixam de apontar para o nada. Custo: `git show`, não redação |
+| 0.1 | Colher as 1.365 citações dos **9 números que nunca existiram** (09–17); agrupar por o que cada uma afirma | Um arquivo por número, listando as afirmações distintas com `file:line` |
+| 0.2 | Escrever os **9 ADRs faltantes** a partir do que as citações afirmam. Onde as citações se contradizerem, a contradição vai escrita no ADR e o operador decide. ADR-17 primeiro — 1.076 citações e está dentro do OpenAPI | `ls docs/architecture/decisions/` cobre todos os 17 números citados |
 | 0.3 | Unificar a numeração (`ADR-04` vs `ADR-004`) e atualizar o README de decisões | 1 esquema, 0 citações no esquema morto |
 | 0.4 | Ler as 7 camadas não canônicas e ratificar D-7 caso a caso | Lista fechada escrita no ADR de arquitetura |
 | 0.5 | Escrever o **ADR do protocolo de módulo** — D-1 a D-7 | Documento existe e é citável |
@@ -389,7 +406,7 @@ Mais três, aprendidas em custo:
 
 | Onda | Peso | Risco |
 |---|---|---|
-| 0 | médio — 12 documentos, mas o material já existe nas citações | baixo; não toca código |
+| 0 | médio — 3 recuperados do git + 9 escritos, e o material já existe nas citações | baixo; não toca código |
 | 1 | **maior da missão** — 3 consumíveis novos, 14 chamadores | médio; mexe em módulo que todo mundo usa |
 | 2 | grande — quebra contrato público de `orders` | **maior risco**; FE junto, um commit |
 | 3 | pequena — deleção | baixo; compilador é o juiz |
