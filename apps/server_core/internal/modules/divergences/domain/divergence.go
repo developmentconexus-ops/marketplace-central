@@ -1,5 +1,5 @@
 // Package domain holds the divergences ledger's provider-agnostic types and
-// pure evaluation rules (IC-02, ADR-10). It must never import a Mercado
+// pure evaluation rules (IC-02, ADR-011). It must never import a Mercado
 // Livre / provider-specific type (Q6 architectural boundary, proven by
 // boundary_test.go in the parent package).
 package domain

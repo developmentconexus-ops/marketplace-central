@@ -60,7 +60,7 @@ ratificada.
 A Q1 do sync já lê `TGFPRO`; acrescenta `GRUPOICMS` ao SELECT e ao upsert do writer.
 
 Decisão registrada: houve no MIS-006 uma regra "nunca ALTER no mirror". Aquilo era regra de colisão
-entre chips paralelos no M-07, não arquitetura. Nesta fatia somos escritor único do seam (ADR-04),
+entre chips paralelos no M-07, não arquitetura. Nesta fatia somos escritor único do seam (ADR-024),
 então o ALTER é legítimo e evita partir dado de produto em duas tabelas.
 
 ### 4.2 `icms_matrix_mirror` — novo, versionado

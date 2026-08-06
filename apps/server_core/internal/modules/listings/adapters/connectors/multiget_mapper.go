@@ -31,7 +31,7 @@ func (e MultigetItemError) Error() string {
 //   - status VERBATIM, sem remapeamento para um conjunto fechado — o
 //     vocabulário é do provider, e um remap silenciosamente descartaria
 //     status legítimos que a tabela já aceita.
-//   - UMA linha por item (VariationID = NoVariationID, ADR-13), com os dados
+//   - UMA linha por item (VariationID = NoVariationID, ADR-019), com os dados
 //     de variação como filhos em Variations, e não uma linha achatada por
 //     variação.
 //
@@ -164,13 +164,13 @@ func MapMultigetItemToListing(tenantID, installationID, provider string, item me
 // provider-agnostic connectorsdomain.ListingSnapshot shape the product-links
 // matcher consumes via SnapshotObserver.AbsorbProviderSnapshots (source.go),
 // so the NEW multiget-based hydration path keeps feeding the SAME re-vínculo
-// seam the old single-item ReadListing path feeds (ADR-13, IC-07 "hidratação
+// seam the old single-item ReadListing path feeds (ADR-019, IC-07 "hidratação
 // nova CONTINUA alimentando AbsorbProviderSnapshots").
 //
 // Top-level SellerSKU/EAN are derived from the item's OWN seller_sku/
 // seller_custom_field/attributes — mirroring mapListing's oracle behavior
 // exactly (capability_adapter.go:832-846, the single-item ReadListing shape
-// this ADR-13 seam must match): those three fields are set UNCONDITIONALLY,
+// this ADR-019 seam must match): those three fields are set UNCONDITIONALLY,
 // regardless of whether the item has variations, because mapListing does the
 // same (it never gates the top-level SellerSKU/EAN on len(item.Variations)).
 // This was previously a KNOWN GAP: items_multiget_reader.go's ItemMultigetDTO

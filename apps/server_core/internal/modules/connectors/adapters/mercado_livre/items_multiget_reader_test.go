@@ -438,7 +438,7 @@ func TestGetItemsMultigetMapsE3Fields(t *testing.T) {
 }
 
 // TestGetItemsMultigetMapsTopLevelSellerSKUAndAttributes covers the fix for
-// the F-03 ADR-13 gap: the multiget body element is the SAME full item
+// the F-03 ADR-019 gap: the multiget body element is the SAME full item
 // representation as the single-item GET (mlItemResponse), so it genuinely
 // carries top-level seller_sku/seller_custom_field/attributes on the wire —
 // this DTO must type them (previously silently dropped by json.Unmarshal

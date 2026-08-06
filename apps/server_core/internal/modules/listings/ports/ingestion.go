@@ -47,7 +47,7 @@ type CompletedPullStore interface {
 	// what bounds "not seen since" for MarkRunComplete's keep-absent step.
 	UpsertPulledRows(ctx context.Context, installationID string, rows []domain.Listing, seenAt time.Time) error
 
-	// MarkRunComplete runs the keep-absent step (ADR-06/IC-06) for a run
+	// MarkRunComplete runs the keep-absent step (ADR-027/IC-06) for a run
 	// whose enumeration + hydration fully drained. runStartedAt must be the
 	// exact same timestamp passed as seenAt to every UpsertPulledRows call
 	// in this run — it both bounds the keep-absent UPDATE and backs the
@@ -77,7 +77,7 @@ type IDEnumerator interface {
 // BatchHydrator hydrates one batch of ids into canonical rows — it never
 // enumerates (IC-06 "hidratação nunca enumera"). Implemented by
 // connectors.MultigetHydrator, wrapping GetItemsMultiget (M-01/F-02) + the
-// Passo 2 mapper, and feeding the product-links SnapshotObserver (ADR-13) so
+// Passo 2 mapper, and feeding the product-links SnapshotObserver (ADR-019) so
 // the new path keeps the re-vínculo matcher fed the same way the old
 // single-item ReadListing path does. A batch-level error (e.g. a 429 series
 // exceeding M-01's retry budget) fails the whole call — a per-item error

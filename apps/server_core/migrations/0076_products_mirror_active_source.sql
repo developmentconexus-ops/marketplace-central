@@ -10,7 +10,7 @@
 -- (grep guard M02-C3/AC-03: these three columns carry neither DEFAULT 0 nor
 -- NOT NULL.)
 --
--- Keep-absent (ADR-04): a rebuild never physically deletes. When a product from
+-- Keep-absent (ADR-031): a rebuild never physically deletes. When a product from
 -- the previous snapshot is missing from a new one, the merge logic (M-03/M-04)
 -- sets absent_in_last_snapshot=true + stale_since=now(); when it reappears the
 -- flag clears back to false. M-02 provides the columns + defaults; the merge

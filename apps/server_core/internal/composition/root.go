@@ -588,7 +588,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	// picks the link up on the next read instead of waiting for a re-import.
 	ordersLinkReader := ordersproductlinks.NewLinkReader(productLinkCandidateRepo, productLinkCandidateRepo)
 	ordersBuyerFiscalReader := newOrdersBuyerFiscalReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
-	// F-02: IngestOrder is the single write path (ADR-04) — Import now only enumerates
+	// F-02: IngestOrder is the single write path (ADR-024) — Import now only enumerates
 	// provider_order_ids from ListOrders and delegates each one here.
 	ordersOrderDetailReader := newOrdersOrderDetailReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
 	ordersShipmentDetailReader := newOrdersShipmentDetailReaderAdapter(mercadoLivreCapabilities, installationSvc, cfg.DefaultTenantID)
@@ -819,7 +819,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 	// per-item ListingIngestor (wired further down as installationResyncWriter)
 	// — so a per-item resync and a whole-catalog backfill agree on hydrate
 	// and persist behavior without a resync fanning out into N whole-catalog
-	// pulls (ADR-04: one writer per shared seam; F-04 retires the old
+	// pulls (ADR-024: one writer per shared seam; F-04 retires the old
 	// page-based Source/Ingestion).
 	listingBackfillHydrator := listingsconnectors.NewMultigetHydrator(marketplaceCapabilities, productLinkImportSvc, time.Now)
 	listingBackfillRunner := listingsapp.NewBackfillRunner(
@@ -834,7 +834,7 @@ func NewRootRuntime(pool *pgxpool.Pool, cfg pgdb.Config) (*RootRuntime, error) {
 		func(err error) string { return string(connectorsdomain.ErrorCodeOf(err)) },
 	)
 	listingstransport.NewRefreshHandler(listingRefreshSvc).Register(mux)
-	// Daily listings backfill/sweep scheduler (ADR-08 second Scheduler
+	// Daily listings backfill/sweep scheduler (ADR-030 second Scheduler
 	// instance, mirroring synccomposition.NewProductsScheduler): one instance
 	// per active Mercado Livre installation, since (unlike products) a
 	// listings backfill run is scoped to one specific InstallationAccount.
@@ -999,7 +999,7 @@ func providerWritesEnabled(getenv func(string) string) bool {
 }
 
 // mlCatalogOffersEnabled gates the mercado_livre catalog-offers READ route
-// (ADR-05: flag defaults OFF). This is a read-only provider flag, unrelated
+// (ADR-032: flag defaults OFF). This is a read-only provider flag, unrelated
 // to MPC_PROVIDER_WRITES_ENABLED and the mutations dispatcher.
 func mlCatalogOffersEnabled(getenv func(string) string) bool {
 	return strings.EqualFold(strings.TrimSpace(getenv("MPC_ML_CATALOG_OFFERS_ENABLED")), "true")

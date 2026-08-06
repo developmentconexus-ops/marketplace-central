@@ -388,7 +388,7 @@ func (r *Repository) ListListingTimeline(ctx context.Context, key domain.Listing
 }
 
 // UpsertPulledRows persists one TICK's worth of rows (never a blanket
-// close — ADR-06, audit D-120 F1, risk R-B: a run truncated by a 429/
+// close — ADR-027, audit D-120 F1, risk R-B: a run truncated by a 429/
 // deadline/kill must never wipe listings it simply never got to). status is
 // always written verbatim from row.Status; it is never inferred here.
 //
@@ -500,7 +500,7 @@ func (r *Repository) UpsertPulledRows(ctx context.Context, installationID string
 	return nil
 }
 
-// MarkRunComplete runs the keep-absent step (ADR-06/IC-06) for a run whose
+// MarkRunComplete runs the keep-absent step (ADR-027/IC-06) for a run whose
 // enumeration + hydration fully drained. runStartedAt must be the exact same
 // timestamp passed as seenAt to every UpsertPulledRows call in this run.
 //

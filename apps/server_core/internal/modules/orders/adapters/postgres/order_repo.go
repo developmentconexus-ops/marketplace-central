@@ -807,7 +807,7 @@ func (r *OrderRepository) GetFaturadoAt(ctx context.Context, installationID, pro
 }
 
 // IngestOrder persists ONE order (header + items + payments + optional shipment) atomically —
-// IC-06's single write path (ADR-04): every ingest trigger (import enumeration today; backfill/
+// IC-06's single write path (ADR-024): every ingest trigger (import enumeration today; backfill/
 // incremental sync/webhook worker later, per milestone.md) converges here. Reuses upsertOrder/
 // replaceItems/replacePayments/backfillMissingLines verbatim (same freshness-guard and
 // line-identity-reconciliation invariants as the batch UpsertOrders path above) so a concurrent

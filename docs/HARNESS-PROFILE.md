@@ -933,9 +933,46 @@ retroactive GPT-5.6 Sol medium review at mission closeout (operator's call).
 - **Evidence types bind here too (core §5):** worker reports classify each verification as
   `ran` / `assumed` / `could-not-run`; a Pass is only recordable on `ran` with artifact.
 
+## 13. Process decisions of record (extracted from the ADR series, 2026-08-05)
+
+These five were ratified by missions as "ADRs" and cited as such, but they are decisions
+about **how the harness runs work**, not about the product's architecture. Mixing the two
+series is what produced the numbering collision that the ADR renumbering had to unpick
+(`docs/architecture/decisions/_citations/RENUMBERING-REGISTRY.md`). They live here, keyed
+`P-N`, and are cited as `HARNESS-PROFILE §13 P-N`. Their old ADR numbers are dead.
+
+**P-1 · Proportional security.** Writes are off by default. No PII and no secret ever
+enters an evidence artifact. A run that would need either is scoped down or does not run.
+*(was ADR-09 in MIS-001/003; 1 citation)*
+
+**P-2 · A mock never claims a live integration.** A test double proves contract behaviour.
+It never appears in a report as evidence that an integration works. Live integration is
+claimed only from a run against the real dependency, with the artifact to show it.
+*(was ADR-10 in MIS-001/003; 4 citations)*
+
+**P-3 · Historical gates are preserved.** A QA gate that failed stays fixed at the SHA it
+failed on. It is never re-run against a later tree, and never rewritten, to manufacture a
+pass. A later pass is a new record, not an edit of the old one.
+*(was ADR-11 in MIS-001/003; 4 citations)*
+
+**P-4 · Migration numbers are pre-allocated by the hub.** Each dispatched chip receives a
+disjoint numeric range for migrations, declared in its brief, so two parallel chips cannot
+collide on a filename. `schema_migrations` is keyed by filename — a rename re-applies the
+migration — so collisions are not fixable after the fact.
+*(was ADR-12 in MIS-007; 4 citations)*
+
+**P-5 · `root.go` and the OpenAPI+SDK pair are hub-serialized seams.** Each milestone enters
+`root.go` through its own composition constructor in an anchored region. At most **one
+contract commit** (OpenAPI + SDK + frontend) may be in flight at a time across all lanes.
+Code parallelizes; the contract commit does not.
+*Amended:* the original wording said "≤1 milestone with an FE contract in flight", which
+contradicted the same mission's ratified three-parallel-lane plan. Narrowed to ≤1 **commit**.
+*(was ADR-14 in MIS-007; 35 citations)*
+
 ## Amendment log
 
 ```
+2026-08-05 · §13 · ratified · five process decisions extracted from the ADR series (were ADR-09/10/11/12/14 across MIS-001/003/007); the architecture series is renumbered globally and no longer carries harness-process rules — docs/architecture/decisions/_citations/RENUMBERING-REGISTRY.md
 2026-07-15 · all sections · ratified · profile extracted from combined docs/HARNESS.md (operator-ratified doctrine) at A′ restructure; swap to CORE+profile binding scheduled for M-01 close
 2026-07-15 · §2 · ratified · governance lane: run from clean detached worktree + full 40-hex BaseSha (field finding: main-checkout sweep of .claude/worktrees false-fails; short sha = GOV_SEMANTIC_DRIFT base-sha-invalid) — memory/governance-lane-clean-worktree.md
 2026-07-15 · §3 · ratified · fresh-worktree GOMODCACHE warm + HPG_MIGRATION_FAILED/migrations_first=-1 false-alarm signature (M-01 field finding)

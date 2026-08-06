@@ -1,5 +1,5 @@
 // Package composition wires the listings module's daily backfill/sweep
-// scheduler for the application root — the ADR-08 "segunda instância" of the
+// scheduler for the application root — the ADR-030 "segunda instância" of the
 // sync scheduler pattern sync/composition.NewProductsScheduler established.
 //
 // It cannot reuse that pattern verbatim: products data is tenant-wide (one

@@ -1,7 +1,7 @@
 -- 0087: divergences — IC-02 shared divergence ledger (M-02 sync-core-seam,
 -- F-01-core-ddl).
 --
--- Detection always happens at ingest (ADR-10): a daily stock producer (M-05)
+-- Detection always happens at ingest (ADR-011): a daily stock producer (M-05)
 -- and a 5-minute order producer (M-06) each Evaluate() into the SAME table
 -- instead of inventing incompatible shapes (append-events vs. one-open-row).
 -- No producer writes into this table yet.

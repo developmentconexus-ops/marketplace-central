@@ -18,7 +18,7 @@ ALTER TABLE listings
 --
 -- Deliberately EXCLUDED (IC-07 decision, planning design §7 item 6):
 -- commission_amount, commission_pct, free_shipping_cost — fee data lives only
--- in channel_fees (IC-01, ADR-09 provenance); dual-write here would be a drift
+-- in channel_fees (IC-01, ADR-009 provenance); dual-write here would be a drift
 -- seam, not a feature.
 ALTER TABLE listings
     ADD COLUMN IF NOT EXISTS sold_quantity int;
@@ -45,14 +45,14 @@ ALTER TABLE listings
 ALTER TABLE listings
     ADD COLUMN IF NOT EXISTS available_quantity int;
 
--- Lifecycle support (ADR-06): a row's absence is only ever learned at the end
+-- Lifecycle support (ADR-027): a row's absence is only ever learned at the end
 -- of a COMPLETE run (IC-06) — status is never inferred from absence.
 ALTER TABLE listings
     ADD COLUMN IF NOT EXISTS last_seen_at timestamptz;
 ALTER TABLE listings
     ADD COLUMN IF NOT EXISTS absent_since timestamptz;
 
--- raw payload (ADR-03 permits it here, unlike order_shipments 0088 — /items
+-- raw payload (ADR-025 permits it here, unlike order_shipments 0088 — /items
 -- carries no PII) plus a marker for when the stored payload was truncated.
 ALTER TABLE listings
     ADD COLUMN IF NOT EXISTS raw jsonb;

@@ -60,7 +60,7 @@ type multigetReader interface {
 // MultigetHydrator is F-03's BatchHydrator: it hydrates a batch of ids via
 // multiget, never enumerates (IC-06).
 //
-// ADR-13 non-regression: BEFORE mapping to canonical listing rows, every
+// ADR-019 non-regression: BEFORE mapping to canonical listing rows, every
 // successfully-hydrated item is ALSO converted to a
 // connectorsdomain.ListingSnapshot (multiget_mapper.go's
 // MapMultigetItemToListingSnapshot) and handed to the SAME SnapshotObserver

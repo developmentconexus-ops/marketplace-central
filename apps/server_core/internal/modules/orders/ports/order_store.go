@@ -64,7 +64,7 @@ type OrderFaturadoStore interface {
 	MarkOrderFaturado(ctx context.Context, installationID, providerOrderID string) error
 }
 
-// OrderIngestStore is IC-06's single-transaction write port (ADR-04): IngestOrder persists
+// OrderIngestStore is IC-06's single-transaction write port (ADR-024): IngestOrder persists
 // exactly one order (header+items+payments+optional order_shipments row) atomically — shipment
 // is nil when the order carries no shipping.id, or the provider returned honest-absence for it.
 //

@@ -10,7 +10,7 @@ import (
 )
 
 // DivergenceRecorder evaluates one (entity, kind) observation and upserts
-// the one-open-row ledger (IC-02, ADR-10): a divergent observation opens or
+// the one-open-row ledger (IC-02, ADR-011): a divergent observation opens or
 // refreshes the open row (detected_at immutable); a convergent observation
 // auto-resolves an open row if one exists.
 type DivergenceRecorder interface {

@@ -1,5 +1,5 @@
 // Package postgres is the Postgres-backed implementation of the divergences
-// core ports (IC-02, ADR-10). The one-open-row invariant is enforced by the
+// core ports (IC-02, ADR-011). The one-open-row invariant is enforced by the
 // partial unique index divergences_one_open_row (0087_divergences.sql); this
 // adapter's INSERT ... ON CONFLICT ... WHERE resolved_at IS NULL DO UPDATE
 // targets exactly that index, following the same upsert idiom proven at
@@ -81,7 +81,7 @@ WHERE tenant_id = $1 AND provider = $2 AND entity_type = $3 AND entity_id = $4 A
   AND resolved_at IS NULL`
 
 // Evaluate implements IC-02's one-open-row-per-(entity,kind) decision
-// (ADR-10). Order of checks: (1) no linkage → skip, before any other
+// (ADR-011). Order of checks: (1) no linkage → skip, before any other
 // validation — there is nothing to evaluate; (2) both observation
 // timestamps are mandatory, named-error rejected, never defaulted; (3)
 // compare expected vs observed within Kind's tolerance and either

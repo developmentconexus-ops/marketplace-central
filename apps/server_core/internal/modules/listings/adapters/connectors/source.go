@@ -19,7 +19,7 @@ import (
 // deliberately: MultigetHydrator (backfill.go) depends on this exact type,
 // and keeping the interface's own file stable avoids churn on an unrelated
 // file for a type that outlived its original implementer (the now-deleted
-// page-based Source/NewSourceWithObserver — F-04, ADR-04 single-writer).
+// page-based Source/NewSourceWithObserver — F-04, ADR-024 single-writer).
 type SnapshotObserver interface {
 	AbsorbProviderSnapshots(ctx context.Context, installationID string, snapshots []connectorsdomain.ListingSnapshot) error
 }

@@ -19,7 +19,7 @@ type ImportOrdersInput struct {
 }
 
 // ImportService enumerates provider order ids for an installation and ingests each one through
-// the single write path (F-02, IC-06/ADR-04). It no longer builds domain.MarketplaceOrder
+// the single write path (F-02, IC-06/ADR-024). It no longer builds domain.MarketplaceOrder
 // itself — that shape only exists inside IngestService now, built from the richer per-order
 // OrderDetail fetch, not from this list-endpoint snapshot. The snapshot's only remaining job is
 // discovery: which provider_order_ids exist for this installation.

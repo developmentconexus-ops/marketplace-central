@@ -16,7 +16,7 @@ Leia, nesta ordem:
 
 1. `docs/superpowers/specs/2026-08-02-p2b-imposto-ex-ante-design.md` — o desenho aprovado. **Com as três emendas da §0.1 abaixo.**
 2. `Documents/MNOS/docs/product/sankhya-custo-formula.md` — por que `CUSSEMICM` **já** é líquido de ST/IPI/crédito de PIS-COFINS, e portanto o que **não** subtrair de novo.
-3. `docs/HARNESS-PROFILE.md` e `AGENTS.md` — regras de costura, ADR-04, ADR-17.
+3. `docs/HARNESS-PROFILE.md` e `AGENTS.md` — regras de costura, ADR-024, ADR-17.
 
 ### 0.1 Emendas à spec, decididas pelo operador em 2026-08-02 (posteriores ao commit `f6ddd38`)
 
@@ -133,7 +133,7 @@ Eventos válidos: `CLOSED` · `BLOCKED` · `ESCALATION` · `REQUEST` · `SPLIT-R
 
 ### Não tocar
 
-- `pricing/adapters/postgres/calc_repository.go` — costura do módulo `pricing` (ADR-04).
+- `pricing/adapters/postgres/calc_repository.go` — costura do módulo `pricing` (ADR-024).
 - `pricing_difal_rates` e a migração 0057 — a fatia remove o **consumo**, não a tabela.
 
 ---

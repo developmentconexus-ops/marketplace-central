@@ -82,7 +82,7 @@ type sweepCursorShape struct {
 // unmarshalled fields, never a byte-exact string), and (c) RunOnce's own
 // incremental-timestamp routing (scheduler.go:160, inferIncremental at
 // scheduler.go:178-193) resolves last_full_sync_at forward while leaving
-// last_incremental_at untouched, because ADR-07's ratified phase vocabulary
+// last_incremental_at untouched, because ADR-026's ratified phase vocabulary
 // maps "sweep" to incremental=false (scheduler.go:188-193, default case).
 func TestRealListingsJobThroughSchedulerPersistsTerminalSweepCursor(t *testing.T) {
 	testpostgres.SkipWithoutTarget(t)

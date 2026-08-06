@@ -267,7 +267,7 @@ func TestInferIncrementalTolerates(t *testing.T) {
 		{"json array, not an object", json.RawMessage(`[1,2,3]`), false},
 		{"phase incremental", json.RawMessage(`{"phase":"incremental"}`), true},
 		{"phase backfill", json.RawMessage(`{"phase":"backfill"}`), false},
-		{"unrecognized phase sweep falls to tolerant default (ADR-07 has no sweep phase)", json.RawMessage(`{"phase":"sweep"}`), false},
+		{"unrecognized phase sweep falls to tolerant default (ADR-026 has no sweep phase)", json.RawMessage(`{"phase":"sweep"}`), false},
 		{"phase empty string", json.RawMessage(`{"phase":""}`), false},
 		{"phase unrecognized", json.RawMessage(`{"phase":"bogus"}`), false},
 		{
@@ -297,7 +297,7 @@ func TestRunOnceDerivesIncrementalFromCursorPhase(t *testing.T) {
 	}{
 		{"phase incremental", json.RawMessage(`{"phase":"incremental"}`), true},
 		{"phase backfill", json.RawMessage(`{"phase":"backfill"}`), false},
-		{"unrecognized phase sweep falls to tolerant default (ADR-07 has no sweep phase)", json.RawMessage(`{"phase":"sweep"}`), false},
+		{"unrecognized phase sweep falls to tolerant default (ADR-026 has no sweep phase)", json.RawMessage(`{"phase":"sweep"}`), false},
 		{"legacy products shape (no phase key)", json.RawMessage(`{"source":"xlsx","processed":3}`), false},
 	}
 

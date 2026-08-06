@@ -26,7 +26,7 @@ ALTER TABLE orders_marketplace_orders
 ALTER TABLE orders_marketplace_orders
     ADD COLUMN IF NOT EXISTS date_last_updated_ml timestamptz;
 
--- Buyer fiscal, typed only (ADR-03/R-6: raw billing_info payload is
+-- Buyer fiscal, typed only (ADR-025/R-6: raw billing_info payload is
 -- forbidden). Exactly the fields the comprador_fiscal drawer renders today
 -- per p5-prerequisites.md §2 (buyer_fiscal_reader.go DTO) — no more, no less:
 -- uf_nome/state_name and fetched_at are deliberately excluded, they are not

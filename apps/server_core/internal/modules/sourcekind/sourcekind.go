@@ -1,7 +1,7 @@
 // Package sourcekind holds the SourceKind classification shared by the product
 // source port (internal_read/ports) and the per-tenant active-source config
 // (tenant_config). It is a dedicated, dependency-free package so both sides can
-// reference the type without an import cycle (ADR-02).
+// reference the type without an import cycle (ADR-023 §5).
 package sourcekind
 
 // SourceKind distinguishes the two shapes a product data source can take.

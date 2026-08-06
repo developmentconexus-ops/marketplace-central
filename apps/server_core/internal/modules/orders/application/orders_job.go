@@ -10,7 +10,7 @@ import (
 )
 
 // OrdersCursor é o estado persistido em sync_state.cursor para a entidade
-// orders. O campo Phase usa o vocabulário do ADR-07 (backfill|incremental|sweep)
+// orders. O campo Phase usa o vocabulário do ADR-026 (backfill|incremental|sweep)
 // porque o scheduler lê exatamente esse campo para decidir se o ciclo avança
 // last_incremental_at.
 type OrdersCursor struct {

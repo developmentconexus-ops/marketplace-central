@@ -91,7 +91,7 @@ type backfillCursor struct {
 // NEXT tick's tolerant parse (parseListingsCursor) treats phase=="sweep" as
 // "start a fresh backfill run", which is exactly how a daily-cadence
 // scheduler re-walks the whole catalog each cycle (ML has no reliable
-// incremental listing search — ADR-07's ratified vocabulary only resolves
+// incremental listing search — ADR-026's ratified vocabulary only resolves
 // "incremental" to true, never "sweep").
 type sweepCursor struct {
 	Phase           string    `json:"phase"`

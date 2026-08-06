@@ -4,7 +4,7 @@
 
 **Goal:** Fechar os seis campos que `/pedidos` entrega vazios porque o dado do provider nunca foi declarado ou porque o tipo torna `NULL` inalcançável — sem tocar em margem, que já funciona.
 
-**Architecture:** Metade "fio cortado" do M-06, re-ancorada por medição ao vivo em 2026-08-02. `orders/**` continua superfície exclusiva do M-06 (ADR-04); este plano não abre trilha nova. Toda tarefa é a mesma classe de defeito que o P1 fechou em `/anuncios`: o provider manda a chave, o DTO não declara, `encoding/json` descarta em silêncio, a coluna nasce vazia.
+**Architecture:** Metade "fio cortado" do M-06, re-ancorada por medição ao vivo em 2026-08-02. `orders/**` continua superfície exclusiva do M-06 (ADR-024); este plano não abre trilha nova. Toda tarefa é a mesma classe de defeito que o P1 fechou em `/anuncios`: o provider manda a chave, o DTO não declara, `encoding/json` descarta em silêncio, a coluna nasce vazia.
 
 **Tech Stack:** Go 1.x (`apps/server_core`), pgx + Postgres, OpenAPI 3 + `packages/sdk-runtime`, React/TS (`apps/web`).
 

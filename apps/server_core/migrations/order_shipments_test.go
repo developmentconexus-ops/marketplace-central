@@ -56,7 +56,7 @@ func TestOrderShipmentsMigrationMatchesIC03(t *testing.T) {
 		t.Error("order_shipments migration must not add a foreign key")
 	}
 
-	// Security criterion (P7 r01 B-7, ADR-03 amended): zero raw/payload-of-PII
+	// Security criterion (P7 r01 B-7, ADR-025 amended): zero raw/payload-of-PII
 	// columns anywhere on this table. Every declared column must be one of the
 	// typed facts above, never a jsonb catch-all.
 	for _, line := range strings.Split(body, "\n") {

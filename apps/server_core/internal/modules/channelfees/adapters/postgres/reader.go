@@ -44,7 +44,7 @@ LIMIT 1`
 // producer, kept here because the ladder order is decided and pinned by the
 // contract, not by this feature). Freight tries layer 2 only: freight has no
 // layer 1 (IC-01 — "frete NÃO tem camada 1"). Layer 3 is never queried by
-// either ladder (ADR-09).
+// either ladder (ADR-009).
 func (r *Reader) ResolveListingFees(ctx context.Context, tenantID, provider, installationID, providerListingID string) (domain.ResolvedListingFees, error) {
 	if tenantID == "" {
 		return domain.ResolvedListingFees{}, errors.New("channelfees: empty tenantID")

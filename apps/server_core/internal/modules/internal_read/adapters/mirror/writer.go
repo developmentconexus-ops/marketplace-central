@@ -1,7 +1,7 @@
 // Package mirror is M-04's own products_mirror writer, owned inside internal_read
 // (hub ruling R-2 (i)): fully disjoint from M-03's erp_import writer. It applies a
 // full snapshot (ADR: full-snapshot v1) to products_mirror + the child
-// products_mirror_stock_locations table with keep-absent merge semantics (ADR-04)
+// products_mirror_stock_locations table with keep-absent merge semantics (ADR-031)
 // and honest-NULL fields (ADR-17 — a missing value stays NULL, never a fabricated 0).
 //
 // Tenant scoping (AC-01): every statement is keyed on tenant_id. The Oracle read
@@ -111,7 +111,7 @@ ON CONFLICT (tenant_id, source, codigo_produto) DO UPDATE SET
 	stale_since = NULL,
 	updated_at = now()`
 
-// keepAbsentSQL implements ADR-04: rows present in the mirror for this source but
+// keepAbsentSQL implements ADR-031: rows present in the mirror for this source but
 // absent from the current snapshot are flagged (never physically deleted, and their
 // last-known values are preserved). stale_since is stamped once on the
 // present→absent transition (COALESCE keeps the original). Scope is THIS source

@@ -33,7 +33,7 @@ import (
 // + listingsapp.NewIngestion(listingsconnectors.NewSource(caps), ...) wiring
 // this file used to exercise. The refresh HTTP path now runs through the
 // SAME BackfillRunner (ids-only enumeration + multiget hydration) F-03's
-// scheduled job uses (ADR-04: one writer, no coexisting path), so this stub
+// scheduled job uses (ADR-024: one writer, no coexisting path), so this stub
 // implements the two optional capabilities that path type-asserts for:
 // idScanReader (ListListingsScanIDs) and multigetReader (GetItemsMultiget).
 type stubScanPage struct {

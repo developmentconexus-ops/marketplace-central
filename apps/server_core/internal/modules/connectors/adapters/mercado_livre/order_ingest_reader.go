@@ -91,7 +91,7 @@ type mlIngestPayment struct {
 // GetOrderDetail resolves the full /orders/{id} payload for ingest (MIS-007/M-03 F-01,
 // IC-03): the typed domain.OrderDetail (every column the 0089 extension + the existing
 // baseline from import_service.go normalizeOrders need) plus a raw capture with
-// buyer.billing_info stripped (ADR-03) — both from a SINGLE GET (EARS: "1 GET"), via the
+// buyer.billing_info stripped (ADR-025) — both from a SINGLE GET (EARS: "1 GET"), via the
 // shared M-01 resilience choke point (doRawWithHeaders, capability_adapter.go:751).
 //
 // A 403 (third-party order — a documented live fact, feature.md Negative Scenarios) maps to
@@ -121,7 +121,7 @@ func (a *CapabilityAdapter) GetOrderDetail(ctx context.Context, accountRef domai
 	rawOrder, err := redactBillingInfo(rawBody)
 	if err != nil {
 		// Cannot safely guarantee the billing_info redaction succeeded — drop the raw
-		// capture entirely rather than risk ADR-03 leaking a PII/fiscal fragment. The
+		// capture entirely rather than risk ADR-025 leaking a PII/fiscal fragment. The
 		// typed DTO below is the load-bearing data; raw is a supplementary capture only.
 		rawOrder = nil
 	}
@@ -161,7 +161,7 @@ func (a *CapabilityAdapter) doJSONRaw(ctx context.Context, accountRef domain.Pro
 	return rawBody, nil
 }
 
-// redactBillingInfo returns the order payload with `buyer.billing_info` removed (ADR-03: raw
+// redactBillingInfo returns the order payload with `buyer.billing_info` removed (ADR-025: raw
 // order capture may be held in memory MINUS billing_info). It operates on
 // map[string]json.RawMessage at the top level and inside `buyer` only, so every OTHER field
 // (order_items, payments, large numeric ids, …) is re-emitted byte-for-byte from its original

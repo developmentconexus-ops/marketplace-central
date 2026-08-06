@@ -56,7 +56,7 @@ type runStoreCall struct {
 
 // fakeRunStore records every UpsertPulledRows/MarkRunComplete call verbatim
 // (including the exact seenAt/runStartedAt argument each received) so tests
-// can assert the run-scoped ADR-06 pin survives across ticks and resumes,
+// can assert the run-scoped ADR-027 pin survives across ticks and resumes,
 // without needing a real Postgres-backed CompletedPullStore.
 type fakeRunStore struct {
 	upserts   []runStoreCall

@@ -931,7 +931,7 @@ frase que se sustenta sozinha:
 //   - status VERBATIM, sem remapeamento para um conjunto fechado — o
 //     vocabulário é do provider, e um remap silenciosamente descartaria
 //     status legítimos que a tabela já aceita.
-//   - UMA linha por item (VariationID = NoVariationID, ADR-13), com os dados
+//   - UMA linha por item (VariationID = NoVariationID, ADR-019), com os dados
 //     de variação como filhos em Variations, e não uma linha achatada por
 //     variação.
 //

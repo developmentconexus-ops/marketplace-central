@@ -115,7 +115,7 @@ Dois desses achados são de `listings`:
 
 ## Arquitetura do cursor
 
-Vocabulário ADR-07: `backfill | incremental | sweep`. Só `incremental` avança `last_incremental_at` — e o scheduler decide isso lendo o campo `phase` do cursor (`inferIncremental`), então o campo tem que existir com esse nome.
+Vocabulário ADR-026: `backfill | incremental | sweep`. Só `incremental` avança `last_incremental_at` — e o scheduler decide isso lendo o campo `phase` do cursor (`inferIncremental`), então o campo tem que existir com esse nome.
 
 ```json
 { "phase": "incremental", "last_updated_at": "2026-08-03T11:00:00Z", "offset": 0,
@@ -902,7 +902,7 @@ import (
 )
 
 // OrdersCursor é o estado persistido em sync_state.cursor para a entidade
-// orders. O campo Phase usa o vocabulário do ADR-07 (backfill|incremental|sweep)
+// orders. O campo Phase usa o vocabulário do ADR-026 (backfill|incremental|sweep)
 // porque o scheduler lê exatamente esse campo para decidir se o ciclo avança
 // last_incremental_at.
 type OrdersCursor struct {

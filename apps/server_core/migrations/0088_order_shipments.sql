@@ -2,7 +2,7 @@
 -- F-01-core-ddl).
 --
 -- Typed shipment facts only. No `raw` column, by design (IC-03, P7 r01 B-7,
--- ADR-03 amended): a shipment payload carries PII of delivery (receiver name,
+-- ADR-025 amended): a shipment payload carries PII of delivery (receiver name,
 -- street address, ZIP) — the same class of fact `cmd/mlprobe/main.go` flags as
 -- PII. `raw jsonb` stays scoped to `listings` only; the typed columns below are
 -- the COMPLETE persistence of shipment for this schema.

@@ -189,7 +189,7 @@ Tabelas sem job periódico:
 ### 5.3 O que já funciona
 
 - Falha de sync de products/listings **é** visível: `sync/application/scheduler.go:153-158` `RecordFailure` → `GET /sync/health` (`health_handler.go:43`, registrado `root.go:913`) → `integracoes/SyncHealthCard.tsx`
-- Rate limit tratado: `connectors/adapters/mercado_livre/resilience_decorator.go` — token bucket 900/min (`:48,113-132`), retry com `Retry-After` e backoff exponencial+jitter em 429 (`:211-244,258-289`), `maxAttempts=5`/`maxTotalWait=30s`. Escritas usam `doRawWithHeadersNoRetry` sem retry, decisão intencional (ADR-02, comentário em `:35`)
+- Rate limit tratado: `connectors/adapters/mercado_livre/resilience_decorator.go` — token bucket 900/min (`:48,113-132`), retry com `Retry-After` e backoff exponencial+jitter em 429 (`:211-244,258-289`), `maxAttempts=5`/`maxTotalWait=30s`. Escritas usam `doRawWithHeadersNoRetry` sem retry, decisão intencional (ADR-029, comentário em `:35`)
 
 ## 6. Rede de testes
 

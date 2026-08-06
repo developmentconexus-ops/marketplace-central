@@ -72,7 +72,7 @@ func TestBackfillSourceReadIDPageFailsWhenProviderLacksScanCapability(t *testing
 	}
 }
 
-// TestMultigetHydratorFeedsObserverBeforeMappingRows is the ADR-13 must-fail
+// TestMultigetHydratorFeedsObserverBeforeMappingRows is the ADR-019 must-fail
 // proof (required test 6): every hydrated item must ALSO reach the
 // SnapshotObserver, exactly once, with the per-variation EAN/SKU intact — if
 // HydrateBatch ever stopped calling AbsorbProviderSnapshots (a regression

@@ -21,7 +21,7 @@ import (
 // sibling tenant's row is untouched). The MASS-CLOSURE assertions that used
 // to live here (every omitted/absent row flips to status='closed', an empty
 // pull closes the whole installation) asserted the exact defect F-02 kills
-// (ADR-06, audit D-120 F1) and are gone — see
+// (ADR-027, audit D-120 F1) and are gone — see
 // TestApplyCompletedPull_AbortAfterPage1_NeverClosesUnseenRows and friends
 // below for the behavior that replaced them.
 func TestRepositoryCompletedPullIsAtomicAndTenantScoped(t *testing.T) {

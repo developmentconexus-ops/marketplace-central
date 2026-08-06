@@ -299,14 +299,14 @@ produtor do mesmo número.** Foi exatamente o erro que derrubou a primeira vers�
 
 Sobre matar a tabela: a fatia remove o **consumo** (o `RateForUF` sai do caminho de `/pedidos`)
 e **não** faz `DROP TABLE`. A tabela pertence ao módulo `pricing`, mesma costura de D-21, e
-derrubá-la por migração daqui violaria ADR-04. A migração de remoção é uma fatia do dono de
+derrubá-la por migração daqui violaria ADR-024. A migração de remoção é uma fatia do dono de
 `pricing`, com a verificação de que `/precos` também deixou de ler. Até lá a tabela fica órfã e
 o teste da §9 (`o valor não é 40,49`) é o que impede alguém de religá-la por engano.
 
 ### A costura
 
 `calc_repository.go` é do módulo `pricing`; P2.b é do M-06, dono de `orders/**`. Decisão do
-operador 2026-08-02: **orders para de consumir o perfil**, e `pricing` não é tocado. ADR-04
+operador 2026-08-02: **orders para de consumir o perfil**, e `pricing` não é tocado. ADR-024
 respeitado — um escritor por costura, e escrevemos só na nossa.
 
 Consequência aceita: `NewDefaultCalcProfile()` (SIMPLES 4%) sobrevive em `pricing`. Se `/precos`

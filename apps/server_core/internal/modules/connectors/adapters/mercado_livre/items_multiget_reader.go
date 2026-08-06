@@ -42,7 +42,7 @@ const itemMultigetRawCap = 256 * 1024
 // to any requested id, so the whole batch call fails rather than guessing.
 var ErrItemsMultigetBatchDecode = errors.New("items multiget: batch response undecodable")
 
-// ItemMultigetDTO is the per-item multiget result. Following ADR-03 (raw
+// ItemMultigetDTO is the per-item multiget result. Following ADR-025 (raw
 // seletivo): fields actually consumed by callers are typed, and the exact
 // per-item response bytes are ALSO captured in Raw for anything not yet
 // typed. Persistence of Raw (if any) is a decision for the ingest milestones
@@ -64,7 +64,7 @@ type ItemMultigetDTO struct {
 	// same full item representation as the single-item GET. Needed so a
 	// no-variation item can still derive a listing-level SellerSKU/EAN
 	// (multiget_mapper.go's MapMultigetItemToListingSnapshot) instead of
-	// leaving that ADR-13 seam honest-empty for lack of a typed field.
+	// leaving that ADR-019 seam honest-empty for lack of a typed field.
 	SellerSKU         string
 	SellerCustomField string
 	Attributes        []ItemMultigetAttributeDTO
@@ -376,7 +376,7 @@ func mapMultigetItemStatus(code int, body json.RawMessage) error {
 // (capability_adapter.go:747) but applied per item rather than per response.
 // Returns a copy (never aliases the caller's backing array) and an explicit
 // truncated flag — an oversize body is NEVER silently prefixed without the
-// flag (ADR-03).
+// flag (ADR-025).
 func capRawMessage(raw json.RawMessage) (json.RawMessage, bool) {
 	if len(raw) <= itemMultigetRawCap {
 		out := make(json.RawMessage, len(raw))

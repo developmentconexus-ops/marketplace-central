@@ -56,7 +56,7 @@ type OrderDetail struct {
 	Items    []OrderDetailItem
 	Payments []OrderDetailPayment
 
-	// RawOrder is the /orders/{id} response body MINUS buyer.billing_info (ADR-03,
+	// RawOrder is the /orders/{id} response body MINUS buyer.billing_info (ADR-025,
 	// feature.md Negative/Constraints): held in memory for the ingest layer only. Neither
 	// `orders_marketplace_orders` (0089) nor `order_shipments` (0088) carry a raw column —
 	// F-02 must NOT persist this field, it exists solely so a single GET can serve both the

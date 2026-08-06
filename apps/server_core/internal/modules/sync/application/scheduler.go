@@ -162,7 +162,7 @@ func (s *Scheduler) runJob(ctx context.Context, j registeredJob) {
 
 // inferIncremental peeks at the terminal cursor's "phase" field to decide
 // which success timestamp RecordSuccess should update (last_incremental_at
-// vs. last_full_sync_at). ADR-07 (amended 2026-08-01) ratifies the phase
+// vs. last_full_sync_at). ADR-026 (amended 2026-08-01) ratifies the phase
 // vocabulary as backfill | incremental | sweep. Only "incremental" resolves
 // true; "sweep" is a full/terminal sweep of listings (M-04's backfill cursor
 // lands on {"phase":"sweep",...}), so it resolves false like backfill, which

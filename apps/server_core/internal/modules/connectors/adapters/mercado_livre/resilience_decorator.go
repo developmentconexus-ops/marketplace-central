@@ -33,7 +33,7 @@ import (
 // Non-GET requests (price_writer.go, listing_writer.go, and the stock-quantity
 // PUT in capability_adapter.go) are routed to doRawWithHeadersNoRetry and never
 // auto-retry, since idempotent replay safety isn't assumed for writes yet
-// (ADR-02: "opt-out no-retry para writes"). Two previously-existing regression
+// (ADR-029: "opt-out no-retry para writes"). Two previously-existing regression
 // tests locked single-attempt behavior on HTTP 429 through GET call sites
 // under the old (call-site-opt-in) design — pricing_reader_test.go's
 // TestPriceToWinErrorMappingWithoutRetry and

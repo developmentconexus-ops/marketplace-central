@@ -62,7 +62,7 @@ func NewIngestService(cfg IngestServiceConfig) *IngestService {
 	}
 }
 
-// IngestOrder is IC-06's single write path (ADR-04). One order, one atomic transaction, no
+// IngestOrder is IC-06's single write path (ADR-024). One order, one atomic transaction, no
 // partial writes: every fetch below runs BEFORE the repository call, so any real error from any
 // of them returns without touching the store at all.
 //

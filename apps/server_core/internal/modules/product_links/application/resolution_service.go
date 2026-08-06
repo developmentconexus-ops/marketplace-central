@@ -214,7 +214,7 @@ type AutoApproveCandidateInput struct {
 	CollisionsAtDecision *int
 }
 
-// AutoApproveCandidate applies the single automatic path (D-121-2, ADR-05
+// AutoApproveCandidate applies the single automatic path (D-121-2, ADR-028
 // amended): CODPROD and EAN resolving the same product, with no hard negative.
 // It runs the SAME transition machine as ApproveCandidate — same link, same
 // audit row, same E10 write in the same transaction — and differs only in who

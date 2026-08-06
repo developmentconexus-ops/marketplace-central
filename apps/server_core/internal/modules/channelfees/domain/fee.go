@@ -1,5 +1,5 @@
 // Package domain holds the channel_fees ledger's provider-agnostic types and
-// write-time validation (IC-01, ADR-09). It must never import a Mercado
+// write-time validation (IC-01, ADR-009). It must never import a Mercado
 // Livre / provider-specific type (Q6 architectural boundary, proven by
 // boundary_test.go in the parent package) — every value here is generic
 // across providers, keyed by (tenant, provider, installation, subject).
@@ -89,7 +89,7 @@ type ResolvedFee struct {
 // ResolvedListingFees is the per-listing output of ResolveListingFees: one
 // ladder result per fee_kind. Commission resolves 2→1→absent; Freight
 // resolves 2→absent only (IC-01 Enums And Statuses — freight has no layer 1).
-// Layer 3 never participates in either ladder (ADR-09 — layer 3 rows may
+// Layer 3 never participates in either ladder (ADR-009 — layer 3 rows may
 // exist, written by other producers, but this reader ignores them).
 type ResolvedListingFees struct {
 	Commission ResolvedFee

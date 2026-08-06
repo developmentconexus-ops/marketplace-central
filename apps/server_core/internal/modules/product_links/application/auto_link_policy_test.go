@@ -11,7 +11,7 @@ import (
 	productlinksdomain "marketplace-central/apps/server_core/internal/modules/product_links/domain"
 )
 
-// The auto-linking policy ratified as ADR-05 amended (D-121-2): the ONLY
+// The auto-linking policy ratified as ADR-028 amended (D-121-2): the ONLY
 // automatic path is CODPROD and EAN resolving the same product. One anchor
 // alone is a confirmation the operator gives; ambiguity, conflict and
 // hard-negatives are review. These tests drive generation with the resolution

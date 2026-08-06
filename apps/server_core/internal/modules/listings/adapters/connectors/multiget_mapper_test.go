@@ -199,14 +199,14 @@ func TestMapMultigetItemToListingRequiresVariationID(t *testing.T) {
 }
 
 // TestMapMultigetItemToListingSnapshotFeedsObserverHonestly proves the
-// ADR-13 observer-feed shape now has CONTENT parity with the old single-item
+// ADR-019 observer-feed shape now has CONTENT parity with the old single-item
 // ReadListing path (capability_adapter.go's mapListing), not just count
 // parity: a no-variation item's OWN seller_sku/seller_custom_field/
 // attributes (typed on ItemMultigetDTO since the items_multiget_reader.go
 // fix) must produce a populated top-level SellerSKU/EAN — never honest-empty
 // when the source data is actually present — and must never skip producing
 // a snapshot at all (that would starve the observer, the exact must-fail
-// ADR-13 guards against).
+// ADR-019 guards against).
 func TestMapMultigetItemToListingSnapshotFeedsObserverHonestly(t *testing.T) {
 	t.Parallel()
 

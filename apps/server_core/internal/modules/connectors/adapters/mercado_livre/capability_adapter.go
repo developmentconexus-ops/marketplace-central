@@ -745,7 +745,7 @@ func (a *CapabilityAdapter) doRawWithIdempotency(ctx context.Context, accountRef
 // call-site-based: GET requests retry on HTTP 429 (Retry-After honored, else
 // exponential backoff+jitter, budget-bounded via the resilience decorator);
 // non-GET requests (writes) never retry automatically, because idempotent
-// replay safety isn't assumed for them yet (ADR-02: "opt-out no-retry para
+// replay safety isn't assumed for them yet (ADR-029: "opt-out no-retry para
 // writes" — a future milestone may add idempotency-keyed write retry, this one
 // does not). There are currently no POST reads in this package, so the
 // GET/non-GET split is exact, not approximate; if that ever changes, this

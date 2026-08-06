@@ -54,7 +54,7 @@ func (a *SankhyaAdapter) Kind() sourcekind.SourceKind {
 }
 
 // Sync reads the current Sankhya snapshot (as-of today) and applies it to
-// products_mirror via keep-absent merge (ADR-04) with honest-NULL fields
+// products_mirror via keep-absent merge (ADR-031) with honest-NULL fields
 // (ADR-17). Full-snapshot v1: keep-absent needs the complete set and TGFEST has no
 // change timestamp, so every run reads the whole active catalogue (ratified sync
 // strategy, mapping doc §"Estratégia de sync").
