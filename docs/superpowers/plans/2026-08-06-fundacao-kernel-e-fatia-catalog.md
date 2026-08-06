@@ -5272,3 +5272,503 @@ A regra é uma só: **não inventes contorno e não alteres o plano.**
 2. Faz commit do que já está feito e verde.
 3. Passa à tarefa seguinte que **não dependa** da bloqueada. As dependências reais são: T2–T5 dependem de T1 só por convenção (são independentes entre si); T6 é independente de tudo; T7 depende de T2/T3/T5; T8 depende de T7; T9 depende de T8; T10 depende de T9 **e do Postgres de pé**; T11 depende de T7; T12 depende de T6 e T7.
 4. Se o Postgres não estiver de pé, **T10 salta e T11 e T12 correm à mesma** — T11 não toca em base de dados nenhuma e T12 só precisa de T6 e T7.
+
+---
+
+# Adenda: as protecções que o portão não vê
+
+Aprovada em 2026-08-06, a executar **a seguir à Tarefa 12**.
+
+Porque existe: o plano T1–T12 fecha uma classe de defeito e é cego a outra.
+
+**Classe A — fronteira violada.** Módulo importa as tripas do vizinho. Instrumento: compilador (`internal/`), detetores de `internal/arch`, `scripts/arch-gate.sh`. Fechada por T1–T12.
+
+**Classe B — a mesma forma copiada à mão e a divergir.** `domain` → DTO → OpenAPI → SDK, quatro cópias. `GOV_API_SDK_SPLIT` exige que mudem no mesmo commit, nunca que **concordem**. 2.595 linhas de SDK manual, 172 interfaces; seis dos treze achados da Fatia A foram isto. O compilador é cego porque nenhuma cópia importa as outras.
+
+Medições que fundamentam esta adenda, todas de 2026-08-06:
+
+| medida | valor | comando |
+|---|---|---|
+| `go:generate` em `apps/server_core/internal` | **0** | `grep -rln "go:generate" apps/server_core/internal` |
+| ficheiros que lêem `contracts/governance/modules.json` | **1** | `grep -rln modules.json --include=*.{go,ts,sh,ps1}` |
+| parser YAML em `go.mod` | **nenhum** | `cat apps/server_core/go.mod` |
+| `openapi-typescript` em `package.json` | **ausente** | `head -60 package.json` |
+| linhas do contrato OpenAPI | 8.574 | `wc -l contracts/api/marketplace-central.openapi.yaml` |
+| entradas em `modules.json` | 21, uma delas `id: "catalog"` | `contracts/governance/modules.json` |
+
+---
+
+## Tarefa 13: o registo passa a ver os contextos
+
+O checador de governança não consegue registar um contexto. `scripts/harness/Policy.psm1:308` exige que a raiz de cada entrada seja exatamente `apps/server_core/internal/modules/<id>`:
+
+```powershell
+if ($module.root -ne "apps/server_core/internal/modules/$($module.id)" -or -not (Test-Path ...)) {
+  $issues.Add((New-PolicyIssue 'GOV_MODULE_COVERAGE' ([string]$module.id) ([string]$module.root)))
+}
+```
+
+Duas consequências: um contexto em `internal/contexts/` não pode ser inscrito, e — pior — **uma pasta nova em `internal/contexts/` sem entrada nenhuma não produz achado algum**, porque a regra só percorre o que já está no registo. É a mesma classe do "gate lê o diff, não o pack": o instrumento só vê o que lhe apontam.
+
+Há ainda colisão: `modules.json` já tem `id: "catalog"` apontando a `internal/modules/catalog`. Os dois vão coexistir durante toda a migração, por isso a chave de unicidade passa a ser o par `(kind, id)`, não o `id` sozinho.
+
+**Files:**
+- Modify: `contracts/governance/modules.json`
+- Modify: `contracts/governance/schemas/modules.schema.json`
+- Modify: `scripts/harness/Policy.psm1` (`Test-UniqueIds`, `Test-GovernanceDrift`)
+- Modify: `scripts/tests/governance-drift.tests.ps1`
+
+**Interfaces:**
+- Produces: campo `kind` (`"module"` | `"context"`, ausente = `"module"`) nas entradas do registo; achado `GOV_CONTEXT_UNREGISTERED`.
+- Consumes: nada de T1–T12 a não ser a existência de `apps/server_core/internal/contexts/catalog`.
+
+- [ ] **Step 1: Escreve os testes que falham, os dois**
+
+Em `scripts/tests/governance-drift.tests.ps1`, acrescenta ao fim do ficheiro:
+
+```powershell
+Describe 'Context registration' {
+  It 'accepts a context whose root lives under internal/contexts' {
+    $root = New-GovernanceFixture
+    $registryPath = Join-Path $root 'contracts/governance/modules.json'
+    $registry = Get-Content -Raw $registryPath | ConvertFrom-Json
+    $registry.modules += [pscustomobject]@{
+      id                   = 'catalog'
+      kind                 = 'context'
+      root                 = 'apps/server_core/internal/contexts/catalog'
+      code_owner_path      = 'apps/server_core/internal/contexts/catalog'
+      composition_required = $false
+      openapi_prefixes     = @()
+      dependencies         = @()
+    }
+    $registry | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $registryPath
+    Write-FixtureFile $root 'apps/server_core/internal/contexts/catalog/contracts/doc.go' "package contracts`n"
+
+    $result = Test-GovernanceDrift -RepositoryRoot $root
+    ($result.Issues | Where-Object code -eq 'GOV_MODULE_COVERAGE') | Should -BeNullOrEmpty
+  }
+
+  # The rule that actually closes the hole: a context directory nobody
+  # registered must be a finding, not silence.
+  It 'reports a context directory with no registry entry' {
+    $root = New-GovernanceFixture
+    Write-FixtureFile $root 'apps/server_core/internal/contexts/orphan/contracts/doc.go' "package contracts`n"
+
+    $result = Test-GovernanceDrift -RepositoryRoot $root
+    $issue = $result.Issues | Where-Object code -eq 'GOV_CONTEXT_UNREGISTERED'
+    $issue | Should -Not -BeNullOrEmpty
+    $issue.subject | Should -Be 'orphan'
+  }
+}
+```
+
+Se `New-GovernanceFixture` tiver outro nome no ficheiro, usa o que lá está — a função que cria a árvore temporária e devolve `$root` (é a que termina em `return $root` por volta da linha 89).
+
+- [ ] **Step 2: Corre e vê falhar os dois**
+
+```bash
+cd "C:/Users/leandro.theodoro/Documents/marketplace-central" && pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command governance
+```
+
+Esperado: os dois testes novos FALHAM — o primeiro com `GOV_MODULE_COVERAGE` presente, o segundo com `GOV_CONTEXT_UNREGISTERED` inexistente. Cola o output.
+
+Corre num worktree limpo se o lane de governança reclamar de árvore suja; é falso-negativo conhecido.
+
+- [ ] **Step 3: Ensina o checador**
+
+Em `scripts/harness/Policy.psm1`, dentro de `Test-GovernanceDrift`, substitui a condição da linha 308 por:
+
+```powershell
+    # A registry entry's root is derived from its kind. Absent kind means
+    # "module", so the 21 existing entries need no edit.
+    $kind = if ([string]::IsNullOrWhiteSpace([string]$module.kind)) { 'module' } else { [string]$module.kind }
+    $expectedRoot = switch ($kind) {
+      'context' { "apps/server_core/internal/contexts/$($module.id)" }
+      default   { "apps/server_core/internal/modules/$($module.id)" }
+    }
+    if ($module.root -ne $expectedRoot -or -not (Test-Path -LiteralPath (Resolve-RepositoryPath $RepositoryRoot ([string]$module.root)) -PathType Container)) {
+      $issues.Add((New-PolicyIssue 'GOV_MODULE_COVERAGE' ([string]$module.id) ([string]$module.root)))
+    }
+```
+
+E acrescenta, ainda dentro de `Test-GovernanceDrift`, **depois** do laço que percorre `$moduleRegistry.modules`:
+
+```powershell
+  # Walk the tree, not the registry. Walking only the registry can never find
+  # what nobody registered, which is precisely the hole this rule closes.
+  $contextsRoot = Resolve-RepositoryPath $RepositoryRoot 'apps/server_core/internal/contexts'
+  if (Test-Path -LiteralPath $contextsRoot -PathType Container) {
+    $registered = @(
+      $moduleRegistry.modules |
+        Where-Object { [string]$_.kind -eq 'context' } |
+        ForEach-Object { [string]$_.id }
+    )
+    foreach ($dir in Get-ChildItem -LiteralPath $contextsRoot -Directory) {
+      if ($dir.Name -notin $registered) {
+        $issues.Add((New-PolicyIssue 'GOV_CONTEXT_UNREGISTERED' $dir.Name "apps/server_core/internal/contexts/$($dir.Name)"))
+      }
+    }
+  }
+```
+
+Em `Test-UniqueIds`, a chave passa a ser o par. Se a função receber a coleção de módulos, troca a projeção do id por:
+
+```powershell
+  # (kind, id), not id: internal/modules/catalog and internal/contexts/catalog
+  # coexist for the whole migration and both are legitimately called catalog.
+  $keys = $Items | ForEach-Object {
+    $k = if ([string]::IsNullOrWhiteSpace([string]$_.kind)) { 'module' } else { [string]$_.kind }
+    "$k/$($_.id)"
+  }
+```
+
+Confirma o nome real do parâmetro antes de editar:
+
+```bash
+cd "C:/Users/leandro.theodoro/Documents/marketplace-central" && sed -n '57,63p' scripts/harness/Policy.psm1
+```
+
+- [ ] **Step 4: Abre o esquema ao campo novo**
+
+Em `contracts/governance/schemas/modules.schema.json`, na definição de uma entrada de módulo, acrescenta a propriedade:
+
+```json
+"kind": {
+  "type": "string",
+  "enum": ["module", "context"],
+  "description": "Absent means module. A context lives under internal/contexts and follows ADR-023 as amended."
+}
+```
+
+Não a acrescentes a `required` — as 21 entradas existentes não a têm e não devem ser tocadas.
+
+- [ ] **Step 5: Corre e vê passar**
+
+```bash
+cd "C:/Users/leandro.theodoro/Documents/marketplace-central" && pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command governance
+```
+
+Esperado: **todos** os testes PASS, incluindo os 21 módulos antigos. Se algum dos antigos partiu, o `kind` por omissão não está a funcionar — corrige isso, não relaxes o teste.
+
+- [ ] **Step 6: Inscreve o contexto a sério**
+
+Em `contracts/governance/modules.json`, dentro de `modules`, acrescenta:
+
+```json
+{
+  "id": "catalog",
+  "kind": "context",
+  "root": "apps/server_core/internal/contexts/catalog",
+  "code_owner_path": "apps/server_core/internal/contexts/catalog",
+  "composition_required": false,
+  "openapi_prefixes": [],
+  "dependencies": []
+}
+```
+
+`composition_required: false` e `openapi_prefixes: []` porque este plano não liga o `WireCatalog` ao arranque nem publica rota. Ambos passam a `true`/preenchido no dia em que isso mudar — e não antes, senão o registo mente.
+
+- [ ] **Step 7: Prova que o portão reprova de verdade**
+
+Um registo que nunca acusou não é um registo. Cria uma pasta de contexto órfã na árvore real:
+
+```bash
+cd "C:/Users/leandro.theodoro/Documents/marketplace-central" && mkdir -p apps/server_core/internal/contexts/tmporphan && printf 'package tmporphan\n' > apps/server_core/internal/contexts/tmporphan/doc.go
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command governance; echo "EXIT=$?"
+```
+
+Esperado: **FAIL**, com `GOV_CONTEXT_UNREGISTERED` e `tmporphan`. Cola o output.
+
+```bash
+cd "C:/Users/leandro.theodoro/Documents/marketplace-central" && rm -rf apps/server_core/internal/contexts/tmporphan && git status --porcelain --untracked-files=all
+```
+
+Esperado: sem qualquer linha `tmporphan`.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git status --porcelain --untracked-files=all
+git add contracts/governance/modules.json contracts/governance/schemas/modules.schema.json scripts/harness/Policy.psm1 scripts/tests/governance-drift.tests.ps1
+git commit -m "feat(gov): registo ve contextos e acusa pasta nao registada"
+```
+
+---
+
+## Tarefa 14: uma forma, um gerador
+
+Esta tarefa **precisa de dependência**, e por isso começa por um `REQUEST` ao hub. Não faças `go get` nem `npm install` antes da resposta — dependência instalada por ritual é exatamente o que a doutrina proíbe.
+
+O que se pede e porquê, para o `REQUEST` não ser uma linha vazia:
+
+- **`github.com/oapi-codegen/oapi-codegen/v2`** (Go, geração de tipos de transporte a partir do OpenAPI). Alternativa considerada: escrever o gerador à mão em stdlib. Rejeitada — o `go.mod` não tem parser YAML nenhum, portanto um gerador próprio precisaria de uma dependência à mesma, e ainda seria uma quinta cópia da forma, escrita à mão, que é a causa-raiz que estamos a fechar.
+- **`openapi-typescript`** (npm devDependency, geração dos tipos do SDK). O `package.json` tem hoje três devDependencies (`@types/node`, `jsdom`, `typescript`); não há geração nenhuma.
+
+**Se o hub recusar**, o plano de recurso é code-first e sem dependências: o gerador lê os tipos Go de transporte com `go/ast` — instrumento que T6 já usa — e emite o fragmento OpenAPI e o `.d.ts` por construção de texto, sem parser YAML. É pior (o contrato deixa de ser a fonte e passa a ser derivado), mas fecha a classe B na mesma. Regista a recusa e o caminho escolhido em `.mnfs/HARNESS-DEBTS.md` antes de seguir.
+
+**Files:**
+- Create: `.mnfs/REQUESTS/2026-08-06-codegen-dependencies.md`
+- Create: `apps/server_core/internal/contexts/catalog/transport/generate.go`
+- Create: `apps/server_core/internal/contexts/catalog/transport/types.gen.go` (gerado, commitado)
+- Create: `packages/sdk-runtime/src/generated/catalog.d.ts` (gerado, commitado)
+- Modify: `contracts/api/marketplace-central.openapi.yaml`
+- Modify: `scripts/arch-gate.sh`
+
+**Interfaces:**
+- Produces: alvo `codegen` no portão; artefactos gerados commitados e verificados por diff.
+- Consumes: `contracts.ProductObservation` e `port.Summary` (T7) como as formas a publicar.
+
+- [ ] **Step 1: Escreve o REQUEST e PARA**
+
+`.mnfs/REQUESTS/2026-08-06-codegen-dependencies.md`:
+
+```markdown
+# REQUEST: duas dependências para fechar a classe B
+
+## Pedido
+- Go: `github.com/oapi-codegen/oapi-codegen/v2` (ferramenta de geração, `tool` directive)
+- npm: `openapi-typescript` (devDependency da raiz)
+
+## Motivo, medido em 2026-08-06
+- `go:generate` em `apps/server_core/internal`: 0
+- SDK TypeScript: 2.595 linhas manuais, 172 interfaces
+- `GOV_API_SDK_SPLIT` exige mesmo commit, nunca concordância
+- 6 dos 13 achados da Fatia A foram divergência entre cópias da mesma forma
+
+## Alternativa sem dependência
+Gerador próprio code-first sobre `go/ast`. Fecha a classe B, mas inverte a
+direção do contrato (OpenAPI passa a derivado) e acrescenta código nosso ao
+eixo onde o problema é precisamente haver código nosso a mais.
+
+## Impacto se recusado
+A fatia catalog não publica HTTP até haver gerador. Nenhuma tarefa de T1–T13
+fica bloqueada.
+```
+
+```bash
+cd "C:/Users/leandro.theodoro/Documents/marketplace-central" && git add .mnfs/REQUESTS/2026-08-06-codegen-dependencies.md && git commit -m "chore(request): duas dependencias de codegen para fechar a classe B"
+```
+
+**Para aqui e emite o evento `REQUEST` ao hub.** Não avances para o Step 2 sem resposta. Se estiveres a correr sozinho de noite, salta para a Tarefa 15 e deixa a 14 aberta.
+
+- [ ] **Step 2: Declara a forma no contrato**
+
+Só depois do `ACK`. Em `contracts/api/marketplace-central.openapi.yaml`, dentro de `components.schemas`, acrescenta as duas formas que a fatia publica — e nada mais, porque uma forma no contrato sem consumidor é dívida (11 operações do contrato já estão nesse estado):
+
+```yaml
+    CatalogProductSummary:
+      type: object
+      required: [productId, version, identifiers, description]
+      properties:
+        productId:
+          type: string
+          description: Opaque platform identifier. Never an ERP code.
+          example: prd_9f2c1a4e6b7d8039
+        version:
+          type: integer
+          minimum: 1
+        description:
+          $ref: '#/components/schemas/KnownString'
+        identifiers:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalogIdentifier'
+
+    CatalogIdentifier:
+      type: object
+      required: [kind, value]
+      properties:
+        kind:
+          type: string
+          enum: [ean, sku, gtin]
+        value:
+          type: string
+          minLength: 1
+
+    # ADR-017 on the wire. A consumer that reads `value` without reading
+    # `state` gets a compile error in TypeScript, because value is absent when
+    # state is not "known".
+    KnownString:
+      type: object
+      required: [state]
+      properties:
+        state:
+          type: string
+          enum: [known, estimated, unknown, not_applicable]
+        value:
+          type: string
+        reason:
+          type: string
+```
+
+- [ ] **Step 3: Liga os geradores**
+
+`apps/server_core/internal/contexts/catalog/transport/generate.go`:
+
+```go
+// Package transport publishes Catalog over HTTP. Every type in this package
+// that crosses the wire is generated from the OpenAPI contract; hand-writing
+// one would recreate the divergence this package exists to prevent.
+package transport
+
+//go:generate go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen -generate types -package transport -include-tags catalog -o types.gen.go ../../../../../../contracts/api/marketplace-central.openapi.yaml
+```
+
+Confirma o caminho relativo antes de correr — conta os níveis a partir de `apps/server_core/internal/contexts/catalog/transport/` até à raiz do repositório:
+
+```bash
+cd "C:/Users/leandro.theodoro/Documents/marketplace-central/apps/server_core/internal/contexts/catalog/transport" && ls ../../../../../../contracts/api/marketplace-central.openapi.yaml
+```
+
+Esperado: o caminho existe. Se não, ajusta o número de `../` no `go:generate` até existir.
+
+No `package.json` da raiz, acrescenta ao bloco `scripts`:
+
+```json
+    "codegen:sdk": "openapi-typescript contracts/api/marketplace-central.openapi.yaml -o packages/sdk-runtime/src/generated/catalog.d.ts"
+```
+
+Gera os dois e commita o resultado:
+
+```bash
+cd "C:/Users/leandro.theodoro/Documents/marketplace-central/apps/server_core" && GOCACHE="$(pwd)/.gocache" go generate ./internal/contexts/catalog/transport/
+cd "C:/Users/leandro.theodoro/Documents/marketplace-central" && npm run codegen:sdk
+```
+
+Os ficheiros gerados **vão para o git**. Um artefacto gerado e não commitado é indiferenciável de um artefacto que ninguém gerou, e o diff do portão deixa de ter contra o que comparar.
+
+- [ ] **Step 4: O portão passa a exigir concordância**
+
+Em `scripts/arch-gate.sh`, **antes** do bloco `working tree`, insere:
+
+```bash
+step "codegen agrees with the contract"
+(cd "$SERVER" && go generate ./internal/contexts/.../transport/ >/dev/null)
+npm run --silent codegen:sdk >/dev/null
+# Two checks, not one. `git diff --exit-code` is blind to untracked files, so a
+# generator that emits a brand-new file would pass silently.
+if ! git diff --exit-code -- \
+      "$SERVER/internal/contexts" \
+      packages/sdk-runtime/src/generated; then
+  echo "codegen: generated output differs from what is committed"
+  fail=1
+elif [ -n "$(git status --porcelain --untracked-files=all -- "$SERVER/internal/contexts" packages/sdk-runtime/src/generated)" ]; then
+  git status --porcelain --untracked-files=all -- "$SERVER/internal/contexts" packages/sdk-runtime/src/generated
+  echo "codegen: generator produced files that are not committed"
+  fail=1
+else
+  echo "codegen: generated output matches the contract"
+fi
+```
+
+E fixa a versão do gerador, senão o portão mede a ferramenta e não o contrato. Em `apps/server_core/go.mod`, na directiva `tool`, e no `package.json` com versão exata (`"openapi-typescript": "7.x.y"`, sem `^`).
+
+- [ ] **Step 5: Prova que o portão apanha a divergência**
+
+```bash
+cd "C:/Users/leandro.theodoro/Documents/marketplace-central" && python - <<'EOF'
+import re, pathlib
+p = pathlib.Path("contracts/api/marketplace-central.openapi.yaml")
+s = p.read_text(encoding="utf-8")
+p.write_text(s.replace("        version:\n          type: integer\n          minimum: 1",
+                       "        version:\n          type: integer\n          minimum: 1\n        probeField:\n          type: string", 1), encoding="utf-8")
+EOF
+./scripts/arch-gate.sh; echo "EXIT=$?"
+```
+
+Esperado: `ARCH GATE: FAIL`, `EXIT=1`, no bloco `codegen agrees with the contract`. Cola o output.
+
+Desfaz **por edição, nunca por checkout** — apaga as duas linhas `probeField` do YAML — e volta a correr:
+
+```bash
+./scripts/arch-gate.sh; echo "EXIT=$?"
+```
+
+Esperado: `ARCH GATE: PASS`, `EXIT=0`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git status --porcelain --untracked-files=all
+git add contracts/api/marketplace-central.openapi.yaml apps/server_core/internal/contexts/catalog/transport apps/server_core/go.mod apps/server_core/go.sum package.json package-lock.json packages/sdk-runtime/src/generated scripts/arch-gate.sh
+git commit -m "feat(codegen): OpenAPI e a unica fonte da forma, portao exige concordancia"
+```
+
+---
+
+## Tarefa 15: o ADR deixa de mentir
+
+As emendas ao protocolo de módulo estão em `docs/superpowers/specs/2026-08-06-protocolo-de-codigo-design.md` §14. O ficheiro `docs/architecture/decisions/023-module-protocol.md` está intacto e continua a dizer o que dizia antes. Duas fontes, a mesma regra, respostas diferentes — e a ordem de verdade do repositório põe o ADR **acima** do spec.
+
+Prosa falsa em documento de decisão apaga-se; não se anota ao lado.
+
+**Files:**
+- Modify: `docs/architecture/decisions/023-module-protocol.md`
+
+**Interfaces:** nenhuma. Não há código nesta tarefa.
+
+- [ ] **Step 1: Põe as duas fontes lado a lado**
+
+```bash
+cd "C:/Users/leandro.theodoro/Documents/marketplace-central" && sed -n '44,120p' docs/architecture/decisions/023-module-protocol.md
+```
+
+E a secção de emendas do spec:
+
+```bash
+cd "C:/Users/leandro.theodoro/Documents/marketplace-central" && awk '/^## 14/,0' docs/superpowers/specs/2026-08-06-protocolo-de-codigo-design.md
+```
+
+Escreve a lista das divergências concretas, cada uma com `ficheiro:linha` dos dois lados. Sem essa lista o resto desta tarefa é adivinhação.
+
+- [ ] **Step 2: Corrige §1 e §2 do ADR**
+
+Reescreve as duas secções para o que ficou provado, não para o que se supunha:
+
+- **§2 — a regra de import.** O ADR descrevia-a como convenção verificada. Passa a **imposta pelo compilador**: a regra `internal/` do Go aplica-se a *qualquer* `internal/` da árvore, não só à raiz do módulo. Cita a medição: com `api/` no sítio antigo o irmão importa e compila limpo; movido para `internal/api`, o mesmo import dá `use of internal package .../mercadolivre/internal/api not allowed`.
+- **§2-a — a fachada, que o ADR não tinha.** Como nem o composition root consegue nomear um tipo interno de adaptador, o adaptador é **obrigado** a expor `New() Bundle` com campos tipados pelas portas dos contextos consumidores. Não é escolha de estilo; é o que resta depois de o compilador rejeitar tudo o resto.
+- **§1 — o que é um módulo.** Acrescenta o `kind: "context"` de T13 e a raiz `internal/contexts/<id>`, com a nota de que `internal/modules/` e `internal/contexts/` coexistem durante toda a migração e que a chave do registo é o par `(kind, id)`.
+
+Apaga — não comentes, não riscas — qualquer frase que a medição tornou falsa.
+
+- [ ] **Step 3: Fecha o ciclo no spec**
+
+Em `docs/superpowers/specs/2026-08-06-protocolo-de-codigo-design.md` §14, marca cada emenda como aplicada, com o SHA do commit do Step 4. O spec passa a apontar para o ADR em vez de o contradizer.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git status --porcelain --untracked-files=all
+git add docs/architecture/decisions/023-module-protocol.md docs/superpowers/specs/2026-08-06-protocolo-de-codigo-design.md
+git commit -m "docs(adr): ADR-023 alinhado com a medicao — fronteira e Nivel 1, fachada e forcada"
+```
+
+---
+
+## Medição de fecho da adenda
+
+```bash
+cd "C:/Users/leandro.theodoro/Documents/marketplace-central"
+echo "contexts registados:   $(python -c "import json;d=json.load(open('contracts/governance/modules.json',encoding='utf-8'));print(sum(1 for m in d['modules'] if m.get('kind')=='context'))")"
+echo "pastas em contexts/:   $(ls apps/server_core/internal/contexts | wc -l)"
+echo "go:generate no repo:   $(grep -rln 'go:generate' apps/server_core/internal | wc -l)"
+echo "ficheiros gerados:     $(git ls-files '*types.gen.go' 'packages/sdk-runtime/src/generated/*' | wc -l)"
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command governance; echo "GOV_EXIT=$?"
+./scripts/arch-gate.sh; echo "GATE_EXIT=$?"
+```
+
+| medida | esperado |
+|---|---|
+| contexts registados | igual a "pastas em contexts/" |
+| `go:generate` no repo | ≥ 1 (0 se o hub recusou T14) |
+| ficheiros gerados commitados | ≥ 2 (0 se o hub recusou T14) |
+| `GOV_EXIT` | 0 |
+| `GATE_EXIT` | 0 |
+
+Qualquer desvio é achado, e vai para `.mnfs/HARNESS-DEBTS.md` com `file:line`.
+
+## O que a adenda continua a NÃO fazer
+
+- **Não migra os 21 módulos** para `internal/contexts/`. T13 dá-lhes o caminho; a viagem é a Onda 2.
+- **Não gera as 2.595 linhas do SDK manual.** T14 gera **só** a forma nova do catalog. Regenerar o SDK antigo obriga a declarar 172 interfaces no OpenAPI e é obra própria.
+- **Não publica rota.** T14 gera os *tipos*; handler, router e OpenAPI `paths` ficam para quando houver ecrã que os consuma.
