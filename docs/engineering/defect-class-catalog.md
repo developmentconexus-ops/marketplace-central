@@ -14,8 +14,8 @@
 > (Hand-Synced Enumerations). Read it first; rung numbers below refer to it.
 > **This file's axis is different and complementary: verification, evidence, and
 > agent-authored work.** Where a class overlaps, the overlap is named explicitly.
-> **Last verified:** 2026-08-06 — 27 classes. V10, V11, P6, P7 and F5 were added from the
-> foundation-kernel work; root cause 8 with them.
+> **Last verified:** 2026-08-06 — 31 classes (`grep -c '^## Class'`). V10, V11, P6, P7 and
+> F5 were added from the foundation-kernel work; root cause 8 with them.
 
 ---
 
