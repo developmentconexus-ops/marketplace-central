@@ -6,8 +6,11 @@ package catalog
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"marketplace-central/apps/server_core/internal/contexts/catalog/contracts"
 	"marketplace-central/apps/server_core/internal/contexts/catalog/internal/application"
+	"marketplace-central/apps/server_core/internal/contexts/catalog/internal/postgres"
 	"marketplace-central/apps/server_core/internal/contexts/catalog/port"
 )
 
@@ -17,9 +20,21 @@ type Module struct {
 	reader  port.Reader
 }
 
-// New assembles the context from its dependencies.
-func New(store application.Store, ids application.IDFactory, reader port.Reader) *Module {
-	return &Module{service: application.NewService(store, ids), reader: reader}
+// New assembles the context from the ONLY thing an outsider may legitimately
+// name: a connection pool.
+//
+// Every other collaborator — the store, the id factory, the reader — is chosen
+// here, inside the context, because their types live under internal/ and a
+// parameter typed by one of them would have no legal caller. That was the state
+// this constructor was in: the composition root could only satisfy it by
+// importing catalog/internal/postgres, which the compiler refused. The refusal
+// was correct; the signature was the defect.
+func New(pool *pgxpool.Pool) *Module {
+	repo := postgres.NewRepository(pool)
+	return &Module{
+		service: application.NewService(repo, postgres.NewULIDFactory()),
+		reader:  postgres.NewSummaryReader(repo),
+	}
 }
 
 // IngestProduct folds one source observation into the catalogue.

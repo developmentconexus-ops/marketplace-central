@@ -10,7 +10,6 @@ import (
 
 	"marketplace-central/apps/server_core/internal/contexts/catalog"
 	"marketplace-central/apps/server_core/internal/contexts/catalog/contracts"
-	catalogpostgres "marketplace-central/apps/server_core/internal/contexts/catalog/internal/postgres"
 	"marketplace-central/apps/server_core/internal/kernel/fact"
 	"marketplace-central/apps/server_core/internal/kernel/provenance"
 	"marketplace-central/apps/server_core/internal/kernel/tenant"
@@ -45,8 +44,7 @@ func TestCatalogIngestPersistsAndIsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("tenant.Parse: %v", err)
 	}
-	repo := catalogpostgres.NewRepository(pool)
-	module := catalog.New(repo, catalogpostgres.NewULIDFactory(), catalogpostgres.NewSummaryReader(repo))
+	module := catalog.New(pool)
 
 	ctx := context.Background()
 	stamp := time.Now().UTC().UnixNano()
@@ -104,8 +102,7 @@ func TestCatalogIsInvisibleToAnotherTenant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("tenant.Parse: %v", err)
 	}
-	repo := catalogpostgres.NewRepository(pool)
-	module := catalog.New(repo, catalogpostgres.NewULIDFactory(), catalogpostgres.NewSummaryReader(repo))
+	module := catalog.New(pool)
 
 	ctx := context.Background()
 	stamp := time.Now().UTC().UnixNano()

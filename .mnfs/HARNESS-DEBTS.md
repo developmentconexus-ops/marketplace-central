@@ -634,6 +634,67 @@ Conserto: ou o comando passa a rodar os dois lados e emitir só `HEAD \ BASE`, o
 renomeado para `governance-snapshot` e o diff vira comando próprio. O nome atual é uma
 promessa que o código não cumpre.
 
+---
+
+**D-34. Consertar D-30 destapa `TestModuleBoundaryADR023` (234 violações pré-existentes em
+`internal/modules/`), que o build quebrado escondia** (Fecho da Fundação, Tarefa 2,
+`internal/composition/module_boundary_arch_test.go`, 2026-08-06) — ABERTA, fora do escopo desta
+tarefa.
+
+Depois de fechar D-29/D-30 (`catalog.New(pool)`, ver acima), `go build ./...` e `go vet ./...`
+saem limpos (EXIT 0, sem output), mas `go test ./internal/...` continua vermelho — não pela
+mesma linha de D-30 (essa já não existe), e sim porque dois testes que vivem nos MESMOS pacotes
+do build quebrado só agora conseguem correr:
+
+```
+--- FAIL: TestNoVendorTokenInKernel (0.00s)
+    repo_test.go:62: ../kernel/channel/channel_test.go:16 adapters/vendor-token-outside-adapters: mercadolivre in string literal
+    repo_test.go:62: ../kernel/channel/channel_test.go:20 adapters/vendor-token-outside-adapters: mercadolivre in string literal
+    repo_test.go:62: ../kernel/channel/channel_test.go:21 adapters/vendor-token-outside-adapters: mercadolivre in string literal
+    repo_test.go:62: ../kernel/channel/channel_test.go:33 adapters/vendor-token-outside-adapters: mercadolivre in string literal
+    repo_test.go:62: ../kernel/channel/channel_test.go:43 adapters/vendor-token-outside-adapters: mercadolivre in string literal
+    repo_test.go:62: ../kernel/channel/channel_test.go:51 adapters/vendor-token-outside-adapters: mercadolivre in string literal
+    repo_test.go:62: 6 vendor tokens in the kernel
+FAIL
+FAIL	marketplace-central/apps/server_core/internal/arch	3.947s
+
+--- FAIL: TestModuleBoundaryADR023 (0.06s)
+    module_boundary_arch_test.go:216: 234 violation(s)
+        ADR-023 §2 module boundary violated
+        by origin layer: 146 adapters, 42 application, 20 composition, 12 transport, 9 ports,
+        2 domain, 2 integration, 1 (module root, no layer)
+        by target: 40 connectors/domain, 38 internal_read/domain, 19 connectors/application,
+        15 erp_import/adapters, 13 erp_import/domain, 13 integrations/domain, 13 tenant_config,
+        11 listings/domain, 9 catalog/domain, ... (61 target buckets total)
+FAIL
+FAIL	marketplace-central/apps/server_core/internal/composition	10.862s
+```
+
+The first is D-28 verbatim, same 6 hits, unrelated to catalog — already registered. The second
+is NEW to this registry: `TestModuleBoundaryADR023` lives in package `internal/composition`
+(the same package D-30 broke the build of), so before this task it never ran — `go test` reported
+`[setup failed]` on the D-30 compile error before it could even attempt this test. Fixing D-30
+did not introduce these 234 violations; it removed the compile error that was masking a test that
+was already red against the already-committed `internal/modules/` tree. `git log` on
+`internal/composition/module_boundary_arch_test.go` shows it predates this session
+(`484f40db`, `9555a96c`), and every violation site printed lives under `internal/modules/**`,
+the legacy tree that global constraint 1 of this plan (`fecho-global-constraints.md`) forbids
+touching: *"Nada em `apps/server_core/internal/modules/` é tocado. A árvore legada é
+inventariada, nunca crescida."*
+
+Consequência: `go test ./internal/...` cannot be green while both (a) `internal/composition`
+builds (which this task correctly restored) and (b) `internal/modules/` carries its
+pre-existing ADR-023 debt un-migrated. These two facts are in tension only because the arch test
+that measures (b) happens to live in the same Go package whose build (a) unblocks — an
+accident of package layout, not a defect this task created. This plan's own task list already
+assigns the fix: T3 ("detector cross-context vê fora dos contextos") and T4 ("detector vendor
+com escopo + arch-gate raízes certas") are the tasks that scope these detectors correctly
+(kernel/contexts-only, per D-28's same finding) so they stop reproving against the frozen
+legacy tree. Conserto candidato: `TestModuleBoundaryADR023` and `TestNoVendorTokenInKernel`
+restrict their default scan root to `internal/kernel/` + `internal/contexts/` (mirroring the
+scope constraint 1 already states in prose), with `internal/modules/` measured separately as
+inventory, never as a pass/fail gate, until a migration task explicitly takes it on.
+
 **D-26. As duas lanes de teste não produzem contagem por linha** (revisão da Onda 0,
 2026-08-03) — ABERTA. Dois sintomas, uma causa: a lane reporta veredito e joga fora a
 evidência que sustenta o veredito.
@@ -779,6 +840,14 @@ contexto ganha uma função de composição EXPORTADA (ex. `catalog.NewPostgresM
 `module.go`, fora de `internal/`) que o teste de fora chama sem tocar em `internal/postgres`
 diretamente. Nenhuma das duas foi escolhida por esta tarefa — decisão do operador/plano.
 
+**FECHADA 2026-08-06 (Fecho da Fundação, Tarefa 2).** A segunda opção do parágrafo acima foi a
+escolhida: `catalog.New` mudou de `New(store, ids, reader)` para `New(pool *pgxpool.Pool)` e
+passou a montar `postgres.NewRepository`/`NewULIDFactory`/`NewSummaryReader` internamente
+(`internal/contexts/catalog/module.go`), então nada fora de `internal/contexts/catalog/`
+precisa nomear `catalog/internal/postgres`. `apps/server_core/tests/integration/catalog_ingest_test.go`
+foi atualizado para os dois sítios de chamada (`catalog.New(pool)`) e compila limpo sob
+`go vet -tags=integration ./tests/...` (EXIT 0). Ver D-30 para o lado do composition root.
+
 ---
 
 **D-30. `internal/composition/catalog_wiring.go` (Tarefa 11, brief verbatim) é a MESMA classe
@@ -841,6 +910,25 @@ conhecido-vermelho por esta dívida, ou o operador precisa escolher uma das duas
 D-29/D-30 antes de continuar. Mesma consequência de classe de D-29: **qualquer composition root
 ou teste fora de `internal/contexts/<x>/` que construa um adapter `internal/<x>/internal/<adapter>`
 diretamente bate nesta parede.**
+
+**FECHADA 2026-08-06 (Fecho da Fundação, Tarefa 2).** `catalog.New` mudou de
+`New(store application.Store, ids application.IDFactory, reader port.Reader)` para
+`New(pool *pgxpool.Pool)`, assemblando `postgres.NewRepository`/`NewULIDFactory`/
+`NewSummaryReader` dentro de `internal/contexts/catalog/module.go`. `internal/composition/catalog_wiring.go`
+perdeu o import `catalogpostgres "…/catalog/internal/postgres"` e passou a chamar só
+`catalog.New(pool)`. Medido depois da mudança:
+
+```
+$ cd apps/server_core && GOCACHE="$(pwd)/.gocache" go build ./...
+EXIT=0
+$ cd apps/server_core && GOCACHE="$(pwd)/.gocache" go vet ./...
+EXIT=0
+```
+
+`cmd/server` e `tests/unit` (que importavam `internal/composition` transitivamente e falhavam
+por esta mesma linha) voltam a compilar. Ver D-34 abaixo: `go test ./internal/...` ainda não é
+verde na árvore inteira, mas por duas causas SEM relação com D-29/D-30 — surgiram porque o
+build deixou de mascará-las, não porque esta correção as introduziu.
 
 ---
 
