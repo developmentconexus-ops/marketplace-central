@@ -729,3 +729,52 @@ Decisão pendente do operador: (a) trocar os literais do teste do kernel por um 
 fictício, (b) restringir `ScanVendorTokens` a produção (excluir `_test.go`) quando chamado
 sem `Suffix`, ou (c) aceitar `TestNoVendorTokenInKernel` como conhecido-vermelho até (a)/(b).
 Nenhuma das três foi escolhida por esta tarefa.
+
+---
+
+**D-29. O teste de integração da Tarefa 10 (brief verbatim) não compila — importa um pacote
+`internal/` de FORA da árvore que o protege** (Onda 1, Tarefa 10, `catalog/internal/postgres`,
+2026-08-06) — ABERTA.
+
+O brief manda escrever `apps/server_core/tests/integration/catalog_ingest_test.go` importando
+`catalogpostgres "marketplace-central/apps/server_core/internal/contexts/catalog/internal/postgres"`
+para construir `catalogpostgres.NewRepository`/`NewULIDFactory`/`NewSummaryReader` diretamente.
+Medido, verbatim:
+
+```
+$ cd apps/server_core && GOCACHE="$(pwd)/.gocache" go test -tags integration ./tests/integration/ -run TestCatalog -v
+# marketplace-central/apps/server_core/tests/integration
+package marketplace-central/apps/server_core/tests/integration (test)
+	tests\integration\catalog_ingest_test.go:13:2: use of internal package marketplace-central/apps/server_core/internal/contexts/catalog/internal/postgres not allowed
+FAIL	marketplace-central/apps/server_core/tests/integration [setup failed]
+FAIL
+```
+
+A regra de visibilidade `internal/` do Go é por CADA ocorrência do segmento no caminho, não só
+a mais externa. `internal/contexts/catalog/internal/postgres` tem DOIS "internal": o de
+`apps/server_core/internal/...` (importável por qualquer coisa sob `apps/server_core/`) e o de
+`catalog/internal/postgres` (importável só por código sob `internal/contexts/catalog/`).
+`tests/integration` satisfaz o primeiro e viola o segundo — a mesma fronteira que a Tarefa 7/8/9
+constrói para proteger `domain`/`application`/adapters de outros CONTEXTOS bloqueia, como efeito
+colateral não previsto pelo brief, o teste de integração do PRÓPRIO contexto, porque
+`tests/integration/` fica fora da subárvore `contexts/catalog/`.
+
+Não corrigido (nem o teste, nem a estrutura de pacotes, nem a fronteira `internal`) — a
+instrução da Tarefa 10 foi "não mude nenhum dos dois lados para forçar, reporte o mismatch com
+output verbatim". `go build ./internal/contexts/...`, `go vet ./internal/contexts/...` e
+`go test ./internal/contexts/catalog/...` (sem a tag `integration`) passam limpos; a migração
+`0097_catalog_context.sql` foi aplicada e confirmada (`\dt catalog.*` = 4 tabelas) e a PROVA
+CRÍTICA de RLS cross-tenant foi obtida por SQL direto contra o Postgres do dev stack, sob uma
+role de teste sem `BYPASSRLS` criada e removida na mesma sessão (a role de aplicação
+`marketplace` é `Superuser`+`Bypass RLS`, então o `FORCE ROW LEVEL SECURITY` da migração nunca
+seria exercitado através dela — achado relacionado, ver corpo do relatório da Tarefa 10).
+
+Consequência de classe: **qualquer contexto futuro que siga o mesmo padrão
+`internal/contexts/<x>/internal/<adapter>` não pode ter um teste de integração fora de
+`internal/contexts/<x>/` que construa o adapter diretamente** — ou o teste entra dentro da
+subárvore do contexto (ex.: `internal/contexts/catalog/internal/postgres/*_test.go`, como os
+outros pacotes `internal/modules/**/*_test.go` com tag `integration` já fazem — a descoberta de
+pacotes do `Postgres.psm1` já cobre esse caso, ver `Get-HarnessIntegrationTestPackages`), ou o
+contexto ganha uma função de composição EXPORTADA (ex. `catalog.NewPostgresModule(pool)` em
+`module.go`, fora de `internal/`) que o teste de fora chama sem tocar em `internal/postgres`
+diretamente. Nenhuma das duas foi escolhida por esta tarefa — decisão do operador/plano.

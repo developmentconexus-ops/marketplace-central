@@ -119,6 +119,16 @@ func mergeIdentifiers(existing, incoming []contracts.Identifier) []contracts.Ide
 	return out
 }
 
+// ReconstituteVersion restores a persisted version and payload hash onto a
+// rebuilt aggregate. It exists for the repository alone: rehydration must not
+// look like a decision, and Apply must never be reachable with a version the
+// database did not choose.
+func ReconstituteVersion(p Product, version int, hash string) Product {
+	p.version = version
+	p.lastHash = hash
+	return p
+}
+
 // mergeSourceKeys appends the key unless this product already answers to it. A
 // second source is added, never substituted: one canonical product legitimately
 // has an ERP address and a spreadsheet address at the same time.
