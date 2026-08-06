@@ -778,3 +778,66 @@ pacotes do `Postgres.psm1` já cobre esse caso, ver `Get-HarnessIntegrationTestP
 contexto ganha uma função de composição EXPORTADA (ex. `catalog.NewPostgresModule(pool)` em
 `module.go`, fora de `internal/`) que o teste de fora chama sem tocar em `internal/postgres`
 diretamente. Nenhuma das duas foi escolhida por esta tarefa — decisão do operador/plano.
+
+---
+
+**D-30. `internal/composition/catalog_wiring.go` (Tarefa 11, brief verbatim) é a MESMA classe
+de D-29, agora no composition root** (Onda 1, Tarefa 11, `catalog/internal/postgres`,
+2026-08-06) — ABERTA.
+
+O brief da Tarefa 11, Step 8, manda escrever `internal/composition/catalog_wiring.go` importando
+`catalogpostgres "marketplace-central/apps/server_core/internal/contexts/catalog/internal/postgres"`
+para chamar `catalogpostgres.NewRepository`/`NewULIDFactory`/`NewSummaryReader` diretamente a
+partir de `internal/composition`, que fica FORA da subárvore `internal/contexts/catalog/`.
+Medido, verbatim:
+
+```
+$ cd apps/server_core && GOCACHE="$(pwd)/.gocache" go build ./...
+package marketplace-central/apps/server_core/internal/composition
+	internal\composition\catalog_wiring.go:9:2: use of internal package marketplace-central/apps/server_core/internal/contexts/catalog/internal/postgres not allowed
+```
+
+```
+$ cd apps/server_core && GOCACHE="$(pwd)/.gocache" go build ./internal/composition/...
+package marketplace-central/apps/server_core/internal/composition
+	internal\composition\catalog_wiring.go:9:2: use of internal package marketplace-central/apps/server_core/internal/contexts/catalog/internal/postgres not allowed
+```
+
+`go build ./internal/adapters/...` (Steps 1–6, o resto da Tarefa 11) passa limpo — o defeito é
+isolado ao ficheiro do Step 8. A instrução da Tarefa 11 é a mesma de D-29: "se o código do
+brief não compilar, não mude nenhum dos dois lados para forçar, reporte o mismatch com output
+verbatim." Não corrigido — nem `catalog_wiring.go`, nem `module.go`, nem a fronteira `internal`.
+O ficheiro foi escrito e cometido tal como o brief manda (é um dos ficheiros nomeados no Step 10
+do commit), porque reescrevê-lo para compilar seria escolher, sem mandato do operador, uma das
+duas saídas que D-29 já apontou como pendentes (mover o teste/composição para dentro da árvore
+de `catalog`, ou dar a `catalog` uma função de composição exportada tipo
+`catalog.NewPostgresModule(pool)`).
+
+Consequência: `go build ./...` e `go vet ./...` NÃO estão verdes na árvore inteira depois da
+Tarefa 11. O raio de explosão é maior do que só `internal/composition` — `go test ./...` mostra
+`cmd/server` e `tests/unit` também falham em `[setup failed]` pela MESMA linha, porque os dois
+importam `internal/composition` transitivamente:
+
+```
+# marketplace-central/apps/server_core/cmd/server
+package marketplace-central/apps/server_core/internal/composition
+	internal\composition\catalog_wiring.go:9:2: use of internal package marketplace-central/apps/server_core/internal/contexts/catalog/internal/postgres not allowed
+FAIL	marketplace-central/apps/server_core/cmd/server [setup failed]
+# marketplace-central/apps/server_core/internal/composition
+package marketplace-central/apps/server_core/internal/composition
+	internal\composition\catalog_wiring.go:9:2: use of internal package marketplace-central/apps/server_core/internal/contexts/catalog/internal/postgres not allowed
+FAIL	marketplace-central/apps/server_core/internal/composition [setup failed]
+# marketplace-central/apps/server_core/tests/unit
+package marketplace-central/apps/server_core/internal/composition
+	internal\composition\catalog_wiring.go:9:2: use of internal package marketplace-central/apps/server_core/internal/contexts/catalog/internal/postgres not allowed
+FAIL	marketplace-central/apps/server_core/tests/unit [setup failed]
+```
+
+Todo o resto de `go test ./...` (sem a tag `integration`) passa, incluindo os 5 testes novos de
+`internal/adapters/erp/sankhyaoracle/catalogfeed` e a prova crítica da fronteira do Step 7. Isto
+bloqueia a Tarefa 12 se ela depender de `go build ./...`/`go test ./...` limpo em `cmd/server` ou
+`tests/unit`; a Tarefa 12 deve tratar `internal/composition` (e tudo o que o importa) como
+conhecido-vermelho por esta dívida, ou o operador precisa escolher uma das duas saídas de
+D-29/D-30 antes de continuar. Mesma consequência de classe de D-29: **qualquer composition root
+ou teste fora de `internal/contexts/<x>/` que construa um adapter `internal/<x>/internal/<adapter>`
+diretamente bate nesta parede.**
