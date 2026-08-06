@@ -8,14 +8,13 @@ import (
 	"marketplace-central/apps/server_core/internal/arch"
 )
 
-// contextsRoot is internal/contexts. Until Task 7 it does not exist, and a test
-// that passes because it looked at nothing must say so out loud.
+// contextsRoot is internal/contexts, which exists from Task 7 onward.
 func contextsRoot(t *testing.T) string {
 	t.Helper()
 	root := filepath.Join("..", "contexts")
 	info, err := os.Stat(root)
 	if err != nil || !info.IsDir() {
-		t.Skip("internal/contexts does not exist yet; nothing was scanned")
+		t.Fatalf("internal/contexts not found at %s: %v", root, err)
 	}
 	return root
 }
