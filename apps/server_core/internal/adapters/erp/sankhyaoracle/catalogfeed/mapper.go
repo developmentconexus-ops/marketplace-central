@@ -14,6 +14,7 @@ import (
 
 	"marketplace-central/apps/server_core/internal/adapters/erp/sankhyaoracle/internal/oracle"
 	"marketplace-central/apps/server_core/internal/contexts/catalog/contracts"
+	"marketplace-central/apps/server_core/internal/contexts/catalog/port"
 	"marketplace-central/apps/server_core/internal/kernel/fact"
 	"marketplace-central/apps/server_core/internal/kernel/provenance"
 	"marketplace-central/apps/server_core/internal/kernel/tenant"
@@ -47,28 +48,41 @@ func NewFeed(db *sql.DB, instance string, now func() time.Time) (Feed, error) {
 	return Feed{db: db, instance: strings.TrimSpace(instance), now: now}, nil
 }
 
-// Page returns up to limit observations with CODPROD greater than after, and
-// the cursor to pass next. A zero cursor means the page was the last one.
-func (f Feed) Page(ctx context.Context, t tenant.ID, after int64, limit int) ([]contracts.ProductObservation, int64, error) {
-	rows, err := oracle.FetchActiveProducts(ctx, f.db, after, limit, f.now())
+// NextPage implements port.ProductFeed. The Sankhya cursor is CODPROD, and that
+// fact stops at this function: the token crossing the port is a string, so the
+// day a second ERP pages by something else, nothing in Catalog changes.
+func (f Feed) NextPage(ctx context.Context, t tenant.ID, after port.Cursor, limit int) (port.Page, error) {
+	var afterCodprod int64
+	if !after.IsStart() {
+		parsed, err := strconv.ParseInt(after.Token(), 10, 64)
+		if err != nil {
+			return port.Page{}, fmt.Errorf("catalogfeed: cursor %q is not a CODPROD: %w", after.Token(), err)
+		}
+		afterCodprod = parsed
+	}
+
+	rows, err := oracle.FetchActiveProducts(ctx, f.db, afterCodprod, limit, f.now())
 	if err != nil {
-		return nil, 0, err
+		return port.Page{}, err
 	}
 	out := make([]contracts.ProductObservation, 0, len(rows))
-	var next int64
+	var last int64
 	for _, r := range rows {
 		obs, err := MapProduct(t, f.instance, r)
 		if err != nil {
-			return nil, 0, err
+			return port.Page{}, err
 		}
 		out = append(out, obs)
-		next = r.Codprod
+		last = r.Codprod
 	}
-	if len(rows) < limit {
-		next = 0
+	page := port.Page{Observations: out, Done: len(rows) < limit}
+	if !page.Done {
+		page.Next = port.NewCursor(strconv.FormatInt(last, 10))
 	}
-	return out, next, nil
+	return page, nil
 }
+
+var _ port.ProductFeed = Feed{}
 
 // MapProduct turns one TGFPRO row into one observation.
 func MapProduct(t tenant.ID, instance string, row oracle.ProductRow) (contracts.ProductObservation, error) {

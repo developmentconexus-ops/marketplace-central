@@ -13,12 +13,16 @@ import (
 	"time"
 
 	"marketplace-central/apps/server_core/internal/adapters/erp/sankhyaoracle/catalogfeed"
+	"marketplace-central/apps/server_core/internal/contexts/catalog/port"
 )
 
-// Bundle is everything this adapter offers.
+// Bundle is everything this adapter offers, typed by the ports its consumers
+// own. A field typed by catalogfeed.Feed would publish this adapter's concrete
+// type to every caller; a field typed by port.ProductFeed publishes only the
+// question Catalog asks.
 type Bundle struct {
 	Instance    string
-	CatalogFeed catalogfeed.Feed
+	CatalogFeed port.ProductFeed
 }
 
 // New builds the bundle for one Sankhya installation.

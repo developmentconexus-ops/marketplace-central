@@ -1158,3 +1158,18 @@ totais para `facts/value-discarded` — fecha em 0 no sítio de PRODUÇÃO que a
 de corrigir, mais 2 em teste, pré-existentes, fora do escopo aditivo. Conserto candidato (fora
 desta tarefa): reescrever as duas chamadas para capturar o segundo valor com nome e afirmá-lo
 explicitamente, em vez de o descartar — nenhuma mudança de produção necessária.
+
+**D-37. Brief da Tarefa 7 assume um teste existente que não existe.** O brief
+(`fecho-task-7-brief.md`) manda "o teste do mapper existente continua a passar (ajusta-o para
+`NextPage`, **não o apagues**)" e instrui procurar por chamadas `.Page(` contra `Feed` em
+`catalogfeed/mapper_test.go` ou similar para adaptar. Medido: `grep -rn "\.Page(" --include=*.go`
+na árvore inteira do módulo devolve zero ocorrências fora da própria definição em
+`mapper.go`; `catalogfeed/mapper_test.go` (124 linhas, 5 testes) exercita só `MapProduct`,
+nunca `Feed.Page`. Não havia nenhum call-site para adaptar. A alegação do brief é falsa por
+ausência, não por erro de linha — mesma classe do A-2 (brief/card é alegação sobre o repo e
+apodrece), aqui aplicada a um brief de tarefa em vez de um card de chip. Sem custo pago (a
+tarefa prosseguiu sem bloqueio: renomeei `Page`→`NextPage` per spec, `go build`/`go vet`/
+`go test ./internal/adapters/erp/sankhyaoracle/...` saem verdes, e como não havia teste a
+adaptar, nada foi apagado). Registrado porque o padrão A-2 já tem duas famílias diferentes de
+prova (card de milestone, agora brief de tarefa de plano) e o conserto candidato do A-2 (medir
+toda alegação executável do brief antes do worker partir) cobriria este caso também.
