@@ -221,12 +221,15 @@ export GOCACHE="$(pwd)/.gocache" && go test ./internal/platform/migrate/
 Output esperado, verbatim (cola-o no relatório):
 
 ```
---- FAIL: TestCanonicalMigrationsMatchFixture (0.00s)
+--- FAIL: TestCanonicalSourceListsEveryMigrationByFullFilename
     runner_test.go:26: fixture inventory drift: got 84 canonical migrations, want 83
---- FAIL: TestRunnerResolvesMigrationsFromForeignCWD (0.00s)
+--- FAIL: TestCanonicalSourceDoesNotDependOnCallerWorkingDirectory
     runner_test.go:65: foreign CWD returned 84 migrations, want 83
 FAIL
 ```
+
+Os dois testes são `runner_test.go:15` e `runner_test.go:50`; os literais `83` estão em `:25`
+(a comparação) e nas mensagens de `:26` e `:65`.
 
 **Medir antes de escrever o número.** Não confies em 84:
 
@@ -1516,6 +1519,7 @@ paga:
 | 4.1 (valor zero de `Knowledge`) | O spec dizia `Known = iota + 1`; **ratifica-se o código**, `Unknown = iota` (`fact/knowledge.go:28`) | `Fact[string]{}` compila em qualquer pacote — um literal de struct vazio não nomeia campos — portanto "não há literal de struct" é falso nas duas variantes. A guarda real é `Evidence().IsZero()`, e com `Unknown = iota` o zero é o estado seguro. |
 | 4.4 (aritmética) | De "métodos de `Fact[T]`" para **funções genéricas de pacote** `Map`/`Combine2` | Go não permite parâmetros de tipo próprios num método. A regra como escrita é inimplementável. |
 | 1.3 (instrumento cross-context) | O instrumento é o detector **sem** o salto de ficheiros fora de `contexts/` | O único sítio que violou a regra estava fora, e o detector era cego a ele (`scan.go:131-133`). |
+| 2.2-a (fachada de raiz única) | Sobe de **regra de adaptador** a **regra do molde**: vale para *qualquer* árvore com `internal/` — contexto incluído. O construtor exportado recebe só tipos que um estranho pode nomear (um pool, uma DSN, um `*sql.DB`) e monta o resto lá dentro | O spec escreve-a em `:159` apenas para `adapters/marketplace/<v>`. Escrita assim, não alcançou `contexts/`, e `catalog.New(store, ids, reader)` (`module.go:21`) nasceu com dois parâmetros internos e **zero chamadores legais** — a raiz de composição só a satisfez importando o interno, e o compilador recusou. A regra existia; o escopo é que era estreito demais para a apanhar. |
 | 2.3 (tokens de vendor) | O escopo (`adapters/` isento, `internal/arch/` isento) vive **no detector** | Sem filtro de caminho o detector acusa a sua própria lista e nunca fica verde (`scan.go:33-36` vs `:203`). |
 
 Cada emenda leva uma linha no log de emendas do spec com data e o `file:line` que a pagou.
