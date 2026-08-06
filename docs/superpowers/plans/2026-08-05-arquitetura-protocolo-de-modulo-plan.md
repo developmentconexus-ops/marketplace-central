@@ -1,6 +1,14 @@
 # Protocolo de módulo — arquitetura correta, padronizada, e os instrumentos que a mantêm
 
-**Data:** 2026-08-05 · **Estado:** PLANEJADO, não iniciado
+**Data:** 2026-08-05 · **Estado:** EM EXECUÇÃO — **Onda 0 FECHADA** (0.0–0.5), Ondas 1–4 abertas
+
+> **Onda 0, o que de fato saiu** (medido, não alegado): 32 ADRs vivos em
+> `docs/architecture/decisions/` (o plano previa 17); 001/002/003 recuperados do git;
+> `_citations/RENUMBERING-REGISTRY.md` com o crosswalk global; ADR-023 = o protocolo de módulo
+> (D-1…D-7 ratificados, §7 com a lista de camadas fechada). Duas afirmações do §1 deste plano
+> foram **medidas e refutadas** — estão registradas em "Correções ao plano da Onda 0" no
+> registry. O fecho da 0.3 (grafia/ponteiro de citação) está em "Fecho da task 0.3" no mesmo
+> arquivo, com 1 pendência escrita.
 **Origem:** decisão do operador em 2026-08-05 — parar antes da Fatia B da MIS-008 e consertar a
 arquitetura enquanto o código ainda é pequeno.
 

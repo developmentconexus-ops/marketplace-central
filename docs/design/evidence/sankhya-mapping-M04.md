@@ -221,7 +221,7 @@ Cadência real do cliente: preço ~business-daily (24 versões CODTAB=0/mês), c
 ### v1 (M-04) = FULL-SNAPSHOT por rodada — decisão ratificada
 
 Não é atalho; é o desenho correto para este dataset:
-1. **keep-absent (ADR-04) exige o conjunto completo** — delta não sabe marcar ausente. Qualquer
+1. **keep-absent (ADR-031, era ADR-04) exige o conjunto completo** — delta não sabe marcar ausente. Qualquer
    incremental ainda precisaria de sweep completo periódico só para ausência.
 2. **TGFEST não tem change-ts** — estoque força full de qualquer jeito; incremental não elimina o
    full, só o complica.

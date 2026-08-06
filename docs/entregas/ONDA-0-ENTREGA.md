@@ -139,7 +139,7 @@ código; a fase 2 confirma no navegador.
 | Linha por entidade | `:44-76` | `GET /sync/health` ← `sync_state` por `(tenant_id, installation_id, entity)` | VIVO? |
 | Selo ok / N falhas / nunca | `:13-42` | `consecutive_failures` e `last_success_at` — **estado, nunca corte de tempo** | VIVO? |
 | Idade | `:56-64` | `formatRelativeAge(last_success_at)`; sem sucesso = "nunca" | VIVO? |
-| Fase | `:54` | `phase` (ADR-07: `backfill`/`incremental`/`sweep`) | VIVO? |
+| Fase | `:54` | `phase` (ADR-026, era ADR-07: `backfill`/`incremental`/`sweep`) | VIVO? |
 | Notificações (webhook) | `:78-114` | `webhook.last_notification_at` / `pending` / `dropped_24h` | VIVO? |
 
 Dois acertos que valem registro: o selo vermelho **ganha do verde** mesmo com sucesso

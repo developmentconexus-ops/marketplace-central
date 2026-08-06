@@ -96,7 +96,7 @@ flowchart TB
 |---|---|---|---|
 | 1. Upload | arquivo .xlsx | protocolo criado | `erp_import_protocols` |
 | 2. Parse leniente | sheets brutas | linhas normalizadas E2 (aliases PT, preâmbulo, união multi-sheet) | `erp_import_products` (histórico por protocolo) |
-| 3. Upsert-merge mirror | snapshot do protocolo | estado corrente por codigo_produto (upsert por codigo; ausente → stale, keep-absent, ADR-04) | `products_mirror` (+ stock_locations) |
+| 3. Upsert-merge mirror | snapshot do protocolo | estado corrente por codigo_produto (upsert por codigo; ausente → stale, keep-absent, ADR-031) | `products_mirror` (+ stock_locations) |
 | 4. Vínculos | mirror × listings (EAN) | candidatos; **EAN-exato-único = auto-aprovado + audit** (D4) | `product_links` + audit |
 | 5. Coleta mercado | novos vínculos | jobs de coleta enfileirados | `sync_state` / fila |
 | 6. Tela /importacoes | protocolo | cadeia visível: N importados → N vinculados → N coletas | leitura das tabelas acima |
@@ -212,7 +212,7 @@ do seller, rotulado como tal — nunca número inventado (ADR-17).
 
 Fase 0 (fundação, pequena): `sync_state` + esqueleto scheduler + config fonte-ativa por tenant.
 **Fase 1 (ERP/xlsx — o começo escolhido):** `products_mirror` + XlsxAdapter reestruturado sobre
-o parser leniente existente + upsert-merge mirror (keep-absent, ADR-04) + cadeia vínculo automático + tela /importacoes com
+o parser leniente existente + upsert-merge mirror (keep-absent, ADR-031) + cadeia vínculo automático + tela /importacoes com
 a cadeia visível. Sankhya entra na mesma fase como segundo adapter do mesmo port ([TESTAR-SKW]
 antes de codar). Fase 2: sync anúncios (colunas E3 + backfill scan/multiget). Fase 3: sync
 pedidos + decomposição + Fila/SLA. Fase 4: mercado/concorrência + tarifas. Fase 5: onboarding

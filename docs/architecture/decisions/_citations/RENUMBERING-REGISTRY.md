@@ -20,7 +20,11 @@ deles há **19 decisões distintas**.
 3. Decisões de **processo de harness** saem da série de arquitetura e viram
    "Decisões de processo de registro" em `docs/HARNESS-PROFILE.md` — foi a mistura de
    arquitetura com processo que produziu a colisão.
-4. Esquema de 3 dígitos (`ADR-017`). `ADR-17` e `ADR-04` são grafias mortas.
+4. Esquema canônico de 3 dígitos (`ADR-017`). **Emendado em 2026-08-05** — ver
+   "Fecho da task 0.3" no fim deste documento: grafia de 2 dígitos é *não-canônica*, não
+   *inválida*. O checador de D-10 normaliza zeros à esquerda, então `ADR-17` resolve para o
+   documento `017`. O que continua proibido é a citação que resolve para o documento
+   **errado** — `ADR-04` significando keep-absent, quando `004` é outro assunto.
 
 ## Série de arquitetura — `docs/architecture/decisions/`
 
@@ -153,3 +157,26 @@ Uma citação `ADR-NN` só pode ser reescrita quando a missão dona do arquivo �
   instável dentro de uma única missão.
 - **MIS-003:** `DISPATCH-LEDGER.md:19` registra ESCALATION não resolvida de que ADR-12 e
   ADR-17 nunca tiveram documento. Esta onda é a resolução dessa escalação.
+
+## Fecho da task 0.3 — medido em 2026-08-05 contra `d9f46585`
+
+A task 0.3 do plano pede "1 esquema, 0 citações no esquema morto". Medido, o número bruto de
+citações de 2 dígitos (568) é **três problemas diferentes somados num só**, e só um deles era
+defeito:
+
+| Classe | Sítios | Disposição |
+|---|---|---|
+| **Ponteiro errado** — citação de 2 dígitos que resolve para documento de outro assunto | **5** | **Corrigidos.** `ADR-04`→`ADR-031` (keep-absent) em `docs/design/SYSTEM-BLUEPRINT.md:99,215`, `docs/design/STORAGE-SCHEMA.md:36`, `docs/design/evidence/sankhya-mapping-M04.md:224`; `ADR-07`→`ADR-026` (vocabulário de fase) em `docs/entregas/ONDA-0-ENTREGA.md:142` |
+| **Citação forense** — o label morto citado *de propósito*, dentro dos ADRs 009–032 e das colheitas, como registro do que a missão original escreveu | **158** | **Não se toca.** Reescrever apaga a evidência que justifica a renumeração |
+| **Grafia não-canônica de `ADR-17`** — resolve para o documento certo, só sem zero à esquerda | **405** (`apps/` 353, `contracts/` 11, `docs/` 41) | **Não se reescreve.** Decisão do operador em 2026-08-05: o checador normaliza zeros (emenda ao §4). Renomear 405 sítios é churn estético que colide com as Ondas 1 e 2, que mexem nos mesmos arquivos |
+
+**Medição que mudou o escopo:** o registry estimava 44 citações de 2 dígitos em código vivo.
+Hoje há **zero** citações de 2 dígitos não-17 em `apps/`, `contracts/`, `scripts/`,
+`migrations/`. As 163 não-17 restantes vivem todas em `docs/`, e 158 delas são forenses.
+
+### Pendência escrita — 1 citação não resolvida
+
+`docs/superpowers/specs/2026-08-01-anuncios-pedidos-resultado-esperado-design.md:165` cita
+`ADR-06/IC-07` sobre "substatus de envio verbatim, sem enum, sem CHECK". O assunto **não bate**
+com nenhuma linha do crosswalk (o `ADR-06` da MIS-007 é MASS-CLOSURE → `027`). Pela regra de
+reescrita deste documento, assunto que não bate vira pendência, nunca chute. Dono: operador.

@@ -33,7 +33,7 @@ ean, marca, grupo_codigo, grupo_descricao, custo NUMERIC NULL, preco_venda NUMER
 estoque_total NUMERIC NULL, updated_at, protocol_id (origem)
 + products_mirror_stock_locations(tenant_id, codigo_produto, local_codigo, local_descricao, quantidade)
 ```
-NULL = honesto-desconhecido (nunca 0 fake). Ingest = **upsert-merge keep-absent** (ADR-04 /
+NULL = honesto-desconhecido (nunca 0 fake). Ingest = **upsert-merge keep-absent** (ADR-031 /
 F-XLSX-1): linha do arquivo/query novo faz UPSERT por `codigo_produto`; linha ausente do snapshot
 novo NÃO é deletada — marca `absent_in_last_snapshot`/`stale_since` (preserva `product_links`).
 Nunca wipe, nunca delete físico. Coluna: `stale_since timestamptz NULL`.
