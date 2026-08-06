@@ -48,15 +48,55 @@ publishing 3 consumables removes the cause.
 A module is a unit with **private internal logic** and **one public consumable**. Other
 modules speak to it only through the consumable, and always the same way.
 
+**Amended 2026-08-06 — two roots, one protocol.** A unit is either a **module** under
+`apps/server_core/internal/modules/<id>` or a **context** under
+`apps/server_core/internal/contexts/<id>`. The two coexist for the whole migration: a
+context lands, and the module it replaces is deleted then and not before.
+
+The governance registry therefore keys entries on the pair **`(kind, id)`**, not on `id`.
+`kind` is `"module"` or `"context"`; absent means `"module"`, so the 21 pre-existing entries
+need no edit. `internal/modules/catalog` and `internal/contexts/catalog` are both legitimately
+called `catalog` and both must be registrable at once.
+
+Registration is not optional and not self-reported. `Test-GovernanceDrift` walks the
+**filesystem** under `internal/contexts/` and emits `GOV_CONTEXT_UNREGISTERED` for any
+directory with no registry entry. Walking only the registry can never find what nobody
+enrolled — the rule reports silence, and silence reads as compliance.
+
 ### §2 — The import rule
 
 > **A module is importable by another module ONLY at `X/ports`. `X/domain`,
 > `X/application`, `X/adapters` and `X/transport` are private.**
 
-One line, and a grep can check it. The 35 measured violations are exactly the violations of
-this line.
+The 35 measured violations are exactly the violations of this line.
 
-**Carve-outs — amended 2026-08-05.** There are exactly two, and they are dispositive:
+**Amended 2026-08-06 — this is enforced by the compiler, not by a grep.** The original text
+read *"one line, and a grep can check it"*. That sentence is deleted rather than annotated,
+because it understated the mechanism by two whole tiers and every plan that cited it planned
+a weaker guard than the language already provides.
+
+Go's `internal/` rule applies to **any** `internal/` directory in the tree, not only to one
+at the module root: `.../a/b/c/internal/d` is importable only from the tree rooted at
+`.../a/b/c`. Placing a unit's private layers under `<unit>/internal/` therefore makes the
+violation a **build failure**, with no analyser, no registry and no reviewer involved.
+
+Measured 2026-08-06 on a compiling skeleton, three runs:
+
+| import | result |
+|---|---|
+| `shopee` → `mercadolivre/api` | **builds clean** — the rule as originally written enforced nothing |
+| `shopee` → `mercadolivre/internal/api` | `use of internal package .../mercadolivre/internal/api not allowed` |
+| composition root → `mercadolivre/internal/api` | **also rejected** |
+
+Confirmed against this repository the same day: `internal/composition/catalog_wiring.go:9`
+was rejected with `use of internal package .../contexts/catalog/internal/postgres not
+allowed`.
+
+**Carve-outs — amended 2026-08-05, scoped 2026-08-06.** There are exactly two. They remain
+dispositive **for `internal/modules/`, whose layers sit in ordinary directories**. Under
+`internal/contexts/`, carve-out 1 is **not exercisable** — the third row of the table above
+is the composition root being refused. It is not revoked; the compiler simply declines to
+honour it. A carve-out that cannot be exercised must not be planned around.
 
 | # | Carve-out | Covers | Authority |
 |---|---|---|---|
@@ -98,6 +138,45 @@ layer that carries infrastructure types — which is the coupling §3 exists to 
 The 11 measured module-to-module `wiring` imports are therefore work, not legality. They are
 in scope for Wave 1 and concentrate in two files: `listings/composition/scheduler.go` and
 `orders/composition/scheduler.go`.
+
+### §2-a — The facade is forced, not chosen — added 2026-08-06
+
+A unit whose private layers live under `<unit>/internal/` **must** expose a single root
+package with a constructor returning already-assembled collaborators, typed by things an
+outsider can name — the consuming units' ports, or the unit's own exported types.
+
+This is not a style preference. It is what remains after the compiler rejects everything
+else. Once the third row of §2's table holds, **nobody outside the tree can name an internal
+type — including the composition root** — so an exported constructor taking one as a
+parameter is uncallable, and a struct field typed by one is undeclarable. The only shape
+that compiles is a facade that builds its internals itself:
+
+```go
+// adapters/marketplace/mercadolivre/mercadolivre.go
+func New() Bundle {
+    client := api.StubClient{}          // internal type, named only in here
+    return Bundle{
+        Listings: listings.New(client), // fields typed by consumers' ports
+        Orders:   orders.New(client),
+    }
+}
+```
+
+**The rule is about `internal/`, not about vendors.** It was discovered on
+`adapters/marketplace/<vendor>` and was first written naming vendors, which is why it did
+not reach `contexts/`. The property is general: **any tree containing an `internal/` forces
+this shape on everyone outside it.** A context obeys it identically —
+`catalog.New(pool *pgxpool.Pool) *Module` builds its own repository, and the composition
+root names only `*catalog.Module`.
+
+The cost of the narrow wording is on record: `catalog.New(store, ids, reader)` was specified
+with two parameters typed by `catalog/internal/application`, giving it **zero legal
+callers**, and the defect shipped into a plan that had introduced the very rule eleven tasks
+earlier.
+
+The inverse repair — moving the private package out of `internal/` so the root can name it —
+is forbidden. It converts a build failure into a convention, which is the trade this ADR
+exists to refuse.
 
 ### §3 — A port must stand on its own
 

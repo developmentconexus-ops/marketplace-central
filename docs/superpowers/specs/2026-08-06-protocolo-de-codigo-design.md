@@ -470,16 +470,21 @@ runtime.
 
 ## 14. Emendas à ADR-023
 
-| § | Estado |
-|---|---|
-| §1 (o que é um módulo) | Substituído por §1.1 e §1.2 deste documento. `contexts/`, não `modules/`. |
-| §2 (só `X/ports` importável) | Substituído por §1.1. Nível 1 em vez de nível 3. Carve-out 1 (raiz) **extinto** — não é revogado, deixa de ser exercível. Carve-out 2 (`sourcekind`) extinto: o módulo desaparece para `kernel/provenance`. |
-| §3 (porta basta-se) | Mantido, absorvido em §2.1. |
-| §4 (quando existe porta) | Mantido. |
-| §5 (núcleo partilhado) | Substituído por §3. Um membro passa a seis, com critério de admissão escrito. |
-| §6 (um tipo de dinheiro) | Substituído por §3.2, agora nível 1. |
-| §7 (vocabulário de camadas fechado) | Substituído por §1.1. *Só 5 dos 21 módulos cumpriam a lista fechada.* |
-| §8 (módulos fora do molde) | Extinto: o molde deixa de ter exceção. |
+A coluna **Aplicado** diz se a emenda já está escrita no ficheiro do ADR. Enquanto disser
+*pendente*, a ordem de verdade do repositório põe o ADR acima deste documento e é o ADR que
+vale — uma emenda que vive só aqui não emendou nada.
+
+| § | Estado | Aplicado |
+|---|---|---|
+| §1 (o que é um módulo) | Substituído por §1.1 e §1.2 deste documento. `contexts/`, não `modules/`. Chave do registo é o par `(kind, id)`; `kind` ausente = `"module"`. Pasta não inscrita dá `GOV_CONTEXT_UNREGISTERED`, medido percorrendo a árvore e não o registo. | **sim** |
+| §2 (só `X/ports` importável) | Substituído por §1.1. **Nível 1, não nível 3** — a frase *"one line, and a grep can check it"* foi **apagada**, não anotada. A regra `internal/` do Go vale para qualquer `internal/` da árvore. Os dois carve-outs continuam dispositivos em `internal/modules/`, cujas camadas estão em diretórios comuns; sob `internal/contexts/` o carve-out 1 (raiz) **não é exercível** — o compilador recusa-o, medido em `catalog_wiring.go:9`. Carve-out 2 (`sourcekind`) extingue-se quando o módulo desaparecer para `kernel/provenance`. | **sim** |
+| §2-a (a fachada) | **Novo.** Não existia no ADR. Qualquer árvore com `internal/` força construtor que monta os próprios internos; parâmetro de tipo interno é inchamável de fora. Escrita antes só para vendors, foi por isso que não alcançou `contexts/`. | **sim** |
+| §3 (porta basta-se) | Mantido, absorvido em §2.1. | n/a — sem alteração |
+| §4 (quando existe porta) | Mantido. | n/a — sem alteração |
+| §5 (núcleo partilhado) | Substituído por §3. Um membro passa a seis, com critério de admissão escrito. | pendente |
+| §6 (um tipo de dinheiro) | Substituído por §3.2, agora nível 1. | pendente |
+| §7 (vocabulário de camadas fechado) | Substituído por §1.1. *Só 5 dos 21 módulos cumpriam a lista fechada.* | pendente |
+| §8 (módulos fora do molde) | Extinto: o molde deixa de ter exceção. | pendente |
 
 E o ADR-017 ("desconhecido nunca é zero") é substituído pela §4.1: deixa de ser regra citada
 e passa a tipo cujo mau uso não compila.
