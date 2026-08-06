@@ -127,11 +127,12 @@ Aresta não declarada é vermelho.
 ```
 adapters/
   marketplace/<vendor>/
-    api/          # HTTP, auth, paginação, DTOs de fio, erros crus
-    listings/     # implementa contexts/listings/port
-    orders/       # implementa contexts/orders/port
-    pricing/      # implementa as portas de cobrança de pricing
-    writes/       # implementa contexts/changecontrol/port
+    <vendor>.go        # ÚNICA superfície importável: New() Bundle
+    internal/api/      # HTTP, auth, paginação, DTOs de fio, erros crus
+    listings/          # implementa contexts/listings/port
+    orders/            # implementa contexts/orders/port
+    pricing/           # implementa as portas de cobrança de pricing
+    writes/            # implementa contexts/changecontrol/port
   erp/sankhyaoracle/
     oracle/       # SQL, tipos Oracle, conexão
     catalogfeed/  inventoryfeed/  costingfeed/  taxfeed/  documents/
@@ -143,12 +144,30 @@ adapter implementa; não define.
 *Instrumento:* a porta vive em `contexts/<n>/port/`, que o adapter importa. A inversão é
 estrutural.
 
-**Regra 2.2 — Nível 2.** Um DTO de fio de `adapters/marketplace/<v>/api` só é importável de
-`adapters/marketplace/<v>/`. Nunca por um contexto, nunca por outro vendor, nunca pela raiz.
-*Instrumento:* analisador. **A regra `internal` do Go não consegue exprimir esta restrição
-entre irmãos** — é o caso em que o nível 1 não chega e o nível 2 é obrigatório.
+**Regra 2.2 — Nível 1.** O DTO de fio vive em `adapters/marketplace/<v>/internal/api` e é
+inalcançável de fora da árvore de `<v>`: outro vendor, um contexto, a raiz de composição.
+*Instrumento:* a regra de subpacote `internal` do Go, aplicada à raiz do vendor e não à raiz
+do módulo.
+*Medido, 2026-08-06, contra o esqueleto de 13 contextos:* com `api/` no sítio antigo,
+`adapters/marketplace/shopee` importa `adapters/marketplace/mercadolivre/api` e **compila
+limpo** — o irmão passa. Movido para `mercadolivre/internal/api`, o mesmo import produz
+`use of internal package .../mercadolivre/internal/api not allowed`. Removido, `go build ./...`
+e `go vet ./...` voltam a exit 0.
 *Defeito que teria apanhado:* os **70 tokens de vendor fora de adapters contra 54 dentro**.
 Há mais conhecimento de Mercado Livre fora dos adapters do que dentro.
+
+**Regra 2.2-a — Nível 1.** Cada vendor expõe um pacote raiz único, `adapters/marketplace/<v>`,
+com um construtor `New() Bundle` cujos campos são tipados pelas **portas dos contextos
+consumidores**. O cliente HTTP é construído lá dentro.
+*Porquê é forçado e não escolhido:* movido o `api` para `internal/`, a mesma medição mostrou
+`bootstrap/modules.go:8` a ser rejeitado junto com o irmão — a raiz construía
+`mlapi.StubClient{}` e injetava-o em quatro adapters de capacidade. E os construtores desses
+adapters têm assinatura `New(client api.Client)`: **um construtor exportado cujo parâmetro é
+um tipo interno é inchamável de fora da árvore.** O compilador não permite outra topologia
+senão a fachada. Com a fachada, o build volta a exit 0 e a raiz deixa de nomear um único tipo
+de vendor.
+*Defeito que teria apanhado:* exatamente as 10 declarações de adapter de ML na nossa raiz
+(§2.5) — é a mesma doença, reproduzida em miniatura e curada pelo compilador.
 
 **Regra 2.3 — Nível 2.** Nome de vendor não aparece em `contexts/`. Código de canal é dado
 em runtime, nunca `enum` fechado em Go nem literal comparada.
