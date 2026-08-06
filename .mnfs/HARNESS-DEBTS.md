@@ -841,3 +841,113 @@ conhecido-vermelho por esta dívida, ou o operador precisa escolher uma das duas
 D-29/D-30 antes de continuar. Mesma consequência de classe de D-29: **qualquer composition root
 ou teste fora de `internal/contexts/<x>/` que construa um adapter `internal/<x>/internal/<adapter>`
 diretamente bate nesta parede.**
+
+---
+
+**D-31. O `main.go` verbatim do brief da Tarefa 12 não compila — assinaturas de `ScanVendorTokens`
+divergem do que o brief assume** (Onda 1, Tarefa 12, `internal/arch/cmd/archscan/main.go`,
+2026-08-06) — ABERTA (adaptação aplicada, sem mandato do operador).
+
+O brief manda um slice `[]func(string) ([]arch.Finding, error){ ScanCrossContextInternal,
+ScanFloatInContracts, ScanVendorTokens }`. Medido, verbatim:
+
+```
+$ cd apps/server_core && GOCACHE="$(pwd)/.gocache" go build ./internal/arch/cmd/archscan/...
+internal\arch\cmd\archscan\main.go:19:3: cannot use arch.ScanCrossContextInternal (value of type func(root string) (arch.Findings, error)) as func(string) ([]arch.Finding, error) value in array or slice literal
+internal\arch\cmd\archscan\main.go:20:3: cannot use arch.ScanFloatInContracts (value of type func(root string) (arch.Findings, error)) as func(string) ([]arch.Finding, error) value in array or slice literal
+internal\arch\cmd\archscan\main.go:21:3: cannot use arch.ScanVendorTokens (value of type func(root string, tokens []string) (arch.Findings, error)) as func(string) ([]arch.Finding, error) value in array or slice literal
+```
+
+Duas divergências reais entre o brief e o `internal/arch/scan.go` já commitado na Tarefa 6:
+(1) as três funções devolvem `arch.Findings` (tipo nomeado), não `[]arch.Finding`; a igualdade de
+tipo de função exige tipos de retorno IDÊNTICOS, não apenas atribuíveis, então a lista não
+compila mesmo corrigindo só o nome; (2) `ScanVendorTokens(root string, tokens []string)` tem dois
+parâmetros, não um — a Tarefa 6 desenhou-o para aceitar a lista de tokens do chamador, o brief da
+Tarefa 12 assume uma assinatura de um parâmetro só.
+
+Corrigido (sem instrução explícita, porque "escreve exactamente o que lá está" produz um binário
+que não compila): o slice usa `func(string) (arch.Findings, error)`, e `ScanVendorTokens` entra
+como closure `func(root string) (arch.Findings, error) { return arch.ScanVendorTokens(root,
+arch.VendorTokens) }`. O comportamento observável — três detetores correm, achados concatenados,
+`file:line: regra: detalhe` por linha, exit 1 se houver achado — é idêntico ao que o brief pede;
+só a forma da assinatura mudou para bater com o T6 real. Decisão pendente do operador: aceitar a
+adaptação, ou ratificar uma mudança de assinatura em `scan.go` que faça o brief verbatim compilar
+(fora do escopo desta tarefa — mexeria em Tarefa 6 já commitada).
+
+---
+
+**D-32. `grep -rn 'float64\|float32'` do portão dispara em COMENTÁRIO, não só em código —
+"float in kernel" nunca mede 0 enquanto o kernel tiver a explicação do próprio banimento em
+prosa** (Onda 1, Tarefa 12, `scripts/arch-gate.sh` Step "no float in the kernel" +
+`.mnfs/MEASUREMENTS/2026-08-06-fundacao-kernel.md`, 2026-08-06) — ABERTA.
+
+A medição de fecho (Tarefa 12, Step 8) esperava `float in kernel: 0`. Medido, verbatim:
+
+```
+$ cd apps/server_core && grep -rn 'float64\|float32' internal/kernel
+internal/kernel/exact/decimal.go:2:// from float64 anywhere in this package, and that is the point: a binary float
+internal/kernel/exact/money.go:44:// constructor from float64.
+```
+
+Os dois hits são comentários que EXPLICAM a proibição (`decimal.go:2`: "... this package never
+constructs a Decimal from float64 anywhere..."; `money.go:44`: aviso de que não há construtor a
+partir de float64) — não há nenhum `float64`/`float32` em código executável no kernel. O mesmo
+`grep` cru corre dentro de `scripts/arch-gate.sh` (Step "no float in the kernel", brief verbatim),
+então o portão, tal como especificado, **nunca reporta `kernel: no float` enquanto esses dois
+comentários existirem** — falso positivo estrutural do instrumento, não uma violação real. Isto
+foi medido e provado no Step 6 (prova de que o portão reprova): depois de remover o ficheiro de
+sonda `probe_float.go`, o bloco "no float in the kernel" continuou a listar os DOIS comentários
+acima e a marcar `fail=1`, mesmo sem nenhum `float64`/`float32` em código. Não corrigido (nem o
+`grep` do portão, nem os comentários do kernel) — corrigir qualquer um dos dois lados sem mandato
+seria escolher, sem instrução, entre reescrever os comentários para não conterem a palavra
+literal ou trocar o `grep` cru por algo AST-consciente (o mesmo problema que `internal/arch`
+resolve para os outros dois detetores, e que este Step do portão deliberadamente NÃO usa).
+Consequência de classe: qualquer comentário futuro em `internal/kernel` que mencione
+`float64`/`float32` em prosa (mesmo para dizer "isto é proibido") reprova o portão pela mesma
+razão.
+
+---
+
+**D-33. O portão (`scripts/arch-gate.sh`), corrido do zero na árvore como está hoje, reprova —
+e a razão NÃO é nada que a Tarefa 12 tenha introduzido** (Onda 1, Tarefa 12, medição de fecho,
+2026-08-06) — ABERTA, soma de causas já conhecidas (D-28, D-30) mais três achados novos.
+
+`./scripts/arch-gate.sh; echo "EXIT=$?"` dá `ARCH GATE: FAIL`, `EXIT=1`, todas as vezes que foi
+corrido nesta sessão — antes de injetar a sonda do Step 6, com a sonda, e depois de a remover.
+Cinco causas independentes, cada uma isolada por bloco do portão:
+
+1. **`gofmt`** lista ~637 ficheiros como não formatados, cobrindo praticamente toda a árvore
+   `internal/modules` e `internal/composition`, não só código tocado por este plano. `git add`
+   nesta sessão emitiu o aviso `LF will be replaced by CRLF the next time Git touches it`, ou
+   seja o repo está configurado com `core.autocrlf` a normalizar para CRLF no checkout; o `gofmt`
+   deste ambiente Windows/Git-Bash formata para LF, então QUALQUER ficheiro do repo (não só os
+   desta tarefa) aparece como "não formatado" por causa do fim-de-linha, não do conteúdo. Não é
+   um achado do protocolo de módulo — é um artefacto de ambiente anterior a este plano inteiro.
+2. **`go vet ./...`** falha exatamente como D-30 documenta: `internal/composition/catalog_wiring.go:9`
+   importa `catalog/internal/postgres` de fora da subárvore do contexto. Conhecido, não corrigido
+   por instrução explícita do brief da Tarefa 11.
+3. **`archscan -root internal`** (o portão corre-o sobre TODA a `internal/`, não só
+   `kernel`/`contexts`, porque o brief da Tarefa 12 manda `-root internal` verbatim) encontra
+   dezenas de tokens de vendor (`mercadolivre`, `mercado_livre`, `magalu`, ...) em
+   `internal/composition/*.go` e `internal/modules/**` — código legado da árvore antiga que
+   `internal/modules/` ainda usa livremente porque NENHUM plano até agora migrou esses caminhos
+   para o protocolo de contexto/adapter. Isto é esperado: o protocolo só é mandatório dentro de
+   `internal/kernel/` e `internal/contexts/`; a Tarefa 12 escreveu o portão exatamente como o
+   brief manda (`-root internal`), então ele mede also a árvore legada, ainda não migrada, e
+   reprova por ela. Mais D-28 (`TestNoVendorTokenInKernel`/`channel_test.go`, 6 hits) já
+   documentado.
+4. **`go test ./internal/...`** falha em `internal/composition` (mesma linha de D-30) e também em
+   `internal/platform/migrate`: `TestCanonicalSourceListsEveryMigrationByFullFilename` e
+   `TestCanonicalSourceDoesNotDependOnCallerWorkingDirectory` — "got 84 canonical migrations, want
+   83", um drift de inventário de migrações pré-existente, não relacionado a este plano nem a
+   nenhum ficheiro que ele tocou.
+5. **`no float in the kernel`** — ver D-32 acima, falso positivo por comentário.
+
+Nenhuma destas cinco causas foi introduzida pela Tarefa 12, e nenhuma foi corrigida pela Tarefa
+12 — o mandato era medir o portão contra a árvore real, não fazer a árvore passar. **O veredito
+real do portão na árvore como está hoje é FAIL, por razões genuínas e pré-existentes**, e ficar
+verde exigiria trabalho fora do escopo deste plano (normalizar terminação de linha do repo,
+resolver D-29/D-30, migrar `internal/modules`/`internal/composition` para o protocolo de
+contexto, ou investigar o drift de `internal/platform/migrate`). A prova crítica do Step 6 (o
+portão reprova quando `float64` é injetado no kernel, e o bloco específico aponta a linha certa)
+continua válida isoladamente — só o veredito AGREGADO do portão sobre a árvore inteira é FAIL.
