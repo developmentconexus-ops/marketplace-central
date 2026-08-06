@@ -34,6 +34,29 @@ Vinculam **toda** tarefa. Um executor que as viole reprova a revisão da tarefa.
 10. **`tenant_id` em toda query.** Sem predicado de tenant, a query não entra.
 11. Comandos Go correm de `apps/server_core` com `GOCACHE` absoluto:
     `export GOCACHE="$(pwd)/.gocache"`.
+12. **Nenhuma rota HTTP nesta fatia.** Sem rota não há DTO, não há `paths` no OpenAPI, não há
+    método de SDK — logo não nasce a quarta cópia da mesma forma. O gerador que fecha esse eixo
+    é T14 da adenda ao plano anterior (`1c47d906`) e ainda não existe. Se uma tarefa parecer
+    pedir superfície HTTP, **para e regista**.
+
+### Relação com a adenda T13–T15 (`1c47d906`)
+
+O plano anterior ganhou uma adenda aprovada — T13 (registo vê contextos), T14 (codegen
+OpenAPI→Go+TS com generate-and-diff), T15 (ADR-023 alinhado) — que corre **a seguir a T12
+daquele plano**. Fronteiras, medidas nesta árvore:
+
+| Trabalho | Dono |
+|---|---|
+| `kind` no registo, `GOV_CONTEXT_UNREGISTERED`, raiz derivada do kind | **T13**, não este plano |
+| Gerador + `go:generate` + generate-and-diff no `arch-gate.sh` | **T14**, não este plano |
+| Emenda ao `023-module-protocol.md` | **T15**, não este plano |
+| Excepções de `production-panic` do kernel | **Tarefa 11 daqui** |
+| ADR-033 (decisão congelada 7) e ADR-034 (ADR-017 substituído) | **Tarefa 12 daqui** |
+| Emendas ao spec das Regras 1.3, 2.3, 4.1, 4.4 | **Tarefa 12 daqui** |
+
+Ambos os planos editam `scripts/arch-gate.sh` (Tarefa 4 aqui, T14 lá). **Um dono de cada vez**:
+quem chegar segundo lê o ficheiro antes de escrever. As duas edições são disjuntas — aqui muda o
+passo `architecture detectors` e mata o `grep` de float; lá acrescenta um passo novo no fim.
 
 ---
 
@@ -85,6 +108,12 @@ Nada em `internal/modules/` chama nada disto.
 - **Nada.** `contracts/governance/modules.json` não menciona `contexts`, `kernel` nem
   `adapters/erp` — zero ocorrências. A árvore nova é **ingovernada**: nenhum
   `GOV_MODULE_COVERAGE`, `GOV_MODULE_DEPENDENCY` ou `GOV_MODULE_LAYER` a alcança.
+  E não é só falta de entrada: `scripts/harness/Policy.psm1:308` cimenta
+  `apps/server_core/internal/modules/$($module.id)` como raiz legal, portanto o contexto **não
+  pode ser inscrito** sem mudar o checker; `modules.json:5` já usa `id: "catalog"`, logo há
+  colisão de chave; e `Policy.psm1:305-306` percorre só `internal/modules/`, portanto uma pasta
+  órfã em `internal/contexts/` **não produz achado nenhum** — não falha, é invisível. Fechar isto
+  é **T13 da adenda `1c47d906`**, com dono próprio. Este plano não o faz.
 - `contracts/governance/invariants.json:11` — `production-panic` tem escopo
   `apps/server_core` (a árvore toda), portanto **alcança** os 3 `panic` novos:
   `exact/decimal.go:84`, `exact/decimal.go:141`, `fact/knowledge.go:134`. Nenhum tem excepção
@@ -1399,16 +1428,29 @@ Commit: `feat(catalog): papel de menor privilegio torna o RLS do contexto provav
 
 ---
 
-### Tarefa 11 — Governança alcança a árvore nova
+### Tarefa 11 — Os pânicos do kernel deixam de ser não declarados
 
-**Causa:** `contracts/governance/modules.json` tem **zero** menções a `contexts`, `kernel` ou
-`adapters/erp`. Todos os invariantes de módulo têm `scope_paths`
-`apps/server_core/internal/modules`. A árvore nova não tem cobertura, dependências declaradas nem
-camadas verificadas — nada a impede de regredir depois deste plano.
+**Escopo, e o que ficou de fora.** A primeira versão desta tarefa mandava inscrever `kernel`,
+`contexts/catalog` e `adapters/erp/sankhyaoracle` em `contracts/governance/modules.json`. **Isso
+não funciona, e foi medido nesta árvore:**
 
-E `production-panic` tem escopo `apps/server_core` inteiro, portanto **alcança** três `panic`
-novos sem excepção registada: `exact/decimal.go:84`, `exact/decimal.go:141`,
-`fact/knowledge.go:134`.
+- `scripts/harness/Policy.psm1:308` exige
+  `$module.root -eq "apps/server_core/internal/modules/$($module.id)"` — uma entrada cuja raiz
+  esteja em `internal/contexts/` produz `GOV_MODULE_COVERAGE` só por existir.
+- `contracts/governance/modules.json:5` **já tem** `id: "catalog"`, apontando a
+  `internal/modules/catalog`. Os dois coexistem toda a migração, logo a chave de unicidade tem de
+  passar ao par `(kind, id)`.
+- `grep -c '"kind"' contracts/governance/modules.json` → **0**. O campo não existe.
+- `Policy.psm1:305-306` percorre a árvore, mas só `internal/modules/`. Uma pasta nova em
+  `internal/contexts/` sem entrada nenhuma **não produz achado algum** — não falha, é invisível.
+
+Inscrever o contexto exige mudar o checker, e isso é **T13 da adenda `1c47d906`**, que já foi
+aprovada e tem dono. Esta tarefa **não** toca em `modules.json` nem em `Policy.psm1`.
+
+**Causa que fica aqui:** `contracts/governance/invariants.json:11` dá a `production-panic` o
+escopo `apps/server_core` inteiro — a árvore toda, não `internal/modules`. Portanto **alcança**
+três `panic` novos, nenhum com excepção registada: `exact/decimal.go:84`, `exact/decimal.go:141`,
+`fact/knowledge.go:134`. Pânico baselineado não se herda.
 
 **RED.** Da raiz do repo, num worktree limpo, com o SHA de 40 hex completo:
 
@@ -1420,13 +1462,8 @@ Cola o output. Espera-se `GOV_PRODUCTION_PANIC` nos três sítios.
 
 **GREEN.**
 
-1. `contracts/governance/modules.json` ganha entradas para `kernel`, `contexts/catalog` e
-   `adapters/erp/sankhyaoracle`, cada uma com o seu `root`, `composition_required` e
-   `dependencies` **medidos dos imports reais**, não presumidos. Regra da memória:
-   *entry em `modules.json` entra pelo merge, nunca pré-merge* — o executor escreve a entrada na
-   mesma tarefa, e a lane de governança só a verá verde depois do merge.
-2. `contracts/governance/invariants.json` ganha três `temporary_exceptions` de
-   `production-panic`, **cada uma com a sua razão e um `removal_owner`**:
+`contracts/governance/invariants.json` ganha três `temporary_exceptions` de `production-panic`,
+**cada uma com a sua razão e um `removal_owner`**:
    - `exact/decimal.go:84` — `MustParseDecimal` é o idioma de constante literal em teste e em
      inicialização de pacote; remoção = o construtor deixar de existir.
    - `exact/decimal.go:141` — `StringFixed` com escala negativa é erro de programação, não de
@@ -1438,9 +1475,10 @@ Cola o output. Espera-se `GOV_PRODUCTION_PANIC` nos três sítios.
    Se o formato `exception_mode: "exact-occurrence"` exigir a linha exacta, mede-a antes de
    escrever — as linhas rodam.
 
-**Aceitação:** a lane de governança corre sem `GOV_PRODUCTION_PANIC` não declarado.
+**Aceitação:** a lane de governança corre sem `GOV_PRODUCTION_PANIC` não declarado. A árvore de
+contextos continua ingovernada — isso é **esperado** aqui e fecha em T13, não neste plano.
 
-Commit: `chore(governance): arvore de contextos entra no registo; panicos do kernel declarados`
+Commit: `chore(governance): panicos do kernel declarados com dono de remocao`
 
 ---
 
@@ -1512,6 +1550,17 @@ Em `.mnfs/HARNESS-DEBTS.md`, **com a medição de cada uma** — nada entra como
   Não há ecrã, não há `sync_health`, não há cartão de operador. Escopo do próximo plano.
 - **`internal/modules/` ainda fora dos detectores.** O portão varre 4 raízes novas e declara a
   omissão em voz alta (`scripts/arch-gate.sh`). A árvore legada só é varrida quando for migrada.
+- **A árvore de contextos continua ingovernada** — com dono. `Policy.psm1:308` não aceita raiz
+  fora de `internal/modules/`, `modules.json:5` colide em `id: "catalog"`, e `Policy.psm1:305`
+  percorre só `internal/modules/`, portanto pasta órfã em `internal/contexts/` é invisível em vez
+  de reprovar. Fecha em **T13** da adenda `1c47d906`, não aqui.
+- **Classe B — a mesma forma copiada à mão.** `domain` → DTO → OpenAPI → SDK são quatro cópias
+  que nenhum compilador liga, porque nenhuma importa as outras; `GOV_API_SDK_SPLIT` só exige o
+  mesmo commit, nunca concordância. Este plano é imune por construção — não publica rota
+  (constraint 12) — mas a imunidade acaba na primeira rota. Fecha em **T14** (gerador +
+  generate-and-diff), não aqui.
+- **`023-module-protocol.md` desalinhado do spec §14.** Duas fontes a dizer coisas diferentes
+  sobre a mesma regra. Fecha em **T15**. Os ADRs deste plano (033, 034) são disjuntos desse.
 
 **Aceitação:** `bash scripts/arch-gate.sh` → `ARCH GATE: PASS`; `go build ./...`, `go vet ./...`,
 `npm run harness:unit`, `npm run harness:integration` verdes;
