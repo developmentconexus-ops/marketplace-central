@@ -1173,3 +1173,40 @@ tarefa prosseguiu sem bloqueio: renomeei `Page`→`NextPage` per spec, `go build
 adaptar, nada foi apagado). Registrado porque o padrão A-2 já tem duas famílias diferentes de
 prova (card de milestone, agora brief de tarefa de plano) e o conserto candidato do A-2 (medir
 toda alegação executável do brief antes do worker partir) cobriria este caso também.
+
+**D-38. Tarefa 8, prova 2 (dev stack + Oracle real) bloqueada: sem C compiler no executor,
+`cmd/catalogingest` não liga.** O brief pede duas provas independentes: (1) o teste de
+integração com `count(*)` a bater com o relatório — fechada, ver corpo da Tarefa 8; (2) correr
+`cmd/catalogingest` contra o Oracle real do dev stack e confirmar `catalog.products` > 0 via
+`docker exec ... psql`. Medido, nesta ordem:
+
+1. `go env CGO_ENABLED CC` devolve `0` / `gcc` — cgo está desligado por omissão neste executor
+   porque o Go toolchain não encontrou um compilador C.
+2. `cmd/catalogingest` está desenhado com o mesmo split cgo/não-cgo que
+   `internal/modules/internal_read/adapters/oracle` já usa (`oracle_cgo.go` com `+build cgo`
+   importa `godror`; `oracle_nocgo.go` com `+build !cgo` devolve erro fechado), precisamente para
+   que `go build ./...` (CGO_ENABLED=0, o omisso neste host) fique verde no resto do repositório —
+   confirmado: `go build ./...` e `go vet ./...` saem limpos com `cmd/catalogingest` presente.
+3. `CGO_ENABLED=1 go build ./cmd/catalogingest/...` (o build que produziria o binário real) falha
+   no compilador C, não no driver:
+   ```
+   # runtime/cgo
+   cgo: C compiler "gcc" not found: exec: "gcc": executable file not found in %PATH%
+   ```
+4. O único caminho Docker documentado para Oracle real (`scripts/run-live-oracle-docker.ps1`,
+   `docs/operations/live-oracle-docker.md`) não é um runner genérico: constrói
+   `docker/dev/backend.Dockerfile` e corre só um binário de smoke pré-compilado
+   (`/opt/mpc/bin/oracle-live.test`) com seletor fixo `TestOracleLiveSmoke`/`TestOracleLiveBaseline`
+   — não aceita um binário arbitrário como `cmd/catalogingest`. Construir um segundo pipeline
+   Docker para este comando seria infraestrutura nova fora do escopo desta tarefa (e da constraint
+   2, zero dependências novas, por extensão de espírito).
+
+Conclusão: nem o build liga neste executor (sem C compiler), nem existe um runner Docker já
+sancionado para um binário novo — Oracle está estruturalmente inacessível aqui, não apenas por
+credencial em falta. Por cláusula explícita do brief da Tarefa 8 ("Se Oracle não estiver
+acessível... a prova 1 fecha a tarefa, a prova 2 vai para `.mnfs/HARNESS-DEBTS.md`"), a Tarefa 8
+fecha só com a prova 1. Conserto candidato (fora desta tarefa): ou dar a `cmd/catalogingest` o
+mesmo tratamento Docker fingerprinted que `run-live-oracle-docker.ps1` dá ao smoke test, ou
+documentar explicitamente que este comando só corre dentro do container `backend` do
+`docker-compose.yml` (que já tem `MPC_ORACLE_LIB_DIR` e, presumivelmente, um C compiler, porque
+constrói o binário `server` com o mesmo driver).
