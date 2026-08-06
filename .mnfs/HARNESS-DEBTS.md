@@ -1039,3 +1039,68 @@ resolver D-29/D-30, migrar `internal/modules`/`internal/composition` para o prot
 contexto, ou investigar o drift de `internal/platform/migrate`). A prova crítica do Step 6 (o
 portão reprova quando `float64` é injetado no kernel, e o bloco específico aponta a linha certa)
 continua válida isoladamente — só o veredito AGREGADO do portão sobre a árvore inteira é FAIL.
+
+---
+
+**D-35. Tarefa 4 escopa `ScanVendorTokensSuffix` e restringe as raízes do portão — D-32 fecha,
+D-28/D-34 persistem, e a restrição de raiz DESTAPA 42 achados novos em `internal/composition`**
+(Fecho da Fundação, Tarefa 4, `internal/arch/scan.go` + `scripts/arch-gate.sh`, 2026-08-06) —
+ABERTA, fora do escopo aditivo desta tarefa.
+
+Medido depois do fix (`vendorRuleApplies` exclui `/adapters/` e `/internal/arch/`; o portão
+troca `-root internal` por um loop sobre `internal/kernel internal/contexts internal/adapters
+internal/composition`; o passo `grep` de float sai, o detector AST já corre dentro do
+`archscan`):
+
+1. **`archscan -root internal/arch` (RED do brief) fecha**: de 8 achados (`scan.go:34-35`
+   acusando a própria lista) para 0 — `vendorRuleApplies` funciona.
+2. **O falso positivo de comentário (D-32) fecha**: sem o passo `grep`, o portão não acusa mais
+   `internal/kernel/exact/decimal.go:2` / `money.go:44`.
+3. **`internal/modules` sai do relatório do portão**: de 487 achados sob `-root internal` para
+   os números abaixo — a raiz legada não é mais varrida (constraint 1 respeitada).
+4. **`internal/contexts` e `internal/adapters`: zero achados.**
+5. **`internal/kernel`: 6 achados** — é D-28 verbatim (`channel_test.go:16,20,21,33,43,51`,
+   `mercadolivre` em literal de string), inalterado porque `vendorRuleApplies` não exime
+   `kernel/` e o brief da Tarefa 4 não pediu isso.
+6. **`internal/composition`: 42 achados, NOVO nesta contagem isolada** (o D-33 já tinha citado
+   `internal/composition/*.go` qualitativamente, junto com `internal/modules/**`, sem separar a
+   contagem):
+   ```
+   internal/composition/market_adapters.go: 8 achados (linhas 15,15,229,239,239,242,263,547)
+   internal/composition/market_adapters_test.go: 5 achados (314,327,339,353,356)
+   internal/composition/orders_adapters.go: 4 achados (8,8,89,97)
+   internal/composition/orders_ingest_adapters.go: 6 achados (7,7,26,34,60,68)
+   internal/composition/pricing_adapters.go: 1 achado (35)
+   internal/composition/pricing_adapters_test.go: 2 achados (44,53)
+   internal/composition/root.go: 16 achados (23,23,39,380×3,396,415,590,593,594,753,861,863,965,967)
+   ```
+   Todos `mercadolivre`/`mercado_livre`/`magalu` em identificador ou literal — a fiação de
+   composition ainda referencia vendors diretamente, não através de `adapters/`. A causa raiz da
+   descrição da Tarefa 4 diz explicitamente que a Regra 2.3 "governa `contexts/`, `kernel/` e
+   `composition/`", então isto não é um falso positivo do detector: é uma violação real, ainda
+   não migrada, que só ficou visível porque a raiz do portão deixou de ser `internal` (que
+   afogava `composition` em ruído de `internal/modules`) e passou a incluir `internal/composition`
+   explicitamente — o próprio brief manda escanear essa raiz.
+7. **`go test ./internal/...`** continua FAIL: `TestNoVendorTokenInKernel` (D-28, mesmo teste,
+   raiz hard-coded `../kernel` dentro de `repo_test.go`, não passa pelo portão) e
+   `TestModuleBoundaryADR023` (D-34, 234 violações em `internal/modules/`, detector diferente
+   — `internal/composition/module_boundary_arch_test.go`, ADR-023, não Regra 2.3).
+8. **`gofmt -l`** continua a listar dezenas de arquivos pré-existentes fora do escopo desta
+   tarefa (causa 1 de D-33, CRLF/LF); confirmado que `internal/arch/scan.go` e
+   `internal/arch/scan_test.go` (os dois arquivos que esta tarefa editou) NÃO aparecem na lista
+   (`gofmt -l internal/arch/scan.go internal/arch/scan_test.go` → saída vazia).
+
+**`bash scripts/arch-gate.sh` → `ARCH GATE: FAIL`, `EXIT=1`**, mesmo depois do fix — não pelas
+duas causas que a Tarefa 4 tinha mandato de fechar (self-accusation do detector, grep em
+comentário — ambas fecham, medido acima), mas por quatro causas pré-existentes e já registadas
+(D-28, D-34, causa-1-do-D-33) mais uma quinta (item 6, 42 achados de composition) que a própria
+restrição de raiz do brief tornou visível pela primeira vez isolada.
+
+Consequência de classe: **"restringir a raiz do portão" é uma mudança que aumenta granularidade
+de sinal, não que garante verde** — tirar `internal/modules` do denominador não zera o
+numerador de `internal/composition`, só o torna legível. Conserto candidato (fora desta tarefa):
+(a) migrar `internal/composition/*.go` para o padrão adapter (mover a fiação de vendor para trás
+de `adapters/`, mesmo molde que T3/T4 já aplicaram ao detector), (b) decidir explicitamente se
+`channel_test.go` deve trocar `"MercadoLivre"`/`"mercadolivre"` por um nome de canal fictício
+(opção (a) do D-28) ou se `TestNoVendorTokenInKernel` deve restringir-se a não-`_test.go`, e
+(c) só depois disso medir `bash scripts/arch-gate.sh` outra vez à espera de PASS real.

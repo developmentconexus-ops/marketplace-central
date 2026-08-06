@@ -1,0 +1,3 @@
+package pricing
+
+const provider = "mercado_livre"

@@ -102,6 +102,31 @@ func TestVendorTokensAreSilentOnCleanFixture(t *testing.T) {
 	}
 }
 
+// TestVendorTokensIgnoresAdaptersAndOwnList pins the two halves of Regra 2.3:
+// a vendor name inside adapters/ is the design, and the detector's own token
+// list is not a violation of the rule it implements.
+func TestVendorTokensIgnoresAdaptersAndOwnList(t *testing.T) {
+	got, err := arch.ScanVendorTokensSuffix("testdata", arch.VendorTokens, fixtureSuffix)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	for _, f := range got {
+		if strings.Contains(f.File, "/adapters/") {
+			t.Fatalf("test=TestVendorTokensIgnoresAdaptersAndOwnList: adapters/ must be exempt, got %s:%d", f.File, f.Line)
+		}
+	}
+	// Positive control: the fixture outside adapters/ must still be caught.
+	var caught bool
+	for _, f := range got {
+		if strings.HasSuffix(f.File, "vendor_in_context.go.txt") {
+			caught = true
+		}
+	}
+	if !caught {
+		t.Fatalf("test=TestVendorTokensIgnoresAdaptersAndOwnList: positive control not caught; got %+v", got)
+	}
+}
+
 // TestCrossContextInternalSeesOutsideContexts is the positive control for the
 // blindness that shipped: the composition root imported catalog/internal/postgres
 // and the detector reported zero findings, because it skipped every file that was

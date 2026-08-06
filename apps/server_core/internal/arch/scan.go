@@ -207,6 +207,23 @@ func ScanFloatInContracts(root string) (Findings, error) {
 	return ScanFloatInContractsSuffix(root, ".go")
 }
 
+// vendorRuleApplies reports whether Regra 2.3 governs this file.
+//
+// The rule is "a vendor name does not appear OUTSIDE adapters/", so adapters are
+// exempt by definition. The scanner package is exempt too: its closed token list
+// is the instrument, not a violation, and a detector that permanently accuses
+// itself is a detector nobody can ever act on.
+func vendorRuleApplies(path string) bool {
+	p := filepath.ToSlash(path)
+	if strings.Contains(p, "/adapters/") || strings.HasPrefix(p, "adapters/") {
+		return false
+	}
+	if strings.Contains(p, "/internal/arch/") || strings.HasPrefix(p, "internal/arch/") {
+		return false
+	}
+	return true
+}
+
 // ScanVendorTokensSuffix reports every vendor name appearing in an identifier
 // or a string literal under root. Both, because the measured defect is a
 // literal and an identifier-only detector walks past it.
@@ -217,6 +234,9 @@ func ScanVendorTokensSuffix(root string, tokens []string, suffix string) (Findin
 	}
 	var out Findings
 	err := walk(root, suffix, func(path string, fset *token.FileSet, file *ast.File) error {
+		if !vendorRuleApplies(path) {
+			return nil
+		}
 		report := func(pos token.Pos, where, text string) {
 			hay := strings.ToLower(text)
 			for _, t := range lower {
