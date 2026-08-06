@@ -470,7 +470,8 @@ runtime.
 
 ## 14. Emendas à ADR-023
 
-A coluna **Aplicado** diz se a emenda já está escrita no ficheiro do ADR. Enquanto disser
+A coluna **Aplicado** diz se a emenda já está escrita no ficheiro do ADR — as três
+primeiras entraram em `ccdc49c`. Enquanto disser
 *pendente*, a ordem de verdade do repositório põe o ADR acima deste documento e é o ADR que
 vale — uma emenda que vive só aqui não emendou nada.
 
