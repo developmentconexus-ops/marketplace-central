@@ -1,12 +1,15 @@
 package catalogfeed
 
 import (
+	"context"
 	"database/sql"
+	"strings"
 	"testing"
 	"time"
 
 	"marketplace-central/apps/server_core/internal/adapters/erp/sankhyaoracle/internal/oracle"
 	"marketplace-central/apps/server_core/internal/contexts/catalog/contracts"
+	"marketplace-central/apps/server_core/internal/contexts/catalog/port"
 	"marketplace-central/apps/server_core/internal/kernel/fact"
 	"marketplace-central/apps/server_core/internal/kernel/tenant"
 )
@@ -117,6 +120,23 @@ func TestMapProductRejectsZeroCodprod(t *testing.T) {
 	_, err := MapProduct(testTenant(t), "sankhya-it-01", oracle.ProductRow{Codprod: 0})
 	if err == nil {
 		t.Fatal("MapProduct accepted CODPROD 0")
+	}
+}
+
+// A malformed cursor must fail before the query ever reaches Oracle: the
+// zero-value Feed (no db, no instance, no now) proves it, because NextPage
+// would nil-pointer-panic on f.db the moment it got past the parse.
+func TestNextPageRejectsMalformedCursorWithoutTouchingDB(t *testing.T) {
+	f := Feed{}
+	page, err := f.NextPage(context.Background(), testTenant(t), port.NewCursor("not-a-number"), 10)
+	if err == nil {
+		t.Fatal("NextPage accepted a cursor that is not a CODPROD")
+	}
+	if !strings.Contains(err.Error(), "not-a-number") {
+		t.Fatalf("error %q does not name the malformed token", err.Error())
+	}
+	if len(page.Observations) != 0 || page.Next.Token() != "" || page.Done {
+		t.Fatalf("page = %+v, want the zero value", page)
 	}
 }
 
