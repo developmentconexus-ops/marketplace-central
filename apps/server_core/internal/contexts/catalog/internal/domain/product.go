@@ -6,6 +6,7 @@ import (
 
 	"marketplace-central/apps/server_core/internal/contexts/catalog/contracts"
 	"marketplace-central/apps/server_core/internal/kernel/fact"
+	"marketplace-central/apps/server_core/internal/kernel/provenance"
 	"marketplace-central/apps/server_core/internal/kernel/tenant"
 )
 
@@ -20,13 +21,14 @@ var (
 // that changes state returns a NEW Product: a caller that persists inside a
 // transaction which then fails must not be holding a mutated aggregate.
 type Product struct {
-	id          ProductID
-	tenant      tenant.ID
-	version     int
-	description fact.Fact[string]
-	identifiers []contracts.Identifier
-	sourceKeys  []contracts.SourceProductKey
-	lastHash    string
+	id           ProductID
+	tenant       tenant.ID
+	version      int
+	description  fact.Fact[string]
+	identifiers  []contracts.Identifier
+	sourceKeys   []contracts.SourceProductKey
+	lastHash     string
+	lastEvidence provenance.Evidence
 }
 
 // NewProduct mints version 1 from a first observation.
@@ -38,13 +40,14 @@ func NewProduct(id ProductID, o contracts.ProductObservation) (Product, error) {
 		return Product{}, err
 	}
 	return Product{
-		id:          id,
-		tenant:      o.Key.Tenant(),
-		version:     1,
-		description: o.Description,
-		identifiers: append([]contracts.Identifier(nil), o.Identifiers...),
-		sourceKeys:  []contracts.SourceProductKey{o.Key},
-		lastHash:    o.Evidence.PayloadHash(),
+		id:           id,
+		tenant:       o.Key.Tenant(),
+		version:      1,
+		description:  o.Description,
+		identifiers:  append([]contracts.Identifier(nil), o.Identifiers...),
+		sourceKeys:   []contracts.SourceProductKey{o.Key},
+		lastHash:     o.Evidence.PayloadHash(),
+		lastEvidence: o.Evidence,
 	}, nil
 }
 
@@ -73,6 +76,11 @@ func (p Product) SourceKeys() []contracts.SourceProductKey {
 // LastPayloadHash returns the hash of the last payload that changed this product.
 func (p Product) LastPayloadHash() string { return p.lastHash }
 
+// LastEvidence returns how we last learned about this product. The repository
+// writes it to catalog.source_observations, which is what makes rehydration able
+// to tell the truth instead of naming itself as the source.
+func (p Product) LastEvidence() provenance.Evidence { return p.lastEvidence }
+
 // Apply folds a new observation in and reports what it did.
 //
 // Sameness is decided by the raw payload hash and not by comparing fields.
@@ -91,13 +99,14 @@ func (p Product) Apply(o contracts.ProductObservation) (Product, contracts.Dispo
 	}
 
 	next := Product{
-		id:          p.id,
-		tenant:      p.tenant,
-		version:     p.version + 1,
-		description: o.Description,
-		identifiers: mergeIdentifiers(p.identifiers, o.Identifiers),
-		sourceKeys:  mergeSourceKeys(p.sourceKeys, o.Key),
-		lastHash:    o.Evidence.PayloadHash(),
+		id:           p.id,
+		tenant:       p.tenant,
+		version:      p.version + 1,
+		description:  o.Description,
+		identifiers:  mergeIdentifiers(p.identifiers, o.Identifiers),
+		sourceKeys:   mergeSourceKeys(p.sourceKeys, o.Key),
+		lastHash:     o.Evidence.PayloadHash(),
+		lastEvidence: o.Evidence,
 	}
 	return next, contracts.DispositionChanged, nil
 }
@@ -126,6 +135,15 @@ func mergeIdentifiers(existing, incoming []contracts.Identifier) []contracts.Ide
 func ReconstituteVersion(p Product, version int, hash string) Product {
 	p.version = version
 	p.lastHash = hash
+	return p
+}
+
+// ReconstituteSourceKeys restores the full set of addresses a persisted product
+// answers to. It exists because the alternative — replaying Apply once per extra
+// key — is a no-op: Apply sees the same payload hash and reports Idempotent
+// without merging anything, so the second key was silently dropped.
+func ReconstituteSourceKeys(p Product, keys []contracts.SourceProductKey) Product {
+	p.sourceKeys = append([]contracts.SourceProductKey(nil), keys...)
 	return p
 }
 

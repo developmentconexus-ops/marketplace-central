@@ -133,6 +133,21 @@ func writeProduct(ctx context.Context, tx pgx.Tx, p domain.Product, insert bool)
 			return fmt.Errorf("catalog/postgres: insert source key %s: %w", k, err)
 		}
 	}
+
+	e := p.LastEvidence()
+	if e.IsZero() {
+		return fmt.Errorf("catalog/postgres: product %s has no evidence to record", p.ID())
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO catalog.source_observations
+			(tenant_id, product_id, payload_hash, source_system, object_kind,
+			 external_key, observed_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7)
+		ON CONFLICT (tenant_id, product_id, payload_hash) DO NOTHING`,
+		p.Tenant().String(), p.ID().String(), e.PayloadHash(), e.System(),
+		e.ObjectKind(), e.ExternalKey(), e.ObservedAt().UTC()); err != nil {
+		return fmt.Errorf("catalog/postgres: record observation: %w", err)
+	}
 	return nil
 }
 
@@ -200,7 +215,7 @@ func loadProduct(ctx context.Context, tx pgx.Tx, t tenant.ID, productID string) 
 		return domain.Product{}, false, fmt.Errorf("catalog/postgres: product %s has no source key", productID)
 	}
 
-	e, err := provenance.NewEvidence("catalog", "product", productID, recordedAt.UTC(), hash)
+	e, err := loadLatestEvidence(ctx, tx, t, productID, hash)
 	if err != nil {
 		return domain.Product{}, false, err
 	}
@@ -216,15 +231,35 @@ func loadProduct(ctx context.Context, tx pgx.Tx, t tenant.ID, productID string) 
 	if err != nil {
 		return domain.Product{}, false, err
 	}
-	for _, k := range keys[1:] {
-		extra := obs
-		extra.Key = k
-		p, _, err = p.Apply(extra)
-		if err != nil {
-			return domain.Product{}, false, err
-		}
-	}
+	// Every key, restored directly. Replaying Apply here would report Idempotent
+	// on the identical payload hash and drop every key after the first.
+	p = domain.ReconstituteSourceKeys(p, keys)
 	return domain.ReconstituteVersion(p, version, hash), true, nil
+}
+
+// loadLatestEvidence returns how we actually learned this product's current
+// version. It reads the observation that produced the stored payload hash, so
+// the rehydrated Fact carries the source system that observed it — not this
+// package's own name, which is what it used to fabricate.
+func loadLatestEvidence(ctx context.Context, tx pgx.Tx, t tenant.ID, productID, hash string) (provenance.Evidence, error) {
+	var system, objectKind, externalKey string
+	var observedAt time.Time
+	row := tx.QueryRow(ctx, `
+		SELECT source_system, object_kind, external_key, observed_at
+		  FROM catalog.source_observations
+		 WHERE tenant_id = $1 AND product_id = $2 AND payload_hash = $3`,
+		t.String(), productID, hash)
+	switch err := row.Scan(&system, &objectKind, &externalKey, &observedAt); {
+	case errors.Is(err, pgx.ErrNoRows):
+		// Not a missing optional. A product whose current version has no recorded
+		// observation cannot say where it came from, and inventing one here is the
+		// exact fabrication this change removes.
+		return provenance.Evidence{}, fmt.Errorf(
+			"catalog/postgres: product %s version hash %s has no source observation", productID, hash)
+	case err != nil:
+		return provenance.Evidence{}, fmt.Errorf("catalog/postgres: load observation: %w", err)
+	}
+	return provenance.NewEvidence(system, objectKind, externalKey, observedAt.UTC(), hash)
 }
 
 func loadIdentifiers(ctx context.Context, tx pgx.Tx, t tenant.ID, productID string) ([]contracts.Identifier, error) {
@@ -363,11 +398,13 @@ func summarise(p domain.Product) port.Summary {
 		desc = ""
 	}
 	return port.Summary{
-		ProductID:        p.ID().String(),
-		Description:      desc,
-		DescriptionState: p.Description().State().String(),
-		Identifiers:      p.Identifiers(),
-		Version:          p.Version(),
+		ProductID:                 p.ID().String(),
+		Description:               desc,
+		DescriptionState:          p.Description().State().String(),
+		DescriptionEvidenceSystem: p.Description().Evidence().System(),
+		Identifiers:               p.Identifiers(),
+		SourceKeys:                p.SourceKeys(),
+		Version:                   p.Version(),
 	}
 }
 
