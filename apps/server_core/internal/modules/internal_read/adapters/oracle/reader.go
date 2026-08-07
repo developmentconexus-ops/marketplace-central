@@ -571,10 +571,16 @@ func wrapOracleError(operation string, err error) error {
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.NewReadError(domain.ReadErrorUnsupportedQuery, fmt.Sprintf("oracle %s returned no rows", operation), nil)
 	}
-	return domain.NewReadError(domain.ReadErrorSourceUnavailable, fmt.Sprintf("oracle %s failed", operation), safeOracleCause(err))
+	return domain.NewReadError(domain.ReadErrorSourceUnavailable, fmt.Sprintf("oracle %s failed", operation), SafeOracleCause(err))
 }
 
-func safeOracleCause(err error) error {
+// SafeOracleCause strips raw Oracle/OCI driver error text before it reaches a
+// log or caller. It is exported because it is also the composition root's
+// mitigation of record for the same class of leak outside this package (see
+// apps/server_core/cmd/catalogingest/oracle_cgo.go, which mirrors this
+// package's cgo/no-cgo split and must not let a raw driver error past its own
+// ping check either).
+func SafeOracleCause(err error) error {
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return err
 	}

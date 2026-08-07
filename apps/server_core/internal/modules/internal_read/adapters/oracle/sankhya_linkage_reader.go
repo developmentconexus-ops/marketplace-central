@@ -421,7 +421,7 @@ FETCH FIRST :4 ROWS ONLY`, schema, schema, schema)
 }
 
 func sankhyaOracleError(operation string, err error) error {
-	return domain.NewReadError(domain.ReadErrorSourceUnavailable, fmt.Sprintf("sankhya oracle %s failed", operation), safeOracleCause(err))
+	return domain.NewReadError(domain.ReadErrorSourceUnavailable, fmt.Sprintf("sankhya oracle %s failed", operation), SafeOracleCause(err))
 }
 
 func sankhyaNullableInt64(value sql.NullInt64) *int64 {

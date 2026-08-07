@@ -1174,39 +1174,93 @@ adaptar, nada foi apagado). Registrado porque o padrão A-2 já tem duas famíli
 prova (card de milestone, agora brief de tarefa de plano) e o conserto candidato do A-2 (medir
 toda alegação executável do brief antes do worker partir) cobriria este caso também.
 
-**D-38. Tarefa 8, prova 2 (dev stack + Oracle real) bloqueada: sem C compiler no executor,
-`cmd/catalogingest` não liga.** O brief pede duas provas independentes: (1) o teste de
-integração com `count(*)` a bater com o relatório — fechada, ver corpo da Tarefa 8; (2) correr
-`cmd/catalogingest` contra o Oracle real do dev stack e confirmar `catalog.products` > 0 via
-`docker exec ... psql`. Medido, nesta ordem:
+**D-38. FECHADA por remedição (revisão do fecho da Tarefa 8) — a prova 2 não estava
+"estruturalmente" bloqueada; o revisor achou o caminho que a medição original nunca avaliou.**
+Redação original (preservada por rastreabilidade, ver histórico git): concluía que "Oracle está
+estruturalmente inacessível" neste executor, com base em (a) `go env CGO_ENABLED CC` → `0`/`gcc`
+no host bare-metal e (b) `scripts/run-live-oracle-docker.ps1` só correr um binário de smoke
+pré-compilado. Ambas as observações (a) e (b) continuam **verdadeiras** — mas a conclusão delas
+("estruturalmente inacessível") ia longe demais: nunca avaliou o serviço `backend` do
+`docker-compose.yml` na raiz do repo, que já é um container cgo de uso geral (não um runner de
+smoke fixo).
 
-1. `go env CGO_ENABLED CC` devolve `0` / `gcc` — cgo está desligado por omissão neste executor
-   porque o Go toolchain não encontrou um compilador C.
-2. `cmd/catalogingest` está desenhado com o mesmo split cgo/não-cgo que
-   `internal/modules/internal_read/adapters/oracle` já usa (`oracle_cgo.go` com `+build cgo`
-   importa `godror`; `oracle_nocgo.go` com `+build !cgo` devolve erro fechado), precisamente para
-   que `go build ./...` (CGO_ENABLED=0, o omisso neste host) fique verde no resto do repositório —
-   confirmado: `go build ./...` e `go vet ./...` saem limpos com `cmd/catalogingest` presente.
-3. `CGO_ENABLED=1 go build ./cmd/catalogingest/...` (o build que produziria o binário real) falha
-   no compilador C, não no driver:
-   ```
-   # runtime/cgo
-   cgo: C compiler "gcc" not found: exec: "gcc": executable file not found in %PATH%
-   ```
-4. O único caminho Docker documentado para Oracle real (`scripts/run-live-oracle-docker.ps1`,
-   `docs/operations/live-oracle-docker.md`) não é um runner genérico: constrói
-   `docker/dev/backend.Dockerfile` e corre só um binário de smoke pré-compilado
-   (`/opt/mpc/bin/oracle-live.test`) com seletor fixo `TestOracleLiveSmoke`/`TestOracleLiveBaseline`
-   — não aceita um binário arbitrário como `cmd/catalogingest`. Construir um segundo pipeline
-   Docker para este comando seria infraestrutura nova fora do escopo desta tarefa (e da constraint
-   2, zero dependências novas, por extensão de espírito).
+Medido nesta remedição:
 
-Conclusão: nem o build liga neste executor (sem C compiler), nem existe um runner Docker já
-sancionado para um binário novo — Oracle está estruturalmente inacessível aqui, não apenas por
-credencial em falta. Por cláusula explícita do brief da Tarefa 8 ("Se Oracle não estiver
-acessível... a prova 1 fecha a tarefa, a prova 2 vai para `.mnfs/HARNESS-DEBTS.md`"), a Tarefa 8
-fecha só com a prova 1. Conserto candidato (fora desta tarefa): ou dar a `cmd/catalogingest` o
-mesmo tratamento Docker fingerprinted que `run-live-oracle-docker.ps1` dá ao smoke test, ou
-documentar explicitamente que este comando só corre dentro do container `backend` do
-`docker-compose.yml` (que já tem `MPC_ORACLE_LIB_DIR` e, presumivelmente, um C compiler, porque
-constrói o binário `server` com o mesmo driver).
+1. `docker-compose.yml` (`backend` service) + `docker/dev/backend.Dockerfile`: a imagem parte de
+   `golang:1.25-bookworm`, define `CGO_ENABLED=1`, instala `build-essential` (gcc) via `apt-get`,
+   baixa e instala o Oracle Instant Client (`ORACLE_HOME=/opt/oracle/instantclient`), e o serviço
+   faz bind-mount do repo inteiro em `/workspace` com `go_mod_cache`/`go_build_cache` persistentes
+   — ou seja, um C compiler não é "presumível", está confirmado por leitura do Dockerfile.
+2. `docker ps` mostrava só `marketplace-central-postgres-1` de pé (backend parado); a imagem
+   `marketplace-central-backend:latest` já estava construída (2 dias). `.env` tinha
+   `MPC_ORACLE_USERNAME`/`MPC_ORACLE_PASSWORD`/`MPC_ORACLE_CONNECT_STRING`/`MC_DEFAULT_TENANT_ID`
+   presentes (só checado `SET`/`UNSET`, nunca o valor — nenhum `docker inspect`, só
+   `printenv VAR >/dev/null`). `MPC_SANKHYA_INSTANCE` estava ausente em todo o repo fora do
+   próprio `cmd/catalogingest/main.go` que o exige — não há convenção prévia porque é um
+   discriminador de proveniência puro (`catalogfeed.NewFeed` só valida não-vazio), então foi
+   passado ad hoc via `-e` no `docker compose run`, sem alterar `docker-compose.yml`.
+3. `docker compose run --rm -e MPC_SANKHYA_INSTANCE=dev-oracle-proof backend bash
+   ./docker/dev/backend-entrypoint.sh bash -c "cd apps/server_core && CGO_ENABLED=1 go build -o
+   /tmp/catalogingest ./cmd/catalogingest && /tmp/catalogingest"` — builda e liga. Baseline
+   `catalog.products` era 0 linhas (`docker exec marketplace-central-postgres-1 psql -U
+   marketplace -d marketplace_central -c "SELECT count(*) FROM catalog.products;"` → 0). Após o
+   CLI correr contra o Oracle real e o Postgres real do dev stack, a mesma consulta `count(*)`
+   subiu monotonicamente em checkpoints repetidos: 0 → 2390 → 5504 → 6971 → 8251 → 9731 → **9789**
+   `catalog.products` / **9790** `catalog.source_observations` (última medição,
+   2026-08-07T05:55:27Z, ~30 min de runtime real, container `catalogingest-proof2` ainda ativo
+   completando a paginação da carteira Sankhya real — deixado a correr, não morto, para não
+   truncar dado real).
+4. Uma primeira tentativa (container anterior, morto por engano aos ~10 min por eu ter lido "0%
+   CPU + stdout parado" como travamento) já tinha deixado 2390 linhas reais gravadas antes de eu o
+   matar — o processo não estava preso, estava à espera de round-trips de rede reais para um
+   Oracle real (sem `CallTimeout` na página, sem linha de progresso no stdout: só a mensagem final
+   `catalog ingest report: ...` seria impressa, e eu nunca a esperei da primeira vez). Registrado
+   aqui porque é a mesma classe de erro que este debt corrige: medir demasiado cedo e concluir
+   "inacessível" onde só havia "lento".
+5. Desta vez deixei o container `catalogingest-proof2` correr até ao fim sem interromper. Terminou
+   sozinho com `EXITCODE=0` e imprimiu a linha final: `catalog ingest report: pages=53
+   observed=10586 created=8196 changed=0 idempotent=2390 conflicts=94`. `count(*)` final em
+   `catalog.products` = **10586**, batendo exatamente com `observed` do relatório — a paginação
+   completa da carteira Sankhya real terminou com sucesso, não apenas "ainda a crescer".
+
+Conclusão: Oracle é acessível neste executor pelo caminho `backend` do `docker-compose.yml` —
+zero infraestrutura nova, zero binário fingerprinted adicional, só passar `MPC_SANKHYA_INSTANCE`
+ad hoc (candidato de conserto, fora desta remedição: documentar essa env var no `.env.example`
+e/ou no compose, já que hoje só existe no código do próprio `cmd/catalogingest`). A palavra
+"estruturalmente" foi removida porque a evidência agora mostra o oposto: o único obstáculo real
+era metodológico (não avaliar o serviço certo), não estrutural.
+
+**D-39. `cmd/catalogingest` herda a substituição silenciosa de tenant de `pgdb.LoadConfig()` — um
+operador que esquece `MC_DEFAULT_TENANT_ID` grava linhas reais sob um tenant fabricado, sem
+nenhum erro.** Achado pelo revisor do fecho da Tarefa 8. `apps/server_core/cmd/catalogingest/
+main.go:44-48` resolve o tenant operante via `dbCfg, err := pgdb.LoadConfig()` seguido de
+`tenantID, err := tenant.Parse(dbCfg.DefaultTenantID)`; `apps/server_core/internal/platform/pgdb/
+config.go:23-25` substitui silenciosamente `cfg.DefaultTenantID = "tenant_default"` quando
+`MC_DEFAULT_TENANT_ID` está vazio, em vez de falhar fechado.
+
+Isto está em tensão direta com a constraint 9 ("Desconhecido nunca vira zero, `""`, `false` ou
+default plausível") especificamente para `cmd/catalogingest`: ao contrário da maior parte do que
+`pgdb.LoadConfig()` alimenta, este é um comando de operador com efeito de ESCRITA real
+(`RunCatalogIngest` grava em `catalog.products`/`source_observations`/`product_identifiers`/
+`source_product_keys`), não um leitor nem um serviço servindo tráfego. Um operador que esqueça de
+exportar `MC_DEFAULT_TENANT_ID` antes de correr o binário não recebe erro nenhum — o comando
+arranca normalmente, liga a um Oracle real, e grava um lote inteiro de linhas de catálogo sob
+`tenant_default`, um tenant fabricado, sem nenhum sinal de que o valor pretendido nunca foi
+fornecido. Confirmado ao vivo nesta mesma sessão (prova 2 de D-38): a corrida real usou
+`dbCfg.DefaultTenantID` tal como veio de `.env` sem eu precisar validar nada — se a variável
+estivesse ausente, as ~9.789 linhas gravadas teriam ido para `tenant_default` silenciosamente.
+
+Pré-existente e NÃO desta tarefa: `pgdb.LoadConfig()`/`config.go` é infraestrutura partilhada que
+`cmd/server` já usa da mesma forma — `internal/composition/root.go` passa `cfg.DefaultTenantID`
+para dezenas de repositórios/serviços na wiring do `NewRootRuntime` (ex. linhas 297-991,
+`erpRepo`/`classRepo`/`installationRepo`/`ordersRepo`/`pricingRepo` etc.). Mudar o comportamento
+de `pgdb/config.go` para falhar fechado teria raio de explosão sobre `cmd/server` inteiro — fora
+do escopo desta tarefa de scrub de erro Oracle + remedição de D-38, e `pgdb/config.go` não foi
+tocado.
+
+Conserto candidato (fora desta tarefa): dar a `cmd/catalogingest` (e a outros comandos de
+operador com efeito de escrita real, se existirem) uma validação PRÓPRIA logo após
+`pgdb.LoadConfig()` que falha fechado se `os.Getenv("MC_DEFAULT_TENANT_ID")` estiver vazio, em vez
+de aceitar o fallback silencioso de `pgdb.LoadConfig()` — sem tocar no comportamento de
+`cmd/server`, que pode ter motivos distintos (multi-tenant já roteado a outro nível, por
+`tenant_config`) para tolerar o default hoje.

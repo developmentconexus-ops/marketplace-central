@@ -59,7 +59,7 @@ func OpenDB(ctx context.Context, cfg Config) (Database, error) {
 	defer cancel()
 	if err := db.PingContext(bootstrapCtx); err != nil {
 		_ = db.Close()
-		return nil, domain.NewReadError(domain.ReadErrorSourceUnavailable, "oracle connection ping failed", safeOracleCause(err))
+		return nil, domain.NewReadError(domain.ReadErrorSourceUnavailable, "oracle connection ping failed", SafeOracleCause(err))
 	}
 	return db, nil
 }

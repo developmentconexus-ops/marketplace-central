@@ -40,7 +40,12 @@ func openOracleDB(ctx context.Context, cfg oracleconfig.Config) (*sql.DB, error)
 	defer cancel()
 	if err := db.PingContext(bootstrapCtx); err != nil {
 		_ = db.Close()
-		return nil, err
+		// Mirrors internal/modules/internal_read/adapters/oracle/open_cgo.go's
+		// ping-failure handling: the raw error can carry Oracle/OCI driver text
+		// (connection strings, host details), so it is scrubbed through the
+		// same oracleconfig.SafeOracleCause before it can reach main's stderr
+		// print, instead of being returned verbatim.
+		return nil, oracleconfig.SafeOracleCause(err)
 	}
 	return db, nil
 }
