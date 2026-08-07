@@ -1800,3 +1800,46 @@ Condição de remoção: `catalog_ingest_composition_test.go` ganhar um `t.Clean
 OU as asserções migrarem de `count(*)` absoluto para delta (`count(*) - baselineCount`) medido
 antes do primeiro `RunCatalogIngest` — qualquer uma das duas torna o teste seguro para correr
 repetidamente contra um banco persistente.
+
+---
+
+**D-55. `docs/architecture/decisions/023-module-protocol.md` — três afirmações em prosa ainda
+declaram "35 violações" como se fosse a medição corrente, três medições depois.**
+
+O cabeçalho do ADR-023 foi corrigido de `128` para `234` por medição (commit `82bd18ef`, onda de
+correção do review final de ramo). Três frases no corpo do documento não foram alcançadas por essa
+correção e continuam a afirmar `35` em presente do indicativo:
+
+- `docs/architecture/decisions/023-module-protocol.md:82` — "The 35 measured violations are exactly
+  the violations of this line"
+- `docs/architecture/decisions/023-module-protocol.md:300` — "the 35 violations cannot be
+  detected..."
+- `docs/architecture/decisions/023-module-protocol.md:306` — "it treats 35 symptoms of 3 causes"
+
+Medição corrente, reproduzida por dois revisores independentes nesta sessão:
+
+```
+module_boundary_arch_test.go:216: 234 violation(s)
+```
+
+`git blame` situa as três frases em `d9f46585` (2026-08-05), portanto são ANTERIORES à própria
+correção `35 -> 128` e sobreviveram intactas a DUAS passagens de correção de contagem. Não foram
+introduzidas pela onda `82bd18ef`, e o desdobramento por módulo ("60 of 128", "9 of those 35") está
+explicitamente marcado como sendo da era 128 — estas três, não.
+
+Por que é dívida e não erro de escrita: o cabeçalho do mesmo ficheiro afirma agora `234`. Um leitor
+que chegue ao §82 lê `35` sem qualquer marca de datação e não tem como saber qual dos dois números
+é o corrente. Um número de medição sem carimbo de quando foi medido é indistinguível de um número
+corrente errado — é exatamente a classe que a correção `128 -> 234` existiu para fechar, deixada
+por fechar em três sítios.
+
+Por que NÃO foi corrigida nesta onda: as três frases vivem nas secções Decision e Alternatives
+Considered, não no cabeçalho. Reescrever prosa de uma secção de decisão ratificada é emenda de ADR,
+não correção de medição, e `ARCHITECTURE.md:5` exige tratamento explícito para isso. A onda de
+correção tinha mandato para corrigir a MEDIÇÃO do cabeçalho, não para reescrever o argumento.
+
+Condição de remoção: cada uma das três frases passar a carimbar a sua medição (`"the 35 violations
+measured at <commit> ..."`) OU ser reescrita para citar a contagem corrente com a data e o comando
+que a produziu, seguindo a convenção `**Amended DATE — título.**` que o próprio ficheiro já usa nas
+linhas 62 e 84. Verificação: `grep -n "35" docs/architecture/decisions/023-module-protocol.md`
+não devolver nenhuma ocorrência de contagem de violações sem carimbo de medição.
