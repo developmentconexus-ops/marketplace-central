@@ -1610,3 +1610,193 @@ ratificada, e não uma exceção tolerada caso a caso. Sem essa confirmação, D
 como obrigação de PROCESSO mesmo com o mecanismo já em uso repetido. Pedido: ACK do operador
 sobre o padrão `removal_owner=HARNESS-D-N` como prática permanente para exceções sem milestone —
 cross-referências D-2, D-9, D-40, D-41, D-42.
+
+**D-51. `npm run harness:unit` e `npm run harness:integration` — as duas únicas lanes invocáveis
+por `npm` — não cobrem nenhum teste que este ramo (fecho global) escreveu sob
+`apps/server_core/internal/...`.** `scripts/harness.ps1:61` (`Invoke-Unit`) corre só `go test
+./tests/unit/... -count=1`; `scripts/harness/Postgres.psm1:276` (`Invoke-Integration`) corre só
+`go test -tags=integration ./tests/integration -count=1`. Nenhuma das duas alcança
+`internal/composition`, `internal/contexts/catalog/port`, `internal/kernel/channel`,
+`internal/kernel/fact`, `internal/platform/migrate`, ou
+`internal/adapters/erp/sankhyaoracle/catalogfeed` — os pacotes onde este ramo escreveu
+`scan_test.go`, `feed_test.go`, `channel_test.go`, `combine_test.go`, `runner_test.go` e
+`mapper_test.go`.
+
+Medido nesta sessão:
+
+```
+$ git diff --name-only 1b2ef2da..a9f92809 -- apps/server_core | grep -E "_test\.go$"
+apps/server_core/internal/adapters/erp/sankhyaoracle/catalogfeed/mapper_test.go
+apps/server_core/internal/arch/scan_test.go
+apps/server_core/internal/contexts/catalog/port/feed_test.go
+apps/server_core/internal/kernel/channel/channel_test.go
+apps/server_core/internal/kernel/fact/combine_test.go
+apps/server_core/internal/platform/migrate/runner_test.go
+apps/server_core/tests/integration/catalog_ingest_composition_test.go
+apps/server_core/tests/integration/catalog_ingest_test.go
+apps/server_core/tests/integration/catalog_provenance_test.go
+apps/server_core/tests/integration/catalog_rls_role_test.go
+```
+
+Zero desses 6 ficheiros `internal/...` estão sob `apps/server_core/tests/unit/`; os 4 sob
+`tests/integration/` SÃO cobertos por `harness:integration`, mas os 6 sob `internal/...` não são
+cobertos por lane nenhuma acionável via `npm`. Confirmado correndo `npm run harness:unit`: o passo
+Go só toca o pacote `tests/unit`, o resto do sinal (605 testes) é Vitest do `web`:
+
+```
+$ npm run harness:unit 2>&1 | grep -E "^ok|^---|^FAIL|target=fake|tests/unit"
+target=fake
+ok  	marketplace-central/apps/server_core/tests/unit	3.489s
+target=fake
+```
+
+Correção à premissa original do achado (o revisor do fecho de ramo escreveu "a única lane que os
+corre é `scripts/arch-gate.sh` passo 4 — que é inalcançável porque o passo 1 falha"; verificado
+aqui e é FALSO): `scripts/arch-gate.sh` não usa `exit` cedo — cada passo só marca uma flag `fail`
+local, e a decisão PASS/FAIL só é tomada no fim do script (linhas finais `if [ "$fail" -ne 0 ];
+then exit 1`). O passo 4 (`unit tests`, `go test ./internal/...`) CORRE de facto, mesmo com o
+passo 1 (`gofmt`) já tendo marcado falha:
+
+```
+$ bash scripts/arch-gate.sh > archgate_full.txt 2>&1; echo "EXIT=$?"
+EXIT=1
+$ grep -n "^== " archgate_full.txt
+2:== gofmt ==
+644:== go vet ==
+646:== architecture detectors ==
+700:== unit tests ==
+1213:== working tree ==
+```
+
+O passo 4 de facto executa e cobre os 6 pacotes `internal/...` deste ramo (todos `ok`); a única
+falha dentro dele é `TestModuleBoundaryADR023` (`internal/composition`, dívida herdada, ver
+D-49/Item de Trabalho 4 — 234 violações, não deste ramo). `scripts/arch-gate.sh` NÃO é invocável
+por nenhum script `npm` (confirmado por `grep -n "arch-gate" package.json` → 0 resultados) — corre
+só manualmente via `bash`, então nenhum operador que só usa `npm run harness:*` alguma vez o vê.
+
+Net: `npm run harness:unit` PASS (605 testes) é uma afirmação verdadeira que não carrega nenhuma
+evidência sobre o código Go deste ramo — nem porque a lane certa esteja inalcançável (não está),
+mas porque `harness:unit`/`harness:integration` nunca apontam para `internal/...` e
+`arch-gate.sh`, que aponta, não está ligado a `npm`.
+
+Condição de remoção: `scripts/harness.ps1` ganhar um passo (ou lane nova) que corra `go test
+./internal/...` sem a tag `integration` a partir de `apps/server_core`, ligado a um script `npm`
+— ou `arch-gate.sh` passar a ser invocável via `npm run` e o seu passo 4 reportado separado do
+gofmt/vet/archscan para não ficar mascarado pela dívida ADR-023 herdada.
+
+**D-52. `scripts/arch-gate.sh` passo 1 (`gofmt`) nunca pode passar num checkout Windows deste
+repo — `core.autocrlf=true`, blobs git em LF, `.gitattributes` só fixa `*.sh`.** Isso produz ruído
+permanente de ~635 ficheiros marcados só por causa de CRLF, escondendo os poucos ficheiros
+genuinamente mal formatados dentro do mesmo `gofmt -l`.
+
+Medido nesta sessão — total bruto:
+
+```
+$ cd apps/server_core && gofmt -l internal | wc -l
+639
+```
+
+```
+$ git config --get core.autocrlf
+true
+$ cat .gitattributes
+*.sh text eol=lf
+```
+
+Separando os dois problemas (Item de Trabalho 2 desta onda): para cada um dos 639 ficheiros,
+removi `\r` do conteúdo e comparei contra o mesmo conteúdo passado por `gofmt` — se as duas formas
+LF batem, a única diferença era CRLF; se não batem, o ficheiro está genuinamente mal formatado
+independente de fim-de-linha:
+
+```
+$ while IFS= read -r f; do
+    orig_lf=$(tr -d '\r' < "$f"); fmt_lf=$(tr -d '\r' < "$f" | gofmt)
+    [ "$orig_lf" != "$fmt_lf" ] && echo "$f"
+  done < gofmt_list.txt | wc -l
+22
+```
+
+**635 ficheiros são ruído puro de CRLF; 22 são genuinamente mal formatados** (lista completa no
+relatório do Item de Trabalho 2 desta onda). Interseção desses 22 com os ficheiros que este ramo
+tocou (`git diff --name-only 1b2ef2da..a9f92809`) é **vazia** — nenhum dos 22 pertence a este
+ramo, então não havia nada para consertar aqui (só registar). Todos os 22 vivem sob
+`internal/modules/` (proibido tocar por esta onda, constraint global 1) ou sob `internal/kernel/`
+(não tocado por este ramo).
+
+Condição de remoção: uma das (não implementadas aqui, fora do escopo desta onda) — (1) uma regra
+`.gitattributes` que force `apps/server_core/**/*.go` a `eol=lf` no checkout, (2) `arch-gate.sh`
+normalizar CRLF antes de invocar `gofmt -l` (ex. `gofmt -l <(tr -d '\r' < "$f")` por ficheiro), ou
+(3) uma lane que corra onde blobs e worktree já concordam (ex. dentro do container Linux do dev
+stack, que não sofre `core.autocrlf`).
+
+**D-53. O lado de leitura do catálogo (`catalog.Reader()`) está morto ao nascer — entregue sem
+consumidor e sem nenhum ponto do plano ou do design que o anuncie como capacidade pendente.**
+`apps/server_core/internal/contexts/catalog/module.go:46` (`func (m *Module) Reader() port.Reader`),
+`apps/server_core/internal/contexts/catalog/port/reader.go` (interface `Reader`, tipo `Summary`) e
+`port/reader.go:24` (`Summary.DescriptionState`) só têm chamadores em
+`apps/server_core/tests/integration/catalog_ingest_test.go:85,119` e
+`apps/server_core/tests/integration/catalog_provenance_test.go:47` — nenhum ecrã, job, adapter de
+outro contexto ou comando de operador chama `module.Reader()`.
+
+Medido nesta sessão:
+
+```
+$ grep -rn "\.Reader()\|port\.Reader\b\|SummaryReader\b" --include="*.go" internal/contexts/catalog internal/composition cmd tests | grep -v "_test.go"
+internal/contexts/catalog/internal/postgres/repository.go:27:// SummaryReader at the bottom of this file, which wraps it.
+[... só comentários e a própria definição/wiring interna ...]
+internal/contexts/catalog/module.go:20:	reader  port.Reader
+internal/contexts/catalog/module.go:36:		reader:  postgres.NewSummaryReader(repo),
+internal/contexts/catalog/module.go:46:func (m *Module) Reader() port.Reader { return m.reader }
+
+$ grep -rln "module\.Reader()" --include="*.go" .
+./tests/integration/catalog_ingest_test.go
+./tests/integration/catalog_provenance_test.go
+```
+
+Distinto das duas dívidas já registadas sobre `catalog` (DSN de `mpc_app` que liga como
+superuser, e o combinador de kernel) — esta lê no plano como capacidade ENTREGUE (Tarefa 6/7 do
+plano `fecho` provisionaram proveniência honesta e um leitor de resumo), mas nada no repositório
+fora dos próprios testes de integração jamais pergunta "o que é este produto?" pela porta que a
+Tarefa 6 publicou. Não é um bug — o `Reader()` funciona exatamente como especificado — é entrega
+sem consumo: o mesmo padrão que a ADR-023 nomeia (§ "três módulos nunca publicaram um
+consumível"), aqui invertido (um módulo publicou um consumível que ninguém ainda consome).
+
+Condição de remoção: a tela ou job que hoje pergunta "qual é este produto?" (hoje inexistente,
+ou respondida por outro caminho fora de `catalog`) passar a chamar `catalog.New(pool).Reader()` —
+ou, alternativamente, o plano que fecha essa lacuna nomeando explicitamente o consumidor previsto
+e a data.
+
+**D-54. `apps/server_core/tests/integration/catalog_ingest_composition_test.go` — o teste de
+integração bandeira deste plano — depende de estado prévio no banco: assere `count(*) = 3`
+absoluto sobre um tenant FIXO enquanto insere chaves únicas por execução, sem `t.Cleanup`.**
+Linha 46 abre o pool com um tenant fixo (`testpostgres.OpenPool(t, "tenant_catalog_composition")`);
+linha 54 carimba as chaves com `time.Now().UTC().UnixNano()` (únicas a cada corrida); linhas 68,
+77, 86, 96, 105, 114 comparam contra números absolutos (`3`, `0`) em vez de "delta desde o início
+do teste". Correr o teste duas vezes SEGUIDAS contra o MESMO banco (sem recriar o schema entre
+as duas) faria a segunda corrida falhar: a terceira chamada a `RunCatalogIngest` veria as 3 linhas
+da primeira corrida MAIS as 3 novas (chaves diferentes por causa do `UnixNano`), e `productCount
+!= 3` dispararia em `productCount == 6`.
+
+Isto NÃO é um falso-verde hoje: `scripts/harness/Postgres.psm1` provisiona um banco `mpc_test_<hex>`
+efémero por corrida (confirmado — cada invocação de `harness:integration` cria um container/banco
+novo), então o CI nunca acumula estado entre corridas e o teste passa legitimamente todas as vezes
+que foi medido nesta sessão. O que falta é REPETIBILIDADE da prova, não correção do resultado: um
+operador que corra este teste manualmente duas vezes contra um banco de desenvolvimento persistente
+(`go test -tags=integration ./tests/integration -run TestCatalogIngestWritesRows -count=2` contra
+`MPC_TEST_DATABASE_URL` apontando para um banco já usado) reproduz a quebra.
+
+O padrão correto já existe no próprio pacote: `catalog_rls_role_test.go:38-45` regista
+`t.Cleanup` que apaga as linhas que inseriu, tornando esse teste seguro para correr repetidamente
+contra o mesmo banco. `catalog_ingest_composition_test.go` não segue o mesmo padrão apesar de ser
+escrito depois (Tarefa 8, depois de RLS ter sido fechado na Tarefa 10 — ordem cronológica inversa
+à ordem das tarefas, então não é "o padrão ainda não existia quando este teste foi escrito").
+
+Por instrução explícita desta onda de correção: **este debt regista o problema e NÃO conserta o
+teste** — mudar uma asserção que o plano já ratificou (`count(*) = 3` foi o critério de aceite
+literal da Tarefa 8) não é decisão desta onda de correção de revisão.
+
+Condição de remoção: `catalog_ingest_composition_test.go` ganhar um `t.Cleanup` simétrico ao de
+`catalog_rls_role_test.go` (apagando por `product_id = ANY(...)` as chaves carimbadas que criou),
+OU as asserções migrarem de `count(*)` absoluto para delta (`count(*) - baselineCount`) medido
+antes do primeiro `RunCatalogIngest` — qualquer uma das duas torna o teste seguro para correr
+repetidamente contra um banco persistente.
