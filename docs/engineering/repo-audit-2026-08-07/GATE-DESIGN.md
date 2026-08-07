@@ -292,6 +292,19 @@ Where an off-the-shelf tool already does this, use it rather than building: `gol
 Semgrep has `--baseline-commit`. The bespoke identity form is only needed for the three in-house
 engines (governance, archscan, ADR-023).
 
+**Third condition, added 2026-08-07 from the MetalDocs peer review (§9): every baseline file names
+the milestone that deletes it, inside the file.** MetalDocs' `tools/cilint/baseline.json` is the
+counter-example measured in the field rather than reasoned about — 35 entries covering 102
+findings, **34 of the 35 carrying the same copy-pasted justification** blaming a milestone that
+does not touch half the modules listed, its `_doc` declaring the file transitory and shrink-only
+while naming no milestone that removes it. Worse, roughly **68 of the 101 findings are false**: the
+analyser carries a hand-written `table → owning module` census, an ADR promoted `approval` to a
+top-level module, the census kept encoding the previous world, and the module began being accused
+of reading its own tables. Those false accusations were then absorbed into the baseline **as
+though they were real debt**. A baseline that fabricates debt and then legitimises it is a local
+maximum without a label, which this repository's doctrine classes as a defect rather than progress.
+No named deletion milestone, no ratchet.
+
 ---
 
 ## 5. Where AI review sits, and what it costs
@@ -360,6 +373,15 @@ require, per check.**
    existing `scripts/harness.ps1` dispatch skeleton, which is already the right shape. Every lane
    prints `discovered/run/pass/skip/fail`; **`run=0` exits non-zero.** Today `harness.ps1:49`
    records only target, status and run id — a fully skipped run is byte-identical to a green one.
+
+   **`--require-infra` turns skip into failure in CI.** MetalDocs measured the general form (§9):
+   its `tools/verify` returns SKIP when `METALDOCS_DATABASE_URL` is absent and the reporter exits
+   0 on skip, so a *required* integration job can report green having run zero integration tests.
+   Here the mechanism is a build tag rather than an environment variable and it has already been
+   paid for once — the Oracle lane is `//go:build cgo`, the host has no gcc, and `go test` answers
+   `no tests to run` with **exit 0**. Same defect, different door. `run=0` exits non-zero is the
+   general fix; `--require-infra` is its explicit CI-side form, and it must cover build tags, not
+   just environment variables.
 4. **First required set = the always-green trivia:** compile, `gofmt`, `tsc`. Under three minutes,
    green from day one. The operator's first month with a gate must be boring.
 5. **Identity baselines** for governance (58), archscan (44), ADR-023 (234). Green by construction.
@@ -372,7 +394,28 @@ require, per check.**
    doctrine change. All of which need P6 or Pro to exist at all.
 
 Enforce the budget as a check: `timeout-minutes: 15`. A gate that exceeds its own budget is a
-defect in the gate.
+defect in the gate. Chain cost behind cheapness with `needs:` — MetalDocs measured a 1,176-second
+suite running *concurrent* with everything else, burning twenty runner-minutes on PRs that a
+25-second lint had already proven broken. Ordering by `needs:` removes none of it from pre-merge
+blocking.
+
+**Promotion to required follows observed green, never predicted green.** Open a real PR, read the
+context string off `gh pr checks`, and only then edit the ruleset. MetalDocs paid for the other
+order: a check was promoted on the author's prediction that it would pass, the context string did
+not match the real job name, and with `bypass_actors` empty every PR was stuck with no escape.
+This is the same class as the rest of the program — a claim about the system standing in for a
+reading of it — and it is the one instance where the failure locks the operator out of their own
+repository.
+
+Two mechanical rules that go with it, both from §9:
+
+- **Never `paths:` at trigger level on a workflow that carries a required check.** A workflow that
+  does not dispatch reports nothing, and the PR waits on a status that will never arrive. Job-level
+  `if:` is fine; trigger-level `paths:` is not.
+- **`strict_required_status_checks_policy: true`.** Without it the *merged* result is never tested,
+  only the isolated branch. It is the one thing a merge queue would provide, and it is free — which
+  matters because merge queues are organisation-owned-repositories only, so a personal account
+  cannot have one even after P6.
 
 ---
 
@@ -416,3 +459,118 @@ defect in the gate.
   off Settings → Billing rather than trusting either reading. Moot if P6 lands — public
   repositories have unlimited minutes.
 - **Node is unpinned.** §1. Pin it before claiming local/runner equivalence.
+
+---
+
+## 9. Cross-repository review — MetalDocs, 2026-08-07
+
+The operator put this design in front of the MetalDocs session on branch
+`ci/a1-verify-single-entry-point`. That repository is this one's opposite end of the same life: a
+gate that already rotted — 20 workflows, 32 check names, 29 checks in a bespoke registry, 21
+required contexts. Everything below marked *measured there* is their measurement, not ours, and is
+recorded as such.
+
+### 9a. Independent convergence — treat as settled, do not re-derive
+
+They ran the same field survey (coder, gitea, grafana, consul, prometheus, posthog) without seeing
+§2a first and landed on the same four findings: the `if: always()` aggregator job as the single
+required check, invented independently by five repositories; `git diff --exit-code` after
+regenerating as the entire drift mechanism, with no cleverer variant existing; zero coverage gate
+and zero merge queue; and no trigger-level `paths:` on a required check. Two independent surveys
+agreeing on four points is a stronger result than either survey. **No further token spend on these.**
+
+### 9b. The aggregator guard is an allowlist — the coder template is not enough
+
+`needs.<job>.result` has exactly four values: `success`, `failure`, `cancelled`, `skipped`. The
+obvious idiom lets `cancelled` through as green:
+
+```yaml
+if: contains(needs.*.result, 'failure')   # WRONG — cancelled passes
+```
+
+This is PostHog's lint rule WF007. The correct form fails unless **every** dependency is `success`
+or `skipped`, and additionally asserts that the key set of `needs` is exactly the expected one — so
+a job added to the workflow but never added to `needs:` fails the gate instead of silently
+vanishing from it:
+
+```yaml
+required:
+  if: ${{ always() }}
+  needs: [changes, lint-go, lint-contract, lint-frontend, governance, test-go, test-frontend, test-integration, security]
+  env:
+    NEEDS_JSON: ${{ toJSON(needs) }}
+  steps:
+    - shell: bash
+      run: |
+        set -euo pipefail
+        if ! jq -e '
+          (keys | sort) == (["changes","lint-go","lint-contract","lint-frontend","governance","test-go","test-frontend","test-integration","security"] | sort)
+          and all(to_entries[]; .value.result == "success" or .value.result == "skipped")
+        ' <<<"$NEEDS_JSON" >/dev/null; then
+          jq -r 'to_entries[] | "\(.key)=\(.value.result // "null")"' <<<"$NEEDS_JSON"
+          exit 1
+        fi
+```
+
+The key-set assertion is the part that matters most here, because it is the only line in the whole
+gate that resists §9d.
+
+### 9c. Migration order — vacuous here, and worth writing down anyway
+
+Their sequence for a repository that already has a ruleset: add the new workflow *beside* the old
+ones deleting nothing → observe green on a real PR → two atomic ruleset edits, first adding the new
+context, then removing the old ones → only then delete workflows and rename jobs. **Renaming before
+that point blocks every PR**, and disabling `enforcement` to open a window is itself the defect.
+
+This repository has **one** workflow (`release-images.yml`) and **zero** required contexts, so the
+sequence costs nothing to follow. It is recorded because issue #4 will be the first moment it can
+be violated.
+
+### 9d. The meta-defect, and where it lives in our own documents
+
+Their formulation, and it subsumes several findings in this file: *every governance defect is a
+hand-synchronised enumeration.* An ADR moves, a list does not follow, and the control begins
+measuring a world that no longer exists. They found it twice in one file — the module census (stale
+against an ADR) and a "permanent" allowlist pointing at `templates/repository/postgres.go`, a path
+deleted by a rename that a different script had reconciled a month earlier. The carve-out simply
+stopped matching, silently.
+
+**Either the enumeration is derived from the source, or it enters the diff of the decision that
+governs it.** Measured against our own artifacts on 2026-08-07, we hold three instances:
+
+| Enumeration | Measured state |
+|---|---|
+| `operationId` ↔ SDK method name | 111 unique `operationId`s; **98 appear literally in `packages/sdk-runtime`, 13 do not.** The SDK is hand-written and `GOV_API_SDK_SPLIT` requires only *same commit*, never agreement. The convention holds by habit and nothing enforces it |
+| `METODO-DE-REVISAO.md:59` FANTASMA = *"`operationId` with no caller in `apps/web`"* | **`apps/web` is not the frontend.** Five roots carry `.tsx`: `apps/web/src`, `packages/feature-classifications/src`, `packages/feature-inventory/src`, `packages/feature-products/src`, `packages/ui/src`. 55 of 111 appear in `apps/web`; the naive rule would declare **56 FANTASMA**, most of them false |
+| Route literals in the SDK | **44 quoted path literals for 111 operations** — the rest are built inline as template literals (`packages/sdk-runtime/src/index.ts:2327` builds `/orders/summary?...` for `getOrdersSummary`, whose name appears nowhere in the frontend) |
+
+Re-measure:
+
+```bash
+grep -o 'operationId: .*' contracts/api/marketplace-central.openapi.yaml | sed 's/operationId: //' | tr -d '\r' | sort -u | wc -l
+git ls-files '*.tsx' | sed 's#/[^/]*$##' | cut -d/ -f1-3 | sort -u
+```
+
+### 9e. Answer to their question — is the field chain automatable?
+
+Per verdict of `METODO-DE-REVISAO.md` §1.2, and only after 9d is fixed:
+
+| Verdict | Automatable | Mechanism |
+|---|---|---|
+| **MUDO** | Fully, and cheapest | `SELECT count(*) ... WHERE col IS NOT NULL` = 0. Needs a database with real data, so it is a wave-close job and can never be a PR check |
+| **FANTASMA** | Yes, **once the anchor is derived** | Each SDK method carries its `operationId` as data; one check asserts the bijection `operationId ↔ SDK export`; FANTASMA is then an export with no importer across all five frontend roots — ordinary static analysis. **Not copyable before that**: without the bijection the check measures a world that does not exist, which is 9d again |
+| **ÓRFÃO** | Partially, by type | A field rendered in the frontend but absent from the SDK response type is derivable from `tsc` |
+| **MENTIRA** | One subclass only | The §3 list — `coalesce` over a provider-fact column, `?? 0` / `\|\| ""` on an SDK value, a Go value field where absence is reachable, a formatter returning `R$ 0,00` for `null`. That is a lint. The residue needs a human and stays a human's |
+
+### 9f. The Ficha de Entrega has no firing mechanism, and that is a defect
+
+Conceded to them without qualification. Today the Ficha lives in `METODO-DE-REVISAO.md:250-258` as
+a wave-close checklist — **level 5 on this program's own hierarchy, and level 5 is not a control.**
+The hierarchy was written in `GATE-TOPOLOGY.md` and the method's principal artifact was then left
+outside it.
+
+What can fire in a PR is the **prospective** Ficha (§1.4): a `Prometido` line that disappears
+without becoming VIVO or a named debt is silently lost scope, and that is a diff between two files.
+The rest of the Ficha stays human and stays at wave close, which is also the honest answer on cost
+— its price is one human pass per wave per screen per field, it does not scale the way CI scales,
+and that is precisely why it is not a PR check.
