@@ -5,6 +5,8 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 
 	"github.com/godror/godror"
 
@@ -40,12 +42,28 @@ func openOracleDB(ctx context.Context, cfg oracleconfig.Config) (*sql.DB, error)
 	defer cancel()
 	if err := db.PingContext(bootstrapCtx); err != nil {
 		_ = db.Close()
-		// Mirrors internal/modules/internal_read/adapters/oracle/open_cgo.go's
-		// ping-failure handling: the raw error can carry Oracle/OCI driver text
-		// (connection strings, host details), so it is scrubbed through the
-		// same oracleconfig.SafeOracleCause before it can reach main's stderr
-		// print, instead of being returned verbatim.
-		return nil, oracleconfig.SafeOracleCause(err)
+		return nil, safeOracleCause(err)
 	}
 	return db, nil
+}
+
+// safeOracleCause strips raw Oracle/OCI driver text — connection strings, host
+// details — out of an error before it can reach main's stderr print.
+//
+// It is a deliberate copy of the unexported safeOracleCause in
+// internal/modules/internal_read/adapters/oracle/reader.go rather than a call
+// into it. Exporting the original would have been less code, but internal/modules
+// is the frozen legacy tree: it is inventoried, never grown, and widening its
+// public surface to serve new code points the dependency the wrong way. This
+// file outlives that tree, so it carries its own copy. Keep the two in sync
+// until the legacy reader is retired, at which point this one simply remains.
+func safeOracleCause(err error) error {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	var coded interface{ Code() int }
+	if errors.As(err, &coded) {
+		return fmt.Errorf("oracle error code=%d", coded.Code())
+	}
+	return errors.New("oracle driver error")
 }

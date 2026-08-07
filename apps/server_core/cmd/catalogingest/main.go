@@ -20,8 +20,8 @@ import (
 	"strings"
 
 	"marketplace-central/apps/server_core/internal/composition"
-	oracleconfig "marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle"
 	"marketplace-central/apps/server_core/internal/kernel/tenant"
+	oracleconfig "marketplace-central/apps/server_core/internal/modules/internal_read/adapters/oracle"
 	"marketplace-central/apps/server_core/internal/platform/pgdb"
 )
 
