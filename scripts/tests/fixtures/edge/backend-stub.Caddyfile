@@ -1,0 +1,8 @@
+# Stand-in for backend:8080 in the edge fixture. Distinct bodies per route so an
+# assertion can tell "the edge proxied to the backend" apart from "the edge
+# answered by itself", which is the difference between a control that is scoped
+# and one that broke the whole stack.
+:8080 {
+	respond /healthz "backend-stub-healthz" 200
+	respond "backend-stub-body" 200
+}

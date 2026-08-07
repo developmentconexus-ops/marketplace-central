@@ -1,1 +1,7 @@
 *.sh text eol=lf
+
+# Consumed by Caddy inside a Linux container, and copied to the production host
+# from a checkout. A CRLF checkout on Windows would be the config the operator
+# ships without ever having run it that way.
+Caddyfile text eol=lf
+*.Caddyfile text eol=lf

@@ -75,7 +75,7 @@ one of the 98 commits reached local `main` without passing through a place a che
 > withdrawn.
 | **P2** | Build the gates locally | agents | All of §2, on a branch off local `main`, against the 98 commits as they stand. Nothing pushed. |
 | **P3** | Baseline locally and commit the baselines | agents | Without this the first remote run is red on 58 governance violations, 44 archscan findings, 12 `tsc` errors and 22 unformatted files — **and a permanently red required check is switched off within a week.** The baseline commit is what makes the first green run possible. It is not bookkeeping. |
-| **P3.5** | **I1-edge — close the unauthenticated PII route** | agents, hours | Carried from `RECONCILIATION.md` Divergence 1, unchanged and binding. Must land before P6. |
+| **P3.5** | **I1-edge — close the unauthenticated PII route** — **CLOSED 2026-08-07** | agents, hours | Carried from `RECONCILIATION.md` Divergence 1, unchanged and binding. Must land before P6. **Shipped:** `basic_auth` on `@orders_api` in `deploy/Caddyfile` (fail-closed env in `docker-compose.prod.yml`), ngrok re-pointed at a deny-by-default whitelist (`docker/dev/oauth-edge.Caddyfile`) instead of `frontend:5174`, and the mandatory negative fixture — `npm run harness:edge`, 17 assertions, both must-fail inputs run. Detail in §8. |
 | **P4** | Push once, while unprotected | **needs explicit operator permission** | Fast-forward `main` — 98 commits plus the gate commits — in one push. **This is the last ungated write to `main` in the program's history, by construction:** a ruleset blocking direct pushes to `main` would block this very push, so the ruleset comes after it. The pushed tree already contains the workflows, so the push itself triggers the first run. |
 | **P5** | Confirm green on the remote | agents | A local green and a runner green are different claims. The runner has a clean checkout, LF line endings, no `.gomodcache`, no warm caches. **Budget for one or two environment defects here.** Still private, so these logs are not public. |
 | **P6** | Flip to public | **operator** | Gated on `PRE-PUBLIC-SWEEP.md` (verdict: `SAFE AFTER LISTED REMEDIATIONS`) **and** on P3.5. Going public exposes the entire history, not the current tree. **Operator decision 2026-08-07: the B-1/B-2 credential is not rotated now, and does not need to be before P4.** The push is not the disclosure event — the flip is. B-1's working-tree copy was scrubbed at `1ec2d081`; B-2 remains in a historical blob that is already an ancestor of `origin/main`, so rotation stays the only remediation that reaches the pushed copy. **The open question that decides whether rotation is needed at all: is that PostgreSQL role valid anywhere other than the operator's local machine?** Local-only puts it with N-1/N-2 in the accepted column and the sweep over-rated it; valid on any reachable host and the flip hands out a working credential. Operator answers before P6, not before P4. |
@@ -161,6 +161,7 @@ runs locally.** A gate the operator cannot reproduce on their own machine is its
 | **Guard-fixture meta-check** | V3 | Walk the guard inventory; every guard must have a registered failing fixture **that is actually executed**. Fixture: register a guard with no fixture — the meta-check must fail. **This is the mechanism of axis V3 and the answer to "evidence certifies itself."** |
 | Exception-liveness check | B1 | For each `temporary_exceptions` entry in `modules.json`, assert the violation it excuses still occurs. **3 of the 5 entries fail this today**, including `migration-prefix-0021-duplicate` (2026-07-11), which predates by three weeks the 2026-08-03 collision it does not cover. |
 | `internal/contexts` governed | B1 | `Policy.psm1:302` walk root becomes the pair `(kind, id)` over both trees; implement `GOV_CONTEXT_UNREGISTERED`. **The fixture at `lanes/cicd.md` F9 already exists and currently asserts a code that does not exist** — implementing the code turns a dead fixture live. |
+| **Edge PII deny (issue #1)** | I1 | **Already written and passing — this row is the wiring instruction, not a task to design.** Lane: `pwsh scripts/harness.ps1 -Command edge`, aliased `npm run harness:edge`. Fixture: `scripts/tests/edge-pii-deny.integration.tests.ps1` with stubs under `scripts/tests/fixtures/edge/`. Drives the real `deploy/Caddyfile` and `docker/dev/oauth-edge.Caddyfile` through real Caddy against stub upstreams. **Docker only — no ERP, no dev stack, no secrets**, so it is CI-able on `ubuntu-latest` (~35s locally). Emits `assertions=<n>` and fails under 17, per the count assertion above. Both must-fail inputs were run on 2026-08-07: deleting the `basic_auth` block yields `failure_token=test=orders-json-no-credentials-is-denied expected_status=401 actual_status=200`; restoring the tunnel's old catch-all yields `failure_token=test=tunnel-does-not-publish-orders`. |
 | Ratchet comparison | V1 | Measured counts versus committed baselines. Blocks on increase, annotates the current number. Fixture: a PR adding one violation of each ratcheted class. |
 
 ### 2.3a The lint standard — settled here, because it was not settled anywhere else
@@ -439,6 +440,16 @@ someone else's decision.
   is therefore not optional:** a request through the composed stack asserting non-200 without
   credentials, wired into `verify-full`. Without it, "the door is closed" is a claim about a config
   file nobody re-reads.
+  **Closed 2026-08-07 (P3.5).** The control shipped as Caddy `basic_auth` on `@orders_api` rather
+  than a blanket deny — the acceptance criterion says *non-200 without credentials*, and a blanket
+  deny would have bricked the orders screen on a host that was live at the time. The tunnel was
+  narrowed by putting a deny-by-default whitelist (`docker/dev/oauth-edge.Caddyfile`) in front of
+  ngrok instead of `frontend:5174`; a blacklist there would have been a **fourth** hand-maintained
+  copy of the route table, which is the L1-f defect class. The fixture exists and passes — see the
+  `verify-full` row above for the lane, the command and the two must-fail tokens. **What remains for
+  #2 is one line of YAML calling that command; do not re-derive the fixture.**
+  *Operator fact recorded 2026-08-07:* a production host **was running** when this was written and
+  was shut down by the operator during the fix. The exposure was live, not hypothetical.
 - **`.gitattributes` renormalize** — optional, local developer experience, no longer blocking. D-52
   is re-sized downward.
 
