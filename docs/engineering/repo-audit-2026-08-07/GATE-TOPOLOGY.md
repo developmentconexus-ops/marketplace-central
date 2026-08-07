@@ -105,6 +105,10 @@ runs locally.** A gate the operator cannot reproduce on their own machine is its
 |---|---|---|
 | `gofmt -l` over the whole Go module, not just `internal` | V2 | On a Linux runner the 635 CRLF artifacts cannot occur; only the 22 real ones remain. Pay those down in one commit, then this blocks at zero. **D-52 dissolves here.** |
 | `go vet ./...`, `go build ./...` | baseline | Clean today. Keep it that way. |
+| **`golangci-lint run`** | V2 | §2.3a. Has never run here; baseline and ratchet shrink-only on the first pass. |
+| **`prettier --check`** over TS/TSX/JSON/MD/YAML | V2 | §2.3a. Blocks at zero, no ratchet — one mechanical commit precedes it. |
+| **`eslint`** (type-aware, flat config) | V2, F1 | §2.3a. Has never run here; baseline and ratchet. |
+| **PR title is a Conventional Commit** | V1 | §2.3a. Linear history + squash means the title becomes the commit subject. Fixture: a PR titled `wip`. |
 | `tsc --noEmit`, root and every workspace | V2, F1 | 12 errors today, 3 in production code. **Wire the gate first and watch it go red on the `MutationPreviewModal.tsx:210` missing-`onRetry` case, then fix all 12** — proving it red before proving it green is the only order that certifies anything. |
 | archscan over **all four roots including `internal/composition`** | B1 | 44 findings today. `scripts/arch-gate.sh:30` already scans that root, so this is **wiring a script, not building a detector** (RECONCILIATION B-2). Shrink-only ratchet. |
 | governance validate + drift, `-BaseSha` from `git merge-base origin/main HEAD` | V2, B1 | 58 violations at HEAD with a zero diff. Baselined day one, shrink-only. |
@@ -129,6 +133,81 @@ runs locally.** A gate the operator cannot reproduce on their own machine is its
 | Exception-liveness check | B1 | For each `temporary_exceptions` entry in `modules.json`, assert the violation it excuses still occurs. **3 of the 5 entries fail this today**, including `migration-prefix-0021-duplicate` (2026-07-11), which predates by three weeks the 2026-08-03 collision it does not cover. |
 | `internal/contexts` governed | B1 | `Policy.psm1:302` walk root becomes the pair `(kind, id)` over both trees; implement `GOV_CONTEXT_UNREGISTERED`. **The fixture at `lanes/cicd.md` F9 already exists and currently asserts a code that does not exist** — implementing the code turns a dead fixture live. |
 | Ratchet comparison | V1 | Measured counts versus committed baselines. Blocks on increase, annotates the current number. Fixture: a PR adding one violation of each ratcheted class. |
+
+### 2.3a The lint standard — settled here, because it was not settled anywhere else
+
+**Measured 2026-08-07: this repository has no linter.** No `.golangci.yml`. No ESLint, Biome,
+Prettier or dprint config. No SQL or migration linter. No commitlint, no hooks — `core.hooksPath` is
+unset and `.githooks/` does not exist. **Not one `lint` script in any `package.json` across the
+workspace.** `gofmt` and `go vet` are formatting and a sliver of vetting; archscan and governance are
+architecture. None of that is lint, and until this section existed the topology quietly implied
+otherwise.
+
+The choice principle: **every linter here earns its place by catching a failure mode this audit
+actually found, or by compensating for a decision this audit actually made.** No linter is included
+because it is popular.
+
+**Go — `golangci-lint`, blocking, ratcheted.**
+
+| Linter | Why this one |
+|---|---|
+| `errcheck` | Unchecked errors. The single largest silent-failure class in Go and nothing here looks for it. |
+| `staticcheck` | Broad correctness. Supersedes most hand-rolled checks. |
+| `unused` | The audit found dead code that keeps a retired concept alive — `pgdb.DefaultTenantID` (SEC-8). This finds the rest. |
+| `ineffassign` | Assignments that never reach a read. |
+| `rowserrcheck`, `sqlclosecheck` | **These two are the compensating control for the do-not-touch ruling on the 82 hand-written `rows.Next()` loops.** Keeping the loops keeps a compile-time type check and keeps the risk of an unchecked `rows.Err()` or an unclosed `rows`. Rejecting `RowToStructByName` without adding these would be trading a real risk for nothing. |
+| `bodyclose` | Leaked HTTP response bodies. This codebase is mostly provider HTTP clients. |
+| `errorlint` | `errors.Is` / `errors.As` instead of `==` and type assertions. **The mechanical half of issue #7** — #7 bans string-matching on `err.Error()`; this catches the comparison forms it does not reach. |
+| `exhaustive` | Non-exhaustive switches over enumerated types. **Directly supports #6's typed error registry and #8's vocabularies** — an unmapped code should not be reachable by omission. |
+| `noctx` | HTTP requests built without a context. |
+
+**Explicitly excluded, as a decision rather than an oversight:** `lll`, `gocyclo`, `funlen`,
+`gocognit`, `dupl` and every other metric linter. They generate volume rather than defects, and a
+ratchet on a number that means nothing is worse than no ratchet — it teaches the team that ratchets
+are noise. Also excluded: `depguard`, because archscan and governance already own import boundaries
+and two instruments over one rule is how they come to disagree.
+
+**TypeScript — ESLint flat config with `typescript-eslint`, type-aware, blocking, ratcheted.**
+
+| Rule | Why this one |
+|---|---|
+| `@typescript-eslint/no-floating-promises` | An unawaited promise is a silent failure with no stack. Requires type information, which is why `tsc` alone does not catch it. |
+| `@typescript-eslint/no-misused-promises` | An async function passed where a void callback is expected — including React handlers. |
+| `@typescript-eslint/await-thenable` | Awaiting a non-promise: usually a refactor that lost a call. |
+| `react-hooks/rules-of-hooks`, `react-hooks/exhaustive-deps` | Stale-closure bugs. Not findable by review at speed. |
+| `@typescript-eslint/no-unused-vars` | Same reason as Go's `unused`. |
+
+**Strictly correctness rules. No stylistic rules in ESLint** — formatting belongs to Prettier, and
+keeping the two apart is what stops the config becoming a preference argument.
+
+**Formatting — `gofmt` (Go) and Prettier (TS/TSX/JSON/MD/YAML). Blocking at zero, never ratcheted.**
+Formatting admits no legitimate exception, so a ratchet would only record how long the drift has been
+tolerated.
+
+**PR title convention — one job, blocking.** The repository already writes Conventional Commits
+consistently (`docs(audit):`, `fix(catalogingest):`); nothing enforces it. With linear history in the
+ruleset, a squash merge makes **the PR title the commit subject**, so validating the title is
+sufficient and validating every commit in the branch is not. Negative fixture: a PR titled `wip`.
+
+**Deliberately not adopted, each with its reason recorded so it is a decision:**
+
+- **No coverage threshold.** With 91% of the suite currently unreachable, a coverage number would be
+  a fabricated signal — and thresholds are satisfied by tests that assert nothing, which is this
+  program's named failure mode (V3). Revisit after #2 and #3, never before.
+- **No Dependabot version PRs.** `AGENTS.md` requires operator ACK for any dependency change; a bot
+  opening version bumps manufactures exactly the churn that rule exists to prevent. **Enable
+  Dependabot *alerts*** — notification only, no PRs, no conflict with the ACK rule.
+- **No SQL linter yet.** The migration rules that matter here (prefix collisions, tenant predicates)
+  are already owned by governance and by #5's AST checker. A general SQL linter would overlap both.
+- **`.coderabbit.yaml` is configuration, not a gate.** Path filters excluding generated output, so
+  CodeRabbit does not review a file whose authority is a schema. Non-blocking, per §6.
+
+**Rollout, and this is the part that decides whether it survives.** `golangci-lint` and ESLint have
+never run here, so the first run produces hundreds of findings. **Baseline and ratchet shrink-only**,
+exactly as archscan (44), governance (58) and ADR-023 (234) are handled. Paying them down as a
+precondition would stall #2 behind unrelated work, and running them non-blocking would make them
+annotation — which is level 5 with a config file on. Formatting is the single exception: `gofmt` and
+Prettier go to zero immediately, because that is one mechanical commit each.
 
 ### 2.4 Level 4 — runtime assertion
 
@@ -161,9 +240,26 @@ winning one. Without it, the cheapest way past every gate in this document is `r
 deletes `ci.yml`, and confirm the merge is blocked.
 
 **R3 — Mixed-change ban** (`gate-integrity.yml`, level 3, ~40 lines). Fails if one PR's changed-file
-list touches **both** a gate path — `.github/workflows/**`, `scripts/harness/Policy.psm1`,
-`contracts/governance/**`, the ratchet baseline files, `.githooks/**` — **and** any file under
-`apps/` or `packages/`. Also fails on any workflow introducing `pull_request_target`, or elevating
+list touches **both** a gate path and any file under `apps/` or `packages/`. The gate paths, measured
+against the tree rather than assumed:
+
+```
+.github/workflows/**
+scripts/harness/Policy.psm1
+scripts/arch-gate.sh
+contracts/governance/**
+.golangci.yml
+eslint.config.js
+.prettierrc*
+<the ratchet baseline files, once §1 P3 creates them>
+```
+
+*Correction recorded:* an earlier draft of this list included `.githooks/**`. **That directory does
+not exist and `core.hooksPath` is unset** — it was written from assumption rather than measurement,
+which is the exact error class this audit exists to catch. Removed. If hooks are ever added they
+belong on the list, and they are level 5 regardless, so they never substitute for a job here.
+
+Also fails on any workflow introducing `pull_request_target`, or elevating
 `permissions:` beyond `contents: read` without a declared allow-list entry.
 Combined with R1, this means **weakening the gate is a separate, single-purpose, visible PR that
 must itself pass the gate.**

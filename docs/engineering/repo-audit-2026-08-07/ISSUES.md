@@ -102,16 +102,31 @@ given change is a function of what someone remembered.
 - Pester: ~250 assertions across `scripts/tests/*.tests.ps1`, 6 of 11 files red from cold.
 - `gofmt`: 22 genuinely unformatted files (the other 635 are CRLF artifacts that cannot occur on a
   Linux checkout).
+- **There is no linter at all.** No `.golangci.yml`; no ESLint, Biome, Prettier or dprint config; no
+  SQL or migration linter; no commitlint; `core.hooksPath` unset and no `.githooks/`; **and not one
+  `lint` script in any `package.json` across the workspace.** `gofmt` and `go vet` are formatting and
+  a sliver of vetting — this repository has never had lint.
 
 **Deliverable.** One command — `npm run gate` — that runs every instrument above, invoked
 **identically** locally and in `ci.yml`. Plus `ci.yml` itself with the `verify-fast` / `verify-full`
 job split of `GATE-TOPOLOGY.md` §2.3, and the ratchet baselines of P3 committed.
 
-**Explicitly not in scope.** Fixing the violations the instruments find. 44 + 58 + 234 get
-**baselined**, not paid down — a permanently red required check is switched off within a week, and
-that failure mode is more expensive than the violations. The two exceptions are cheap and bounded:
-22 `gofmt` files (one commit) and 12 `tsc` errors (one change) get paid to zero, because a ratchet on
-a number that small is more machinery than the fix.
+**Plus the lint standard, which did not exist and is settled in `GATE-TOPOLOGY.md` §2.3a:**
+`golangci-lint` (`errcheck`, `staticcheck`, `unused`, `ineffassign`, `rowserrcheck`, `sqlclosecheck`,
+`bodyclose`, `errorlint`, `exhaustive`, `noctx` — and explicitly no metric linters); ESLint flat
+config with type-aware `typescript-eslint`, correctness rules only; Prettier for formatting; a
+Conventional-Commit check on the **PR title**, which is what a squash merge turns into the commit
+subject. `rowserrcheck` and `sqlclosecheck` are load-bearing rather than decorative: they are the
+compensating control for keeping the 82 hand-written `rows.Next()` loops.
+
+**Explicitly not in scope.** Fixing the violations the instruments find. 44 + 58 + 234 — **and
+whatever `golangci-lint` and ESLint report on their first run, which has never happened here and will
+be large** — get **baselined**, not paid down. A permanently red required check is switched off
+within a week, and that failure mode is more expensive than the violations. Three exceptions are
+cheap and bounded and go to zero immediately: 22 `gofmt` files, one Prettier pass, and 12 `tsc`
+errors. A ratchet on a number that small is more machinery than the fix.
+Also not in scope: coverage thresholds and Dependabot version PRs — both **declined with reasons
+recorded** in §2.3a, so they are decisions rather than omissions.
 
 **Acceptance.** Level 3. Not higher — "the checks ran" is not expressible in a type system and is not
 a boot condition. It goes as high as it can go, which is a red build.
