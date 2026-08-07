@@ -1,7 +1,7 @@
 # ADR-017: Unknown is never zero — honest absence end to end
 
 **Date:** 2026-08-05
-**Status:** accepted
+**Status:** Superseded by ADR-034
 **Reconstructed:** this decision governed the codebase from its first citation and was
 enforced in review, but no document was ever written. It is reconstructed here from the
 1.378 live citations of `ADR-17`/`ADR-017`, harvested at

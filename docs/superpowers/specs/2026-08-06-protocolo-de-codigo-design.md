@@ -73,6 +73,20 @@ diferentes.
 `internal/`.
 *Instrumento:* analisador `go/analysis`.
 
+**Emenda 2026-08-07** (paga por `apps/server_core/internal/arch/scan.go:131-133`): o
+instrumento é o detector de cross-context (`ScanCrossContextInternal`) **sem** o salto de
+ficheiros que vivem fora de `contexts/`. O comentário no sítio da medição:
+
+> "here is "" for a file that lives outside any context — the composition root, an
+> adapter, a cmd. Those are NOT skipped: the one import that ever broke this rule came
+> from exactly there, and a detector that starts by skipping them can only ever report
+> zero."
+
+O único sítio que violou esta classe de regra estava fora de qualquer `contexts/<nome>/`
+(a raiz de composição), e um detector que pula ficheiros "fora de contexto" por
+construção fica cego a exatamente esse caso — fica sempre verde, não porque não haja
+violação, mas porque nunca olhou para onde ela vive.
+
 ### 1.2 Os treze contextos
 
 | Contexto | Possui |
@@ -156,11 +170,14 @@ e `go vet ./...` voltam a exit 0.
 *Defeito que teria apanhado:* os **70 tokens de vendor fora de adapters contra 54 dentro**.
 Há mais conhecimento de Mercado Livre fora dos adapters do que dentro.
 
-**Regra 2.2-a — Nível 1.** Cada vendor expõe um pacote raiz único, `adapters/marketplace/<v>`,
-com um construtor `New() Bundle` cujos campos são tipados pelas **portas dos contextos
-consumidores**. O cliente HTTP é construído lá dentro.
-*Porquê é forçado e não escolhido:* movido o `api` para `internal/`, a mesma medição mostrou
-`bootstrap/modules.go:8` a ser rejeitado junto com o irmão — a raiz construía
+**Regra 2.2-a — Nível 1.** **Regra do molde, não regra de adaptador:** vale para qualquer
+árvore que contenha um `internal/` — vendor sob `adapters/marketplace/<v>` ou contexto sob
+`contexts/<nome>`, indistintamente. Essa árvore expõe um único pacote raiz, com um
+construtor exportado cujos parâmetros são só tipos que um estranho pode nomear — um pool,
+uma DSN, um `*sql.DB`, as portas dos contextos consumidores — nunca um tipo declarado sob
+o `internal/` da própria árvore. Tudo o resto é montado lá dentro.
+*Porquê é forçado e não escolhido:* movido o `api` para `internal/`, a mesma medição
+mostrou `bootstrap/modules.go:8` a ser rejeitado junto com o irmão — a raiz construía
 `mlapi.StubClient{}` e injetava-o em quatro adapters de capacidade. E os construtores desses
 adapters têm assinatura `New(client api.Client)`: **um construtor exportado cujo parâmetro é
 um tipo interno é inchamável de fora da árvore.** O compilador não permite outra topologia
@@ -169,12 +186,53 @@ de vendor.
 *Defeito que teria apanhado:* exatamente as 10 declarações de adapter de ML na nossa raiz
 (§2.5) — é a mesma doença, reproduzida em miniatura e curada pelo compilador.
 
+**Emenda 2026-08-07** (paga por `apps/server_core/internal/contexts/catalog/module.go:23-38`):
+a regra estava escrita só para `adapters/marketplace/<v>`, e escrita assim não alcançou
+`contexts/`. Medido: `catalog.New(store, ids, reader)`, com `store` e `reader` tipados por
+`catalog/internal/application`/`catalog/internal/postgres`, nasceu com **zero chamadores
+legais** — a raiz de composição só o conseguia satisfazer importando o pacote interno, e o
+compilador recusou. A raiz não estava errada; a assinatura é que era. O construtor atual —
+
+```go
+// New assembles the context from the ONLY thing an outsider may legitimately
+// name: a connection pool.
+func New(pool *pgxpool.Pool) *Module {
+	repo := postgres.NewRepository(pool)
+	return &Module{
+		service: application.NewService(repo, postgres.NewULIDFactory()),
+		reader:  postgres.NewSummaryReader(repo),
+	}
+}
+```
+(`module.go:32-38`) — é a fachada de raiz única aplicada a um contexto: um parâmetro
+(`*pgxpool.Pool`), tipos internos montados dentro. A regra existia; o escopo é que era
+estreito demais para a apanhar.
+
 **Regra 2.3 — Nível 2.** Nome de vendor não aparece em `contexts/`. Código de canal é dado
 em runtime, nunca `enum` fechado em Go nem literal comparada.
 *Instrumento:* analisador, lista de tokens de vendor.
 *Defeito que teria apanhado:* `orders/application/ingest_service.go:334` e
 `assisted_sankhya_linkage_service.go:296` comparam a string `"mercado_livre"` na camada de
 aplicação. Adicionar Shopee toca ali.
+
+**Emenda 2026-08-07** (paga por `apps/server_core/internal/arch/scan.go:34-37` vs
+`scan.go:217-226`; a citação original desta emenda, `:33-36` vs `:203`, apontava para as
+linhas certas antes das dez tarefas anteriores deste plano moverem código — recontada
+contra o ficheiro atual): o escopo (`adapters/` isento, `internal/arch/` isento) vive **no
+próprio detector**, na função `vendorRuleApplies` (`scan.go:217-226`), não numa convenção à
+parte:
+
+> "The rule is 'a vendor name does not appear OUTSIDE adapters/', so adapters are exempt
+> by definition. The scanner package is exempt too: its closed token list is the
+> instrument, not a violation, and a detector that permanently accuses itself is a
+> detector nobody can ever act on."
+
+Sem esse filtro de caminho, `ScanVendorTokens` (que percorre `.go` por identificador e
+literal de string, `scan.go:228-275`) acusaria a sua própria `VendorTokens`
+(`scan.go:34-37`, os literais `"mercado_livre"`, `"shopee"` etc.) e a sua própria
+implementação nos adapters, e nunca ficaria verde — a lista de tokens é o instrumento, não
+uma violação, e um detector que se acusa permanentemente é um detector que ninguém
+consegue agir sobre.
 
 **Regra 2.4 — Nível 1.** Não existe interface `Marketplace` única. Cada capacidade é uma
 porta pequena e independente.
@@ -232,32 +290,44 @@ E **51 campos monetários em `float64`** num sistema fiscal.
 type Knowledge uint8
 
 const (
-    Known Knowledge = iota + 1
+    Unknown Knowledge = iota
+    Known
     Estimated
-    Unknown
     NotApplicable
 )
 
 type Fact[T any] struct {
-    state      Knowledge
-    value      *T
-    reasonCode string
-    evidence   provenance.Evidence
+    state    Knowledge
+    value    *T
+    reason   string
+    evidence provenance.Evidence
 }
 ```
 
 **Regra 4.1 — Nível 1.** Combinação inválida é inexprimível. O construtor recusa `Unknown`
 com valor, `Known` sem valor, `Unknown` ou `Estimated` sem código de razão, e qualquer facto
-sem evidência. Campos privados; não há literal de struct.
+sem evidência. Campos privados.
 
 Zero conhecido é `Known` com ponteiro para zero. Desconhecido não tem valor.
 
-*Isto substitui o ADR-017.* A regra mais citada da casa — 1.378 citações — passa de doutrina
+*Isto substitui o ADR-017* (ver ADR-034). A regra mais citada da casa — 1.378 citações no
+harvest de `docs/architecture/decisions/_citations/adr-017-citations.md` — passa de doutrina
 aplicada à mão a tipo cujo mau uso não compila.
 
 *Defeito que teria apanhado:* `sourcekind/sourcekind.go:47`, onde qualquer sistema
 desconhecido vira `LiveReadThrough` no ramo default. O núcleo partilhado viola a regra que o
 resto do repo cita 1.378 vezes.
+
+**Emenda 2026-08-07** (paga por `apps/server_core/internal/kernel/fact/knowledge.go:28`):
+ratifica-se o código, não o texto acima como estava antes desta emenda — o valor zero de
+`Knowledge` é `Unknown = iota`, nunca `Known = iota + 1`. Razão medida: `Fact[string]{}`
+compila em qualquer pacote — um literal de struct vazio não nomeia campos, logo "não há
+literal de struct" era falso nas duas variantes, com `Known` zero ou com `Unknown` zero. A
+guarda real não é a inexistência do literal; é `e.IsZero()`, chamada dentro de todo
+construtor (`NewKnown`, `NewEstimated`, `NewUnknown`, `NewNotApplicable`,
+`knowledge.go:74,86,99,111`). Com `Unknown = iota`, o zero-value que esse literal produz é
+o estado seguro, não o confiante — por isso o bloco de código acima já foi corrigido para
+`Unknown Knowledge = iota` e o campo `reasonCode` renomeado para `reason`, como o código.
 
 **Regra 4.2 — Nível 2.** Grandeza de negócio em `contracts` é `Fact[T]`, nunca número nu.
 *Instrumento:* analisador sobre os tipos de campo em `contracts/`.
@@ -266,11 +336,20 @@ resto do repo cita 1.378 vezes.
 *Instrumento:* analisador sobre SQL embebido.
 
 **Regra 4.4 — Nível 1.** Cálculo com input `Unknown` produz resultado `Unknown`.
-*Instrumento:* a aritmética vive em métodos de `Fact[T]`; não há operador `+` sobre factos.
+*Instrumento:* a aritmética vive em **funções genéricas de pacote**, `Map`/`Combine2`; não
+há operador `+` sobre factos e não há aritmética em métodos de `Fact[T]`.
 *Porquê, com o número real:* na simulação MG→BA com frete desconhecido `U`, a equação fecha
 em `P = 178,69 + 2,02·U`. R$ 178,69 é o resultado contrafactual se `U = 0`. **Cada real
 ignorado move o preço dois reais.** Um sistema que trate desconhecido como zero não erra um
 pouco — erra o dobro do que ignorou.
+
+**Emenda 2026-08-07** (paga por `apps/server_core/internal/kernel/fact/combine.go:10-15`):
+"a aritmética vive em métodos de `Fact[T]`" era inimplementável — Go não permite que um
+método declare parâmetros de tipo próprios (`func (f Fact[A]) Map[B any](...)` não
+compila). `Map[A, B any](f Fact[A], method string, fn func(A) (B, error)) (Fact[B], error)`
+e `Combine2[A, B, C any](...)` são funções de pacote em `internal/kernel/fact/combine.go:16,45`;
+`Combine2` só chama `fn` quando os dois inputs são usáveis (`combine.go:46-49`), o que é a
+garantia que a Regra 4.4 pede, só que expressa como função e não como método.
 
 ---
 
@@ -528,3 +607,20 @@ recomendação independente das duas consultas: o molde sai das fatias, não o c
   depois da normalização do dialeto (§11.2).
 - Que contextos podem ser fundidos na prática. `costing` separado de `catalog` é a separação
   mais discutível deste documento e a fatia vertical é que decide.
+
+---
+
+## 17. Log de emendas a este documento
+
+Uma linha por emenda, com data e o `file:line` medido que a pagou. Distinto do quadro do
+§14, que regista o estado das emendas à ADR-023; este regista emendas às regras do
+protocolo em si. `ADR-033` e `ADR-034` (`docs/architecture/decisions/`) são os documentos
+que dão a estas emendas prioridade sobre decisões congeladas, quando aplicável.
+
+| Data | Regra | Emenda | `file:line` que pagou |
+|---|---|---|---|
+| 2026-08-07 | 4.1 (valor zero de `Knowledge`) | Ratifica-se o código: `Unknown = iota`, não `Known = iota + 1`; a guarda real é `Evidence().IsZero()`, não a ausência de literal de struct. | `apps/server_core/internal/kernel/fact/knowledge.go:24-36,74,86,99,111` |
+| 2026-08-07 | 4.4 (aritmética) | De "métodos de `Fact[T]`" para funções genéricas de pacote `Map`/`Combine2` — um método Go não pode declarar parâmetros de tipo próprios. | `apps/server_core/internal/kernel/fact/combine.go:10-16,45` |
+| 2026-08-07 | 1.3 (instrumento cross-context) | O instrumento é o detector `ScanCrossContextInternal` **sem** o salto de ficheiros fora de `contexts/` — o único sítio que violou a regra estava fora, e um detector que pula "fora de contexto" é cego a exatamente esse caso. | `apps/server_core/internal/arch/scan.go:131-133` |
+| 2026-08-07 | 2.2-a (fachada de raiz única) | Sobe de regra de adaptador a regra do molde: vale para qualquer árvore com `internal/`, contexto incluído. Escrita só para vendors, não alcançava `contexts/`; `catalog.New(store, ids, reader)` nasceu com zero chamadores legais pela mesma razão. | `apps/server_core/internal/contexts/catalog/module.go:23-38` |
+| 2026-08-07 | 2.3 (tokens de vendor) | O escopo (`adapters/` isento, `internal/arch/` isento) vive no detector, na função `vendorRuleApplies` — sem filtro de caminho o detector acusaria a sua própria lista de tokens e nunca ficaria verde. | `apps/server_core/internal/arch/scan.go:34-37,217-226` |

@@ -36,7 +36,7 @@ Marketplace Central is an internal Mercado Livre operations and intelligence coc
 4. PostgreSQL is the only canonical persistence — no SQLite, no localStorage as source of truth
 5. Single-tenant operation, but every business table carries `tenant_id` (tenant-ready by design)
 6. Stable API routes without `/v1` prefix in URLs — versioning is in the OpenAPI document
-7. External marketplace integrations enter only through the `connectors` module via port interfaces
+7. External marketplace integrations enter through `adapters/marketplace/<vendor>`, implementing ports owned by the consuming context — see [ADR-033](docs/architecture/decisions/033-integracoes-entram-por-adapters.md). `connectors` (`apps/server_core/internal/modules/connectors/`) continues to serve Mercado Livre during the migration and receives no new marketplace code.
 8. Mercado Livre is the first operational control plane; VTEX is legacy and must not receive new feature work
 9. Scheduler-based polling is acceptable initially; webhook/notification support may be added where Mercado Livre provides reliable event topics
 10. Frontend consumes only `packages/sdk-runtime` — never calls backend directly

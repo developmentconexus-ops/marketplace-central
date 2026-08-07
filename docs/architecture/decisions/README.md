@@ -43,7 +43,7 @@ the number of the time. Use the registry's crosswalk to read them.
 | [014](014-market-collection-on-demand.md) | Market reference collection is on-demand | accepted |
 | [015](015-listings-module-is-read-only.md) | The canonical `listings` module is read-only | accepted |
 | [016](016-sdk-runtime-manual-same-commit.md) | `sdk-runtime` is hand-written; OpenAPI and SDK land in one commit | accepted |
-| [017](017-unknown-is-never-zero.md) | **Unknown is never zero — honest absence end to end** | accepted |
+| [017](017-unknown-is-never-zero.md) | **Unknown is never zero — honest absence end to end** | superseded 2026-08-07 by ADR-034 |
 | [018](018-mutation-envelope-table-and-poller.md) | Mutation envelope is a protocol table plus an in-process poller | accepted |
 | [019](019-listings-ingestion-feeds-snapshot-observer.md) | Listings ingestion feeds the snapshot observer, one row per item | accepted |
 | [020](020-market-data-only-via-collectorport.md) | Market data only via `CollectorPort`; no scraping; honest-empty | accepted |
@@ -59,6 +59,8 @@ the number of the time. Use the registry's crosswalk to read them.
 | [030](030-scheduler-second-instance-per-installation.md) | A second Scheduler instance per installation | accepted |
 | [031](031-keep-absent-merge.md) | Products-mirror upsert keep-absent merge | accepted |
 | [032](032-ml-catalog-offers-read-flag-defaults-off.md) | ML catalog-offers read gated by a flag that defaults off | accepted |
+| [033](033-integracoes-entram-por-adapters.md) | External marketplace integrations enter through `adapters/marketplace/<vendor>`, not `connectors` | accepted |
+| [034](034-fact-substitui-adr-017.md) | `internal/kernel/fact` supersedes ADR-017 | accepted |
 
 ## Harness process decisions
 
