@@ -1,13 +1,12 @@
 # ADR-033: External marketplace integrations enter through `adapters/marketplace/<vendor>`, not `connectors`
 
 **Date:** 2026-08-07
-**Status:** accepted
-**Amends:** `ARCHITECTURE.md` frozen decision 7
+**Status:** accepted, amends `ARCHITECTURE.md` frozen decision 7
 
 ## Context
 
 `ARCHITECTURE.md` frozen decision 7 (`ARCHITECTURE.md:39`) reads: "External marketplace
-integrations enter only through the `connectors` module via port interfaces."
+integrations enter only through the `connectors` module via port interfaces"
 `ARCHITECTURE.md:5` states that frozen decisions "must not be rediscussed without an
 explicit ADR." The repository's order of truth puts `ARCHITECTURE.md`/ADRs above the
 design spec, so until this document exists, the ratified design's routing of marketplace

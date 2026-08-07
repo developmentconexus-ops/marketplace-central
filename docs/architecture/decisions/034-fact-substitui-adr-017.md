@@ -1,8 +1,7 @@
 # ADR-034: `internal/kernel/fact` supersedes ADR-017
 
 **Date:** 2026-08-07
-**Status:** accepted
-**Supersedes:** ADR-017 (`docs/architecture/decisions/017-unknown-is-never-zero.md`)
+**Status:** accepted, supersedes ADR-017 (`docs/architecture/decisions/017-unknown-is-never-zero.md`)
 
 ## Context
 
@@ -20,7 +19,7 @@ states the same failure mode the citation count already showed:
 
 > "The repository cites that rule 1378 times and still broke it in its own shared core,
 > because a rule enforced by remembering is a rule that gets forgotten."
-> — `apps/server_core/internal/kernel/fact/knowledge.go:3-4`
+> — `apps/server_core/internal/kernel/fact/knowledge.go:3-5`
 
 `Knowledge` is a typed enum whose zero value is `Unknown`:
 
@@ -80,7 +79,7 @@ predicate; this document is the record of where enforcement now lives.
 ## Rationale
 
 A rule enforced only by citation degrades exactly the way ADR-017 itself documents: cited
-1.378 times and still broken in the repository's own shared core (`sourcekind.go:47`,
+1.378 times and still broken in the repository's own shared core (`sourcekind.go:47-52`,
 per ADR-017's own text and the design spec's Regra 4.1 defect note). Encoding the
 predicate in a type does not make the domain knowledge in ADR-017's thirteen clauses
 (no fabricated value, no suppressed zero, no silent cross-source fallback, no fabricated
