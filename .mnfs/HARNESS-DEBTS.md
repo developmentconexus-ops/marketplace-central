@@ -1264,3 +1264,43 @@ operador com efeito de escrita real, se existirem) uma validação PRÓPRIA logo
 de aceitar o fallback silencioso de `pgdb.LoadConfig()` — sem tocar no comportamento de
 `cmd/server`, que pode ter motivos distintos (multi-tenant já roteado a outro nível, por
 `tenant_config`) para tolerar o default hoje.
+
+**D-40. `MustParseDecimal` (`apps/server_core/internal/kernel/exact/decimal.go:84`) panica sem
+exceção registada — Tarefa 11 do plano `fecho`.** Exceção
+`production-panic-kernel-decimal-mustparse` registrada com removal_owner=HARNESS-D-40, seguindo o
+precedente de D-9 (schema `invariants.schema.json` exige `removal_owner` no padrão
+`M-NN|F-NN|M-NN/F-NN|HARNESS-D-N`; inventar um milestone seria falso — este panic não pertence a
+nenhum milestone aberto). `MustParseDecimal` é o idioma de constante literal em teste e
+inicialização de pacote: recebe só literais de código-fonte, nunca dado de runtime. Conserto de
+classe: o construtor deixar de existir (substituído por `ParseDecimal` explícito em cada
+call-site, absorvendo o `error`) — quando isso pousar, a exceção sai.
+
+**D-41. `Decimal.StringFixed` (`apps/server_core/internal/kernel/exact/decimal.go:141`) panica em
+escala negativa sem exceção registada — Tarefa 11 do plano `fecho`.** Exceção
+`production-panic-kernel-decimal-stringfixed-negative-scale` registrada com
+removal_owner=HARNESS-D-41, mesmo motivo de D-40/D-9 para o `removal_owner`. Escala negativa é
+erro de programação do chamador (constante de código), não de dado. Conserto de classe: a
+assinatura passar a devolver `(string, error)` em vez de panicar — quando isso pousar, a exceção
+sai.
+
+**D-42. `Fact.MustValue` (`apps/server_core/internal/kernel/fact/knowledge.go:134`) panica quando
+chamado sem `IsUsable` — Tarefa 11 do plano `fecho`.** Exceção
+`production-panic-kernel-fact-mustvalue` registrada com removal_owner=HARNESS-D-42, mesmo motivo
+de D-40/D-9 para o `removal_owner`. `MustValue` é o contrato do pacote: só é chamável depois de
+`IsUsable` ter sido checado na mesma função — isso não é validável estaticamente hoje. Conserto de
+classe: o detector `ScanFactValueDiscard` da Tarefa 5 (Regra 4.2) aprender a exigir `IsUsable` no
+mesmo bloco antes de qualquer `MustValue`, tornando o panic estruturalmente inalcançável e
+sancionado por AST em vez de por exceção de lista — quando isso pousar, a exceção sai.
+
+Achado colateral medido ao registar esta exceção: o `fingerprint` de `exact-occurrence` para um
+`panic(...)` multi-linha é sensível a fim-de-linha. `git worktree add` novo com
+`core.autocrlf=true` (medido nesta árvore) materializa `\r\n` no `knowledge.go` checked-out,
+mas a cópia de trabalho do repo principal (não re-checked-out desde antes do autocrlf, ou tocada
+por ferramenta que escreve LF) tinha `\n` puro no mesmo commit — o MESMO blob git produz DOIS
+textos de fingerprint diferentes consoante o caminho de checkout. `Policy.psm1:369` usa
+`[regex]::Matches($content, 'panic\s*\((?s:.*?)\)')` sobre `Get-Content -Raw`, que preserva o
+fim-de-linha do disco; o fingerprint registado aqui usa `\r\n` porque é isso que a lane vê no
+worktree limpo (o caminho sancionado pelo brief da Tarefa 11 para correr a lane). Um panic de
+UMA linha (`panic(err)`, `panic(ErrNegativeScale)`) não sofre disto — só multi-linha. Conserto
+candidato (fora desta tarefa): o checker normalizar `\r\n`→`\n` antes de casar fingerprint, ou o
+schema exigir fingerprints só de panics de uma linha.

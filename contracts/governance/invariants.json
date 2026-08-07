@@ -55,6 +55,30 @@
       "removal_owner": "M-10"
     },
     {
+      "id": "production-panic-kernel-decimal-mustparse",
+      "rule_id": "production-panic",
+      "paths": ["apps/server_core/internal/kernel/exact/decimal.go"],
+      "occurrences": [{ "path": "apps/server_core/internal/kernel/exact/decimal.go", "symbol": "MustParseDecimal", "fingerprint": "panic(err)", "count": 1 }],
+      "reason": "MustParseDecimal is the idiom for compile-time-known literals in tests and package initialization; it panics on bad input, which is correct only because the input is a literal in the source and never data. Removal = the constructor ceasing to exist (HARNESS-DEBTS D-40).",
+      "removal_owner": "HARNESS-D-40"
+    },
+    {
+      "id": "production-panic-kernel-decimal-stringfixed-negative-scale",
+      "rule_id": "production-panic",
+      "paths": ["apps/server_core/internal/kernel/exact/decimal.go"],
+      "occurrences": [{ "path": "apps/server_core/internal/kernel/exact/decimal.go", "symbol": "Decimal.StringFixed", "fingerprint": "panic(ErrNegativeScale)", "count": 1 }],
+      "reason": "StringFixed with a negative scale is a programming error, not a data error. Removal = the signature changing to return an error instead (HARNESS-DEBTS D-41).",
+      "removal_owner": "HARNESS-D-41"
+    },
+    {
+      "id": "production-panic-kernel-fact-mustvalue",
+      "rule_id": "production-panic",
+      "paths": ["apps/server_core/internal/kernel/fact/knowledge.go"],
+      "occurrences": [{ "path": "apps/server_core/internal/kernel/fact/knowledge.go", "symbol": "Fact.MustValue", "fingerprint": "panic(fmt.Errorf(\"%w: state=%s reason=%q evidence=%s\",\r\n\t\t\tErrNotUsable, f.state, f.reason, f.evidence.Ref()", "count": 1 }],
+      "reason": "MustValue is the package contract: it is callable only after IsUsable has been checked in the same function. Removal = the Task 5 detector (ScanFactValueDiscard) learning to require IsUsable in the same block, at which point this entry dies (HARNESS-DEBTS D-42).",
+      "removal_owner": "HARNESS-D-42"
+    },
+    {
       "id": "postgres-driver-erp-import-database-sql",
       "rule_id": "postgres-driver",
       "paths": ["apps/server_core/internal/modules/erp_import/adapters/postgres/query_repository.go", "apps/server_core/internal/modules/erp_import/adapters/postgres/mirror_query_repository.go", "apps/server_core/internal/modules/erp_import/adapters/postgres/mirror_repository.go"],
