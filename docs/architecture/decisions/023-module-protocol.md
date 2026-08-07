@@ -9,6 +9,15 @@ Re-measured against `a5b112a8` by `internal/composition/module_boundary_arch_tes
 estimated. The measurement lives in
 `docs/superpowers/plans/2026-08-05-arquitetura-protocolo-de-modulo-plan.md` §1 and
 `docs/architecture/decisions/_citations/layer-vocabulary-census.md`.
+**Re-measured 2026-08-07 (fecho global, onda de correção final, Item de Trabalho 4) — measurement
+correction only, no decision change.** The same test, `go test ./internal/composition/... -run
+TestModuleBoundaryADR023 -v` from `apps/server_core` with `GOCACHE` set, now reports **234
+violations** at `e482a84d`, not the 128 this header stated. The module tree kept growing (new
+callers, new modules) between `a5b112a8` and `e482a84d`; the rule in §2 did not change and no
+carve-out moved. This branch touched this file once already (`ccdc49c6`) without updating the
+count — see `.mnfs/HARNESS-DEBTS.md` D-49 for the sibling desync against the design spec. The
+per-module breakdown in the Context section below (`60 of the 128`, `9 of those 35`) is the
+128-era measurement and has not been re-broken-down for 234; only the total is corrected here.
 
 ## Context
 
@@ -25,7 +34,9 @@ What was actually measured:
   `internal/composition/module_boundary_arch_test.go`. The original text of this ADR said
   "35 remain", because it excluded 81 imports originating in `adapters/` and 12 more under
   carve-outs since narrowed. The 35 was never the size of the problem — it was the size of
-  what the measurement was willing to look at.)*
+  what the measurement was willing to look at. Superseded by the header's 2026-08-07
+  re-measurement: **234 violations** at `e482a84d`. The 128-era per-module breakdown below is
+  left as-is; it has not been re-run for 234.)*
   They are not spread thin: `connectors/domain` (23), `internal_read/domain` (19),
   `connectors/application` (10) and `listings/domain` (8) absorb 60 of the 128.
 - **9 of those 35 originate in `X/ports`.** A module's port — the thing that is supposed to
