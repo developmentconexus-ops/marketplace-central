@@ -43,13 +43,13 @@ one of the 98 commits reached local `main` without passing through a place a che
 
 | # | Step | Who | Notes |
 |---|---|---|---|
-| **P1** | Fix the account split | **operator**, minutes | `gh` asks as `leandrotcawork`; git authenticates as `developmentconexus-ops`. This is why the `cicd` lane concluded the remote was gone — **and it reported that plausibly**, which is the point. Until they agree, every `gh`-mediated step below reports on the wrong repository. Delete or re-scope the `legacy` remote in the same pass; a second `origin`-shaped ref is how the split survives. |
+| **P1** | ~~Fix the account split~~ **DONE 2026-08-07** | operator | `gh` asked as `leandrotcawork` while git authenticated as `developmentconexus-ops` — which is why the `cicd` lane concluded the remote was gone, **and reported that plausibly**. Closed by `gh auth switch --user developmentconexus-ops`; the `legacy` remote is removed. Both keyring tokens carry `repo` + `workflow`, so pushing `.github/workflows/` is in scope. **Residual, surfaces at P4:** `credential.helper = manager`, a store separate from gh's keyring, so `git push` may still present the old identity even though `gh` is correct. If it does, `gh auth setup-git` makes git delegate to gh and removes the possibility of disagreement. |
 | **P2** | Build the gates locally | agents | All of §2, on a branch off local `main`, against the 98 commits as they stand. Nothing pushed. |
 | **P3** | Baseline locally and commit the baselines | agents | Without this the first remote run is red on 58 governance violations, 44 archscan findings, 12 `tsc` errors and 22 unformatted files — **and a permanently red required check is switched off within a week.** The baseline commit is what makes the first green run possible. It is not bookkeeping. |
 | **P3.5** | **I1-edge — close the unauthenticated PII route** | agents, hours | Carried from `RECONCILIATION.md` Divergence 1, unchanged and binding. Must land before P6. |
 | **P4** | Push once, while unprotected | **needs explicit operator permission** | Fast-forward `main` — 98 commits plus the gate commits — in one push. **This is the last ungated write to `main` in the program's history, by construction:** a ruleset blocking direct pushes to `main` would block this very push, so the ruleset comes after it. The pushed tree already contains the workflows, so the push itself triggers the first run. |
 | **P5** | Confirm green on the remote | agents | A local green and a runner green are different claims. The runner has a clean checkout, LF line endings, no `.gomodcache`, no warm caches. **Budget for one or two environment defects here.** Still private, so these logs are not public. |
-| **P6** | Flip to public | **operator** | Gated on `PRE-PUBLIC-SWEEP.md` (verdict: `SAFE AFTER LISTED REMEDIATIONS`) **and** on P3.5. Going public exposes the entire history, not the current tree. |
+| **P6** | Flip to public | **operator** | Gated on `PRE-PUBLIC-SWEEP.md` (verdict: `SAFE AFTER LISTED REMEDIATIONS`) **and** on P3.5. Going public exposes the entire history, not the current tree. **Operator decision 2026-08-07: the B-1/B-2 credential is not rotated now, and does not need to be before P4.** The push is not the disclosure event — the flip is. B-1's working-tree copy was scrubbed at `1ec2d081`; B-2 remains in a historical blob that is already an ancestor of `origin/main`, so rotation stays the only remediation that reaches the pushed copy. **The open question that decides whether rotation is needed at all: is that PostgreSQL role valid anywhere other than the operator's local machine?** Local-only puts it with N-1/N-2 in the accepted column and the sweep over-rated it; valid on any reachable host and the flip hands out a working credential. Operator answers before P6, not before P4. |
 | **P7** | Enable the ruleset | **operator** | Required checks (`verify-fast`, `verify-full`, `gate-integrity`), require a pull request, linear history, block force-push and deletion, **empty bypass list**. §3. |
 | **P8** | Change the landing path in doctrine | agents + operator | `docs/HARNESS-PROFILE.md:279` forbids pushing without explicit permission; `:77` defines a post-merge ladder over an already-integrated local `main`. Chips must land as `branch → push → PR → required checks → merge`, and the doctrine must **say so**, or the checks sit beside the road exactly as `release-images.yml` does today. **This is the largest non-code item in the program and no lane costed it, because no lane was pointed at the harness.** Minimum change: standing authorization to push *chip branches* — never `main`. |
 
@@ -300,9 +300,20 @@ someone else's decision.
 - **Signed commits on gate paths (C2).** §0 G-3. Deferred. Revisit if a signing key gets configured;
   it is the only control here an agent cannot satisfy at all.
 - **P4 requires explicit operator permission at the time.** Not pre-granted by this document.
-- **P1 and P6–P7 are operator actions.** Account split, visibility flip, ruleset configuration.
-- **L2-d depends on authentication existing**, which is a product decision both arms declined to
-  size (`RECONCILIATION.md` §Open).
+- **P6–P7 are operator actions.** Visibility flip, ruleset configuration. (P1 closed 2026-08-07.)
+- **Is the B-1/B-2 PostgreSQL role valid off the operator's machine?** Decides whether rotation is
+  required at all. Gates P6. See the P6 row in §1.
+- **L2-c and L2-d are deferred — authentication is not being built yet.** Operator decision
+  2026-08-07: make the platform work first; there is one human user and no second principal.
+  **Consequence, and it is the one to watch:** issue #1's edge control was written as a stopgap that
+  L2-c would retire, and it is now the *only* control on the PII route, indefinitely — a Caddy config
+  and an ngrok scope, level 3 at best, with no type and no boot condition behind it. That is fine
+  while the repository is private. It sharpens at P6, which publishes `deploy/Caddyfile`,
+  `apps/web/vite.config.ts` and `orders/transport/http_handler.go:608-618` — the route, its predicate,
+  and the fields it returns — with a deny rule as the only thing between them. **#1's negative fixture
+  is therefore not optional:** a request through the composed stack asserting non-200 without
+  credentials, wired into `verify-full`. Without it, "the door is closed" is a claim about a config
+  file nobody re-reads.
 - **`.gitattributes` renormalize** — optional, local developer experience, no longer blocking. D-52
   is re-sized downward.
 

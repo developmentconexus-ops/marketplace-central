@@ -52,6 +52,27 @@ This is the textbook case the mission brief named: a file added before the ignor
 
 ### Remediation for B-1 + B-2
 
+> **Status 2026-08-07 — partial, and the partial part is the cheap part.**
+>
+> **B-1's working-tree copy is scrubbed** at commit `1ec2d081`. Both `PGPASSWORD=` assignments in
+> `docs/superpowers/plans/2026-04-06-pricing-simulator-v2.md` now read the value from the
+> environment, so the commands stay runnable and the credential is out of the live tree. The value
+> was never read, printed, or placed in a transcript — the edit was a blind `sed` over
+> `PGPASSWORD=[^[:space:]]*`, verified by counting the redacted form (2) and residual matches (0).
+>
+> **This does not close either finding.** B-2 is the same credential in a historical blob of
+> `.claude/settings.local.json`, and all three of its commits are already ancestors of
+> `origin/main`. Nothing done to the tree reaches a pushed copy.
+>
+> **Operator decision: not rotating now, and it is not needed before P4.** The push is not the
+> disclosure event — `origin` is private, so the flip is. Rotation gates **P6** only.
+>
+> **The one fact that decides whether rotation is ever required, and only the operator has it:**
+> is that PostgreSQL role valid anywhere other than the local machine? Local-only puts it with N-1
+> and N-2 in the accepted column, and this sweep over-rated it. Valid on any reachable host —
+> staging, a prod mirror, anything not `127.0.0.1` — and the flip publishes a working credential.
+> **Answer before P6.**
+
 Both findings are **one credential**. One rotation closes both.
 
 1. **ROTATE THE PASSWORD.** Change the password of that PostgreSQL role on every cluster where it is valid (local dev, any staging, any prod mirror). Update whatever consumes it — `.env` (untracked), Docker Compose overrides, the operator's own shell profile.

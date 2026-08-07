@@ -23,7 +23,7 @@ Sources: `RECONCILIATION.md` (axes, sequence), `GATE-TOPOLOGY.md` (gates), `lane
 | 1 | **#2 V2** — the verifier is scripts to remember, not one product | 4–6d | no — the multiplier |
 | 2 | **#3 V3** — evidence certifies itself | 3–4d | after #2 |
 | 3 | **#4 V1** — nothing is required to pass through the delivery path | 1d | after #3 |
-| 4 | **#5 I1-structural** — identity is a boot-time constant | 5–8d + auth unsized | after #4 |
+| 4 | **#5 I1-structural** — identity is a boot-time constant | 5–8d | after #4 |
 | 5 | **#6 C1** — the published contract is six hand copies with no arbiter | 4–6d | after #4 |
 | 6 | **#7 R1** — every request boundary is re-invented per module | 5–7d | after #6 |
 | 7 | **#8 M1** — there is no single compiled vocabulary for a value | 7–10d | after #4 |
@@ -64,9 +64,18 @@ deny rule requires belongs in #5.
 
 **Acceptance.** Level 3 for the edge rule — a check that fetches the route through the composed
 stack and asserts non-200 without credentials. Not higher, because a Caddy config is not
-representable in the Go type system; the level-2 form of this control is `GATE-TOPOLOGY.md` L2-c and
-it ships in #5. **Arm A withdrew its own first proposal here** — a `127.0.0.1` bind — after
-determining it would read as done and be inert. Do not re-propose it.
+representable in the Go type system. **Arm A withdrew its own first proposal here** — a `127.0.0.1`
+bind — after determining it would read as done and be inert. Do not re-propose it.
+
+**The negative fixture is mandatory, and that changed on 2026-08-07.** As written, this issue was a
+stopgap that `GATE-TOPOLOGY.md` L2-c would retire once #5 shipped. The operator has deferred
+authentication — one human user, platform first — so L2-c is not coming, and **this is now the only
+control on the PII route, indefinitely.** A Caddy config and an ngrok scope, with no type and no boot
+condition behind them. Contained while the repository is private; sharper at P6, which publishes the
+route, its predicate and the fields it returns with a deny rule as the only thing between them.
+So the fixture is not a nicety: **a request through the composed stack asserting non-200 without
+credentials, wired into `verify-full`.** Without it, "the door is closed" is a claim about a config
+file nobody re-reads.
 
 **Sequencing.** Depends on nothing. **Blocks P6, the public flip.** Hours.
 *Correction recorded:* Arm B sequenced the flip before this and Arm A after; resolved in favour of A
@@ -217,8 +226,16 @@ identity middleware (`GATE-TOPOLOGY.md` L2-c) — which retires #1's stopgap.
 **Explicitly not in scope, and this is the load-bearing exclusion.** **Authentication itself is a
 product decision, not an audit output.** Who are the principals, what is a session, is there ever
 more than one human user — both synthesis arms declined to size it, and correctly. This issue makes
-identity *representable and required*; it does not choose an auth scheme. Until that decision exists,
-the estimate below is a range, not an estimate.
+identity *representable and required*; it does not choose an auth scheme.
+
+**Operator decision 2026-08-07: authentication is deferred. One human user; make the platform work
+first.** This does **not** stall the issue, because most of it never needed auth. `TenantID` with no
+usable zero value, deleting the `tenant_default` fallback, `MC_DEFAULT_TENANT_ID` failing closed, the
+RLS-bypass boot assertion and the 246-site query checker are all about a tenant being **explicit and
+fail-closed rather than invented** — and one tenant is a perfectly good number of tenants for that.
+The single piece that genuinely waits is the L2-c boot assertion (no PII route composed without
+identity middleware), because there is no middleware to assert on. **Estimate drops from "5–8d plus
+unsized auth" to 5–8d.** The deferred half moves to #1, which is now permanent until auth exists.
 
 **Acceptance.** Level 1 for the tenant type (`TenantID{}` must not compile at all 70 sites), level 2
 for the four boot assertions, level 3 for the query checker. Three levels because three different
@@ -374,8 +391,35 @@ cheaper. Arm B caught the contradiction; neither lane checked the other.
 condition.
 
 **Sequencing.** Depends on **#4**. Independent of #10. 4–5 days.
-**Open operator decision blocking part of this:** D-2 / D-50 — is `removal_owner=HARNESS-D-N`
-ratified practice, or must the four existing uses get real owners?
+
+**Open operator decision blocking part of this — D-2 / D-50, stated concretely.** Every governance
+exception must name a `removal_owner`. Two of the three schemas
+([`modules.schema.json:49`](contracts/governance/schemas/modules.schema.json:49),
+[`runtime-config.schema.json:67`](contracts/governance/schemas/runtime-config.schema.json:67)) force
+that value to be `M-NN` or `M-NN/F-NN` — **a milestone. Something scheduled. Something that ends.**
+[`invariants.schema.json:54`](contracts/governance/schemas/invariants.schema.json:54) alone widens
+the pattern with a fourth alternative, `HARNESS-D-[0-9]{1,3}`, pointing at a row in
+`.mnfs/HARNESS-DEBTS.md`. Four exceptions use it: D-9, D-40, D-41, D-42.
+
+A milestone is a commitment; a debt row is a list. So `HARNESS-D-N` produces exceptions that read as
+temporary and are permanent — [`invariants.json:62`](contracts/governance/invariants.json:62) says
+removal *"= the constructor ceasing to exist (HARNESS-DEBTS D-40)"*, which describes what removal
+would look like rather than naming anyone who will do it. **That is the same shape as the three stale
+exceptions this issue already found**, and the liveness check shipped here cannot distinguish
+"permanent by design" from "abandoned."
+
+The ruling needed, per exception:
+
+- **Permanent by design** — clearest candidate is D-9
+  ([`invariants.json:30`](contracts/governance/invariants.json:30)), re-raising
+  `http.ErrAbortHandler`, whose own reason argues the panic is *correct* and that converting it would
+  be the defect. Then `HARNESS-D-N` is the wrong slot entirely: this is **a rule the checker does not
+  know yet**, and it belongs in the checker as a sanctioned idiom, not excused per-site forever.
+- **Deferred work** — then each gets a real `M-NN` and the fourth schema alternative is deleted,
+  closing the escape hatch.
+
+Either ruling makes the liveness check unambiguous. Neither is urgent; it can wait until this issue
+starts.
 *Inversion:* survives an opposite directory layout. **An instrument anchored to a path prefix reports
 zero for everything outside that prefix in any tree shape** — and zero findings is indistinguishable
 from compliance.
