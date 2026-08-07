@@ -13,12 +13,12 @@ func TestParseCodeRejectsEmpty(t *testing.T) {
 }
 
 func TestParseCodeNormalisesCase(t *testing.T) {
-	code, err := channel.ParseCode("MercadoLivre")
+	code, err := channel.ParseCode("AcmeBazaar")
 	if err != nil {
 		t.Fatalf("ParseCode: %v", err)
 	}
-	if got := code.String(); got != "mercadolivre" {
-		t.Fatalf("String() = %q, want %q", got, "mercadolivre")
+	if got := code.String(); got != "acmebazaar" {
+		t.Fatalf("String() = %q, want %q", got, "acmebazaar")
 	}
 }
 
@@ -30,7 +30,7 @@ func TestNewAccountRefRejectsZeroCode(t *testing.T) {
 }
 
 func TestNewAccountRefRejectsEmptyExternal(t *testing.T) {
-	code, err := channel.ParseCode("mercadolivre")
+	code, err := channel.ParseCode("acmebazaar")
 	if err != nil {
 		t.Fatalf("ParseCode: %v", err)
 	}
@@ -40,7 +40,7 @@ func TestNewAccountRefRejectsEmptyExternal(t *testing.T) {
 }
 
 func TestAccountRefRoundTrips(t *testing.T) {
-	code, err := channel.ParseCode("mercadolivre")
+	code, err := channel.ParseCode("acmebazaar")
 	if err != nil {
 		t.Fatalf("ParseCode: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestAccountRefRoundTrips(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewAccountRef: %v", err)
 	}
-	if ref.Channel().String() != "mercadolivre" || ref.External() != "123456789" {
+	if ref.Channel().String() != "acmebazaar" || ref.External() != "123456789" {
 		t.Fatalf("round trip lost data: %q / %q", ref.Channel().String(), ref.External())
 	}
 }

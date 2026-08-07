@@ -791,6 +791,58 @@ fictício, (b) restringir `ScanVendorTokens` a produção (excluir `_test.go`) q
 sem `Suffix`, ou (c) aceitar `TestNoVendorTokenInKernel` como conhecido-vermelho até (a)/(b).
 Nenhuma das três foi escolhida por esta tarefa.
 
+**FECHADA 2026-08-07 (Fecho da Fundação, Tarefa 13).** Nota de correção sobre a proveniência
+desta dívida: o brief da Tarefa 13 (`fecho-task-13-brief.md`) descreve D-28 como "o detector de
+vendor acusava a própria lista. Resolvido por escopo no detector (Tarefa 4)" — essa frase
+descreve um achado DIFERENTE (o `scan.go:34-35` auto-acusando-se, fechado em 0 pelo
+`vendorRuleApplies` da Tarefa 4, ver D-35 item 1) e não o que este D-28 mede. Medido antes de
+escrever esta nota: `TestNoVendorTokenInKernel` continuava FAIL em HEAD (`e46cbd4b`), 6 achados,
+os MESMOS de `channel_test.go:16,20,21,33,43,51` — a Tarefa 4 nunca tocou `channel_test.go`
+(D-35 item 5 confirma: "6 achados — é D-28 verbatim... inalterado"). A alegação do brief não se
+sustenta na árvore; escolhida a opção (a) do parágrafo anterior, a única que não altera o
+detector nem o alcance da regra.
+
+Aplicado: `internal/kernel/channel/channel_test.go` trocou os cinco literais `"MercadoLivre"`/
+`"mercadolivre"` por `"AcmeBazaar"`/`"acmebazaar"` (nome de canal fictício, sem correspondência
+com nenhum vendor real). Confirmado por grep antes da troca que nenhum outro ficheiro do repo
+depende deste literal a atravessar `channel.ParseCode` — `grep -rn "channel.ParseCode\|channel\.Code("
+internal --include=*.go` fora de `_test.go` devolve zero resultados (o pacote não tem nenhum
+chamador de produção ainda) e `grep -rln "mercadolivre\|MercadoLivre\|mercado_livre"
+internal/kernel internal/contexts` só encontrava `channel_test.go` (o ficheiro corrigido) e um
+comentário de exemplo em `internal/kernel/provenance/evidence.go:58` (fora de string literal,
+não varrido pelo detector AST). O teste continua a exercitar exatamente o que testava —
+normalização de maiúsculas/minúsculas via `ParseCode`/`String()` — só com um dado de exemplo que
+não é nome de vendor.
+
+Medido, verbatim:
+
+```
+$ cd apps/server_core && GOCACHE="$(pwd)/.gocache" go test ./internal/kernel/channel/... -v
+=== RUN   TestParseCodeRejectsEmpty
+--- PASS: TestParseCodeRejectsEmpty (0.00s)
+=== RUN   TestParseCodeNormalisesCase
+--- PASS: TestParseCodeNormalisesCase (0.00s)
+=== RUN   TestNewAccountRefRejectsZeroCode
+--- PASS: TestNewAccountRefRejectsZeroCode (0.00s)
+=== RUN   TestNewAccountRefRejectsEmptyExternal
+--- PASS: TestNewAccountRefRejectsEmptyExternal (0.00s)
+=== RUN   TestAccountRefRoundTrips
+--- PASS: TestAccountRefRoundTrips (0.00s)
+PASS
+ok  	marketplace-central/apps/server_core/internal/kernel/channel	1.143s
+
+$ cd apps/server_core && GOCACHE="$(pwd)/.gocache" go test ./internal/arch/... -run TestNoVendorTokenInKernel -v
+=== RUN   TestNoVendorTokenInKernel
+--- PASS: TestNoVendorTokenInKernel (0.00s)
+PASS
+ok  	marketplace-central/apps/server_core/internal/arch	1.546s
+```
+
+`internal/kernel/channel/channel_test.go:16,20,21,33,43,51` no longer round-trip a vendor
+literal; `TestNoVendorTokenInKernel` passes clean. This closes D-28 as originally measured. The
+self-accusation finding the brief actually meant (`scan.go` matching its own token list) was
+already closed by Task 4 — see D-35 item 1 — and stays closed; unaffected by this change.
+
 ---
 
 **D-29. O teste de integração da Tarefa 10 (brief verbatim) não compila — importa um pacote
@@ -829,6 +881,17 @@ CRÍTICA de RLS cross-tenant foi obtida por SQL direto contra o Postgres do dev 
 role de teste sem `BYPASSRLS` criada e removida na mesma sessão (a role de aplicação
 `marketplace` é `Superuser`+`Bypass RLS`, então o `FORCE ROW LEVEL SECURITY` da migração nunca
 seria exercitado através dela — achado relacionado, ver corpo do relatório da Tarefa 10).
+
+**Reconfirmada 2026-08-07 (Fecho da Fundação, Tarefa 13).** `apps/server_core/tests/integration/
+catalog_ingest_test.go` continua a chamar `catalog.New(pool)` (não nomeia `catalog/internal/postgres`
+diretamente). Medido em HEAD (`e46cbd4b`), sem alteração de ficheiro nesta tarefa:
+
+```
+$ cd apps/server_core && GOCACHE="$(pwd)/.gocache" go vet -tags=integration ./tests/...
+(EXIT 0, sem output)
+```
+
+Fechada continua fechada.
 
 Consequência de classe: **qualquer contexto futuro que siga o mesmo padrão
 `internal/contexts/<x>/internal/<adapter>` não pode ter um teste de integração fora de
@@ -930,6 +993,19 @@ por esta mesma linha) voltam a compilar. Ver D-34 abaixo: `go test ./internal/..
 verde na árvore inteira, mas por duas causas SEM relação com D-29/D-30 — surgiram porque o
 build deixou de mascará-las, não porque esta correção as introduziu.
 
+**Reconfirmada 2026-08-07 (Fecho da Fundação, Tarefa 13).** Medido em HEAD (`e46cbd4b`), sem
+alteração de ficheiro nesta tarefa:
+
+```
+$ cd apps/server_core && GOCACHE="$(pwd)/.gocache" go build ./...
+BUILD_EXIT=0
+$ cd apps/server_core && GOCACHE="$(pwd)/.gocache" go vet ./...
+VET_EXIT=0
+```
+
+`internal/composition/catalog_wiring.go:10` continua a importar só `marketplace-central/apps/server_core/internal/contexts/catalog`
+(a fachada `catalog.New(pool)`), nunca `catalog/internal/postgres`. Fechada continua fechada.
+
 ---
 
 **D-31. O `main.go` verbatim do brief da Tarefa 12 não compila — assinaturas de `ScanVendorTokens`
@@ -967,7 +1043,8 @@ adaptação, ou ratificar uma mudança de assinatura em `scan.go` que faça o br
 **D-32. `grep -rn 'float64\|float32'` do portão dispara em COMENTÁRIO, não só em código —
 "float in kernel" nunca mede 0 enquanto o kernel tiver a explicação do próprio banimento em
 prosa** (Onda 1, Tarefa 12, `scripts/arch-gate.sh` Step "no float in the kernel" +
-`.mnfs/MEASUREMENTS/2026-08-06-fundacao-kernel.md`, 2026-08-06) — ABERTA.
+`.mnfs/MEASUREMENTS/2026-08-06-fundacao-kernel.md`, 2026-08-06) — **FECHADA 2026-08-06 (Fecho da
+Fundação, Tarefa 4), reconfirmada 2026-08-07 (Tarefa 13).**
 
 A medição de fecho (Tarefa 12, Step 8) esperava `float in kernel: 0`. Medido, verbatim:
 
@@ -994,7 +1071,25 @@ Consequência de classe: qualquer comentário futuro em `internal/kernel` que me
 `float64`/`float32` em prosa (mesmo para dizer "isto é proibido") reprova o portão pela mesma
 razão.
 
----
+**FECHADA 2026-08-06 (Fecho da Fundação, Tarefa 4), reconfirmada 2026-08-07 (Tarefa 13).** A
+Tarefa 4 tirou o passo `grep` cru do portão; a deteção de float no kernel passou a correr por
+dentro do `archscan` (detector AST `ScanFloatInContracts`, o mesmo instrumento que já resolvia
+D-28/D-30 para os outros dois detetores). Medido em HEAD (`e46cbd4b`):
+
+```
+$ grep -n "float in the kernel" scripts/arch-gate.sh
+(sem resultado — o Step "no float in the kernel" e o grep cru não existem mais no script)
+
+$ cd apps/server_core && GOCACHE="$(pwd)/.gocache" go run ./internal/arch/cmd/archscan -root internal/kernel
+archscan internal/kernel: zero findings (exit 0)
+```
+
+Os dois comentários que disparavam o falso positivo (`internal/kernel/exact/decimal.go:2`,
+`internal/kernel/exact/money.go:44`) continuam no ficheiro — não precisaram de reescrita, porque
+o detector AST varre literais e identificadores de código, não comentários. `bash
+scripts/arch-gate.sh` step "architecture detectors" para `internal/kernel` reporta `zero
+findings`; o grep cru que disparava em prosa não existe mais no script (confirmado por grep
+acima). Fecha exatamente como a Tarefa 4 já tinha registado em D-35 item 2.
 
 **D-33. O portão (`scripts/arch-gate.sh`), corrido do zero na árvore como está hoje, reprova —
 e a razão NÃO é nada que a Tarefa 12 tenha introduzido** (Onda 1, Tarefa 12, medição de fecho,
@@ -1265,6 +1360,26 @@ de aceitar o fallback silencioso de `pgdb.LoadConfig()` — sem tocar no comport
 `cmd/server`, que pode ter motivos distintos (multi-tenant já roteado a outro nível, por
 `tenant_config`) para tolerar o default hoje.
 
+**Reconfirmada 2026-08-07 (Fecho da Fundação, Tarefa 13) — ainda ABERTA, código não mudou de
+sítio.** Medido em HEAD (`e46cbd4b`):
+
+```
+$ grep -n "DefaultTenantID\|MC_DEFAULT_TENANT_ID\|tenant_default" apps/server_core/internal/platform/pgdb/config.go
+10:	DefaultTenantID string
+17:		DefaultTenantID: os.Getenv("MC_DEFAULT_TENANT_ID"),
+23:	if cfg.DefaultTenantID == "" {
+24:		cfg.DefaultTenantID = "tenant_default"
+
+$ grep -n "DefaultTenantID\|MC_DEFAULT_TENANT_ID\|tenant.Parse" apps/server_core/cmd/catalogingest/main.go
+44:	dbCfg, err := pgdb.LoadConfig()
+48:	tenantID, err := tenant.Parse(dbCfg.DefaultTenantID)
+```
+
+Mesmo `file:line` do achado original (`config.go:23-24`, `main.go:44-48`) — nenhuma das 12
+tarefas deste plano tocou `internal/platform/pgdb/config.go` nem `cmd/catalogingest/main.go`
+depois do fecho da Tarefa 8/9 (confirmado por `git diff --name-only 1b2ef2da..e46cbd4b`, ver
+lista completa no relatório da Tarefa 13). Continua aberta; não duplicada.
+
 **D-40. `MustParseDecimal` (`apps/server_core/internal/kernel/exact/decimal.go:84`) panica sem
 exceção registada — Tarefa 11 do plano `fecho`.** Exceção
 `production-panic-kernel-decimal-mustparse` registrada com removal_owner=HARNESS-D-40, seguindo o
@@ -1304,3 +1419,139 @@ worktree limpo (o caminho sancionado pelo brief da Tarefa 11 para correr a lane)
 UMA linha (`panic(err)`, `panic(ErrNegativeScale)`) não sofre disto — só multi-linha. Conserto
 candidato (fora desta tarefa): o checker normalizar `\r\n`→`\n` antes de casar fingerprint, ou o
 schema exigir fingerprints só de panics de uma linha.
+
+---
+
+## F. Fecho da Fundação, Tarefa 13 (2026-08-07) — dívidas registadas no fecho do plano
+
+Sete itens vêm nomeados no brief da Tarefa 13 (`fecho-task-13-brief.md`), sem número — cada um
+recebe D-número aqui pela primeira vez, para ficar rastreável como o resto deste ficheiro. Mais
+dois itens que o brief predatava e o operador mandou acrescentar (D-44 e D-50).
+
+**D-43. Agendamento do ingest de catálogo não existe — é comando de operador, e registar um
+scheduler colide na chave de `sync_state`.** `apps/server_core/internal/modules/sync/domain/
+sync_state.go:15-35` declara `Entity` como lista fechada e validada em aplicação (não em
+constraint de DB): `EntityProducts`/`EntityListings`/`EntityOrders`/`EntityMarket`/
+`EntityMarketQueue`/`EntityTariffs`/`EntityICMSMatrix` — `products` já é o job legado do módulo
+`internal/modules/sync/composition/products_job.go`. O ingest de catálogo desta plano
+(`cmd/catalogingest`, contexto `internal/contexts/catalog`) não tem entidade própria: registar um
+segundo job sob `EntityProducts` colidiria na chave `(tenant, installation, entity)` de
+`sync_state` com o job legado (a mesma proteção que a Tarefa 5 do MIS-006 desenhou, ver
+`sync_state.go:22-26`), e criar uma entidade nova + scheduler exigiria tocar
+`internal/modules/sync/` — fora do alcance da constraint 1 deste plano ("nada em
+`internal/modules/` é tocado"). Hoje o ingest só corre por invocação manual do operador
+(`go run ./cmd/catalogingest` ou o caminho Docker provado em D-38). Decisão de agendamento
+pertence ao plano de migração de contextos (`internal/modules/` → `internal/contexts/`), que
+ainda não existe.
+
+**D-44. DSN de produção liga como `marketplace` (superuser, bypassa RLS) — o papel `mpc_app` da
+Tarefa 10 existe só no ficheiro de migração, ainda não em uso.** Medido contra o dev stack vivo
+(`marketplace-central-postgres-1`, o único Postgres deste repo acessível nesta sessão — não há
+ambiente de produção alcançável daqui, então esta é a mesma medição que a produção herdaria sem
+mudança de configuração):
+
+```
+$ docker exec marketplace-central-postgres-1 psql -U marketplace -d marketplace_central -c \
+  "SELECT rolname, rolsuper, rolbypassrls FROM pg_roles WHERE rolname IN ('marketplace','mpc_app');"
+   rolname   | rolsuper | rolbypassrls
+-------------+----------+--------------
+ marketplace | t        | t
+(1 row)
+```
+
+`mpc_app` nem sequer aparece na lista de roles deste banco: a migração
+`apps/server_core/migrations/0098_catalog_app_role.sql` (commitada pela Tarefa 10) ainda não foi
+aplicada a este dev stack — `schema_migrations` marca `0097_catalog_context.sql` como a última
+corrida (`2026-08-06 06:58:25+00`), nenhuma linha para `0098`. Ou seja: o papel de menor
+privilégio existe como código migrável e o isolamento foi provado numa lane isolada (Tarefa 10,
+role temporária sem `BYPASSRLS`, ver D-29), mas neste banco real, hoje, nem a migração rodou —
+muito menos a aplicação liga como `mpc_app`. `internal/composition/root.go` e `cmd/catalogingest`
+continuam a construir a `*pgxpool.Pool` a partir de `MC_DATABASE_URL`, que aponta para o utilizador
+`marketplace` (`docker-compose.yml:6-7`, `POSTGRES_USER: marketplace`) — nenhum código lê uma
+segunda env var para um DSN de aplicação. Consequência: `FORCE ROW LEVEL SECURITY` das tabelas
+`catalog.*` nunca é exercitado pela aplicação real, porque o utilizador de ligação é superuser e
+bypassa RLS por definição — o isolamento de tenant nessas tabelas depende inteiramente dos
+predicados `WHERE tenant_id = $1` escritos à mão em cada query, exatamente como constraint 10
+já exige, sem rede de segurança do banco por trás. Task 10's brief previa este debt ser
+registrado na Tarefa 12; a Tarefa 12 foi só ADRs, por isso aterra aqui. Conserto candidato (fora
+desta tarefa): segunda env var de aplicação (`MC_APP_DATABASE_URL` ou similar) apontando para
+`mpc_app`, com `MC_DATABASE_URL` reservado a migrações/admin; e rodar `cmd/migrate` neste dev
+stack para aplicar `0098` antes de qualquer prova de RLS em produção.
+
+**D-45. Visibilidade de falha em ecrã — uma falha do ingest hoje é só um código de saída de
+terminal.** `cmd/catalogingest/main.go:34-40` imprime o erro em `os.Stderr` e sai `1`; não existe
+`sync_health` para o contexto `catalog` (a tabela `sync_state` é do módulo legado `sync`, D-43
+acima, e o contexto `catalog` não escreve nela), não existe rota nem card de operador que mostre
+"último ingest falhou/há quanto tempo". Um operador que não esteja a olhar para o terminal no
+momento exato da corrida não tem outra forma de saber que uma corrida falhou. Escopo do próximo
+plano — nenhuma tarefa deste plano tinha mandato de desenhar telemetria de operador.
+
+**D-46. `internal/modules/` continua fora dos quatro detectores do portão.** `scripts/arch-gate.sh`
+varre só `internal/kernel internal/contexts internal/adapters internal/composition` (linha 30) e
+imprime em voz alta `"internal/modules is the legacy tree and is deliberately NOT scanned"`
+(linha 37) — omissão declarada, não escondida. A árvore legada (61 módulos em
+`contracts/governance/modules.json`) só entra no protocolo de contexto/kernel quando for migrada;
+até lá o portão mede zero sobre ela por desenho, e `TestModuleBoundaryADR023` (D-34, 234
+violações, ver acima) é o único instrumento que a vê — e falha o `go test ./internal/...` do
+próprio portão por isso mesmo.
+
+**D-47. A árvore de contextos continua ingovernada pelo registo de módulos — com dono e prazo.**
+Três factos medidos, cada um `file:line`:
+
+1. `scripts/harness/Policy.psm1:303` fixa `$moduleRoot = Resolve-RepositoryPath $RepositoryRoot
+   'apps/server_core/internal/modules'` — o registo de governança só sabe percorrer essa raiz;
+   `internal/contexts/` não está no caminho, então uma pasta órfã ali (sem entrada em
+   `modules.json`) não reprova nada — fica invisível em vez de bloquear.
+2. `contracts/governance/modules.json:5` já declara `{ "id": "catalog", "root":
+   "apps/server_core/internal/modules/catalog", ... }` — a chave `id: "catalog"` está ocupada
+   pelo módulo legado. O novo contexto `internal/contexts/catalog` não pode entrar no registo
+   sob o mesmo `id` sem colidir; a chave real precisaria ser o par `(kind, id)` (módulo legado vs.
+   contexto), que o schema atual não modela.
+3. `scripts/harness/Policy.psm1:305-308` (mostrado acima) monta `$actualModules` só a partir de
+   `Get-ChildItem` sobre `$moduleRoot` — mesmo se o schema ganhasse `kind`, o `foreach` que anda
+   pelo disco continuaria sem visitar `internal/contexts/`.
+
+Já ratificado, com dono e prazo: fecha em **T13 da adenda `1c47d906`** (registo passa a ver
+contextos), não nesta tarefa — este item é a medição que essa tarefa herdará, não uma decisão
+nova.
+
+**D-48. Classe B — a mesma forma copiada à mão, quatro vezes, sem checagem de acordo.** `domain`
+→ DTO → OpenAPI → `sdk-runtime` são quatro cópias independentes da mesma forma de dado, e nenhum
+compilador liga uma às outras (nenhuma importa as outras). `GOV_API_SDK_SPLIT`
+(`scripts/harness/Policy.psm1`, citado em D-25 acima) só exige que OpenAPI e `sdk-runtime` mudem
+no MESMO commit — nunca verifica se dizem a mesma coisa. Este plano (Fecho da Fundação) é imune
+por construção: constraint 12 proíbe qualquer rota HTTP nesta fatia, então não nasce DTO, não
+nasce entrada de `paths` no OpenAPI, não nasce método de SDK — a quarta cópia nunca é escrita
+aqui. A imunidade acaba na primeira rota que o contexto `catalog` publicar. Fecha em **T14**
+(gerador + generate-and-diff), ainda não despachada.
+
+**D-49. `docs/architecture/decisions/023-module-protocol.md` desalinhado do
+`docs/superpowers/specs/2026-08-06-protocolo-de-codigo-design.md` §14.** Duas fontes descrevendo
+a mesma regra (o protocolo de módulo) sem um mecanismo que as mantenha em acordo — o spec §14
+regista o estado das emendas à ADR-023 (linha 616: "§14, que regista o estado das emendas à
+ADR-023"), mas nada compara o TEXTO da ADR-023 contra o texto do spec depois de cada emenda.
+Fecha em **T15**; os ADRs deste plano (033, 034) são disjuntos dessa regra — citam-na, não a
+substituem.
+
+**D-50. Obrigação de OPERADOR ainda não descarregada: `removal_owner` de exceção de governança
+exige round-trip ao hub (D-2), e a Tarefa 11 resolveu unilateralmente usando o precedente de
+mecanismo do D-9 — o mecanismo não descarrega o processo.** `contracts/governance/invariants.json`
+tem hoje três exceções novas desta tarefa 11 com `removal_owner=HARNESS-D-40`,
+`HARNESS-D-41`, `HARNESS-D-42` (linhas 63, 71, 82 — confirmado por `grep -n "removal_owner"
+contracts/governance/invariants.json` nesta sessão), seguindo exatamente o padrão que D-9 abriu
+(`removal_owner=HARNESS-D-9`, linha 31) para panics que não pertencem a nenhum milestone aberto.
+
+D-2 (seção D acima) diz: "`removal_owner` de exceção de governance exige round-trip ao hub (S10).
+Candidato: registro de donos válidos... publicado no pack para o chip consultar sem parar." Isso
+nunca foi ratificado como mecanismo formal — D-9 foi um precedente de FATO, criado por uma sessão
+sem esperar pelo hub, porque inventar um milestone teria sido pior (falso). A Tarefa 11 deste
+plano repetiu o mesmo padrão três vezes (D-40/41/42) sem pedir ACK a ninguém, pela mesma lógica:
+o schema `invariants.schema.json` exige `removal_owner` casando `M-NN|F-NN|M-NN/F-NN|HARNESS-D-N`,
+e não havia milestone aberto para nomear.
+
+O que falta não é o mecanismo (`HARNESS-D-N` já funciona, tecnicamente, três vezes) — é o
+operador confirmar que usar o próprio número da dívida como dono de remoção é uma prática
+ratificada, e não uma exceção tolerada caso a caso. Sem essa confirmação, D-2 continua aberta
+como obrigação de PROCESSO mesmo com o mecanismo já em uso repetido. Pedido: ACK do operador
+sobre o padrão `removal_owner=HARNESS-D-N` como prática permanente para exceções sem milestone —
+cross-referências D-2, D-9, D-40, D-41, D-42.
