@@ -65,7 +65,9 @@ marketplace-integration code is written under `adapters/marketplace/<vendor>/`, 
 design spec §2 (Regras 2.1–2.5): the port belongs to the consuming context
 (Regra 2.1), the vendor's wire DTOs stay unreachable outside the vendor's own tree
 (Regra 2.2), the vendor root exposes a single constructor typed only by consumer ports
-(Regra 2.2-a), no vendor name appears inside `contexts/` (Regra 2.3), and there is no
+(Regra 2.2-a — amended on the same date as this ADR to bind *any* tree carrying an
+`internal/`, contexts included, not vendor adapters alone), no vendor name appears
+inside `contexts/` (Regra 2.3), and there is no
 single `Marketplace` interface (Regra 2.4).
 
 **§3 — `connectors` is deleted only when its replacement lands.** Per the design spec §15
