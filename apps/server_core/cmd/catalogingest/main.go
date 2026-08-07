@@ -45,6 +45,9 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("catalogingest: database config: %w", err)
 	}
+	if err := requireTenantConfigured(os.Getenv); err != nil {
+		return err
+	}
 	tenantID, err := tenant.Parse(dbCfg.DefaultTenantID)
 	if err != nil {
 		return fmt.Errorf("catalogingest: tenant: %w", err)
@@ -89,6 +92,33 @@ func run(ctx context.Context) error {
 
 	fmt.Printf("catalog ingest report: pages=%d observed=%d created=%d changed=%d idempotent=%d conflicts=%d\n",
 		report.Pages, report.Observed, report.Created, report.Changed, report.Idempotent, len(report.Conflicts))
+	return nil
+}
+
+// requireTenantConfigured fails closed when MC_DEFAULT_TENANT_ID is unset or
+// empty. pgdb.LoadConfig (internal/platform/pgdb/config.go) silently
+// substitutes "tenant_default" for every caller when the variable is absent
+// — correct for its many read-oriented callers, but wrong here: this command
+// performs live writes across the entire catalogue (D-39,
+// .mnfs/HARNESS-DEBTS.md). An operator who forgets to export the variable
+// must see a failure naming it, not have thousands of rows land under an
+// invented tenant with a silent exit code 0 (global constraint 9: unknown
+// never becomes a plausible default).
+//
+// getenv is read directly here, exactly mirroring how pgdb.LoadConfig reads
+// the same variable (os.Getenv("MC_DEFAULT_TENANT_ID"), no trimming), so
+// this guard can never disagree with what LoadConfig saw. It keys on the
+// variable being absent/empty, never on the resolved value: a deployment
+// that legitimately names its tenant "tenant_default" still passes, and a
+// typo'd variable name still fails.
+//
+// pgdb.LoadConfig's defaulting itself is not changed — it is shared
+// infrastructure with other callers (cmd/server) that may have distinct
+// reasons to tolerate the default today.
+func requireTenantConfigured(getenv func(string) string) error {
+	if getenv("MC_DEFAULT_TENANT_ID") == "" {
+		return errors.New("catalogingest: MC_DEFAULT_TENANT_ID is required (refusing to silently default to \"tenant_default\" for a live write path)")
+	}
 	return nil
 }
 

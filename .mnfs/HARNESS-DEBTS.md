@@ -1380,6 +1380,61 @@ tarefas deste plano tocou `internal/platform/pgdb/config.go` nem `cmd/cataloging
 depois do fecho da Tarefa 8/9 (confirmado por `git diff --name-only 1b2ef2da..e46cbd4b`, ver
 lista completa no relatório da Tarefa 13). Continua aberta; não duplicada.
 
+**FECHADA (fecho global, onda de correção final, Item de Trabalho 1).** Guarda própria de
+`cmd/catalogingest` adicionada em `apps/server_core/cmd/catalogingest/main.go:48`
+(`requireTenantConfigured(os.Getenv)`, chamada logo após `pgdb.LoadConfig()` em `main.go:44-51`,
+função definida em `main.go:98-123`). `pgdb.LoadConfig()`/`config.go:23-24` NÃO foi tocado — o
+fallback silencioso para `cmd/server` e os demais consumidores partilhados continua exatamente
+como estava; a guarda vive só em `cmd/catalogingest`, lendo `os.Getenv("MC_DEFAULT_TENANT_ID")`
+diretamente (mesma leitura, sem trim, que `pgdb.LoadConfig` usa) — nunca compara contra o valor
+`"tenant_default"`, só contra string vazia, então um tenant legitimamente chamado
+`tenant_default` continua a funcionar e um nome de variável com erro de digitação continua a
+falhar.
+
+RED antes do código (`apps/server_core/cmd/catalogingest/main_test.go`, ainda sem
+`requireTenantConfigured` definida):
+
+```
+$ cd apps/server_core && go test ./cmd/catalogingest/... -run TestRequireTenantConfigured -v
+# marketplace-central/apps/server_core/cmd/catalogingest [marketplace-central/apps/server_core/cmd/catalogingest.test]
+cmd\catalogingest\main_test.go:15:9: undefined: requireTenantConfigured
+cmd\catalogingest\main_test.go:31:12: undefined: requireTenantConfigured
+cmd\catalogingest\main_test.go:44:12: undefined: requireTenantConfigured
+FAIL	marketplace-central/apps/server_core/cmd/catalogingest [build failed]
+FAIL
+```
+
+GREEN depois da guarda (3 testes: variável ausente falha, variável com nome errado falha,
+`tenant_default` legítimo passa):
+
+```
+$ cd apps/server_core && go test ./cmd/catalogingest/... -run TestRequireTenantConfigured -v
+=== RUN   TestRequireTenantConfigured_MissingEnv
+--- PASS: TestRequireTenantConfigured_MissingEnv (0.00s)
+=== RUN   TestRequireTenantConfigured_TypoedVarNameStillFails
+--- PASS: TestRequireTenantConfigured_TypoedVarNameStillFails (0.00s)
+=== RUN   TestRequireTenantConfigured_LegitimateTenantDefaultValuePasses
+--- PASS: TestRequireTenantConfigured_LegitimateTenantDefaultValuePasses (0.00s)
+PASS
+ok  	marketplace-central/apps/server_core/cmd/catalogingest	1.986s
+```
+
+Prova ao vivo do binário real (comando de operador, `MC_DEFAULT_TENANT_ID` propositadamente
+ausente, `MC_DATABASE_URL`/`MPC_ENCRYPTION_KEY` presentes só para deixar `pgdb.LoadConfig()`
+passar e a guarda ser o motivo real da falha — nunca chega a abrir pool Postgres nem Oracle,
+porque a guarda corre antes de `pgdb.NewPool`/`oracleconfig.LoadConfigFromEnv`):
+
+```
+$ cd apps/server_core && unset MC_DEFAULT_TENANT_ID && MC_DATABASE_URL="postgres://example-not-dialed/db" MPC_ENCRYPTION_KEY="test-key-not-real" go run ./cmd/catalogingest; echo "EXIT_CODE=$?"
+catalogingest: MC_DEFAULT_TENANT_ID is required (refusing to silently default to "tenant_default" for a live write path)
+exit status 1
+EXIT_CODE=1
+```
+
+Condição de remoção: já removida — a guarda é permanente enquanto `cmd/catalogingest` existir
+como comando de escrita real. Reabre apenas se `main.go:48`/`requireTenantConfigured` forem
+removidos ou contornados.
+
 **D-40. `MustParseDecimal` (`apps/server_core/internal/kernel/exact/decimal.go:84`) panica sem
 exceção registada — Tarefa 11 do plano `fecho`.** Exceção
 `production-panic-kernel-decimal-mustparse` registrada com removal_owner=HARNESS-D-40, seguindo o
