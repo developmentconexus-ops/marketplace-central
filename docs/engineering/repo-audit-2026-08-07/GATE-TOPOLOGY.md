@@ -43,7 +43,39 @@ one of the 98 commits reached local `main` without passing through a place a che
 
 | # | Step | Who | Notes |
 |---|---|---|---|
-| **P1** | ~~Fix the account split~~ **DONE 2026-08-07** | operator | `gh` asked as `leandrotcawork` while git authenticated as `developmentconexus-ops` — which is why the `cicd` lane concluded the remote was gone, **and reported that plausibly**. Closed by `gh auth switch --user developmentconexus-ops`; the `legacy` remote is removed. Both keyring tokens carry `repo` + `workflow`, so pushing `.github/workflows/` is in scope. **Residual, surfaces at P4:** `credential.helper = manager`, a store separate from gh's keyring, so `git push` may still present the old identity even though `gh` is correct. If it does, `gh auth setup-git` makes git delegate to gh and removes the possibility of disagreement. |
+| **P1** | ~~Fix the account split~~ **PARTIALLY CLOSED 2026-08-07 — see the defect below** | operator | `gh` asked as `leandrotcawork` while git authenticated as `developmentconexus-ops` — which is why the `cicd` lane concluded the remote was gone, **and reported that plausibly**. The `legacy` remote is removed. Both keyring tokens carry `repo` + `workflow`, so pushing `.github/workflows/` is in scope. |
+
+> **P1 defect — `gh auth switch` does not survive a shell boundary. Measured 2026-08-07, three times.**
+>
+> The switch succeeds and verifies within the invocation that runs it. **The next shell sees
+> `leandrotcawork` active again.** Observed sequence: the operator switched manually and one
+> verification confirmed `developmentconexus-ops` active; the next invocation's `gh repo view` failed
+> to resolve the repository, and `gh repo list` returned `leandrotcawork`'s repositories.
+> A re-switch verified clean, and the *following* invocation failed all eleven `gh issue create`
+> calls with `Could not resolve to a Repository`. Root cause is not established — the config is not
+> at `~/.config/gh/hosts.yml` on this platform, and a concurrent session on this checkout is a
+> candidate.
+>
+> **Why this matters beyond convenience:** the failure mode is not an error, it is a *wrong answer
+> delivered confidently*. `gh repo list` did not fail — it listed the wrong account's repositories.
+> This is the same class as the `cicd` lane's F2, which concluded the remote was gone. **Any `gh`
+> result read across a shell boundary is untrustworthy here.**
+>
+> **Working practice until it is root-caused:** switch, verify identity, and perform the operation
+> **in one shell invocation**, with a hard abort between verification and the mutating step. The
+> eleven issues were filed that way, and the abort is what kept the first failed attempt at zero
+> created rather than eleven filed in the wrong repository.
+>
+> **Residual, surfaces at P4:** `credential.helper = manager` is a store separate from gh's keyring,
+> so `git push` may present a different identity again. Note that `git` was correct throughout this
+> episode — `git ls-remote origin` reached `developmentconexus-ops/marketplace-central` and returned
+> `7df7d011` while `gh` could not see the repository at all. **`gh auth setup-git` would make git
+> delegate to gh, which on this evidence would make git *worse*, not better. Do not run it until the
+> defect above is understood.**
+>
+> **Two repositories exist and both are private:** `developmentconexus-ops/marketplace-central` (the
+> `origin`, the live one) and `leandrotcawork/marketplace-central`. The second is what `gh` reaches
+> when the switch has silently reverted. Any `gh` command that mutates state must pin `-R`.
 | **P2** | Build the gates locally | agents | All of §2, on a branch off local `main`, against the 98 commits as they stand. Nothing pushed. |
 | **P3** | Baseline locally and commit the baselines | agents | Without this the first remote run is red on 58 governance violations, 44 archscan findings, 12 `tsc` errors and 22 unformatted files — **and a permanently red required check is switched off within a week.** The baseline commit is what makes the first green run possible. It is not bookkeeping. |
 | **P3.5** | **I1-edge — close the unauthenticated PII route** | agents, hours | Carried from `RECONCILIATION.md` Divergence 1, unchanged and binding. Must land before P6. |
