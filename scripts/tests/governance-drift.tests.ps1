@@ -32,7 +32,10 @@ function New-PositiveFixture {
     Write-FixtureFile $root "$($module.root)/domain/doc.go" "package domain`n"
   }
   $composition = ($modules.modules | ForEach-Object { "import _ `"marketplace-central/apps/server_core/internal/modules/$($_.id)`"" }) -join "`n"
-  Write-FixtureFile $root 'apps/server_core/internal/composition/root.go' "package composition`n$composition`n"
+  # Written after the runtime-config reader loop below, not here: that loop also
+  # owns apps/server_core/internal/composition/root.go, because four keys declare
+  # it as a reader. Writing it here first meant the loop overwrote the imports and
+  # every composition_required module came back as GOV_COMPOSITION_MISSING.
 
   $runtime = Get-Content -Raw (Join-Path $root 'contracts/governance/runtime-config.json') | ConvertFrom-Json
   $readerKeys = @{}
@@ -62,6 +65,11 @@ function New-HarnessChildEnvironment {
   }
 }
 '@
+    } elseif ($readerPath -eq 'apps/server_core/internal/composition/root.go') {
+      # This one file has two jobs: it is the composition root AND a declared
+      # reader of four runtime keys. It has to satisfy both in one write.
+      $reads = ($keys | ForEach-Object { "var _ = os.Getenv(`"$_`")" }) -join "`n"
+      Write-FixtureFile $root $readerPath "package composition`nimport `"os`"`n$composition`n$reads`n"
     } elseif ($readerPath -like '*.go') {
       $reads = ($keys | ForEach-Object { "var _ = os.Getenv(`"$_`")" }) -join "`n"
       Write-FixtureFile $root $readerPath "package fixture`nimport `"os`"`n$reads`n"
@@ -75,6 +83,13 @@ function New-HarnessChildEnvironment {
       $reads = ($keys | ForEach-Object { 'echo ${' + $_ + ':-}' }) -join "`n"
       Write-FixtureFile $root $readerPath $reads
     }
+  }
+
+  # The loop only writes the composition root while some key still declares it a
+  # reader. If that ever stops being true the file must still exist, or the
+  # fixture would go red for a reason that has nothing to do with the test.
+  if (-not (Test-Path -LiteralPath (Join-Path $root ('apps/server_core/internal/composition/root.go' -replace '/', [IO.Path]::DirectorySeparatorChar)) -PathType Leaf)) {
+    Write-FixtureFile $root 'apps/server_core/internal/composition/root.go' "package composition`n$composition`n"
   }
 
   Write-FixtureFile $root 'apps/server_core/internal/modules/product_links/application/resolution_service.go' @'
@@ -215,6 +230,39 @@ func bad() {
 }
 '@
   Test-ReviewFailureCode $reviewFailures $multilinePanicFixture 'GOV_PRODUCTION_PANIC' 'multiline production panic'
+
+  # A context under internal/contexts must be registrable, and its id may collide
+  # with a module's — internal/modules/<id> and internal/contexts/<id> coexist for
+  # the whole migration — so uniqueness is on the pair (kind, id). The id used
+  # here is deliberately one the live registry already spends on a module, and
+  # deliberately NOT the context the repository has actually registered: the
+  # assertion has to prove the pair key, not re-read today's modules.json.
+  $contextFixture = New-PositiveFixture; $fixtures.Add($contextFixture)
+  $contextRegistryPath = Join-Path $contextFixture 'contracts/governance/modules.json'
+  $contextRegistry = Get-Content -Raw $contextRegistryPath | ConvertFrom-Json
+  Assert-True (@($contextRegistry.modules | Where-Object { $_.id -eq 'pricing' }).Count -eq 1) 'fixture premise broke: pricing is no longer exactly one registry entry'
+  $contextRegistry.modules += [pscustomobject]@{
+    id                   = 'pricing'
+    kind                 = 'context'
+    root                 = 'apps/server_core/internal/contexts/pricing'
+    code_owner_path      = 'apps/server_core/internal/contexts/pricing'
+    composition_required = $false
+    openapi_prefixes     = @()
+    dependencies         = @()
+  }
+  $contextRegistry | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $contextRegistryPath -Encoding utf8NoBOM
+  Write-FixtureFile $contextFixture 'apps/server_core/internal/contexts/pricing/contracts/doc.go' "package contracts`n"
+  $contextResult = Test-GovernanceDrift -RepositoryRoot $contextFixture
+  Assert-True $contextResult.Passed "registered context rejected: $(@($contextResult.Violations.ErrorCode) -join ',')"
+
+  # The rule that actually closes the hole. Walking the registry can never find
+  # what nobody registered, so the finding has to come from walking the tree.
+  $orphanContextFixture = New-PositiveFixture; $fixtures.Add($orphanContextFixture)
+  Write-FixtureFile $orphanContextFixture 'apps/server_core/internal/contexts/orphan/contracts/doc.go' "package contracts`n"
+  $orphanResult = Test-GovernanceDrift -RepositoryRoot $orphanContextFixture
+  Assert-True (-not $orphanResult.Passed) 'unregistered context directory produced no finding'
+  Assert-True ('GOV_CONTEXT_UNREGISTERED' -in @($orphanResult.Violations.ErrorCode)) "missing GOV_CONTEXT_UNREGISTERED; actual=$(@($orphanResult.Violations.ErrorCode) -join ',')"
+  Assert-True ('orphan' -in @($orphanResult.Violations.Id)) "GOV_CONTEXT_UNREGISTERED did not name the directory; actual=$(@($orphanResult.Violations.Id) -join ',')"
 
   Assert-True ($reviewFailures.Count -eq 0) ($reviewFailures -join '; ')
 

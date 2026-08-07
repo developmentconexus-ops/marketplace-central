@@ -22,7 +22,8 @@
     { "id": "profitability", "root": "apps/server_core/internal/modules/profitability", "code_owner_path": "apps/server_core/internal/modules/profitability", "composition_required": true, "openapi_prefixes": ["/profitability"], "dependencies": ["internal_read", "orders"] },
     { "id": "sourcekind", "root": "apps/server_core/internal/modules/sourcekind", "code_owner_path": "apps/server_core/internal/modules/sourcekind", "composition_required": false, "openapi_prefixes": [], "dependencies": [] },
     { "id": "sync", "root": "apps/server_core/internal/modules/sync", "code_owner_path": "apps/server_core/internal/modules/sync", "composition_required": true, "openapi_prefixes": [], "dependencies": [] },
-    { "id": "tenant_config", "root": "apps/server_core/internal/modules/tenant_config", "code_owner_path": "apps/server_core/internal/modules/tenant_config", "composition_required": true, "openapi_prefixes": ["/config"], "dependencies": ["erp_import"] }
+    { "id": "tenant_config", "root": "apps/server_core/internal/modules/tenant_config", "code_owner_path": "apps/server_core/internal/modules/tenant_config", "composition_required": true, "openapi_prefixes": ["/config"], "dependencies": ["erp_import"] },
+    { "id": "catalog", "kind": "context", "root": "apps/server_core/internal/contexts/catalog", "code_owner_path": "apps/server_core/internal/contexts/catalog", "composition_required": false, "openapi_prefixes": [], "dependencies": [] }
   ],
   "temporary_exceptions": [
     {

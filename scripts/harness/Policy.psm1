@@ -6,6 +6,24 @@ function New-PolicyIssue {
   [pscustomobject]@{ ErrorCode = $ErrorCode; Id = $Id; Path = $Path }
 }
 
+# A registry entry's kind decides where its root must live. Absent means module,
+# so the entries that predate ADR-023's amendment need no edit. Read through
+# PSObject because Set-StrictMode -Version Latest throws on a missing property.
+function Get-RegistryEntryKind {
+  param([object]$Entry)
+  $property = $Entry.PSObject.Properties['kind']
+  if ($null -eq $property -or [string]::IsNullOrWhiteSpace([string]$property.Value)) { return 'module' }
+  return [string]$property.Value
+}
+
+function Get-RegistryEntryRoot {
+  param([object]$Entry)
+  switch (Get-RegistryEntryKind $Entry) {
+    'context' { "apps/server_core/internal/contexts/$($Entry.id)" }
+    default { "apps/server_core/internal/modules/$($Entry.id)" }
+  }
+}
+
 function New-PolicyResult {
   param(
     [Collections.IEnumerable]$Violations = @(),
@@ -84,8 +102,14 @@ function Test-GovernanceContracts {
   if ($issues.Count -gt 0) { return New-PolicyResult -Violations $issues -Documents $documents }
 
   $modules = @($documents.modules.modules)
-  $moduleIds = @($modules.id)
-  if (-not (Test-UniqueIds $modules) -or -not (Test-UniqueIds @($documents.modules.temporary_exceptions))) {
+  # Dependencies name modules, so a context id must not become resolvable here
+  # just by existing in the same registry.
+  $moduleIds = @($modules | Where-Object { (Get-RegistryEntryKind $_) -eq 'module' } | ForEach-Object { [string]$_.id })
+  # Uniqueness is on the pair (kind, id): internal/modules/catalog and
+  # internal/contexts/catalog coexist for the whole migration and both are
+  # legitimately called catalog.
+  $moduleKeys = @($modules | ForEach-Object { [pscustomobject]@{ id = "$(Get-RegistryEntryKind $_)/$([string]$_.id)" } })
+  if (-not (Test-UniqueIds $moduleKeys) -or -not (Test-UniqueIds @($documents.modules.temporary_exceptions))) {
     $issues.Add((New-PolicyIssue 'GOV_REFERENCE_INVALID' 'modules-duplicate-id' 'contracts/governance/modules.json'))
   }
   foreach ($module in $modules) {
@@ -301,16 +325,36 @@ function Test-GovernanceDrift {
   $moduleRegistry = $documents.modules
   $moduleRoot = Resolve-RepositoryPath $RepositoryRoot 'apps/server_core/internal/modules'
   $actualModules = if (Test-Path -LiteralPath $moduleRoot -PathType Container) { @(Get-ChildItem -LiteralPath $moduleRoot -Directory | Select-Object -ExpandProperty Name | Sort-Object) } else { @() }
-  $declaredModules = @($moduleRegistry.modules.id | Sort-Object)
+  # Both directions below are about internal/modules only. A context declared in
+  # the same registry must not be demanded as a module directory.
+  $declaredModules = @($moduleRegistry.modules | Where-Object { (Get-RegistryEntryKind $_) -eq 'module' } | ForEach-Object { [string]$_.id } | Sort-Object)
   foreach ($id in @($actualModules | Where-Object { $_ -notin $declaredModules })) { $issues.Add((New-PolicyIssue 'GOV_MODULE_COVERAGE' $id "apps/server_core/internal/modules/$id")) }
   foreach ($id in @($declaredModules | Where-Object { $_ -notin $actualModules })) { $issues.Add((New-PolicyIssue 'GOV_MODULE_COVERAGE' $id "apps/server_core/internal/modules/$id")) }
   foreach ($module in @($moduleRegistry.modules)) {
-    if ($module.root -ne "apps/server_core/internal/modules/$($module.id)" -or -not (Test-Path -LiteralPath (Resolve-RepositoryPath $RepositoryRoot ([string]$module.root)) -PathType Container)) {
+    if ($module.root -ne (Get-RegistryEntryRoot $module) -or -not (Test-Path -LiteralPath (Resolve-RepositoryPath $RepositoryRoot ([string]$module.root)) -PathType Container)) {
       $issues.Add((New-PolicyIssue 'GOV_MODULE_COVERAGE' ([string]$module.id) ([string]$module.root)))
     }
   }
 
-  $moduleById = @{}; foreach ($module in @($moduleRegistry.modules)) { $moduleById[[string]$module.id] = $module }
+  # Walk the tree, not the registry. Every rule above iterates the registry, and
+  # iterating the registry can never find what nobody registered: an unregistered
+  # directory produces zero findings, which reads as compliance. The coverage
+  # rule for internal/modules already walks the filesystem; internal/contexts had
+  # no such rule at all.
+  $contextsRoot = Resolve-RepositoryPath $RepositoryRoot 'apps/server_core/internal/contexts'
+  if (Test-Path -LiteralPath $contextsRoot -PathType Container) {
+    $registeredContexts = @($moduleRegistry.modules | Where-Object { (Get-RegistryEntryKind $_) -eq 'context' } | ForEach-Object { [string]$_.id })
+    foreach ($directory in @(Get-ChildItem -LiteralPath $contextsRoot -Directory)) {
+      if ($directory.Name -notin $registeredContexts) {
+        $issues.Add((New-PolicyIssue 'GOV_CONTEXT_UNREGISTERED' $directory.Name "apps/server_core/internal/contexts/$($directory.Name)"))
+      }
+    }
+  }
+
+  # Modules only. This map is keyed by id alone, so a context entry sharing an id
+  # would silently replace the module's — and take its declared dependencies with
+  # it. That is why uniqueness is on (kind, id) and lookups filter by kind.
+  $moduleById = @{}; foreach ($module in @($moduleRegistry.modules | Where-Object { (Get-RegistryEntryKind $_) -eq 'module' })) { $moduleById[[string]$module.id] = $module }
   foreach ($file in @($files | Where-Object { (ConvertTo-NormalizedPath $RepositoryRoot $_.FullName) -match '^apps/server_core/internal/modules/[^/]+/.+(?<!_test)\.go$' })) {
     $path = ConvertTo-NormalizedPath $RepositoryRoot $file.FullName
     if ($path -notmatch '^apps/server_core/internal/modules/(?<source>[^/]+)/') { continue }
@@ -337,7 +381,11 @@ function Test-GovernanceDrift {
   $compositionPath = Resolve-RepositoryPath $RepositoryRoot 'apps/server_core/internal/composition/root.go'
   $composition = if (Test-Path -LiteralPath $compositionPath -PathType Leaf) { Get-Content -Raw -LiteralPath $compositionPath } else { '' }
   foreach ($module in @($moduleRegistry.modules | Where-Object composition_required)) {
-    if ($composition -notmatch [regex]::Escape("/modules/$($module.id)")) {
+    $compositionNeedle = switch (Get-RegistryEntryKind $module) {
+      'context' { "/contexts/$($module.id)" }
+      default { "/modules/$($module.id)" }
+    }
+    if ($composition -notmatch [regex]::Escape($compositionNeedle)) {
       $issues.Add((New-PolicyIssue 'GOV_COMPOSITION_MISSING' ([string]$module.id) 'apps/server_core/internal/composition/root.go'))
     }
   }

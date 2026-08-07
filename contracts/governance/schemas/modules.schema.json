@@ -17,6 +17,11 @@
         "required": ["id", "root", "code_owner_path", "composition_required", "openapi_prefixes", "dependencies"],
         "properties": {
           "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+          "kind": {
+            "type": "string",
+            "enum": ["module", "context"],
+            "description": "Absent means module, so the existing entries need no edit. A context lives under internal/contexts and follows ADR-023 as amended: its layers sit under internal/, so the boundary is the compiler and not a convention. Uniqueness is on the pair (kind, id) because internal/modules/catalog and internal/contexts/catalog coexist for the whole migration."
+          },
           "root": { "$ref": "#/$defs/path" },
           "code_owner_path": { "$ref": "#/$defs/path" },
           "composition_required": { "type": "boolean" },
