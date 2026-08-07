@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS connector_oauth_tokens (
 - [ ] **Step 2: Apply the migration**
 
 ```bash
-PGPASSWORD=metalshopping_app_oscar "/c/Program Files/PostgreSQL/16/bin/psql.exe" \
+PGPASSWORD="$PGPASSWORD" "/c/Program Files/PostgreSQL/16/bin/psql.exe" \
   -h 127.0.0.1 -p 5432 -U metalshopping_app -d metalshopping \
   -c "SET search_path=mpc;" \
   -f apps/server_core/migrations/0008_simulator_v2.sql
@@ -85,7 +85,7 @@ Expected output: `ALTER TABLE`, `ALTER TABLE`, `CREATE TABLE`
 - [ ] **Step 3: Verify**
 
 ```bash
-PGPASSWORD=metalshopping_app_oscar "/c/Program Files/PostgreSQL/16/bin/psql.exe" \
+PGPASSWORD="$PGPASSWORD" "/c/Program Files/PostgreSQL/16/bin/psql.exe" \
   -h 127.0.0.1 -p 5432 -U metalshopping_app -d metalshopping \
   -c "SET search_path=mpc; SELECT column_name FROM information_schema.columns WHERE table_name='product_enrichments' AND column_name='weight_g';"
 ```
