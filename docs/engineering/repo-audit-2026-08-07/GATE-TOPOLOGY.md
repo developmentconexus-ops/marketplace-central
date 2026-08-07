@@ -45,37 +45,34 @@ one of the 98 commits reached local `main` without passing through a place a che
 |---|---|---|---|
 | **P1** | ~~Fix the account split~~ **PARTIALLY CLOSED 2026-08-07 — see the defect below** | operator | `gh` asked as `leandrotcawork` while git authenticated as `developmentconexus-ops` — which is why the `cicd` lane concluded the remote was gone, **and reported that plausibly**. The `legacy` remote is removed. Both keyring tokens carry `repo` + `workflow`, so pushing `.github/workflows/` is in scope. |
 
-> **P1 defect — `gh auth switch` does not survive a shell boundary. Measured 2026-08-07, three times.**
+> **P1 note — gh account state is shared mutable state across concurrent sessions.**
 >
-> The switch succeeds and verifies within the invocation that runs it. **The next shell sees
-> `leandrotcawork` active again.** Observed sequence: the operator switched manually and one
-> verification confirmed `developmentconexus-ops` active; the next invocation's `gh repo view` failed
-> to resolve the repository, and `gh repo list` returned `leandrotcawork`'s repositories.
-> A re-switch verified clean, and the *following* invocation failed all eleven `gh issue create`
-> calls with `Could not resolve to a Repository`. Root cause is not established — the config is not
-> at `~/.config/gh/hosts.yml` on this platform, and a concurrent session on this checkout is a
-> candidate.
+> **Root-caused by the operator, 2026-08-07: a concurrent session switched the account back.
+> `gh auth switch` persists correctly; there is no gh defect.** An earlier revision of this file
+> recorded one, on three observations of the account reverting between shell invocations. That
+> inference was wrong and is corrected here rather than deleted, because the observations were real
+> and the operational consequence survives the corrected cause.
 >
-> **Why this matters beyond convenience:** the failure mode is not an error, it is a *wrong answer
-> delivered confidently*. `gh repo list` did not fail — it listed the wrong account's repositories.
-> This is the same class as the `cicd` lane's F2, which concluded the remote was gone. **Any `gh`
-> result read across a shell boundary is untrustworthy here.**
+> **What survives:** `gh`'s active account is **global to the machine, not to a session.** Any
+> concurrent session can change which account — and therefore which of the two same-named private
+> repositories — a `gh` command acts on, between one invocation and the next. The failure is not an
+> error; it is a *wrong answer delivered confidently*: `gh repo list` did not fail, it listed the
+> other account's repositories. Same class as the `cicd` lane's F2 concluding the remote was gone.
 >
-> **Working practice until it is root-caused:** switch, verify identity, and perform the operation
-> **in one shell invocation**, with a hard abort between verification and the mutating step. The
-> eleven issues were filed that way, and the abort is what kept the first failed attempt at zero
-> created rather than eleven filed in the wrong repository.
+> **Standing practice, and it is cheap:** switch, verify identity, and perform the mutating operation
+> **in one shell invocation**, with a hard abort between the verification and the mutation. The
+> eleven issues were filed that way. The abort is what kept the first failed attempt at **zero
+> created** rather than eleven filed into the wrong repository. Always pin `-R <owner>/<repo>` on any
+> `gh` command that writes.
+>
+> **Two private repositories share the name:** `developmentconexus-ops/marketplace-central` (the
+> `origin`, the live one) and `leandrotcawork/marketplace-central`.
 >
 > **Residual, surfaces at P4:** `credential.helper = manager` is a store separate from gh's keyring,
-> so `git push` may present a different identity again. Note that `git` was correct throughout this
-> episode — `git ls-remote origin` reached `developmentconexus-ops/marketplace-central` and returned
-> `7df7d011` while `gh` could not see the repository at all. **`gh auth setup-git` would make git
-> delegate to gh, which on this evidence would make git *worse*, not better. Do not run it until the
-> defect above is understood.**
->
-> **Two repositories exist and both are private:** `developmentconexus-ops/marketplace-central` (the
-> `origin`, the live one) and `leandrotcawork/marketplace-central`. The second is what `gh` reaches
-> when the switch has silently reverted. Any `gh` command that mutates state must pin `-R`.
+> so `git push` may present a different identity than `gh` does. `gh auth setup-git` makes git
+> delegate to gh and removes the possibility of disagreement — **available, not contraindicated.** An
+> earlier revision advised against it on the strength of the retracted defect above; that advice is
+> withdrawn.
 | **P2** | Build the gates locally | agents | All of §2, on a branch off local `main`, against the 98 commits as they stand. Nothing pushed. |
 | **P3** | Baseline locally and commit the baselines | agents | Without this the first remote run is red on 58 governance violations, 44 archscan findings, 12 `tsc` errors and 22 unformatted files — **and a permanently red required check is switched off within a week.** The baseline commit is what makes the first green run possible. It is not bookkeeping. |
 | **P3.5** | **I1-edge — close the unauthenticated PII route** | agents, hours | Carried from `RECONCILIATION.md` Divergence 1, unchanged and binding. Must land before P6. |
