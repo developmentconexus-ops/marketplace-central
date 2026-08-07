@@ -5,8 +5,11 @@
 
 ## Context
 
-`ARCHITECTURE.md` frozen decision 7 (`ARCHITECTURE.md:39`) reads: "External marketplace
-integrations enter only through the `connectors` module via port interfaces"
+`ARCHITECTURE.md` frozen decision 7 read, before this ADR amended it (`ARCHITECTURE.md:39`
+at commit `63c48ffb`): "External marketplace integrations enter only through the
+`connectors` module via port interfaces". That line now carries the replacement text and
+a link back here, so the original wording is quoted from the commit rather than from the
+current file.
 `ARCHITECTURE.md:5` states that frozen decisions "must not be rediscussed without an
 explicit ADR." The repository's order of truth puts `ARCHITECTURE.md`/ADRs above the
 design spec, so until this document exists, the ratified design's routing of marketplace
