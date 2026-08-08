@@ -58,8 +58,7 @@ function isZeroTimestamp(ts: string | null | undefined): boolean {
  */
 export function MarketComparison({ productId, client }: MarketComparisonProps): JSX.Element {
   const marketClient = useMemo<MarketAggregatesClient>(
-    () =>
-      client ?? createMarketPriceIntelClient({ baseUrl: apiBaseUrl() }),
+    () => client ?? createMarketPriceIntelClient({ baseUrl: apiBaseUrl() }),
     [client],
   );
 
@@ -74,7 +73,12 @@ export function MarketComparison({ productId, client }: MarketComparisonProps): 
   }
   if (query.isLoading) return <LoadingState />;
   if (query.isError) {
-    return <ErrorState onRetry={() => void query.refetch()} detail="Falha ao carregar os dados de mercado." />;
+    return (
+      <ErrorState
+        onRetry={() => void query.refetch()}
+        detail="Falha ao carregar os dados de mercado."
+      />
+    );
   }
 
   const aggregate = query.data?.find((a) => a.product_id === productId) ?? query.data?.[0] ?? null;
@@ -106,9 +110,13 @@ export function MarketComparison({ productId, client }: MarketComparisonProps): 
 
       <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
         <dt className="text-muted">Mediana</dt>
-        <dd className="text-right"><Money value={aggregate.median} /></dd>
+        <dd className="text-right">
+          <Money value={aggregate.median} />
+        </dd>
         <dt className="text-muted">Menor válido</dt>
-        <dd className="text-right"><Money value={aggregate.min_valid} /></dd>
+        <dd className="text-right">
+          <Money value={aggregate.min_valid} />
+        </dd>
         <dt className="text-muted">Ofertas</dt>
         <dd className="text-right font-mono text-ink">{aggregate.n_offers}</dd>
         <dt className="text-muted">Vendedores</dt>

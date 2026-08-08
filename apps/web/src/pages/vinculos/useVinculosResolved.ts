@@ -1,5 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ProductLinkAuditEntry, ProductLinkWorkflowItem } from "@marketplace-central/sdk-runtime";
+import type {
+  ProductLinkAuditEntry,
+  ProductLinkWorkflowItem,
+} from "@marketplace-central/sdk-runtime";
 import { invalidateAfterMutation, QUERY_STALE_TIME } from "@marketplace-central/web-query";
 import { useClient } from "../../app/ClientContext";
 import { PRODUCT_LINKS_ROOT, WEB_OPERATOR_ACTOR } from "./useVinculosQueue";
@@ -15,7 +18,9 @@ function isResolved(item: ProductLinkWorkflowItem): boolean {
  * Undo is a genuine reversal of that specific resolution — never a fabricated
  * id. Returns undefined when no such entry exists (desfazer then unavailable).
  */
-export function resolutionAuditEntry(item: ProductLinkWorkflowItem): ProductLinkAuditEntry | undefined {
+export function resolutionAuditEntry(
+  item: ProductLinkWorkflowItem,
+): ProductLinkAuditEntry | undefined {
   const resolving = (item.audit ?? [])
     .filter((entry) => entry.next_state === "resolved")
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));

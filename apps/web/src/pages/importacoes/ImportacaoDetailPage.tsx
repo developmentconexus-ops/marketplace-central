@@ -5,7 +5,10 @@ export function ImportacaoDetailPage() {
   const { importId } = useParams();
 
   return (
-    <section aria-labelledby="importacao-detail-title" className="mx-auto flex max-w-5xl flex-col gap-[14px]">
+    <section
+      aria-labelledby="importacao-detail-title"
+      className="mx-auto flex max-w-5xl flex-col gap-[14px]"
+    >
       <header>
         <h1 id="importacao-detail-title" className="text-[22px] font-bold tracking-tight text-ink">
           Detalhe da importação

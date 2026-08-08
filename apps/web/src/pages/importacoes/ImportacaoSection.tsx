@@ -1,4 +1,8 @@
-import type { ErpImportIssue, ErpImportStatus, ErpImportSummary } from "@marketplace-central/sdk-runtime";
+import type {
+  ErpImportIssue,
+  ErpImportStatus,
+  ErpImportSummary,
+} from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
 import { formatDateTime } from "@marketplace-central/web-query";
 import { useState } from "react";
@@ -34,7 +38,9 @@ function SourceBadge({ source }: { source: string }) {
 
 function StatusBadge({ status }: { status: ErpImportStatus }) {
   return (
-    <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${statusClasses[status]}`}>
+    <span
+      className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${statusClasses[status]}`}
+    >
       {statusLabels[status]}
     </span>
   );
@@ -60,7 +66,15 @@ function groupIssuesByCode(issues: ErpImportIssue[]): { code: string; issues: Er
     .sort((a, b) => b.issues.length - a.issues.length);
 }
 
-function IssueList({ title, issues, testId }: { title: string; issues: ErpImportIssue[]; testId: string }) {
+function IssueList({
+  title,
+  issues,
+  testId,
+}: {
+  title: string;
+  issues: ErpImportIssue[];
+  testId: string;
+}) {
   if (issues.length === 0) return null;
   const groups = groupIssuesByCode(issues);
   return (
@@ -79,7 +93,10 @@ function IssueList({ title, issues, testId }: { title: string; issues: ErpImport
           const sample = group.issues.slice(0, ISSUE_SAMPLE_SIZE);
           const remaining = group.issues.length - sample.length;
           return (
-            <li key={group.code} className="rounded-control border border-border bg-surface-2 px-2 py-1.5 text-xs">
+            <li
+              key={group.code}
+              className="rounded-control border border-border bg-surface-2 px-2 py-1.5 text-xs"
+            >
               <p className="text-ink">
                 <span className="font-mono font-medium">{group.code}</span>
                 <span className="text-muted"> — {group.issues[0].detail}</span>
@@ -114,7 +131,11 @@ function ImportRowDetail({ importId }: { importId: string }) {
     <div className="mt-3 border-t border-border pt-3" data-testid="erp-import-detail">
       {hasIssues ? (
         <>
-          <IssueList title="Rejeitados" issues={detail.rejected_rows} testId="erp-import-rejected-rows" />
+          <IssueList
+            title="Rejeitados"
+            issues={detail.rejected_rows}
+            testId="erp-import-rejected-rows"
+          />
           <IssueList title="Avisos" issues={detail.warnings} testId="erp-import-warnings" />
         </>
       ) : (
@@ -181,7 +202,10 @@ export function ImportacaoSection() {
   const items = importsQuery.data?.items ?? [];
 
   return (
-    <section aria-labelledby="importacao-title" className="rounded-card border border-border bg-surface p-4">
+    <section
+      aria-labelledby="importacao-title"
+      className="rounded-card border border-border bg-surface p-4"
+    >
       <h2 id="importacao-title" className="text-sm font-semibold text-ink">
         Importação
       </h2>

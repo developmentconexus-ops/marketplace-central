@@ -71,9 +71,7 @@ describe("ProductPicker", () => {
 
   it("calls onSelectionChange when checkbox clicked", () => {
     const onSelectionChange = vi.fn();
-    render(
-      <ProductPicker {...defaultProps} onSelectionChange={onSelectionChange} />,
-    );
+    render(<ProductPicker {...defaultProps} onSelectionChange={onSelectionChange} />);
     const checkbox = screen.getByLabelText("Select Cuba Inox");
     fireEvent.click(checkbox);
     expect(onSelectionChange).toHaveBeenCalledWith(["p1"]);
@@ -81,9 +79,7 @@ describe("ProductPicker", () => {
 
   it("filters by search query", () => {
     render(<ProductPicker {...defaultProps} />);
-    const input = screen.getByPlaceholderText(
-      "Search by name, SKU, EAN or reference...",
-    );
+    const input = screen.getByPlaceholderText("Search by name, SKU, EAN or reference...");
     fireEvent.change(input, { target: { value: "Cuba" } });
     expect(screen.getByText("Cuba Inox")).toBeInTheDocument();
     expect(screen.queryByText("Assento Premium")).not.toBeInTheDocument();

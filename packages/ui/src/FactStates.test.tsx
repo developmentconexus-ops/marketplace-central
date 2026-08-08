@@ -45,17 +45,13 @@ describe("fact state components", () => {
 
     render(<FreshnessIndicator asOf={asOf} />);
 
-    expect(screen.getByLabelText("Atualização dos dados")).toHaveTextContent(
-      expectedAge,
-    );
+    expect(screen.getByLabelText("Atualização dos dados")).toHaveTextContent(expectedAge);
     expect(screen.getByLabelText("Atualização dos dados")).toHaveClass("text-muted");
   });
 
   it.each([null, undefined])("renders unknown freshness for %s", (asOf) => {
     render(<FreshnessIndicator asOf={asOf} />);
 
-    expect(screen.getByLabelText("Atualização dos dados")).toHaveTextContent(
-      "idade desconhecida",
-    );
+    expect(screen.getByLabelText("Atualização dos dados")).toHaveTextContent("idade desconhecida");
   });
 });

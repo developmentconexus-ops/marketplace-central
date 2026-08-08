@@ -18,7 +18,11 @@ const bandClasses: Record<MarginBand, string> = {
 };
 
 function hasValidThresholds(thresholds: { healthy: number; tight: number }): boolean {
-  return Number.isFinite(thresholds.healthy) && Number.isFinite(thresholds.tight) && thresholds.healthy > thresholds.tight;
+  return (
+    Number.isFinite(thresholds.healthy) &&
+    Number.isFinite(thresholds.tight) &&
+    thresholds.healthy > thresholds.tight
+  );
 }
 
 export function MarginChip({ marginPct, thresholds }: MarginChipProps): JSX.Element {
@@ -28,20 +32,24 @@ export function MarginChip({ marginPct, thresholds }: MarginChipProps): JSX.Elem
     console.warn("MarginChip received invalid thresholds; using defaults.");
   }
 
-  const resolvedThresholds = validThresholds && thresholds !== undefined ? thresholds : DEFAULT_THRESHOLDS;
+  const resolvedThresholds =
+    validThresholds && thresholds !== undefined ? thresholds : DEFAULT_THRESHOLDS;
   let band: MarginBand = "unknown";
 
   if (marginPct !== null && Number.isFinite(marginPct)) {
-    band = marginPct >= resolvedThresholds.healthy
-      ? "healthy"
-      : marginPct >= resolvedThresholds.tight
-        ? "tight"
-        : "warn";
+    band =
+      marginPct >= resolvedThresholds.healthy
+        ? "healthy"
+        : marginPct >= resolvedThresholds.tight
+          ? "tight"
+          : "warn";
   }
 
   return (
-    <span className={`inline-flex items-center rounded-pill px-2 py-0.5 text-xs font-mono font-medium ${bandClasses[band]}`}>
-      {band === "unknown" ? "—" : formatPercent(marginPct) ?? "—"}
+    <span
+      className={`inline-flex items-center rounded-pill px-2 py-0.5 text-xs font-mono font-medium ${bandClasses[band]}`}
+    >
+      {band === "unknown" ? "—" : (formatPercent(marginPct) ?? "—")}
     </span>
   );
 }

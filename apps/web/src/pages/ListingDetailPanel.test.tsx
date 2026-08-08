@@ -88,9 +88,7 @@ describe("ListingDetailPanel", () => {
     renderPanel();
 
     await screen.findByText("Evento A");
-    const rendered = screen
-      .getAllByText(/^Evento [ABC]$/)
-      .map((node) => node.textContent);
+    const rendered = screen.getAllByText(/^Evento [ABC]$/).map((node) => node.textContent);
     expect(rendered).toEqual(["Evento A", "Evento B", "Evento C"]);
   });
 
@@ -168,9 +166,10 @@ describe("ListingDetailPanel", () => {
     expect(screen.getByText(/R\$\s149,90/)).toBeInTheDocument();
     // Own-seller exclusion means the seller count is competitor-only.
     expect(screen.getByText("Concorrentes")).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Ver produto vinculado" }),
-    ).toHaveAttribute("href", "/catalogo/produtos/product_1");
+    expect(screen.getByRole("link", { name: "Ver produto vinculado" })).toHaveAttribute(
+      "href",
+      "/catalogo/produtos/product_1",
+    );
   });
 
   it("renders honest '—' for absent faixa bounds, never a fabricated 0 (ADR-17)", async () => {
@@ -205,7 +204,11 @@ describe("ListingDetailPanel", () => {
   });
 
   it("shows an honest sem-evidência state for NO_PRICE_EVIDENCE, never a fabricated number", async () => {
-    getListing.mockResolvedValueOnce({ ...detail, signal_status: "NO_PRICE_EVIDENCE", market_signal: null });
+    getListing.mockResolvedValueOnce({
+      ...detail,
+      signal_status: "NO_PRICE_EVIDENCE",
+      market_signal: null,
+    });
 
     renderPanel();
     await screen.findAllByText("Camiseta azul");
@@ -226,7 +229,10 @@ describe("ListingDetailPanel", () => {
     renderPanel();
     await screen.findAllByText("Camiseta azul");
 
-    expect(screen.getByRole("link", { name: "Vincular produto" })).toHaveAttribute("href", "/vinculos");
+    expect(screen.getByRole("link", { name: "Vincular produto" })).toHaveAttribute(
+      "href",
+      "/vinculos",
+    );
     expect(screen.queryByText("ACCEPT")).not.toBeInTheDocument();
     expect(screen.queryByText("Sem evidência de preço de mercado")).not.toBeInTheDocument();
   });

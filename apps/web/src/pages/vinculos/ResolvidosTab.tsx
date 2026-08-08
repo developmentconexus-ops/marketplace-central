@@ -24,20 +24,30 @@ function ResolvidoRow({
     <tr className="align-top text-ink" data-testid="resolvido-row">
       {/* ANÚNCIO ML */}
       <td className="px-3 py-3">
-        <div className="font-mono text-sm font-medium text-ink">{item.identity.provider_item_id}</div>
+        <div className="font-mono text-sm font-medium text-ink">
+          {item.identity.provider_item_id}
+        </div>
       </td>
 
       {/* PRODUTO vinculado */}
       <td className="px-3 py-3">
         <div className="font-medium text-ink">
-          {link?.internal_product_name ? link.internal_product_name : <UnknownValue hint="sem descrição no ERP" />}
+          {link?.internal_product_name ? (
+            link.internal_product_name
+          ) : (
+            <UnknownValue hint="sem descrição no ERP" />
+          )}
         </div>
       </td>
 
       {/* SKU HUB */}
       <td className="px-3 py-3">
         <span className="font-mono text-sm text-ink">
-          {link?.internal_product_id === undefined ? <UnknownValue hint="sem CODPROD" /> : link.internal_product_id}
+          {link?.internal_product_id === undefined ? (
+            <UnknownValue hint="sem CODPROD" />
+          ) : (
+            link.internal_product_id
+          )}
         </span>
       </td>
 
@@ -101,12 +111,24 @@ export function ResolvidosTab({ installationId }: ResolvidosTabProps) {
         <thead className="border-b border-border bg-surface-2 text-xs font-medium tracking-[0.04em] text-faint">
           <tr>
             {/* Rótulo estrutural neutro de provider (F-05). */}
-            <th className="px-3 py-3" scope="col">Anúncio</th>
-            <th className="px-3 py-3" scope="col">Produto</th>
-            <th className="px-3 py-3" scope="col">SKU HUB</th>
-            <th className="px-3 py-3" scope="col">Estado</th>
-            <th className="px-3 py-3" scope="col">Resolvido em</th>
-            <th className="px-3 py-3 text-right" scope="col">Ação</th>
+            <th className="px-3 py-3" scope="col">
+              Anúncio
+            </th>
+            <th className="px-3 py-3" scope="col">
+              Produto
+            </th>
+            <th className="px-3 py-3" scope="col">
+              SKU HUB
+            </th>
+            <th className="px-3 py-3" scope="col">
+              Estado
+            </th>
+            <th className="px-3 py-3" scope="col">
+              Resolvido em
+            </th>
+            <th className="px-3 py-3 text-right" scope="col">
+              Ação
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border-2">

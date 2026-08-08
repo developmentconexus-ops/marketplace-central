@@ -54,12 +54,8 @@ export function PaginatedTable<T>({
     <div className="space-y-3">
       <div className="overflow-x-auto border border-border rounded-card">
         <table className="w-full text-sm text-left">
-          <thead className="bg-surface-2 border-b border-border">
-            {renderHeader()}
-          </thead>
-          <tbody>
-            {pageItems.map((item, i) => renderRow(item, start + i))}
-          </tbody>
+          <thead className="bg-surface-2 border-b border-border">{renderHeader()}</thead>
+          <tbody>{pageItems.map((item, i) => renderRow(item, start + i))}</tbody>
         </table>
       </div>
 

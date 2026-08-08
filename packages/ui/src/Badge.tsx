@@ -15,5 +15,11 @@ interface BadgeProps {
 
 export function Badge({ status, className = "" }: BadgeProps) {
   const { label, classes } = config[status];
-  return <span className={`inline-flex items-center px-2 py-0.5 rounded-pill text-xs font-medium ${classes} ${className}`}>{label}</span>;
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-pill text-xs font-medium ${classes} ${className}`}
+    >
+      {label}
+    </span>
+  );
 }

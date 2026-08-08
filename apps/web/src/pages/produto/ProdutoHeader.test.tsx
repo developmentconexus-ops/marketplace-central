@@ -32,9 +32,27 @@ describe("ProdutoHeader", () => {
       product_group_name: null,
       ncm: null,
       quality_flags: ["missing_cost", "invalid_ean"],
-      cost_amount: { source: "erp", value: null, quality: "unknown", observed_at: null, quality_reason: null },
-      price_amount: { source: "erp", value: null, quality: "unknown", observed_at: null, quality_reason: null },
-      stock_quantity: { source: "erp", value: null, quality: "unknown", observed_at: null, quality_reason: null },
+      cost_amount: {
+        source: "erp",
+        value: null,
+        quality: "unknown",
+        observed_at: null,
+        quality_reason: null,
+      },
+      price_amount: {
+        source: "erp",
+        value: null,
+        quality: "unknown",
+        observed_at: null,
+        quality_reason: null,
+      },
+      stock_quantity: {
+        source: "erp",
+        value: null,
+        quality: "unknown",
+        observed_at: null,
+        quality_reason: null,
+      },
     });
 
     renderHeader();
@@ -69,8 +87,20 @@ describe("ProdutoHeader", () => {
         observed_at: "2026-07-15T10:00:00Z",
         quality_reason: null,
       },
-      price_amount: { source: "erp", value: 20, quality: "current", observed_at: "2026-07-15T10:00:00Z", quality_reason: null },
-      stock_quantity: { source: "erp", value: 5, quality: "current", observed_at: "2026-07-15T10:00:00Z", quality_reason: null },
+      price_amount: {
+        source: "erp",
+        value: 20,
+        quality: "current",
+        observed_at: "2026-07-15T10:00:00Z",
+        quality_reason: null,
+      },
+      stock_quantity: {
+        source: "erp",
+        value: 5,
+        quality: "current",
+        observed_at: "2026-07-15T10:00:00Z",
+        quality_reason: null,
+      },
     });
 
     renderHeader("90002");
@@ -93,9 +123,27 @@ describe("ProdutoHeader", () => {
       product_group_name: null,
       ncm: null,
       quality_flags: ["complete"],
-      cost_amount: { source: "erp", value: null, quality: "unknown", observed_at: null, quality_reason: null },
-      price_amount: { source: "erp", value: null, quality: "unknown", observed_at: null, quality_reason: null },
-      stock_quantity: { source: "erp", value: null, quality: "unknown", observed_at: null, quality_reason: null },
+      cost_amount: {
+        source: "erp",
+        value: null,
+        quality: "unknown",
+        observed_at: null,
+        quality_reason: null,
+      },
+      price_amount: {
+        source: "erp",
+        value: null,
+        quality: "unknown",
+        observed_at: null,
+        quality_reason: null,
+      },
+      stock_quantity: {
+        source: "erp",
+        value: null,
+        quality: "unknown",
+        observed_at: null,
+        quality_reason: null,
+      },
     });
 
     renderHeader("90003");
@@ -115,9 +163,27 @@ describe("ProdutoHeader", () => {
       product_group_name: null,
       ncm: null,
       quality_flags: ["complete"],
-      cost_amount: { source: "erp", value: null, quality: "unknown", observed_at: null, quality_reason: null },
-      price_amount: { source: "erp", value: null, quality: "unknown", observed_at: null, quality_reason: null },
-      stock_quantity: { source: "erp", value: null, quality: "unknown", observed_at: null, quality_reason: null },
+      cost_amount: {
+        source: "erp",
+        value: null,
+        quality: "unknown",
+        observed_at: null,
+        quality_reason: null,
+      },
+      price_amount: {
+        source: "erp",
+        value: null,
+        quality: "unknown",
+        observed_at: null,
+        quality_reason: null,
+      },
+      stock_quantity: {
+        source: "erp",
+        value: null,
+        quality: "unknown",
+        observed_at: null,
+        quality_reason: null,
+      },
     });
 
     renderHeader("90004");

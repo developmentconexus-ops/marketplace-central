@@ -6,11 +6,7 @@
 // below-cost vs unknown-cost).
 
 import { describe, expect, it } from "vitest";
-import type {
-  ListingMarketSignal,
-  ListingReadModel,
-  ListingSummaryExceptions,
-} from "./index";
+import type { ListingMarketSignal, ListingReadModel, ListingSummaryExceptions } from "./index";
 
 function baseListing(overrides: Partial<ListingReadModel>): ListingReadModel {
   return {

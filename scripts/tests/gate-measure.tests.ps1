@@ -255,4 +255,99 @@ foreach ($linter in @($committed.Keys)) {
 Assert-True ($gateSourceForLint -match '\$enabledDrift\.Count -ne 0') `
   'the lint lane no longer fails when the enabled linter set drifts from the configured one'
 
+# --- eslint --------------------------------------------------------------
+
+$eslintReport = @'
+[
+  { "filePath": "C:\\repo\\apps\\web\\src\\a.ts", "messages": [
+      { "ruleId": "@typescript-eslint/no-floating-promises", "severity": 2 },
+      { "ruleId": "react-hooks/exhaustive-deps", "severity": 2 } ] },
+  { "filePath": "C:\\repo\\packages\\ui\\src\\b.tsx", "messages": [
+      { "ruleId": "@typescript-eslint/no-floating-promises", "severity": 2 } ] },
+  { "filePath": "C:\\repo\\packages\\ui\\src\\c.tsx", "messages": [] }
+]
+'@
+$eslintMeasured = Measure-GateEslint -Json $eslintReport
+Assert-True ($eslintMeasured.Files -eq 3) "eslint file count wrong: $($eslintMeasured.Files)"
+Assert-True ($eslintMeasured.Total -eq 3) "eslint finding count wrong: $($eslintMeasured.Total)"
+Assert-True ($eslintMeasured.ByRule['@typescript-eslint/no-floating-promises'] -eq 2) 'eslint per-rule count wrong'
+
+# The file with no messages must still be reported as covered. It is the whole
+# reason the lane reads `Paths` rather than only counting findings: a file that
+# was linted and had nothing to say and a file that was never linted are the same
+# zero in the findings total, and only the path list tells them apart.
+Assert-True (@($eslintMeasured.Paths) -contains 'C:/repo/packages/ui/src/c.tsx') `
+  'a file with no findings was dropped from the coverage list'
+
+# A parse failure has no ruleId. Folding it into the findings total would let a
+# file that could not be read at all shrink the ratchet the moment it is ignored.
+$eslintFatal = @'
+[ { "filePath": "C:\\repo\\x.ts", "messages": [ { "fatal": true, "message": "Parsing error", "severity": 2 } ] } ]
+'@
+$fatalMeasured = Measure-GateEslint -Json $eslintFatal
+Assert-True ($fatalMeasured.Fatal -eq 1) 'a parse failure was not counted as fatal'
+Assert-True ($fatalMeasured.Total -eq 0) 'a parse failure was counted as a rule finding'
+
+Assert-True ((Measure-GateEslint -Json '').Files -eq -1) 'a missing eslint report measured as zero files linted'
+
+# --- prettier ------------------------------------------------------------
+
+$prettierClean = @'
+Checking formatting...
+All matched files use Prettier code style!
+'@
+$prettierMeasured = Measure-GatePrettier -Text $prettierClean
+Assert-True ($prettierMeasured.Clean) 'a clean prettier run did not set the clean marker'
+Assert-True ($prettierMeasured.Unformatted -eq 0) 'a clean prettier run reported unformatted files'
+
+$prettierDirty = @'
+Checking formatting...
+[warn] apps/web/src/App.tsx
+[warn] packages/ui/src/Badge.tsx
+[warn] Code style issues found in 2 files. Run Prettier with --write to fix.
+'@
+$dirtyMeasured = Measure-GatePrettier -Text $prettierDirty
+Assert-True (-not $dirtyMeasured.Clean) 'an unformatted tree still set the clean marker'
+Assert-True ($dirtyMeasured.Unformatted -eq 2) "prettier unformatted count wrong: $($dirtyMeasured.Unformatted)"
+Assert-True (@($dirtyMeasured.Paths).Count -eq 2) 'the summary line was counted as an unformatted path'
+Assert-True (@($dirtyMeasured.Paths) -contains 'apps/web/src/App.tsx') 'prettier did not name the unformatted file'
+
+# Silence is the case this exists for. A run that died before printing anything
+# has no warnings either, and the clean marker is what separates the two.
+$prettierSilent = Measure-GatePrettier -Text ''
+Assert-True (-not $prettierSilent.Clean) 'an empty prettier stream was read as a clean tree'
+
+# --- the eslint baseline, and the two lanes' guards -----------------------
+
+$eslintCommitted = ConvertTo-GateCountMap -Object $baselineDocument.eslint.by_rule
+$eslintSum = 0
+foreach ($value in $eslintCommitted.Values) { $eslintSum += [int]$value }
+Assert-True ($eslintSum -eq [int]$baselineDocument.eslint.total) `
+  "the eslint baseline's per-rule counts sum to $eslintSum but it states a total of $($baselineDocument.eslint.total)"
+
+# Every rule the baseline names must be a rule the config turns on. A baseline
+# entry for a rule nobody enabled is a number that can never move, and it makes
+# the total look larger than the debt actually is.
+$eslintConfig = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'eslint.config.mjs')
+foreach ($rule in @($eslintCommitted.Keys)) {
+  Assert-True ($eslintConfig -match [regex]::Escape("`"$rule`"")) `
+    "the eslint baseline names $rule but eslint.config.mjs does not enable it"
+}
+
+# The type-aware rules are the reason `tsconfig.eslint.json` exists. Without a
+# project they cannot run, and ESLint still reports the file as linted.
+Assert-True (Test-Path -LiteralPath (Join-Path $repoRoot 'tsconfig.eslint.json') -PathType Leaf) `
+  'RED: tsconfig.eslint.json missing; the type-aware rules have no project to resolve against'
+Assert-True ($eslintConfig -match 'project:\s*\["\./tsconfig\.eslint\.json"\]') `
+  'eslint.config.mjs no longer points the parser at the lint project; the type-aware rules go silent without failing'
+
+Assert-True ($gateSourceForLint -match '\$uncovered\.Count -gt 0') `
+  'the lint-web lane no longer fails when a tracked source was not linted'
+Assert-True ($gateSourceForLint -match '\$measurement\.Fatal -gt 0') `
+  'the lint-web lane no longer fails on a file ESLint could not parse'
+Assert-True ($gateSourceForLint -match '\$candidates -eq 0') `
+  'the format lane no longer fails when the formatted-file set is empty'
+Assert-True ($gateSourceForLint -match '-not \$measurement\.Clean') `
+  'the format lane once again reads silence as a clean tree'
+
 Write-Output 'PASS gate measurement tests'

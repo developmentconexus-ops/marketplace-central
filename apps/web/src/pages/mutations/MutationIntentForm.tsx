@@ -7,7 +7,8 @@ export interface MutationIntentFormProps {
   onSubmit: (intent: Record<string, unknown>) => void;
 }
 
-const inputClassName = "rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100";
+const inputClassName =
+  "rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100";
 const labelClassName = "flex flex-col gap-1 text-sm font-medium text-slate-700";
 
 function field(form: FormData, name: string): string {
@@ -22,12 +23,17 @@ function intentFromForm(type: MutationType, form: FormData): Record<string, unkn
       return { publish_quantity: Number(field(form, "publish_quantity")) };
     case "link_apply": {
       const action = field(form, "link_action");
-      if (action === "approve_candidate") return { action, candidate_id: field(form, "candidate_id") };
+      if (action === "approve_candidate")
+        return { action, candidate_id: field(form, "candidate_id") };
       if (action === "manual_resolve") return { action, product_id: field(form, "product_id") };
       return { action };
     }
     case "listing_edit":
-      return { attributes: [{ id: field(form, "attribute_id"), value_name: field(form, "attribute_value") }] };
+      return {
+        attributes: [
+          { id: field(form, "attribute_id"), value_name: field(form, "attribute_value") },
+        ],
+      };
     case "listing_pause":
     case "listing_resync":
       return {};
@@ -47,13 +53,29 @@ export function MutationIntentForm({ type, disabled = false, onSubmit }: Mutatio
       {type === "price_update" ? (
         <label className={labelClassName}>
           Novo preço
-          <input className={inputClassName} name="new_price" inputMode="decimal" pattern="\d+(?:[.,]\d{1,2})?" required disabled={disabled} placeholder="49.90" />
+          <input
+            className={inputClassName}
+            name="new_price"
+            inputMode="decimal"
+            pattern="\d+(?:[.,]\d{1,2})?"
+            required
+            disabled={disabled}
+            placeholder="49.90"
+          />
         </label>
       ) : null}
       {type === "stock_correct" ? (
         <label className={labelClassName}>
           Quantidade a publicar
-          <input className={inputClassName} name="publish_quantity" type="number" min="0" step="1" required disabled={disabled} />
+          <input
+            className={inputClassName}
+            name="publish_quantity"
+            type="number"
+            min="0"
+            step="1"
+            required
+            disabled={disabled}
+          />
         </label>
       ) : null}
       {type === "link_apply" ? <LinkIntentFields disabled={disabled} /> : null}
@@ -69,8 +91,16 @@ export function MutationIntentForm({ type, disabled = false, onSubmit }: Mutatio
           </label>
         </div>
       ) : null}
-      {type === "listing_pause" ? <p className="text-sm text-slate-600">Os anúncios selecionados serão pausados após sua confirmação.</p> : null}
-      {type === "listing_resync" ? <p className="text-sm text-slate-600">Os dados dos anúncios selecionados serão buscados novamente.</p> : null}
+      {type === "listing_pause" ? (
+        <p className="text-sm text-slate-600">
+          Os anúncios selecionados serão pausados após sua confirmação.
+        </p>
+      ) : null}
+      {type === "listing_resync" ? (
+        <p className="text-sm text-slate-600">
+          Os dados dos anúncios selecionados serão buscados novamente.
+        </p>
+      ) : null}
     </form>
   );
 }

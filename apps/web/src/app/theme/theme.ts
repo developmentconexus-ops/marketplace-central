@@ -2,8 +2,7 @@ export const STORAGE_KEY = "marketplace-central-theme";
 
 export type Theme = "light" | "dark";
 
-const isTheme = (value: string | null): value is Theme =>
-  value === "light" || value === "dark";
+const isTheme = (value: string | null): value is Theme => value === "light" || value === "dark";
 
 export function readStoredTheme(): Theme {
   try {

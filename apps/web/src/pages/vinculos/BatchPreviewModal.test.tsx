@@ -19,7 +19,12 @@ function renderModal() {
   const onApplied = vi.fn();
   const utils = render(
     <QueryClientProvider client={queryClient}>
-      <BatchPreviewModal open candidateIds={["cand_1", "cand_2"]} onClose={onClose} onApplied={onApplied} />
+      <BatchPreviewModal
+        open
+        candidateIds={["cand_1", "cand_2"]}
+        onClose={onClose}
+        onApplied={onApplied}
+      />
     </QueryClientProvider>,
   );
   return { ...utils, onClose, onApplied };

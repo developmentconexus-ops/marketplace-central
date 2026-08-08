@@ -1,10 +1,20 @@
-import type { OrderBucket, OrderLinkQuality, OrderRead, OrderReadItem } from "@marketplace-central/sdk-runtime";
+import type {
+  OrderBucket,
+  OrderLinkQuality,
+  OrderRead,
+  OrderReadItem,
+} from "@marketplace-central/sdk-runtime";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DetailDrawer, ErrorState, LoadingState, UnknownValue } from "@marketplace-central/ui";
 import { QUERY_STALE_TIME } from "@marketplace-central/web-query";
 import { useClient } from "../../app/ClientContext";
 import { useInstallation } from "../../app/InstallationContext";
-import { actionLabelForBucket, formatDateTime, formatMoney, formatPercent } from "./pedidosFormatters";
+import {
+  actionLabelForBucket,
+  formatDateTime,
+  formatMoney,
+  formatPercent,
+} from "./pedidosFormatters";
 
 export interface PedidoDrawerProps {
   orderId: string | null;
@@ -20,7 +30,9 @@ const orderDetailKey = (installationId: string, orderId: string) =>
 // local duplicate here, same as ListingDetailPanel/VinculoDrawer already do for their own drawers.
 function stateTag(label: string, className = "bg-slate-100 text-slate-700") {
   return (
-    <span className={`inline-flex whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium ${className}`}>
+    <span
+      className={`inline-flex whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium ${className}`}
+    >
       {label}
     </span>
   );
@@ -103,7 +115,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function ItemRow({ item }: { item: OrderReadItem }) {
   const title = item.title || item.seller_sku || item.provider_item_id;
-  const lineTotal = item.unit_price === undefined ? null : formatMoney(item.quantity * item.unit_price);
+  const lineTotal =
+    item.unit_price === undefined ? null : formatMoney(item.quantity * item.unit_price);
   const custo = item.custo_unitario === undefined ? null : formatMoney(item.custo_unitario);
   return (
     <div className="flex flex-col gap-1 border-b border-border-2 pb-2 last:border-b-0 last:pb-0">
@@ -120,14 +133,21 @@ function ItemRow({ item }: { item: OrderReadItem }) {
               product, so a cost read for a past sale is the closest observation,
               not the cost on that date. The instant is spelled out rather than
               letting the number pass as exact. */}
-          custo unit.: {custo === null ? <UnknownValue hint="sem custo ERP no vínculo" /> : item.custo_aproximado ? `≈ ${custo}` : custo}
+          custo unit.:{" "}
+          {custo === null ? (
+            <UnknownValue hint="sem custo ERP no vínculo" />
+          ) : item.custo_aproximado ? (
+            `≈ ${custo}`
+          ) : (
+            custo
+          )}
         </span>
         {custo !== null && item.custo_aproximado ? (
-          <span>
-            snapshot ERP de {formatDateTime(item.custo_observado_em) ?? <UnknownValue />}
-          </span>
+          <span>snapshot ERP de {formatDateTime(item.custo_observado_em) ?? <UnknownValue />}</span>
         ) : null}
-        {item.internal_product_id !== undefined ? <span>CODPROD {item.internal_product_id}</span> : null}
+        {item.internal_product_id !== undefined ? (
+          <span>CODPROD {item.internal_product_id}</span>
+        ) : null}
       </div>
     </div>
   );
@@ -141,7 +161,10 @@ function ItemsSection({ order }: { order: OrderRead }) {
           <p className="text-xs text-faint">Sem itens.</p>
         ) : (
           order.items.map((item) => (
-            <ItemRow key={`${item.provider_item_id}-${item.provider_variation_id ?? ""}`} item={item} />
+            <ItemRow
+              key={`${item.provider_item_id}-${item.provider_variation_id ?? ""}`}
+              item={item}
+            />
           ))
         )}
         {order.componentes_desconhecidos && order.componentes_desconhecidos.length > 0
@@ -155,15 +178,7 @@ function ItemsSection({ order }: { order: OrderRead }) {
 // Definition-list row: value → formatted text, null/undefined → UnknownValue (ADR-17). Never
 // hardcodes "—"; the hint explains why a component is unknown today (F01-C1 honest-empty) so
 // the same row lights up with a real number once the hub wires the decomposer (C2), no UI change.
-function DecompRow({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string | null;
-  hint?: string;
-}) {
+function DecompRow({ label, value, hint }: { label: string; value: string | null; hint?: string }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <dt>{label}</dt>
@@ -216,36 +231,68 @@ function DecomposicaoSection({ order }: { order: OrderRead }) {
       <div className="rounded-lg border border-border bg-surface-2 p-3 text-xs text-muted">
         {pending ? (
           <p className="mb-2 text-[11px] text-faint">
-            Pendente: {decomposicao.componentes_desconhecidos.join(", ")} — estes componentes mostram
-            "—" até a decomposição ser calculada.
+            Pendente: {decomposicao.componentes_desconhecidos.join(", ")} — estes componentes
+            mostram "—" até a decomposição ser calculada.
           </p>
         ) : null}
         <dl className="space-y-1">
           <DecompRow label="Comissão" value={formatMoney(decomposicao.comissao)} hint={custoHint} />
-          <DecompRow label="Taxa fixa" value={formatMoney(decomposicao.taxa_fixa)} hint={custoHint} />
+          <DecompRow
+            label="Taxa fixa"
+            value={formatMoney(decomposicao.taxa_fixa)}
+            hint={custoHint}
+          />
           <DecompRow label="Frete" value={formatMoney(decomposicao.frete)} hint={custoHint} />
           <DecompRow label="Imposto" value={formatMoney(decomposicao.imposto)} hint={impostoHint} />
-          <DecompRow label="ICMS saída" value={formatMoney(decomposicao.icms_saida)} hint={icmsCellHint} />
+          <DecompRow
+            label="ICMS saída"
+            value={formatMoney(decomposicao.icms_saida)}
+            hint={icmsCellHint}
+          />
           <DecompRow label="DIFAL" value={formatMoney(decomposicao.difal)} hint={icmsCellHint} />
-          <DecompRow label="PIS/COFINS" value={formatMoney(decomposicao.pis_cofins)} hint={pisCofinsHint} />
+          <DecompRow
+            label="PIS/COFINS"
+            value={formatMoney(decomposicao.pis_cofins)}
+            hint={pisCofinsHint}
+          />
           <DecompRow
             label="Restituição ST"
             value={formatCredit(decomposicao.restituicao_st)}
             hint={restituicaoHint}
           />
-          <DecompRow label="Tarifa Full" value={formatMoney(decomposicao.tarifa_full)} hint={custoHint} />
+          <DecompRow
+            label="Tarifa Full"
+            value={formatMoney(decomposicao.tarifa_full)}
+            hint={custoHint}
+          />
           <DecompRow label="Custo" value={formatMoney(decomposicao.custo)} hint={custoHint} />
           <div className="my-1 border-t border-border-2" />
-          <DecompRow label="Margem valor" value={formatMoney(decomposicao.margem_valor)} hint={custoHint} />
-          <DecompRow label="Margem %" value={formatPercent(decomposicao.margem_pct)} hint={custoHint} />
-          <DecompRow label="Retorno líquido" value={formatMoney(order.retorno_liquido)} hint={custoHint} />
+          <DecompRow
+            label="Margem valor"
+            value={formatMoney(decomposicao.margem_valor)}
+            hint={custoHint}
+          />
+          <DecompRow
+            label="Margem %"
+            value={formatPercent(decomposicao.margem_pct)}
+            hint={custoHint}
+          />
+          <DecompRow
+            label="Retorno líquido"
+            value={formatMoney(order.retorno_liquido)}
+            hint={custoHint}
+          />
         </dl>
       </div>
       <div className="rounded-lg border border-border bg-surface-2 p-3 text-xs text-muted">
         <h5 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-faint">DIFAL</h5>
         <dl className="space-y-1">
           <DecompRow label="Valor" value={formatMoney(difal.amount)} hint={difalHint} />
-          <DecompRow label="Rota" value={difal.uf_route} hint="rota UF ainda não disponível (hub C2)" />
+          <DecompRow
+            label="Rota"
+            value={difal.uf_route}
+            hint="rota UF ainda não disponível (hub C2)"
+          />
           <DecompRow label="Vencimento" value={formatDateTime(difal.due_date)} hint={difalHint} />
           <div className="flex items-center justify-between gap-3">
             <dt>Pago</dt>
@@ -296,7 +343,9 @@ function TimelineSection({ order }: { order: OrderRead }) {
           {events.map((event) => (
             <li key={event.label} className="flex items-baseline gap-2">
               <span className="flex-1">{event.label}</span>
-              <span className="flex-none font-mono text-[10.5px] text-faint">{event.when ?? ""}</span>
+              <span className="flex-none font-mono text-[10.5px] text-faint">
+                {event.when ?? ""}
+              </span>
             </li>
           ))}
         </ol>
@@ -388,7 +437,11 @@ function FactsSection({ order }: { order: OrderRead }) {
         hint="sem cancelamento"
       />
       <FactRow label="Destino" value={destino || null} />
-      <FactRow label="Destinatário" value={order.destinatario ?? null} hint="destinatário ainda não disponível" />
+      <FactRow
+        label="Destinatário"
+        value={order.destinatario ?? null}
+        hint="destinatário ainda não disponível"
+      />
       <FactRow
         label="Frete real"
         mono
@@ -425,7 +478,9 @@ function FactsSection({ order }: { order: OrderRead }) {
 // Composes the buyer billing address into a single honest line. Absent parts are
 // dropped; an all-absent address yields null (caller renders UnknownValue). Never
 // fabricates a value (ADR-17).
-function formatEndereco(end: NonNullable<OrderRead["comprador_fiscal"]>["endereco"]): string | null {
+function formatEndereco(
+  end: NonNullable<OrderRead["comprador_fiscal"]>["endereco"],
+): string | null {
   if (!end) return null;
   const linha1 = [end.logradouro, end.numero].filter(Boolean).join(", ");
   const linha2 = [end.cidade, end.uf_codigo].filter(Boolean).join("/");
@@ -441,7 +496,10 @@ function formatEndereco(end: NonNullable<OrderRead["comprador_fiscal"]>["enderec
 // logged (LGPD).
 function CompradorFiscalSection({ order }: { order: OrderRead }) {
   const cf = order.comprador_fiscal;
-  const doc = cf?.doc_tipo || cf?.doc_numero ? [cf?.doc_tipo, cf?.doc_numero].filter(Boolean).join(" ") : null;
+  const doc =
+    cf?.doc_tipo || cf?.doc_numero
+      ? [cf?.doc_tipo, cf?.doc_numero].filter(Boolean).join(" ")
+      : null;
   const endereco = formatEndereco(cf?.endereco);
   return (
     <Section title="Comprador · fiscal (ERP)">

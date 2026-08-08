@@ -20,7 +20,10 @@ export function MutationResultSummary({ protocol }: { protocol: MutationProtocol
       </div>
       {items.isLoading ? <LoadingState /> : null}
       {items.isError ? (
-        <ErrorState onRetry={() => void items.refetch()} detail="Não foi possível carregar os resultados." />
+        <ErrorState
+          onRetry={() => void items.refetch()}
+          detail="Não foi possível carregar os resultados."
+        />
       ) : null}
       {items.data?.items.length === 0 ? <EmptyState /> : null}
       {items.data?.items.length ? (
@@ -28,12 +31,17 @@ export function MutationResultSummary({ protocol }: { protocol: MutationProtocol
           {items.data.items.map((item) => (
             <li key={item.item_id} className="px-4 py-3 text-sm">
               <span className="font-medium text-slate-900">{item.listing_id}</span>
-              {item.failure ? <p className="mt-1 text-red-700">{failureCopy(failureCode(item.failure))}</p> : null}
+              {item.failure ? (
+                <p className="mt-1 text-red-700">{failureCopy(failureCode(item.failure))}</p>
+              ) : null}
             </li>
           ))}
         </ul>
       ) : null}
-      <a className="inline-flex text-sm font-medium text-blue-700 hover:underline" href={`/protocolos/${protocol.protocol_id}`}>
+      <a
+        className="inline-flex text-sm font-medium text-blue-700 hover:underline"
+        href={`/protocolos/${protocol.protocol_id}`}
+      >
         Ver protocolo
       </a>
     </div>

@@ -34,7 +34,15 @@ function renderLayout(initialEntry = "/") {
         <InstallationProvider>
           <Routes>
             <Route element={<Layout />}>
-              <Route path="*" element={<><LocationOutput /><div data-testid="page-content">Página protegida</div></>} />
+              <Route
+                path="*"
+                element={
+                  <>
+                    <LocationOutput />
+                    <div data-testid="page-content">Página protegida</div>
+                  </>
+                }
+              />
             </Route>
           </Routes>
         </InstallationProvider>
@@ -108,7 +116,9 @@ describe("Layout", () => {
 
     expect(await screen.findByText("Conecte uma conta em Integrações")).toBeInTheDocument();
     expect(screen.getByRole("navigation")).toBeInTheDocument();
-    expect(screen.queryByRole("combobox", { name: "Selecionar instalação" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("combobox", { name: "Selecionar instalação" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByTestId("page-content")).toBeInTheDocument();
   });
 });

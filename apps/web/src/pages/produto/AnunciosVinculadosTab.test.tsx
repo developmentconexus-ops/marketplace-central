@@ -111,7 +111,10 @@ describe("AnunciosVinculadosTab", () => {
     renderTab(client);
 
     expect(await screen.findByText("Nenhum registro encontrado.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "vincular anúncios" })).toHaveAttribute("href", "/vinculos");
+    expect(screen.getByRole("link", { name: "vincular anúncios" })).toHaveAttribute(
+      "href",
+      "/vinculos",
+    );
   });
 
   it("does not leak a mismatched group's listings when the lone group belongs to another product", async () => {
@@ -138,7 +141,9 @@ describe("AnunciosVinculadosTab", () => {
   });
 
   it("scopes listListingsByProduct to the given productId", async () => {
-    const listListingsByProduct = vi.fn().mockResolvedValue({ groups: [], next_cursor: null, page_size: 0, as_of: "" });
+    const listListingsByProduct = vi
+      .fn()
+      .mockResolvedValue({ groups: [], next_cursor: null, page_size: 0, as_of: "" });
     const client = makeClient({ listListingsByProduct });
 
     renderTab(client, "90099");

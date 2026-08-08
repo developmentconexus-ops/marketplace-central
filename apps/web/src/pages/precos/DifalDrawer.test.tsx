@@ -39,7 +39,11 @@ describe("DifalDrawer", () => {
   it("shows the active override value in place of the seed interna", () => {
     const withOverride: PricingDifalListResponse = {
       disclaimer: DIFAL_DISCLAIMER,
-      items: [rate("SP", { override: { interna_pct: "19.05", updated_at: "2026-07-18T00:00:00Z", actor: "op" } })],
+      items: [
+        rate("SP", {
+          override: { interna_pct: "19.05", updated_at: "2026-07-18T00:00:00Z", actor: "op" },
+        }),
+      ],
     };
     render(<DifalDrawer open data={withOverride} onOverride={vi.fn()} onClose={vi.fn()} />);
     const row = screen.getByRole("row", { name: /SP/ });
@@ -50,7 +54,9 @@ describe("DifalDrawer", () => {
     const onOverride = vi.fn();
     render(<DifalDrawer open data={data} onOverride={onOverride} onClose={vi.fn()} />);
     fireEvent.change(screen.getByLabelText("Override interna SP"), { target: { value: "20.5" } });
-    fireEvent.click(within(screen.getByRole("row", { name: /^SP/ })).getByRole("button", { name: "OK" }));
+    fireEvent.click(
+      within(screen.getByRole("row", { name: /^SP/ })).getByRole("button", { name: "OK" }),
+    );
     expect(onOverride).toHaveBeenCalledWith("SP", "20.5");
   });
 
@@ -58,12 +64,16 @@ describe("DifalDrawer", () => {
     const onOverride = vi.fn();
     render(<DifalDrawer open data={data} onOverride={onOverride} onClose={vi.fn()} />);
     fireEvent.change(screen.getByLabelText("Override interna SP"), { target: { value: "20,5" } });
-    fireEvent.click(within(screen.getByRole("row", { name: /^SP/ })).getByRole("button", { name: "OK" }));
+    fireEvent.click(
+      within(screen.getByRole("row", { name: /^SP/ })).getByRole("button", { name: "OK" }),
+    );
     expect(onOverride).toHaveBeenCalledWith("SP", "20.5");
   });
 
   it("renders the loading and error states", () => {
-    const { rerender } = render(<DifalDrawer open data={undefined} isLoading onOverride={vi.fn()} onClose={vi.fn()} />);
+    const { rerender } = render(
+      <DifalDrawer open data={undefined} isLoading onOverride={vi.fn()} onClose={vi.fn()} />,
+    );
     expect(screen.getByRole("status")).toBeInTheDocument();
     rerender(<DifalDrawer open data={undefined} isError onOverride={vi.fn()} onClose={vi.fn()} />);
     expect(screen.getByText(/Falha ao carregar a tabela DIFAL/)).toBeInTheDocument();

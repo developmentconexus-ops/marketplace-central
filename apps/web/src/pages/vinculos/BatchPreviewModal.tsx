@@ -19,7 +19,12 @@ export interface BatchPreviewModalProps {
  * OK-status subset of the preview — predicted failures are never sent to
  * apply.
  */
-export function BatchPreviewModal({ open, candidateIds, onClose, onApplied }: BatchPreviewModalProps) {
+export function BatchPreviewModal({
+  open,
+  candidateIds,
+  onClose,
+  onApplied,
+}: BatchPreviewModalProps) {
   const { preview, apply } = useVinculosBatch();
   const requestedFor = useRef<string | null>(null);
 
@@ -58,7 +63,10 @@ export function BatchPreviewModal({ open, candidateIds, onClose, onApplied }: Ba
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-ink/50 p-4" role="presentation">
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center bg-ink/50 p-4"
+      role="presentation"
+    >
       <section
         role="dialog"
         aria-modal="true"
@@ -69,13 +77,17 @@ export function BatchPreviewModal({ open, candidateIds, onClose, onApplied }: Ba
           <h2 id="batch-preview-modal-title" className="text-lg font-semibold text-ink">
             Pré-visualizar aprovação em lote
           </h2>
-          <p className="mt-1 text-sm text-muted">{candidateIds.length} candidato(s) selecionado(s)</p>
+          <p className="mt-1 text-sm text-muted">
+            {candidateIds.length} candidato(s) selecionado(s)
+          </p>
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
           {preview.isPending ? <LoadingState /> : null}
           {preview.isError ? (
-            <ErrorState onRetry={() => preview.mutate(candidateIds.map((candidate_id) => ({ candidate_id })))} />
+            <ErrorState
+              onRetry={() => preview.mutate(candidateIds.map((candidate_id) => ({ candidate_id })))}
+            />
           ) : null}
           {preview.isSuccess ? (
             <div className="space-y-4">
@@ -87,9 +99,15 @@ export function BatchPreviewModal({ open, candidateIds, onClose, onApplied }: Ba
                   {failedItems.length} previsto(s) para falhar
                 </span>
               </div>
-              <ul className="divide-y divide-border-2 rounded-card border border-border" data-testid="batch-preview-items">
+              <ul
+                className="divide-y divide-border-2 rounded-card border border-border"
+                data-testid="batch-preview-items"
+              >
                 {items.map((item) => (
-                  <li key={item.candidate_id} className="flex items-center justify-between px-4 py-2 text-sm">
+                  <li
+                    key={item.candidate_id}
+                    className="flex items-center justify-between px-4 py-2 text-sm"
+                  >
                     <span className="font-mono font-medium text-ink">{item.candidate_id}</span>
                     {item.status === "OK" ? (
                       <span className="text-xs font-medium text-accent-ink">OK</span>

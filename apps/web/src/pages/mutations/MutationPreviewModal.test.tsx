@@ -17,7 +17,14 @@ const getMutation = vi.fn();
 const listMutationItems = vi.fn();
 
 vi.mock("../../app/ClientContext", () => ({
-  useClient: () => ({ createMutation, previewMutation, cancelMutation, approveMutation, getMutation, listMutationItems }),
+  useClient: () => ({
+    createMutation,
+    previewMutation,
+    cancelMutation,
+    approveMutation,
+    getMutation,
+    listMutationItems,
+  }),
 }));
 
 const draft: MutationProtocol = {
@@ -99,14 +106,26 @@ describe("MutationPreviewModal", () => {
     createMutation.mockResolvedValue(draft);
     previewMutation.mockResolvedValue(preview);
     cancelMutation.mockResolvedValue({ ...draft, state: "cancelled" });
-    approveMutation.mockResolvedValue({ ...draft, state: "applying", approved_at: "2026-07-17T12:00:02Z" });
-    getMutation.mockResolvedValue({ ...draft, state: "applying", approved_at: "2026-07-17T12:00:02Z" });
+    approveMutation.mockResolvedValue({
+      ...draft,
+      state: "applying",
+      approved_at: "2026-07-17T12:00:02Z",
+    });
+    getMutation.mockResolvedValue({
+      ...draft,
+      state: "applying",
+      approved_at: "2026-07-17T12:00:02Z",
+    });
     listMutationItems.mockResolvedValue({ items: [], next_cursor: null, page_size: 50 });
   });
 
   it("mantém a confirmação indisponível até previewMutation resolver", async () => {
     let resolvePreview!: (value: MutationPreview) => void;
-    previewMutation.mockReturnValue(new Promise((resolve) => { resolvePreview = resolve; }));
+    previewMutation.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePreview = resolve;
+      }),
+    );
     renderModal("listing_pause");
 
     submit();
@@ -124,12 +143,16 @@ describe("MutationPreviewModal", () => {
   }> = [
     {
       type: "price_update",
-      fill: () => fireEvent.change(screen.getByLabelText("Novo preço"), { target: { value: "49.90" } }),
+      fill: () =>
+        fireEvent.change(screen.getByLabelText("Novo preço"), { target: { value: "49.90" } }),
       intent: { new_price: { amount: "49.90", currency: "BRL" } },
     },
     {
       type: "stock_correct",
-      fill: () => fireEvent.change(screen.getByLabelText("Quantidade a publicar"), { target: { value: "7" } }),
+      fill: () =>
+        fireEvent.change(screen.getByLabelText("Quantidade a publicar"), {
+          target: { value: "7" },
+        }),
       intent: { publish_quantity: 7 },
     },
     { type: "listing_pause", fill: () => undefined, intent: {} },
@@ -137,7 +160,9 @@ describe("MutationPreviewModal", () => {
     {
       type: "link_apply",
       fill: () => {
-        fireEvent.change(screen.getByLabelText("Ação de vínculo"), { target: { value: "manual_resolve" } });
+        fireEvent.change(screen.getByLabelText("Ação de vínculo"), {
+          target: { value: "manual_resolve" },
+        });
         fireEvent.change(screen.getByLabelText("ID do produto"), { target: { value: "PROD-10" } });
       },
       intent: { action: "manual_resolve", product_id: "PROD-10" },
@@ -224,7 +249,11 @@ describe("MutationPreviewModal", () => {
 
   it("aprova uma vez diante de dois cliques imediatos", async () => {
     let resolveApprove!: (value: MutationProtocol) => void;
-    approveMutation.mockReturnValue(new Promise((resolve) => { resolveApprove = resolve; }));
+    approveMutation.mockReturnValue(
+      new Promise((resolve) => {
+        resolveApprove = resolve;
+      }),
+    );
     renderModal("listing_pause");
     submit();
     await screen.findByRole("button", { name: "Confirmar e aplicar" });
@@ -240,7 +269,9 @@ describe("MutationPreviewModal", () => {
   });
 
   it("volta à prévia sem reaprová-la quando ela expira", async () => {
-    approveMutation.mockRejectedValue(new MarketplaceCentralClientError(409, "preview_stale", "stale", {}));
+    approveMutation.mockRejectedValue(
+      new MarketplaceCentralClientError(409, "preview_stale", "stale", {}),
+    );
     renderModal("listing_pause");
     submit();
     await screen.findByRole("button", { name: "Confirmar e aplicar" });
@@ -248,18 +279,30 @@ describe("MutationPreviewModal", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirmar e aplicar" }));
 
     expect(await screen.findByText("Prévia expirada. Gere novamente.")).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "Confirmo que revisei a prévia" })).not.toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "Confirmo que revisei a prévia" }),
+    ).not.toBeChecked();
     expect(screen.queryByRole("button", { name: "Confirmar e aplicar" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Gerar prévia novamente" })).toBeEnabled();
     expect(approveMutation).toHaveBeenCalledTimes(1);
   });
 
   it("mostra o resultado terminal com cópia segura e link do protocolo", async () => {
-    const terminal = { ...draft, state: "partially_failed" as const, finished_at: "2026-07-17T12:00:03Z" };
+    const terminal = {
+      ...draft,
+      state: "partially_failed" as const,
+      finished_at: "2026-07-17T12:00:03Z",
+    };
     approveMutation.mockResolvedValue(terminal);
     getMutation.mockResolvedValue(terminal);
     listMutationItems.mockResolvedValue({
-      items: [{ ...preview.items[0], state: "failed", failure: { code: "provider_validation", message_pt: "texto cru proibido" } }],
+      items: [
+        {
+          ...preview.items[0],
+          state: "failed",
+          failure: { code: "provider_validation", message_pt: "texto cru proibido" },
+        },
+      ],
       next_cursor: null,
       page_size: 50,
     });
@@ -271,6 +314,9 @@ describe("MutationPreviewModal", () => {
 
     expect(await screen.findByText("Rejeitado pela validação do marketplace.")).toBeInTheDocument();
     expect(screen.queryByText("texto cru proibido")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Ver protocolo" })).toHaveAttribute("href", "/protocolos/MP-000042");
+    expect(screen.getByRole("link", { name: "Ver protocolo" })).toHaveAttribute(
+      "href",
+      "/protocolos/MP-000042",
+    );
   });
 });

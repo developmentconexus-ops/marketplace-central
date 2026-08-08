@@ -49,20 +49,25 @@ describe("anuncios query state", () => {
     });
   });
 
-  it.each(["sync_error", "stale", "unlinked", "below_margin", "sem_vinculo", "abaixo_custo", "sem_evidencia"])(
-    "round-trips the %s exception filter",
-    (exception) => {
-      const searchParams = new URLSearchParams(`installation=inst_1&filter.exception=${exception}`);
-      const state = parseAnunciosQueryState(searchParams);
+  it.each([
+    "sync_error",
+    "stale",
+    "unlinked",
+    "below_margin",
+    "sem_vinculo",
+    "abaixo_custo",
+    "sem_evidencia",
+  ])("round-trips the %s exception filter", (exception) => {
+    const searchParams = new URLSearchParams(`installation=inst_1&filter.exception=${exception}`);
+    const state = parseAnunciosQueryState(searchParams);
 
-      expect(state.filters.exception).toBe(exception);
-      expect(applyAnunciosQueryState(searchParams, state).toString()).toBe(searchParams.toString());
-      expect(toListingListOptions(state, "inst_1")).toEqual({
-        installation_id: "inst_1",
-        exception,
-      });
-    },
-  );
+    expect(state.filters.exception).toBe(exception);
+    expect(applyAnunciosQueryState(searchParams, state).toString()).toBe(searchParams.toString());
+    expect(toListingListOptions(state, "inst_1")).toEqual({
+      installation_id: "inst_1",
+      exception,
+    });
+  });
 
   it("ignores an invalid exception value without crashing", () => {
     const searchParams = new URLSearchParams("installation=inst_1&filter.exception=xyz");
@@ -78,9 +83,7 @@ describe("anuncios query state", () => {
       "q=camiseta&tab=ativos&installation=inst_1&filter.exception=sync_error&filter.bogus=x",
     );
 
-    expect(clearFilters(searchParams).toString()).toBe(
-      "q=camiseta&tab=ativos&installation=inst_1",
-    );
+    expect(clearFilters(searchParams).toString()).toBe("q=camiseta&tab=ativos&installation=inst_1");
   });
 
   it("preserves unrelated params when applying state", () => {

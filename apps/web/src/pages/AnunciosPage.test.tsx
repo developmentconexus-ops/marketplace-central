@@ -1,4 +1,7 @@
-import { MarketplaceCentralClientError, type ListingSummary } from "@marketplace-central/sdk-runtime";
+import {
+  MarketplaceCentralClientError,
+  type ListingSummary,
+} from "@marketplace-central/sdk-runtime";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
@@ -7,44 +10,45 @@ import { AnunciosPage } from "./AnunciosPage";
 
 const listListings = vi.fn();
 const listListingsByProduct = vi.fn();
-const getListingsSummary = vi.fn(
-  (): Promise<ListingSummary> =>
-    Promise.resolve({
-      total: 1,
-      active: 1,
-      paused: 0,
-      exceptions: {
-        sync_error: 0,
-        stale: 0,
-        unlinked: 0,
-        below_margin_worst_case: null,
-        margin_unknown: null,
-      },
-      as_of: "2026-07-16T12:00:00Z",
-    }),
+const getListingsSummary = vi.fn((): Promise<ListingSummary> =>
+  Promise.resolve({
+    total: 1,
+    active: 1,
+    paused: 0,
+    exceptions: {
+      sync_error: 0,
+      stale: 0,
+      unlinked: 0,
+      below_margin_worst_case: null,
+      margin_unknown: null,
+    },
+    as_of: "2026-07-16T12:00:00Z",
+  }),
 );
 
 const listingPage = {
-  items: [{
-    listing_id: "listing_1",
-    installation_id: "inst_1",
-    provider: "mercado_livre",
-    provider_listing_id: "MLB123456789",
-    variation_id: null,
-    title: "Camiseta azul",
-    listing_type: { code: "gold_special", label: "Clássico" },
-    status: "active",
-    link: { state: "resolved", product_id: "product_1", seller_sku: "CAM-AZ" },
-    price: { amount: "129.90", currency: "BRL" },
-    published_quantity: 7,
-    sync_state: "synced",
-    sync_error: null,
-    pending_issue: null,
-    cost: { amount: "70.00", currency: "BRL" },
-    below_margin_worst_case: false,
-    icms_worst_case_by_uf: null,
-    fetched_at: "2026-07-16T12:00:00Z",
-  }],
+  items: [
+    {
+      listing_id: "listing_1",
+      installation_id: "inst_1",
+      provider: "mercado_livre",
+      provider_listing_id: "MLB123456789",
+      variation_id: null,
+      title: "Camiseta azul",
+      listing_type: { code: "gold_special", label: "Clássico" },
+      status: "active",
+      link: { state: "resolved", product_id: "product_1", seller_sku: "CAM-AZ" },
+      price: { amount: "129.90", currency: "BRL" },
+      published_quantity: 7,
+      sync_state: "synced",
+      sync_error: null,
+      pending_issue: null,
+      cost: { amount: "70.00", currency: "BRL" },
+      below_margin_worst_case: false,
+      icms_worst_case_by_uf: null,
+      fetched_at: "2026-07-16T12:00:00Z",
+    },
+  ],
   next_cursor: null,
   page_size: 1,
   as_of: "2026-07-16T12:00:00Z",
@@ -283,7 +287,13 @@ describe("AnunciosPage independent states", () => {
       total: 10,
       active: 6,
       paused: 4,
-      exceptions: { sync_error: 1, stale: 2, unlinked: 3, below_margin_worst_case: null, margin_unknown: null },
+      exceptions: {
+        sync_error: 1,
+        stale: 2,
+        unlinked: 3,
+        below_margin_worst_case: null,
+        margin_unknown: null,
+      },
       as_of: "2026-07-16T12:00:00Z",
     });
     renderPage("?installation=inst_1");
@@ -293,7 +303,12 @@ describe("AnunciosPage independent states", () => {
   });
 
   it("offers to clear filters after a successful empty response", async () => {
-    listListings.mockResolvedValueOnce({ items: [], next_cursor: null, page_size: 0, as_of: "2026-07-16T12:00:00Z" });
+    listListings.mockResolvedValueOnce({
+      items: [],
+      next_cursor: null,
+      page_size: 0,
+      as_of: "2026-07-16T12:00:00Z",
+    });
     renderPage("?installation=inst_1&filter.exception=sync_error");
 
     expect(await screen.findByText("Nenhum registro encontrado.")).toBeInTheDocument();

@@ -88,8 +88,7 @@ interface KpiCardProps {
 // mono value with an inline nota. The nota is aria-hidden so the button's accessible name stays
 // "LABEL VALUE" (the counts the tests assert), not "LABEL nota VALUE".
 function KpiCard({ label, value, sub, tone = "default", onSelect }: KpiCardProps) {
-  const toneClass =
-    tone === "amber" ? "border-amber bg-amber-soft" : "border-border bg-surface";
+  const toneClass = tone === "amber" ? "border-amber bg-amber-soft" : "border-border bg-surface";
   return (
     <button
       type="button"
@@ -145,9 +144,10 @@ export function PedidosPage() {
   // empty table under a window the operator never chose.
   const [period, setPeriod] = useState("all");
   const periodOption = periodOptions.find((option) => option.value === period) ?? periodOptions[3];
-  const dateFrom = periodOption.days == null
-    ? undefined
-    : new Date(Date.now() - periodOption.days * 24 * 60 * 60 * 1000).toISOString();
+  const dateFrom =
+    periodOption.days == null
+      ? undefined
+      : new Date(Date.now() - periodOption.days * 24 * 60 * 60 * 1000).toISOString();
 
   const ordersQuery = useQuery({
     // date_from is part of the identity of the result, so it belongs in the key —
@@ -200,7 +200,12 @@ export function PedidosPage() {
   } else if (ordersQuery.isError) {
     body = <ErrorState onRetry={() => void ordersQuery.refetch()} />;
   } else if (view === "fila") {
-    body = allItems.length === 0 ? <EmptyState /> : <FilaView items={allItems} onOpenOrder={openOrder} />;
+    body =
+      allItems.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <FilaView items={allItems} onOpenOrder={openOrder} />
+      );
   } else if (view === "kanban") {
     body = <KanbanView items={allItems} onOpenOrder={openOrder} />;
   } else {
@@ -278,7 +283,12 @@ export function PedidosPage() {
       </div>
 
       <div aria-label="Indicadores de pedidos" className="flex flex-wrap gap-[10px]">
-        <KpiCard label="NOVOS" value={kpiValue("novo")} sub="aguard. pagto" onSelect={goToListaTab("novo")} />
+        <KpiCard
+          label="NOVOS"
+          value={kpiValue("novo")}
+          sub="aguard. pagto"
+          onSelect={goToListaTab("novo")}
+        />
         <KpiCard label="A FATURAR" value={kpiValue("faturar")} onSelect={goToListaTab("faturar")} />
         <KpiCard label="A ENVIAR" value={kpiValue("enviar")} onSelect={goToListaTab("enviar")} />
         {/* The subtitle names the window actually queried — it used to claim

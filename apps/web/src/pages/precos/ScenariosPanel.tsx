@@ -88,7 +88,10 @@ export function ScenariosPanel({ payload, onReload }: ScenariosPanelProps): JSX.
       {scenariosQuery.isLoading ? (
         <LoadingState />
       ) : scenariosQuery.isError ? (
-        <ErrorState onRetry={() => void scenariosQuery.refetch()} detail="Falha ao carregar os cenários." />
+        <ErrorState
+          onRetry={() => void scenariosQuery.refetch()}
+          detail="Falha ao carregar os cenários."
+        />
       ) : items.length === 0 ? (
         <p data-testid="scenarios-empty" className="text-xs text-muted">
           Nenhum cenário salvo ainda — simule e salve para comparar depois.

@@ -56,7 +56,9 @@ export function OportunidadesTable({ rows }: OportunidadesTableProps): JSX.Eleme
             ))}
           </div>
           {rows.map((o) => {
-            const custo = formatMoney(o.costAmount ? { amount: o.costAmount, currency: "BRL" } : null);
+            const custo = formatMoney(
+              o.costAmount ? { amount: o.costAmount, currency: "BRL" } : null,
+            );
             const mediana = formatMoney(o.median);
             const menor = formatMoney(o.minValid);
             return (
@@ -69,13 +71,17 @@ export function OportunidadesTable({ rows }: OportunidadesTableProps): JSX.Eleme
                 <span className="overflow-hidden text-ellipsis whitespace-nowrap pr-2 font-medium">
                   {o.name ?? <UnknownValue />}
                 </span>
-                <span className="font-mono text-muted">{custo === null ? <UnknownValue /> : custo}</span>
+                <span className="font-mono text-muted">
+                  {custo === null ? <UnknownValue /> : custo}
+                </span>
                 <span className="font-mono">{menor === null ? <UnknownValue /> : menor}</span>
                 <span className="font-mono">{mediana === null ? <UnknownValue /> : mediana}</span>
                 {/* CONCORRENTES = distinct competing sellers (n_sellers, deduped by seller per
                     the IC-03 aggregate contract), NOT the raw offer count — never overstate
                     competition (ADR-17). */}
-                <span className="text-muted">{o.nSellers == null ? <UnknownValue /> : o.nSellers}</span>
+                <span className="text-muted">
+                  {o.nSellers == null ? <UnknownValue /> : o.nSellers}
+                </span>
                 {/* VENDAS LÍDER 30D — no backing snapshot → honest dash (ADR-17). */}
                 <span className="font-mono text-muted">
                   <UnknownValue hint="vendas do líder — sem snapshot" />
@@ -89,7 +95,7 @@ export function OportunidadesTable({ rows }: OportunidadesTableProps): JSX.Eleme
                 <span className="pr-2 text-[12px]">
                   <UnknownValue hint="recomendação — M-07" />{" "}
                   <span className="text-[11px] text-faint">
-                    {o.evidenceState ? EVIDENCE_NOTE[o.evidenceState] ?? "" : ""}
+                    {o.evidenceState ? (EVIDENCE_NOTE[o.evidenceState] ?? "") : ""}
                   </span>
                 </span>
                 <FreshnessIndicator asOf={o.fetchedAt} />
@@ -107,8 +113,8 @@ export function OportunidadesTable({ rows }: OportunidadesTableProps): JSX.Eleme
         </div>
       </div>
       <p className="text-[11.5px] text-faint">
-        cruza catálogo ERP × demanda pública do ML · ordenado por diferença mediana − custo · margem,
-        vendas do líder e recomendação chegam com M-07/snapshots
+        cruza catálogo ERP × demanda pública do ML · ordenado por diferença mediana − custo ·
+        margem, vendas do líder e recomendação chegam com M-07/snapshots
       </p>
     </>
   );

@@ -1,0 +1,41 @@
+// The TypeScript project ESLint type-aware rules are resolved against, and it
+// exists for one reason: coverage.
+//
+// Measured 2026-08-08: the repository tracks 220 .ts/.tsx files, and only two
+// tsconfigs exist. `apps/web/tsconfig.json` includes `src/**` and pulls package
+// sources in transitively through its `paths` mapping; `packages/sdk-runtime`
+// has its own. Nothing covers the remaining files -- the test files under
+// `packages/feature-*`, `packages/ui`, `packages/web-query` that no application
+// source imports.
+//
+// That matters more for ESLint than for tsc. `no-floating-promises`,
+// `no-misused-promises` and `await-thenable` need type information, and a file
+// that belongs to no project does not get it. typescript-eslint's fallback
+// would either error or lint the file with the type-aware rules effectively
+// inert -- a file reported as linted, by rules that could not run. Green,
+// because nothing was asked.
+//
+// So the lint project is declared once, here, over everything. It emits nothing
+// and is not the build; `apps/web/tsconfig.json` remains the build's authority.
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "types": ["node", "vitest/globals", "vite/client"],
+    "baseUrl": ".",
+    "paths": {
+      "@marketplace-central/*": ["packages/*"]
+    }
+  },
+  "include": [
+    "apps/web/src/**/*.ts",
+    "apps/web/src/**/*.tsx",
+    "apps/web/*.config.ts",
+    "packages/*/src/**/*.ts",
+    "packages/*/src/**/*.tsx",
+    "packages/*/*.config.ts",
+    "*.config.ts"
+  ],
+  "exclude": ["node_modules", "**/node_modules", "**/dist", "**/generated"]
+}

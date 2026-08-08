@@ -1,6 +1,11 @@
 import type { JSX, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ErrorState, FreshnessIndicator, LoadingState, UnknownValue } from "@marketplace-central/ui";
+import {
+  ErrorState,
+  FreshnessIndicator,
+  LoadingState,
+  UnknownValue,
+} from "@marketplace-central/ui";
 import { QUERY_STALE_TIME } from "@marketplace-central/web-query";
 import { useClient, type Client } from "../../app/ClientContext";
 
@@ -10,11 +15,21 @@ export interface EstoqueTabProps {
   client?: Client;
 }
 
-function StockCard({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+function StockCard({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: ReactNode;
+}) {
   return (
     <div className="rounded-lg border border-border-2 px-3 py-3">
       <div className="text-[10.5px] text-faint">{label}</div>
-      <div className="mt-0.5 flex items-center gap-2 font-mono text-lg font-semibold text-ink">{children}</div>
+      <div className="mt-0.5 flex items-center gap-2 font-mono text-lg font-semibold text-ink">
+        {children}
+      </div>
       {hint ? <div className="mt-0.5 text-xs text-faint">{hint}</div> : null}
     </div>
   );
@@ -40,7 +55,12 @@ export function EstoqueTab({ productId, client: injectedClient }: EstoqueTabProp
   if (query.isPending) return <LoadingState />;
 
   if (query.isError) {
-    return <ErrorState detail="Não foi possível carregar o estoque." onRetry={() => void query.refetch()} />;
+    return (
+      <ErrorState
+        detail="Não foi possível carregar o estoque."
+        onRetry={() => void query.refetch()}
+      />
+    );
   }
 
   const product = query.data;

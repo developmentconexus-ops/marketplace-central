@@ -3,5 +3,9 @@ interface UnknownValueProps {
 }
 
 export function UnknownValue({ hint }: UnknownValueProps) {
-  return <span className="text-faint" title={hint || undefined}>—</span>;
+  return (
+    <span className="text-faint" title={hint || undefined}>
+      —
+    </span>
+  );
 }

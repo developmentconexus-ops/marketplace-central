@@ -2,7 +2,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
-import type { CanonicalCatalogProduct, MarketPriceIntelVerdict } from "@marketplace-central/sdk-runtime";
+import type {
+  CanonicalCatalogProduct,
+  MarketPriceIntelVerdict,
+} from "@marketplace-central/sdk-runtime";
 import { InstallationProvider } from "../../app/InstallationContext";
 import { ProdutoPage } from "./ProdutoPage";
 
@@ -36,9 +39,27 @@ const product: CanonicalCatalogProduct = {
   product_group_name: null,
   ncm: "12345678",
   quality_flags: ["complete"],
-  cost_amount: { source: "erp", value: 10, quality: "current", observed_at: "2026-07-01T00:00:00Z", quality_reason: null },
-  price_amount: { source: "erp", value: 20, quality: "current", observed_at: "2026-07-01T00:00:00Z", quality_reason: null },
-  stock_quantity: { source: "erp", value: 5, quality: "current", observed_at: "2026-07-01T00:00:00Z", quality_reason: null },
+  cost_amount: {
+    source: "erp",
+    value: 10,
+    quality: "current",
+    observed_at: "2026-07-01T00:00:00Z",
+    quality_reason: null,
+  },
+  price_amount: {
+    source: "erp",
+    value: 20,
+    quality: "current",
+    observed_at: "2026-07-01T00:00:00Z",
+    quality_reason: null,
+  },
+  stock_quantity: {
+    source: "erp",
+    value: 5,
+    quality: "current",
+    observed_at: "2026-07-01T00:00:00Z",
+    quality_reason: null,
+  },
 };
 
 const verdict: MarketPriceIntelVerdict = {
@@ -76,7 +97,11 @@ describe("ProdutoPage partial-failure isolation", () => {
     expect(await screen.findByText("Parafuso sextavado")).toBeInTheDocument();
     expect(screen.getByText("CODPROD 90008")).toBeInTheDocument();
 
-    expect(await screen.findByText("Erro ao carregar. Não foi possível carregar o veredicto de mercado.")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Erro ao carregar. Não foi possível carregar o veredicto de mercado.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tentar novamente" })).toBeInTheDocument();
   });
 
@@ -87,7 +112,9 @@ describe("ProdutoPage partial-failure isolation", () => {
 
     renderAt("/catalogo/produtos/90008");
 
-    expect(await screen.findByText("Erro ao carregar. Não foi possível carregar o produto.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Erro ao carregar. Não foi possível carregar o produto."),
+    ).toBeInTheDocument();
 
     expect(screen.getByRole("tab", { name: "Veredicto" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Anúncios vinculados" })).toBeInTheDocument();
@@ -102,11 +129,15 @@ describe("ProdutoPage partial-failure isolation", () => {
 
     renderAt("/catalogo/produtos/90008");
 
-    expect(await screen.findByText("Erro ao carregar. Não foi possível carregar o produto.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Erro ao carregar. Não foi possível carregar o produto."),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
 
     await waitFor(() => expect(screen.getByText("Parafuso sextavado")).toBeInTheDocument());
-    expect(screen.queryByText("Erro ao carregar. Não foi possível carregar o produto.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Erro ao carregar. Não foi possível carregar o produto."),
+    ).not.toBeInTheDocument();
   });
 });

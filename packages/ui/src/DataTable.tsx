@@ -47,13 +47,21 @@ export function DataTable<T>({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12 text-sm text-muted">
-        <div className="animate-spin rounded-full h-5 w-5 border-2 border-border border-t-accent" role="status" aria-label="Carregando" />
+        <div
+          className="animate-spin rounded-full h-5 w-5 border-2 border-border border-t-accent"
+          role="status"
+          aria-label="Carregando"
+        />
       </div>
     );
   }
 
   if (rows.length === 0) {
-    return <div className="flex items-center justify-center py-16 text-sm text-faint">{emptyState ?? "Nenhum item."}</div>;
+    return (
+      <div className="flex items-center justify-center py-16 text-sm text-faint">
+        {emptyState ?? "Nenhum item."}
+      </div>
+    );
   }
 
   function handleSelectAll() {
@@ -75,7 +83,9 @@ export function DataTable<T>({
   return (
     <div className="overflow-x-auto border border-border rounded-card">
       <table className="w-full text-sm text-left">
-        <thead className={`bg-surface-2 border-b border-border ${stickyHeader ? "sticky top-0" : ""}`}>
+        <thead
+          className={`bg-surface-2 border-b border-border ${stickyHeader ? "sticky top-0" : ""}`}
+        >
           <tr>
             {selectionEnabled && (
               <th className="px-3 py-2 text-xs font-medium text-muted uppercase tracking-wide">
@@ -98,7 +108,10 @@ export function DataTable<T>({
               const isActive = sortKey === column.key;
 
               return (
-                <th key={column.key} className={`px-3 py-2 text-xs font-medium text-muted uppercase tracking-wide${alignClass}`}>
+                <th
+                  key={column.key}
+                  className={`px-3 py-2 text-xs font-medium text-muted uppercase tracking-wide${alignClass}`}
+                >
                   {column.sortable ? (
                     <button
                       type="button"

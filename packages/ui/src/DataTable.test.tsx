@@ -143,7 +143,9 @@ describe("DataTable", () => {
     expect(screen.getByRole("status")).toBeInTheDocument();
     expect(screen.queryByRole("cell", { name: "Alpha" })).not.toBeInTheDocument();
 
-    rerender(<DataTable columns={columns} rows={[]} rowKey={(row) => row.id} emptyState="Nothing here" />);
+    rerender(
+      <DataTable columns={columns} rows={[]} rowKey={(row) => row.id} emptyState="Nothing here" />,
+    );
     expect(screen.getByText("Nothing here")).toBeInTheDocument();
 
     rerender(<DataTable columns={columns} rows={[]} rowKey={(row) => row.id} />);

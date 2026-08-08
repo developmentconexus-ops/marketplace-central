@@ -1,8 +1,23 @@
 import type { JSX } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import type { ListingGroupPage, ListingMarketSignal, ListingMoney, ListingReadModel } from "@marketplace-central/sdk-runtime";
-import { DataTable, EmptyState, ErrorState, FreshnessIndicator, LoadingState, UnknownValue, formatMoney, formatSignedPercent, type DataTableColumn } from "@marketplace-central/ui";
+import type {
+  ListingGroupPage,
+  ListingMarketSignal,
+  ListingMoney,
+  ListingReadModel,
+} from "@marketplace-central/sdk-runtime";
+import {
+  DataTable,
+  EmptyState,
+  ErrorState,
+  FreshnessIndicator,
+  LoadingState,
+  UnknownValue,
+  formatMoney,
+  formatSignedPercent,
+  type DataTableColumn,
+} from "@marketplace-central/ui";
 import { listingsQueryKeys } from "@marketplace-central/web-query";
 import { useClient, type Client } from "../../app/ClientContext";
 import { useInstallation } from "../../app/InstallationContext";
@@ -52,15 +67,30 @@ function FreshnessCell({ item }: { item: ListingReadModel }): JSX.Element {
 const columns: DataTableColumn<ListingReadModel>[] = [
   { key: "title", header: "Anúncio", render: (item) => item.title },
   { key: "status", header: "Status", render: (item) => item.status },
-  { key: "position", header: "Posição", render: (item) => <PositionCell item={item} />, align: "right" },
+  {
+    key: "position",
+    header: "Posição",
+    render: (item) => <PositionCell item={item} />,
+    align: "right",
+  },
   {
     key: "price_to_win",
     header: "Preço p/ vencer",
     render: (item) => <Money value={usableSignal(item)?.price_to_win ?? null} />,
     align: "right",
   },
-  { key: "delta_pct", header: "Δ vs. mercado", render: (item) => <DeltaCell item={item} />, align: "right" },
-  { key: "freshness", header: "Atualizado", render: (item) => <FreshnessCell item={item} />, align: "right" },
+  {
+    key: "delta_pct",
+    header: "Δ vs. mercado",
+    render: (item) => <DeltaCell item={item} />,
+    align: "right",
+  },
+  {
+    key: "freshness",
+    header: "Atualizado",
+    render: (item) => <FreshnessCell item={item} />,
+    align: "right",
+  },
 ];
 
 /**
@@ -85,13 +115,20 @@ export function AnunciosVinculadosTab({
 
   if (query.isLoading) return <LoadingState />;
   if (query.isError) {
-    return <ErrorState detail="Não foi possível carregar os anúncios vinculados." onRetry={() => void query.refetch()} />;
+    return (
+      <ErrorState
+        detail="Não foi possível carregar os anúncios vinculados."
+        onRetry={() => void query.refetch()}
+      />
+    );
   }
 
   const groups = query.data?.groups ?? [];
   const group =
     groups.find((candidate) => candidate.product_id === productId) ??
-    (groups.length === 1 && (groups[0].product_id === productId || groups[0].product_id === null) ? groups[0] : undefined);
+    (groups.length === 1 && (groups[0].product_id === productId || groups[0].product_id === null)
+      ? groups[0]
+      : undefined);
   const listings = group?.listings ?? [];
 
   return (
@@ -102,7 +139,10 @@ export function AnunciosVinculadosTab({
       emptyState={
         <EmptyState
           hint={
-            <Link to="/vinculos" className="font-medium text-accent underline decoration-accent-soft underline-offset-2 hover:text-accent-ink">
+            <Link
+              to="/vinculos"
+              className="font-medium text-accent underline decoration-accent-soft underline-offset-2 hover:text-accent-ink"
+            >
               vincular anúncios
             </Link>
           }

@@ -1,7 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { PricingScenario, PricingScenarioListResponse } from "@marketplace-central/sdk-runtime";
+import type {
+  PricingScenario,
+  PricingScenarioListResponse,
+} from "@marketplace-central/sdk-runtime";
 import { ScenariosPanel } from "./ScenariosPanel";
 
 const listPricingScenarios = vi.fn<() => Promise<PricingScenarioListResponse>>();
@@ -19,9 +22,7 @@ const scenarioA: PricingScenario = {
   created_at: "2026-07-18T12:00:00Z",
 };
 
-function renderPanel(
-  props: Partial<React.ComponentProps<typeof ScenariosPanel>> = {},
-) {
+function renderPanel(props: Partial<React.ComponentProps<typeof ScenariosPanel>> = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const onReload = props.onReload ?? vi.fn();
   const utils = render(
@@ -56,7 +57,9 @@ describe("ScenariosPanel — save / reload / delete", () => {
   });
 
   it("saves the current simulation under a name and refreshes the list", async () => {
-    listPricingScenarios.mockResolvedValueOnce({ items: [] }).mockResolvedValue({ items: [scenarioA] });
+    listPricingScenarios
+      .mockResolvedValueOnce({ items: [] })
+      .mockResolvedValue({ items: [scenarioA] });
     createPricingScenario.mockResolvedValue(scenarioA);
     renderPanel();
 
@@ -72,7 +75,11 @@ describe("ScenariosPanel — save / reload / delete", () => {
     };
     expect(req.name).toBe("Cenário A");
     expect(req.id).toBeTruthy();
-    expect(req.payload).toMatchObject({ preco: "104.50", modalidade: "classico", product_id: 90002 });
+    expect(req.payload).toMatchObject({
+      preco: "104.50",
+      modalidade: "classico",
+      product_id: 90002,
+    });
     // List re-fetched → the saved scenario appears.
     expect(await screen.findByText("Cenário A")).toBeInTheDocument();
   });
@@ -86,7 +93,9 @@ describe("ScenariosPanel — save / reload / delete", () => {
   });
 
   it("deletes a saved scenario and refreshes the list", async () => {
-    listPricingScenarios.mockResolvedValueOnce({ items: [scenarioA] }).mockResolvedValue({ items: [] });
+    listPricingScenarios
+      .mockResolvedValueOnce({ items: [scenarioA] })
+      .mockResolvedValue({ items: [] });
     deletePricingScenario.mockResolvedValue(undefined);
     renderPanel();
 

@@ -70,7 +70,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          persist-credentials: false   # see header
+          persist-credentials: false # see header
       - uses: actions/setup-go@v7
         with:
           go-version-file: apps/server_core/go.mod
@@ -96,18 +96,42 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          persist-credentials: false   # see header
+          persist-credentials: false # see header
       - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: npm
       - run: npm ci
+      # Prettier first, because it is the cheapest thing in this job and a
+      # formatting error should not wait behind a type-aware lint. Blocking at
+      # zero and never ratcheted: formatting admits no legitimate exception, so a
+      # ratchet would only record how long the drift had been tolerated.
+      #
+      # Markdown is deliberately out of scope; .prettierignore carries the
+      # measurement that put it there.
+      - name: prettier --check
+        shell: pwsh
+        run: ./scripts/gate.ps1 -Lane format
+
       # --listFiles, not a bare --noEmit: on success tsc prints nothing, so a
       # project whose `include` resolved zero source files exits 0 with the same
       # silence as a clean compile. The lane counts what was loaded.
       - name: tsc --noEmit
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane typecheck
+
+      # ESLint, type-aware, ratcheted at 26 findings over 220 sources.
+      #
+      # The lane asserts coverage before it asserts findings, and that order is
+      # the point. `no-floating-promises`, `no-misused-promises` and
+      # `await-thenable` need the file to belong to a tsconfig; a file outside
+      # `tsconfig.eslint.json` is still reported by ESLint, still contributes zero
+      # findings, and is indistinguishable from a clean file. So every tracked
+      # .ts/.tsx source must appear in the report or the lane fails, whatever the
+      # findings total says.
+      - name: eslint
+        shell: pwsh
+        run: ./scripts/gate.ps1 -Lane lint-web
 
   build-go:
     name: build-go
@@ -120,7 +144,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          persist-credentials: false   # see header
+          persist-credentials: false # see header
       - uses: actions/setup-go@v7
         with:
           go-version-file: apps/server_core/go.mod
@@ -143,9 +167,10 @@ jobs:
       # that `go build` just filled. Running it in lint-go would compile the
       # module twice per PR to keep a job name honest.
       #
-      # It is a ratchet, not a zero: 120 findings at the baseline commit, which
+      # It is a ratchet, not a zero: 122 findings at the baseline commit, which
       # is the first time this repository has ever been linted. It blocks on
-      # INCREASE. contracts/gate/baselines.json holds the numbers and the reason.
+      # INCREASE. contracts/gate/baselines.json holds the numbers and the reason,
+      # including why the baseline is pinned to this runner's platform.
       - name: golangci-lint
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane lint-go
@@ -161,7 +186,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          persist-credentials: false   # see header
+          persist-credentials: false # see header
       - uses: actions/setup-go@v7
         with:
           go-version-file: apps/server_core/go.mod
@@ -184,7 +209,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          persist-credentials: false   # see header
+          persist-credentials: false # see header
       - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
@@ -213,7 +238,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          persist-credentials: false   # see header
+          persist-credentials: false # see header
 
       # The runtime guard below compares needs against EXPECTED, which does not
       # catch the case that matters most: a job added to this file and wired into

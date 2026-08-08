@@ -10,9 +10,17 @@ describe("PaginatedTable", () => {
       <PaginatedTable
         items={items}
         pageSize={25}
-        renderHeader={() => <tr><th>Name</th></tr>}
-        renderRow={(item) => <tr key={item.id}><td>{item.name}</td></tr>}
-      />
+        renderHeader={() => (
+          <tr>
+            <th>Name</th>
+          </tr>
+        )}
+        renderRow={(item) => (
+          <tr key={item.id}>
+            <td>{item.name}</td>
+          </tr>
+        )}
+      />,
     );
     expect(screen.getByText("Item 0")).toBeInTheDocument();
     expect(screen.getByText("Item 24")).toBeInTheDocument();
@@ -24,9 +32,17 @@ describe("PaginatedTable", () => {
       <PaginatedTable
         items={items}
         pageSize={25}
-        renderHeader={() => <tr><th>Name</th></tr>}
-        renderRow={(item) => <tr key={item.id}><td>{item.name}</td></tr>}
-      />
+        renderHeader={() => (
+          <tr>
+            <th>Name</th>
+          </tr>
+        )}
+        renderRow={(item) => (
+          <tr key={item.id}>
+            <td>{item.name}</td>
+          </tr>
+        )}
+      />,
     );
     const table = screen.getByRole("table");
 
@@ -40,9 +56,17 @@ describe("PaginatedTable", () => {
       <PaginatedTable
         items={items}
         pageSize={25}
-        renderHeader={() => <tr><th>Name</th></tr>}
-        renderRow={(item) => <tr key={item.id}><td>{item.name}</td></tr>}
-      />
+        renderHeader={() => (
+          <tr>
+            <th>Name</th>
+          </tr>
+        )}
+        renderRow={(item) => (
+          <tr key={item.id}>
+            <td>{item.name}</td>
+          </tr>
+        )}
+      />,
     );
     expect(screen.getByText(/page 1 of 3/i)).toBeInTheDocument();
   });
@@ -52,9 +76,17 @@ describe("PaginatedTable", () => {
       <PaginatedTable
         items={items}
         pageSize={25}
-        renderHeader={() => <tr><th>Name</th></tr>}
-        renderRow={(item) => <tr key={item.id}><td>{item.name}</td></tr>}
-      />
+        renderHeader={() => (
+          <tr>
+            <th>Name</th>
+          </tr>
+        )}
+        renderRow={(item) => (
+          <tr key={item.id}>
+            <td>{item.name}</td>
+          </tr>
+        )}
+      />,
     );
     fireEvent.click(screen.getByRole("button", { name: /next/i }));
     expect(screen.queryByText("Item 0")).not.toBeInTheDocument();
@@ -68,9 +100,17 @@ describe("PaginatedTable", () => {
       <PaginatedTable
         items={items}
         pageSize={25}
-        renderHeader={() => <tr><th>Name</th></tr>}
-        renderRow={(item) => <tr key={item.id}><td>{item.name}</td></tr>}
-      />
+        renderHeader={() => (
+          <tr>
+            <th>Name</th>
+          </tr>
+        )}
+        renderRow={(item) => (
+          <tr key={item.id}>
+            <td>{item.name}</td>
+          </tr>
+        )}
+      />,
     );
     expect(screen.getByRole("button", { name: /prev/i })).toBeDisabled();
   });
@@ -80,9 +120,17 @@ describe("PaginatedTable", () => {
       <PaginatedTable
         items={items}
         pageSize={25}
-        renderHeader={() => <tr><th>Name</th></tr>}
-        renderRow={(item) => <tr key={item.id}><td>{item.name}</td></tr>}
-      />
+        renderHeader={() => (
+          <tr>
+            <th>Name</th>
+          </tr>
+        )}
+        renderRow={(item) => (
+          <tr key={item.id}>
+            <td>{item.name}</td>
+          </tr>
+        )}
+      />,
     );
     fireEvent.click(screen.getByRole("button", { name: /next/i }));
     fireEvent.click(screen.getByRole("button", { name: /next/i }));
@@ -94,9 +142,17 @@ describe("PaginatedTable", () => {
       <PaginatedTable
         items={items}
         pageSize={25}
-        renderHeader={() => <tr><th>Name</th></tr>}
-        renderRow={(item) => <tr key={item.id}><td>{item.name}</td></tr>}
-      />
+        renderHeader={() => (
+          <tr>
+            <th>Name</th>
+          </tr>
+        )}
+        renderRow={(item) => (
+          <tr key={item.id}>
+            <td>{item.name}</td>
+          </tr>
+        )}
+      />,
     );
     expect(screen.getByText(/showing 1–25 of 60/i)).toBeInTheDocument();
   });
@@ -106,10 +162,18 @@ describe("PaginatedTable", () => {
       <PaginatedTable
         items={[]}
         pageSize={25}
-        renderHeader={() => <tr><th>Name</th></tr>}
-        renderRow={(item: any) => <tr key={item.id}><td>{item.name}</td></tr>}
+        renderHeader={() => (
+          <tr>
+            <th>Name</th>
+          </tr>
+        )}
+        renderRow={(item: any) => (
+          <tr key={item.id}>
+            <td>{item.name}</td>
+          </tr>
+        )}
         emptyState={<p>Nothing here</p>}
-      />
+      />,
     );
     expect(screen.getByText("Nothing here")).toBeInTheDocument();
   });
@@ -119,9 +183,17 @@ describe("PaginatedTable", () => {
       <PaginatedTable
         items={items}
         pageSize={25}
-        renderHeader={() => <tr><th>Name</th></tr>}
-        renderRow={(item) => <tr key={item.id}><td>{item.name}</td></tr>}
-      />
+        renderHeader={() => (
+          <tr>
+            <th>Name</th>
+          </tr>
+        )}
+        renderRow={(item) => (
+          <tr key={item.id}>
+            <td>{item.name}</td>
+          </tr>
+        )}
+      />,
     );
     fireEvent.click(screen.getByRole("button", { name: /next/i }));
     expect(screen.getByText(/page 2 of 3/i)).toBeInTheDocument();
@@ -131,9 +203,17 @@ describe("PaginatedTable", () => {
       <PaginatedTable
         items={newItems}
         pageSize={25}
-        renderHeader={() => <tr><th>Name</th></tr>}
-        renderRow={(item) => <tr key={item.id}><td>{item.name}</td></tr>}
-      />
+        renderHeader={() => (
+          <tr>
+            <th>Name</th>
+          </tr>
+        )}
+        renderRow={(item) => (
+          <tr key={item.id}>
+            <td>{item.name}</td>
+          </tr>
+        )}
+      />,
     );
     expect(screen.getByText(/page 1 of 1/i)).toBeInTheDocument();
   });

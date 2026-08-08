@@ -185,7 +185,8 @@ export function PricingPage() {
   // Working price: explicit input wins, else the product's current price. `preco`
   // stays RAW (pt-BR, what the operator sees / scenarios round-trip); `precoForApi`
   // is the dot-decimal the Go parser expects, normalized only at the SDK send point.
-  const preco = precoInput.trim() !== "" ? precoInput.trim() : selected?.current_price.amount ?? "";
+  const preco =
+    precoInput.trim() !== "" ? precoInput.trim() : (selected?.current_price.amount ?? "");
   const precoForApi = ptBrMoneyToDot(preco);
 
   // A scenario snapshots the working simulation; reloading re-applies it to the
@@ -197,7 +198,10 @@ export function PricingPage() {
   };
   const applyScenario = (payload: Record<string, unknown>) => {
     if (typeof payload.product_id === "number") setSelectedId(payload.product_id);
-    if (typeof payload.modalidade === "string" && MODALIDADES.some((m) => m.key === payload.modalidade)) {
+    if (
+      typeof payload.modalidade === "string" &&
+      MODALIDADES.some((m) => m.key === payload.modalidade)
+    ) {
       setModalidade(payload.modalidade as ModalidadeKey);
     }
     if (typeof payload.preco === "string") setPrecoInput(payload.preco);
@@ -217,13 +221,14 @@ export function PricingPage() {
 
   // comissao_pct is deliberately OMITTED so the backend resolver chain runs
   // (live COTACAO degrau 3 → PADRAO degrau 4). Sending it = MANUAL override.
-  const decomposeInput: PricingCalcInput | null = selected && preco !== ""
-    ? {
-        preco: precoForApi,
-        modalidade,
-        product_id: selected.internal_product_id,
-      }
-    : null;
+  const decomposeInput: PricingCalcInput | null =
+    selected && preco !== ""
+      ? {
+          preco: precoForApi,
+          modalidade,
+          product_id: selected.internal_product_id,
+        }
+      : null;
 
   const decomposeQuery = useQuery({
     queryKey: ["pricing", "decompose", decomposeInput],
@@ -263,7 +268,9 @@ export function PricingPage() {
             aria-expanded={pickerOpen}
             onClick={() => setPickerOpen((v) => !v)}
             className={`cursor-pointer whitespace-nowrap rounded-pill border px-3 py-1 text-[12.5px] font-semibold ${
-              pickerOpen ? "border-accent bg-accent-soft text-accent-ink" : "border-border bg-surface text-muted"
+              pickerOpen
+                ? "border-accent bg-accent-soft text-accent-ink"
+                : "border-border bg-surface text-muted"
             }`}
           >
             Produtos: {products.length} ▾
@@ -273,9 +280,13 @@ export function PricingPage() {
               data-testid="produtos-dropdown"
               className="absolute left-0 top-9 z-20 flex w-[340px] flex-col gap-2 rounded-card border border-border bg-surface p-3.5 shadow-lg"
             >
-              <div className="text-[10.5px] font-semibold tracking-wider text-faint">NA ANÁLISE</div>
+              <div className="text-[10.5px] font-semibold tracking-wider text-faint">
+                NA ANÁLISE
+              </div>
               {products.length === 0 ? (
-                <p className="text-xs text-muted">Nenhum produto vinculado a um anúncio no momento.</p>
+                <p className="text-xs text-muted">
+                  Nenhum produto vinculado a um anúncio no momento.
+                </p>
               ) : (
                 products.map((p) => (
                   <button
@@ -287,10 +298,14 @@ export function PricingPage() {
                       setPickerOpen(false);
                     }}
                     className={`flex items-center gap-2 rounded-control px-1 py-0.5 text-left text-[12.5px] hover:bg-surface-2 ${
-                      selected?.internal_product_id === p.internal_product_id ? "text-accent-ink" : "text-ink"
+                      selected?.internal_product_id === p.internal_product_id
+                        ? "text-accent-ink"
+                        : "text-ink"
                     }`}
                   >
-                    <span className="font-mono text-[11px] text-faint">{p.reference ?? `#${p.internal_product_id}`}</span>
+                    <span className="font-mono text-[11px] text-faint">
+                      {p.reference ?? `#${p.internal_product_id}`}
+                    </span>
                     <span className="flex-1 truncate">{productLabel(p)}</span>
                   </button>
                 ))
@@ -376,8 +391,13 @@ export function PricingPage() {
 
             <div className="flex flex-col gap-3.5 px-4 py-3.5">
               {productMissing ? (
-                <p role="alert" data-testid="scenario-reload-notice" className="rounded-control bg-warn-soft px-3 py-2 text-sm text-warn">
-                  Este produto não está na fonte ativa do catálogo — selecione outro produto ou troque a fonte em Integrações.
+                <p
+                  role="alert"
+                  data-testid="scenario-reload-notice"
+                  className="rounded-control bg-warn-soft px-3 py-2 text-sm text-warn"
+                >
+                  Este produto não está na fonte ativa do catálogo — selecione outro produto ou
+                  troque a fonte em Integrações.
                 </p>
               ) : null}
 
@@ -424,11 +444,15 @@ export function PricingPage() {
               {/* MODALIDADE segmented — active tier shows its resolved margin %,
                   the others stay honest "—" (never a fabricated per-modalidade rate). */}
               <div>
-                <div className="mb-1.5 text-[10.5px] font-semibold tracking-wider text-faint">MODALIDADE</div>
+                <div className="mb-1.5 text-[10.5px] font-semibold tracking-wider text-faint">
+                  MODALIDADE
+                </div>
                 <div className="grid grid-cols-3 gap-1.5">
                   {MODALIDADES.map((m) => {
                     const active = modalidade === m.key;
-                    const pct = active ? decomposeQuery.data?.decomposition.margem_pct ?? null : null;
+                    const pct = active
+                      ? (decomposeQuery.data?.decomposition.margem_pct ?? null)
+                      : null;
                     return (
                       <button
                         key={m.key}
@@ -436,11 +460,19 @@ export function PricingPage() {
                         onClick={() => setModalidade(m.key)}
                         aria-pressed={active}
                         className={`cursor-pointer rounded-control border-[1.5px] px-2 py-1.5 text-center ${
-                          active ? "border-accent bg-accent-soft" : "border-border-2 hover:bg-surface-2"
+                          active
+                            ? "border-accent bg-accent-soft"
+                            : "border-border-2 hover:bg-surface-2"
                         }`}
                       >
-                        <div className={`text-[11px] font-semibold ${active ? "text-accent-ink" : "text-muted"}`}>{m.label}</div>
-                        <div className="mt-0.5 font-mono text-xs font-bold text-ink">{formatPercent(pct) ?? "—"}</div>
+                        <div
+                          className={`text-[11px] font-semibold ${active ? "text-accent-ink" : "text-muted"}`}
+                        >
+                          {m.label}
+                        </div>
+                        <div className="mt-0.5 font-mono text-xs font-bold text-ink">
+                          {formatPercent(pct) ?? "—"}
+                        </div>
                       </button>
                     );
                   })}
@@ -452,7 +484,10 @@ export function PricingPage() {
                 {decomposeQuery.isLoading ? (
                   <LoadingState />
                 ) : decomposeQuery.isError ? (
-                  <ErrorState onRetry={() => void decomposeQuery.refetch()} detail="Falha ao decompor o preço." />
+                  <ErrorState
+                    onRetry={() => void decomposeQuery.refetch()}
+                    detail="Falha ao decompor o preço."
+                  />
                 ) : decomposeQuery.data ? (
                   <DecompositionPanel
                     decomposition={decomposeQuery.data.decomposition}
@@ -462,7 +497,9 @@ export function PricingPage() {
                     tarifa={decomposeQuery.data.tarifa}
                   />
                 ) : (
-                  <p className="text-sm text-muted">Selecione um produto e um preço para simular.</p>
+                  <p className="text-sm text-muted">
+                    Selecione um produto e um preço para simular.
+                  </p>
                 )}
               </div>
 
@@ -488,11 +525,17 @@ export function PricingPage() {
               </div>
 
               <div data-testid="region-comparacao">
-                <MarketComparison productId={selected ? String(selected.internal_product_id) : null} />
+                <MarketComparison
+                  productId={selected ? String(selected.internal_product_id) : null}
+                />
               </div>
 
               <div data-testid="region-aplicar">
-                <ApplyPriceAction installationId={installationId} listingId={listingId} newPrice={precoForApi} />
+                <ApplyPriceAction
+                  installationId={installationId}
+                  listingId={listingId}
+                  newPrice={precoForApi}
+                />
               </div>
 
               <div data-testid="region-cenarios">
@@ -526,7 +569,7 @@ export function PricingPage() {
         onOverride={(uf, interna) => overrideDifal.mutate({ uf, interna })}
         onRetry={() => void difalQuery.refetch()}
         onClose={() => setDifalOpen(false)}
-        savingUf={overrideDifal.isPending ? overrideDifal.variables?.uf ?? null : null}
+        savingUf={overrideDifal.isPending ? (overrideDifal.variables?.uf ?? null) : null}
       />
     </div>
   );

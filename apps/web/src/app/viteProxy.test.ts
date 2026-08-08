@@ -28,26 +28,34 @@ describe("vite dev server proxy", () => {
     expect(ordersProxy).toMatchObject({ target: "http://backend:8080" });
     expect(ordersProxy).toHaveProperty("bypass", expect.any(Function));
 
-    const bypass = (ordersProxy as {
-      bypass: (req: { url?: string; headers: { accept?: string } }) => string | undefined;
-    }).bypass;
-    expect(bypass({
-      url: "/orders?installation=x",
-      headers: { accept: "text/html,application/xhtml+xml" },
-    })).toBe("/orders?installation=x");
-    expect(bypass({
-      url: "/orders",
-      headers: { accept: "application/json" },
-    })).toBeUndefined();
+    const bypass = (
+      ordersProxy as {
+        bypass: (req: { url?: string; headers: { accept?: string } }) => string | undefined;
+      }
+    ).bypass;
+    expect(
+      bypass({
+        url: "/orders?installation=x",
+        headers: { accept: "text/html,application/xhtml+xml" },
+      }),
+    ).toBe("/orders?installation=x");
+    expect(
+      bypass({
+        url: "/orders",
+        headers: { accept: "application/json" },
+      }),
+    ).toBeUndefined();
 
-    expect(Object.keys(proxy ?? {})).not.toEqual(expect.arrayContaining([
-      "/anuncios",
-      "/catalogo",
-      "/estoque",
-      "/precos",
-      "/pedidos",
-      "/integracoes",
-      "/vinculos",
-    ]));
+    expect(Object.keys(proxy ?? {})).not.toEqual(
+      expect.arrayContaining([
+        "/anuncios",
+        "/catalogo",
+        "/estoque",
+        "/precos",
+        "/pedidos",
+        "/integracoes",
+        "/vinculos",
+      ]),
+    );
   });
 });

@@ -21,7 +21,9 @@ export function formatMoney(value: Money): string | null {
 }
 
 /** { rank: 9, total: 14 } → "9º/14". null → dash (ADR-17: no fabricated rank). */
-export function formatPosition(pos: { rank: number; total: number } | null | undefined): string | null {
+export function formatPosition(
+  pos: { rank: number; total: number } | null | undefined,
+): string | null {
   if (!pos || pos.rank == null || pos.total == null) return null;
   return `${pos.rank}º/${pos.total}`;
 }
@@ -31,5 +33,10 @@ export function formatCollectedAt(ts: string | null | undefined): string | null 
   if (!ts || ts.trim() === "" || ts.startsWith("0001-01-01T00:00:00")) return null;
   const d = new Date(ts);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

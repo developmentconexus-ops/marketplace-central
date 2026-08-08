@@ -63,7 +63,10 @@ function renderAppRouter() {
 
 vi.mock("@marketplace-central/feature-inventory", () => ({
   StockSeguroPage: ({ installations }: { installations: Array<{ installation_id: string }> }) => (
-    <div>Stock Seguro route: {installations.map((installation) => installation.installation_id).join(", ")}</div>
+    <div>
+      Stock Seguro route:{" "}
+      {installations.map((installation) => installation.installation_id).join(", ")}
+    </div>
   ),
 }));
 
@@ -99,9 +102,19 @@ describe("AppRouter", () => {
       set_by: null,
     });
     getMutation.mockResolvedValue({
-      protocol_id: "MP-000042", installation_id: "inst_test", type: "listing_pause", state: "applied",
-      actor: "operator_supplied_unverified", intent: {}, selection: {}, totals: {}, source_as_of: null,
-      retried_from: null, created_at: "2026-07-17T12:00:00Z", previewed_at: null, approved_at: null,
+      protocol_id: "MP-000042",
+      installation_id: "inst_test",
+      type: "listing_pause",
+      state: "applied",
+      actor: "operator_supplied_unverified",
+      intent: {},
+      selection: {},
+      totals: {},
+      source_as_of: null,
+      retried_from: null,
+      created_at: "2026-07-17T12:00:00Z",
+      previewed_at: null,
+      approved_at: null,
       finished_at: "2026-07-17T12:00:03Z",
     });
     listMutationItems.mockResolvedValue({ items: [], next_cursor: null, page_size: 50 });
@@ -118,7 +131,9 @@ describe("AppRouter", () => {
   it("mounts the plataforma-config screen at /integracoes with a single app-wide installation fetch", async () => {
     window.history.pushState({}, "", "/integracoes");
     renderAppRouter();
-    expect(await screen.findByRole("heading", { name: "Configuração da plataforma" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Configuração da plataforma" }),
+    ).toBeInTheDocument();
     expect(listIntegrationInstallations).toHaveBeenCalledTimes(1);
   });
 
@@ -185,18 +200,21 @@ describe("AppRouter", () => {
     ["/orders", "/pedidos"],
     ["/integrations", "/integracoes"],
     ["/simulator", "/precos"],
-  ])("redirects %s to %s with the full query string and replaces history", async (legacyPath, targetPath) => {
-    const historyLengthBeforePush = window.history.length;
-    window.history.pushState({}, "", `${legacyPath}?installation=inst_test&tab=x`);
+  ])(
+    "redirects %s to %s with the full query string and replaces history",
+    async (legacyPath, targetPath) => {
+      const historyLengthBeforePush = window.history.length;
+      window.history.pushState({}, "", `${legacyPath}?installation=inst_test&tab=x`);
 
-    renderAppRouter();
+      renderAppRouter();
 
-    await waitFor(() => {
-      expect(window.location.pathname).toBe(targetPath);
-      expect(window.location.search).toBe("?installation=inst_test&tab=x");
-    });
-    expect(window.history.length).toBe(historyLengthBeforePush + 1);
-  });
+      await waitFor(() => {
+        expect(window.location.pathname).toBe(targetPath);
+        expect(window.location.search).toBe("?installation=inst_test&tab=x");
+      });
+      expect(window.history.length).toBe(historyLengthBeforePush + 1);
+    },
+  );
 
   it("renders the anuncios workspace", async () => {
     window.history.pushState({}, "", "/anuncios");
@@ -243,7 +261,9 @@ describe("AppRouter", () => {
     // sections rendering is what proves it is not gated. (Asserting the gate's
     // sentence is absent would not: the header shows the same sentence, and this
     // page has empty states of its own while nothing is connected.)
-    expect(await screen.findByRole("heading", { name: "Configuração da plataforma" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Configuração da plataforma" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Conectar marketplace" })).toBeInTheDocument();
   });
 

@@ -17,7 +17,9 @@ export interface PedidosTableProps {
 
 function stateTag(label: string, className = "bg-slate-100 text-slate-700") {
   return (
-    <span className={`inline-flex whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium ${className}`}>
+    <span
+      className={`inline-flex whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium ${className}`}
+    >
       {label}
     </span>
   );
@@ -51,9 +53,13 @@ function renderRetorno(item: OrderRead) {
   const margem = formatPercent(ratio);
   return (
     <div className="flex items-center gap-1.5 whitespace-nowrap">
-      <span className="font-mono">{retorno ?? <UnknownValue hint="decomposição de custos ainda não disponível (hub C2)" />}</span>
+      <span className="font-mono">
+        {retorno ?? <UnknownValue hint="decomposição de custos ainda não disponível (hub C2)" />}
+      </span>
       {margem != null && ratio != null ? (
-        <span className={`rounded-pill px-1.5 py-0.5 text-[10.5px] font-semibold ${marginBandClass(ratio)}`}>
+        <span
+          className={`rounded-pill px-1.5 py-0.5 text-[10.5px] font-semibold ${marginBandClass(ratio)}`}
+        >
           {margem}
         </span>
       ) : null}
@@ -99,7 +105,9 @@ const columns: DataTableColumn<OrderRead>[] = [
     // The order number is provider_order_id; provider_code is the channel slug ("mercado_livre")
     // for this connector, so it is not shown as the order label (design parity — the Pedido cell is
     // the order number).
-    render: (item) => <span className="font-mono text-[11.5px] text-faint">{item.provider_order_id}</span>,
+    render: (item) => (
+      <span className="font-mono text-[11.5px] text-faint">{item.provider_order_id}</span>
+    ),
   },
   {
     key: "data",
@@ -145,7 +153,12 @@ const columns: DataTableColumn<OrderRead>[] = [
   },
 ];
 
-export function PedidosTable({ items, selectedKeys, onSelectionChange, onRowClick }: PedidosTableProps) {
+export function PedidosTable({
+  items,
+  selectedKeys,
+  onSelectionChange,
+  onRowClick,
+}: PedidosTableProps) {
   return (
     <div className="overflow-x-auto">
       <div style={{ minWidth: "980px" }}>

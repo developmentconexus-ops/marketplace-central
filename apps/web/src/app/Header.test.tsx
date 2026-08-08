@@ -137,7 +137,9 @@ describe("Header", () => {
     renderHeader();
 
     const selector = await screen.findByRole("combobox", { name: "Selecionar instalação" });
-    const options = within(selector).getAllByRole("option").map((option) => option.textContent);
+    const options = within(selector)
+      .getAllByRole("option")
+      .map((option) => option.textContent);
     // The abandoned authorizations carry no account and no data; a previously
     // connected account that dropped off stays selectable so it can be inspected.
     expect(options).toEqual(["WORLDSEG EPIS_MRO", "Conta antiga (não conectada)"]);
@@ -146,6 +148,8 @@ describe("Header", () => {
   it("wires the theme control to useTheme", () => {
     renderHeader();
 
-    expect(() => fireEvent.click(screen.getByRole("button", { name: "Alternar tema" }))).not.toThrow();
+    expect(() =>
+      fireEvent.click(screen.getByRole("button", { name: "Alternar tema" })),
+    ).not.toThrow();
   });
 });

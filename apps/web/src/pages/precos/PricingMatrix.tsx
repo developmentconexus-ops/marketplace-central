@@ -112,7 +112,13 @@ export function PricingMatrix({
   // override. Rows without a current price cannot be decomposed → margin unknown.
   const decomposeResults = useQueries({
     queries: products.map((p) => ({
-      queryKey: ["pricing", "matrix-decompose", p.internal_product_id, p.current_price.amount, modalidade],
+      queryKey: [
+        "pricing",
+        "matrix-decompose",
+        p.internal_product_id,
+        p.current_price.amount,
+        modalidade,
+      ],
       queryFn: () =>
         client.pricingDecompose({
           preco: p.current_price.amount as string,
@@ -152,7 +158,10 @@ export function PricingMatrix({
   const marketErrored = marketQuery.isError;
 
   return (
-    <div data-testid="pricing-matrix" className="overflow-x-auto rounded-lg border border-border bg-surface">
+    <div
+      data-testid="pricing-matrix"
+      className="overflow-x-auto rounded-lg border border-border bg-surface"
+    >
       <table className="w-full min-w-[900px] border-collapse text-left">
         <thead>
           <tr className="bg-surface-2 text-[11px] uppercase tracking-[0.04em] text-muted">
@@ -171,7 +180,8 @@ export function PricingMatrix({
             const decomposition = decomposeResults[i]?.data?.decomposition ?? null;
             const margemValor = decomposition?.margem_valor ?? null;
             const margemPct = decomposition?.margem_pct ?? null;
-            const pctNum = margemPct !== null && Number.isFinite(Number(margemPct)) ? Number(margemPct) : null;
+            const pctNum =
+              margemPct !== null && Number.isFinite(Number(margemPct)) ? Number(margemPct) : null;
             const priced = agg?.status === "OK";
             const isSelected = selectedId === p.internal_product_id;
             // Per-row margin lane state — an errored decompose is unknown, never the
@@ -182,7 +192,8 @@ export function PricingMatrix({
             const hasPrice = p.current_price.amount !== null;
             // "novo" only when the listing query has RESOLVED to zero listings.
             const listing = listingResults[i];
-            const isNovo = listing?.isSuccess === true && (listing.data?.groups[0]?.listings.length ?? 0) === 0;
+            const isNovo =
+              listing?.isSuccess === true && (listing.data?.groups[0]?.listings.length ?? 0) === 0;
 
             return (
               <tr

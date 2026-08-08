@@ -29,7 +29,9 @@ if (typeof globalThis.localStorage === "undefined") {
     (this as Storage & { __store: Map<string, string> }).__store.clear();
   });
   define("key", function (this: Storage, index: number) {
-    return Array.from((this as Storage & { __store: Map<string, string> }).__store.keys())[index] ?? null;
+    return (
+      Array.from((this as Storage & { __store: Map<string, string> }).__store.keys())[index] ?? null
+    );
   });
   const storageEntries: Array<["localStorage" | "sessionStorage", Map<string, string>]> = [
     ["localStorage", stores[0]],
@@ -81,7 +83,12 @@ vi.mock("../../app/ClientContext", () => ({
 }));
 
 function activeSourceConfig(source: string) {
-  return { active_source: source, source_kind: "live_read_through", set_at: "2026-07-24T10:00:00Z", set_by: null };
+  return {
+    active_source: source,
+    source_kind: "live_read_through",
+    set_at: "2026-07-24T10:00:00Z",
+    set_by: null,
+  };
 }
 
 function renderCard() {
@@ -157,7 +164,9 @@ describe("SyncHealthCard", () => {
 
     const row = await screen.findByTestId("sync-health-entity-products");
     expect(within(row).getByTestId("sync-health-badge-products")).toHaveTextContent("ok");
-    expect(within(row).getByTestId("sync-health-badge-products").className).toMatch(/text-accent-ink/);
+    expect(within(row).getByTestId("sync-health-badge-products").className).toMatch(
+      /text-accent-ink/,
+    );
     const timeEl = within(row).getByText("há 5 min");
     expect(timeEl).toHaveAttribute("title", "2026-08-01T11:55:00Z");
     expect(within(row).getByText("(incremental)")).toBeInTheDocument();

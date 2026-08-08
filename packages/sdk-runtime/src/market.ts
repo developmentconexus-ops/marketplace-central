@@ -33,13 +33,10 @@ export interface MarketPriceIntelCollectionRequest {
 export type MarketPriceIntelErpSource = "xlsx" | "catalogo_cliente";
 
 export type MarketPriceIntelMatchStatus = "ACCEPT" | "REVIEW" | "REJECT" | "NO_CANDIDATE";
-export type MarketPriceIntelPriceEvidenceStatus = "OK" | "INSUFFICIENT_MARKET" | "NO_PRICE_EVIDENCE";
+export type MarketPriceIntelPriceEvidenceStatus =
+  "OK" | "INSUFFICIENT_MARKET" | "NO_PRICE_EVIDENCE";
 export type MarketPriceIntelBlockingState =
-  | "NO_CANDIDATE"
-  | "NO_PRICE_EVIDENCE"
-  | "INSUFFICIENT_MARKET"
-  | "SEM_CUSTO"
-  | null;
+  "NO_CANDIDATE" | "NO_PRICE_EVIDENCE" | "INSUFFICIENT_MARKET" | "SEM_CUSTO" | null;
 export type MarketPriceIntelCollectionCauseReason =
   | "NO_IDENTITY"
   | "FLAG_DISABLED"
@@ -73,7 +70,7 @@ export interface MarketPriceIntelCollectionContagens {
 // Field name "decisões" is verbatim per the ratified IC-06/IC-03 amendment.
 export interface MarketPriceIntelCollectionResponse {
   status: MarketPriceIntelCollectionStatus;
-  "decisões": MarketPriceIntelCollectionDecision[];
+  decisões: MarketPriceIntelCollectionDecision[];
   contagens: MarketPriceIntelCollectionContagens;
   causas: MarketPriceIntelCollectionCause[];
 }
@@ -179,10 +176,14 @@ export function createMarketPriceIntelClient(options: {
       return postJson<MarketPriceIntelCollectionResponse>(`/market/collections${query}`, body);
     },
     listMarketSignals: (listingIds: string[]) => {
-      return getJson<MarketPriceIntelSignal[]>(`/market/signals${idsQuery("listing_ids", listingIds)}`);
+      return getJson<MarketPriceIntelSignal[]>(
+        `/market/signals${idsQuery("listing_ids", listingIds)}`,
+      );
     },
     listMarketAggregates: (codprods: string[]) => {
-      return getJson<MarketPriceIntelAggregate[]>(`/market/aggregates${idsQuery("codprod", codprods)}`);
+      return getJson<MarketPriceIntelAggregate[]>(
+        `/market/aggregates${idsQuery("codprod", codprods)}`,
+      );
     },
     // A never-collected codprod still yields a 200 NO_PRICE_EVIDENCE verdict,
     // never a 404 (D-F4-q).

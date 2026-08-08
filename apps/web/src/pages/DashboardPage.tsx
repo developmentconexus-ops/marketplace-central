@@ -33,7 +33,9 @@ export function DashboardPage() {
       }
     }
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [client]);
 
   if (state === "loading") {
@@ -70,7 +72,10 @@ export function DashboardPage() {
 
   const avgMargin =
     simulations.length > 0
-      ? formatPercent(simulations.reduce((s, sim) => s + sim.margin_percent, 0) / simulations.length, 1) ?? "—"
+      ? (formatPercent(
+          simulations.reduce((s, sim) => s + sim.margin_percent, 0) / simulations.length,
+          1,
+        ) ?? "—")
       : "—";
 
   return (
@@ -143,8 +148,8 @@ export function DashboardPage() {
                       s.margin_percent >= 20
                         ? "text-emerald-600"
                         : s.margin_percent >= 10
-                        ? "text-amber-600"
-                        : "text-red-600"
+                          ? "text-amber-600"
+                          : "text-red-600"
                     }`}
                   >
                     {formatPercent(s.margin_percent, 1)}

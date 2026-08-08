@@ -2,8 +2,7 @@ import type { JSX } from "react";
 
 // Monitorados grid — exact column track + min-width from Mercado.dc.html (min-w 920):
 // TIPO | MONITORADO | LEITURA ATUAL | VARIAÇÃO 7D | ALERTA | CHECADO | (action)
-const GRID_COLS =
-  "96px minmax(180px,1.4fr) minmax(150px,1.1fr) 120px 130px 100px 96px";
+const GRID_COLS = "96px minmax(180px,1.4fr) minmax(150px,1.1fr) 120px 130px 100px 96px";
 
 const HEAD = ["TIPO", "MONITORADO", "LEITURA ATUAL", "VARIAÇÃO 7D", "ALERTA", "CHECADO", ""];
 

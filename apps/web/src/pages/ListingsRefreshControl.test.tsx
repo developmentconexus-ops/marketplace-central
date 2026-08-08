@@ -12,7 +12,10 @@ vi.mock("../app/ClientContext", () => ({
   useClient: () => ({ refreshListings, listIntegrationOperationRuns }),
 }));
 
-function run(operation_run_id: string, status: "queued" | "running" | "succeeded" | "failed" | "cancelled") {
+function run(
+  operation_run_id: string,
+  status: "queued" | "running" | "succeeded" | "failed" | "cancelled",
+) {
   return { operation_run_id, status, operation_type: "listings_refresh" };
 }
 
@@ -109,7 +112,9 @@ describe("ListingsRefreshControl", () => {
     fireEvent.click(screen.getByRole("button", { name: "Atualizar" }));
 
     expect(await screen.findByText("concluído")).toBeInTheDocument();
-    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeyNamespaces.listings }));
+    await waitFor(() =>
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeyNamespaces.listings }),
+    );
     // The same client renderControl created and spied on. Reaching for it through
     // mock.instances[0] needed a cast through an unrelated type, which would have
     // gone on compiling had the spy ever moved.

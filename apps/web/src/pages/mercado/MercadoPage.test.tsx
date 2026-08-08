@@ -84,7 +84,9 @@ const catalogPage: CatalogProductFactPage = {
   as_of: "2026-07-19T06:00:00Z",
 };
 
-function makeMarketClient(): MercadoMarketClient & { collectMarketPriceIntel: ReturnType<typeof vi.fn> } {
+function makeMarketClient(): MercadoMarketClient & {
+  collectMarketPriceIntel: ReturnType<typeof vi.fn>;
+} {
   return {
     collectMarketPriceIntel: vi.fn(),
     listMarketSignals: vi.fn(),
@@ -132,9 +134,13 @@ describe("MercadoPage", () => {
   beforeEach(() => {
     listListings.mockReset().mockResolvedValue(listingsPage);
     listCatalogProductFacts.mockReset().mockResolvedValue(catalogPage);
-    getListingsSummary
-      .mockReset()
-      .mockResolvedValue({ total: 1, active: 1, paused: 0, exceptions: {}, as_of: "2026-07-19T06:00:00Z" });
+    getListingsSummary.mockReset().mockResolvedValue({
+      total: 1,
+      active: 1,
+      paused: 0,
+      exceptions: {},
+      as_of: "2026-07-19T06:00:00Z",
+    });
   });
 
   it("renders the header: title, category filter, margin-min pill, source + refresh", async () => {
@@ -229,8 +235,14 @@ describe("MercadoPage", () => {
     await screen.findByText("Kit Parafuso M8 Premium");
     marketClient.collectMarketPriceIntel.mockResolvedValue({
       status: "COMPLETED",
-      "decisões": [],
-      contagens: { ok: 1, no_price_evidence: 0, insufficient_market: 0, no_candidate: 0, sem_custo: 0 },
+      decisões: [],
+      contagens: {
+        ok: 1,
+        no_price_evidence: 0,
+        insufficient_market: 0,
+        no_candidate: 0,
+        sem_custo: 0,
+      },
       causas: [],
     });
 
@@ -245,7 +257,10 @@ describe("MercadoPage", () => {
   it("counts a failed collection instead of aborting the sweep", async () => {
     const { marketClient } = renderPage();
     await screen.findByText("Kit Parafuso M8 Premium");
-    marketClient.collectMarketPriceIntel.mockRejectedValue({ status: 409, error: { code: "collection_in_progress" } });
+    marketClient.collectMarketPriceIntel.mockRejectedValue({
+      status: 409,
+      error: { code: "collection_in_progress" },
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Atualizar agora" }));
 
@@ -294,7 +309,13 @@ describe("MercadoPage", () => {
       .mockImplementation((opts: { cursor?: string }) =>
         Promise.resolve(opts.cursor === "cursor-2" ? page2 : page1),
       );
-    getListingsSummary.mockResolvedValue({ total: 4, active: 4, paused: 0, exceptions: {}, as_of: "2026-07-19T06:00:00Z" });
+    getListingsSummary.mockResolvedValue({
+      total: 4,
+      active: 4,
+      paused: 0,
+      exceptions: {},
+      as_of: "2026-07-19T06:00:00Z",
+    });
 
     renderPage();
     // Rows from BOTH pages must render — a single-page fetch would silently drop page 2.
@@ -314,10 +335,25 @@ describe("MercadoPage", () => {
     let page = 0;
     listListings.mockReset().mockImplementation(() => {
       page += 1;
-      const item: ListingReadModel = { ...listing9001, listing_id: `L${page}`, provider_listing_id: `MLB-${page}` };
-      return Promise.resolve({ items: [item], next_cursor: "more", page_size: 1, as_of: "2026-07-19T06:00:00Z" } satisfies ListingPage);
+      const item: ListingReadModel = {
+        ...listing9001,
+        listing_id: `L${page}`,
+        provider_listing_id: `MLB-${page}`,
+      };
+      return Promise.resolve({
+        items: [item],
+        next_cursor: "more",
+        page_size: 1,
+        as_of: "2026-07-19T06:00:00Z",
+      } satisfies ListingPage);
     });
-    getListingsSummary.mockResolvedValue({ total: 5000, active: 5000, paused: 0, exceptions: {}, as_of: "2026-07-19T06:00:00Z" });
+    getListingsSummary.mockResolvedValue({
+      total: 5000,
+      active: 5000,
+      paused: 0,
+      exceptions: {},
+      as_of: "2026-07-19T06:00:00Z",
+    });
 
     renderPage();
     expect(await screen.findByText(/Varredura limitada aos primeiros/)).toBeInTheDocument();
@@ -337,7 +373,13 @@ describe("MercadoPage", () => {
       as_of: "2026-07-19T06:00:00Z",
     };
     listListings.mockReset().mockResolvedValue(emptyEndless);
-    getListingsSummary.mockResolvedValue({ total: 5000, active: 0, paused: 0, exceptions: {}, as_of: "2026-07-19T06:00:00Z" });
+    getListingsSummary.mockResolvedValue({
+      total: 5000,
+      active: 0,
+      paused: 0,
+      exceptions: {},
+      as_of: "2026-07-19T06:00:00Z",
+    });
 
     renderPage();
     expect(await screen.findByText(/Varredura limitada aos primeiros/)).toBeInTheDocument();
@@ -453,6 +495,8 @@ describe("MercadoPage", () => {
     renderPage();
     fireEvent.click(screen.getByRole("tab", { name: /Oportunidades/ }));
     expect(await screen.findByText(/Varredura limitada aos primeiros/)).toBeInTheDocument();
-    expect(screen.getByText("Nenhum produto do catálogo com demanda de mercado observada.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Nenhum produto do catálogo com demanda de mercado observada."),
+    ).toBeInTheDocument();
   });
 });

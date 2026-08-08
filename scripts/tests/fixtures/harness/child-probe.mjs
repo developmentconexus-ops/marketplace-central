@@ -5,11 +5,13 @@ const [mode, ...args] = process.argv.slice(2);
 
 switch (mode) {
   case "inspect":
-    process.stdout.write(JSON.stringify({
-      args,
-      cwd: process.cwd(),
-      env: Object.fromEntries(Object.entries(process.env).sort(([a], [b]) => a.localeCompare(b))),
-    }));
+    process.stdout.write(
+      JSON.stringify({
+        args,
+        cwd: process.cwd(),
+        env: Object.fromEntries(Object.entries(process.env).sort(([a], [b]) => a.localeCompare(b))),
+      }),
+    );
     break;
   case "streams": {
     const size = Number(args[0] ?? 0);
@@ -23,7 +25,9 @@ switch (mode) {
   case "redact": {
     const candidate = process.env.HARNESS_TEST_CANDIDATE ?? "";
     const encoded = encodeURIComponent(candidate);
-    process.stdout.write(`${candidate}\nKEY=${candidate}\nprefix-${candidate}-suffix\npostgresql://user:${encoded}@host/db\n`);
+    process.stdout.write(
+      `${candidate}\nKEY=${candidate}\nprefix-${candidate}-suffix\npostgresql://user:${encoded}@host/db\n`,
+    );
     process.stderr.write(`SECRET=${candidate}\nhttps://user:${encoded}@host/path\n`);
     break;
   }

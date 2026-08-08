@@ -25,9 +25,11 @@ export function useVinculosBatch() {
   const client = useClient();
   const queryClient = useQueryClient();
 
-  const preview = useMutation<PreviewProductLinkBatchResponse, unknown, ProductLinkBatchApproval[]>({
-    mutationFn: (approvals) => client.previewProductLinkBatch({ approvals }),
-  });
+  const preview = useMutation<PreviewProductLinkBatchResponse, unknown, ProductLinkBatchApproval[]>(
+    {
+      mutationFn: (approvals) => client.previewProductLinkBatch({ approvals }),
+    },
+  );
 
   const apply = useMutation<ApplyProductLinkBatchResponse, unknown, ProductLinkBatchApproval[]>({
     mutationFn: (approvals) =>

@@ -1,4 +1,7 @@
-import type { IntegrationConnectionSnapshot, IntegrationInstallation } from "@marketplace-central/sdk-runtime";
+import type {
+  IntegrationConnectionSnapshot,
+  IntegrationInstallation,
+} from "@marketplace-central/sdk-runtime";
 import { ErrorState, LoadingState } from "@marketplace-central/ui";
 import { installationsQueryKeys } from "@marketplace-central/web-query";
 import { useQueryClient } from "@tanstack/react-query";
@@ -104,7 +107,10 @@ function InstallationRow({ installation }: { installation: IntegrationInstallati
         <span className="text-faint">Ação: {action}</span>
       ) : null}
       {error ? (
-        <span className="text-warn" data-testid={`connection-reauth-error-${installation.installation_id}`}>
+        <span
+          className="text-warn"
+          data-testid={`connection-reauth-error-${installation.installation_id}`}
+        >
           {error}
         </span>
       ) : null}
@@ -112,7 +118,10 @@ function InstallationRow({ installation }: { installation: IntegrationInstallati
           diagnóstico que existe e traduzi-lo apagaria o código que o operador
           precisa citar num chamado. */}
       {reason ? (
-        <span className="break-words text-faint" data-testid={`connection-health-reason-${installation.installation_id}`}>
+        <span
+          className="break-words text-faint"
+          data-testid={`connection-health-reason-${installation.installation_id}`}
+        >
           {reason}
         </span>
       ) : null}
@@ -127,7 +136,10 @@ export function ConnectionHealthCard() {
   const queryClient = useQueryClient();
 
   return (
-    <section aria-labelledby="connection-health-title" className="rounded-card border border-border bg-surface p-4">
+    <section
+      aria-labelledby="connection-health-title"
+      className="rounded-card border border-border bg-surface p-4"
+    >
       <h2 id="connection-health-title" className="text-sm font-semibold text-ink">
         Contas conectadas
       </h2>
@@ -136,7 +148,9 @@ export function ConnectionHealthCard() {
       {status === "error" ? (
         <div className="mt-2" data-testid="connection-health-unknown">
           <ErrorState
-            onRetry={() => void queryClient.refetchQueries({ queryKey: installationsQueryKeys.list() })}
+            onRetry={() =>
+              void queryClient.refetchQueries({ queryKey: installationsQueryKeys.list() })
+            }
             detail="Não foi possível carregar o estado das contas. Estado desconhecido."
           />
         </div>

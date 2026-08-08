@@ -90,7 +90,9 @@ export function FilaView({ items, onOpenOrder }: FilaViewProps) {
                   atrasado ? "bg-warn-soft" : ""
                 }`}
               >
-                <span className={`w-[110px] flex-none truncate text-[11px] font-bold ${tier.className}`}>
+                <span
+                  className={`w-[110px] flex-none truncate text-[11px] font-bold ${tier.className}`}
+                >
                   {tier.text}
                 </span>
                 <span
@@ -113,7 +115,9 @@ export function FilaView({ items, onOpenOrder }: FilaViewProps) {
                     {actionLabel}
                   </button>
                 ) : (
-                  <span className="flex-none whitespace-nowrap text-[11.5px] text-faint">sem ação</span>
+                  <span className="flex-none whitespace-nowrap text-[11.5px] text-faint">
+                    sem ação
+                  </span>
                 )}
               </div>
             );

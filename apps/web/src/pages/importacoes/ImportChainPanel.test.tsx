@@ -1,5 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MarketplaceCentralClientError, type ErpImportChain } from "@marketplace-central/sdk-runtime";
+import {
+  MarketplaceCentralClientError,
+  type ErpImportChain,
+} from "@marketplace-central/sdk-runtime";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ImportChainPanel } from "./ImportChainPanel";

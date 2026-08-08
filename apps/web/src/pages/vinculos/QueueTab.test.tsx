@@ -82,7 +82,11 @@ describe("QueueTab", () => {
           // close that.
           reasons: [
             { anchor: "seller_sku", direction: "FOR", detail: "100%" },
-            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod, unicidade não comprovada" },
+            {
+              anchor: "ean",
+              direction: "FOR",
+              detail: "ean corrobora o mesmo codprod, unicidade não comprovada",
+            },
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
         }),
@@ -102,8 +106,16 @@ describe("QueueTab", () => {
           confidence: 70,
           confidence_band: "MEDIA",
           reasons: [
-            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
-            { anchor: "ean", direction: "UNAVAILABLE", detail: "sem EAN para corroborar o CODPROD" },
+            {
+              anchor: "seller_sku",
+              direction: "FOR",
+              detail: "seller_sku resolve exato para codprod",
+            },
+            {
+              anchor: "ean",
+              direction: "UNAVAILABLE",
+              detail: "sem EAN para corroborar o CODPROD",
+            },
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
         }),
@@ -125,7 +137,11 @@ describe("QueueTab", () => {
           confidence: 25,
           confidence_band: "BAIXA",
           reasons: [
-            { anchor: "ean", direction: "FOR", detail: "ean corrobora codprod, unicidade não comprovada" },
+            {
+              anchor: "ean",
+              direction: "FOR",
+              detail: "ean corrobora codprod, unicidade não comprovada",
+            },
             { anchor: "title", direction: "AGAINST", detail: "62%" },
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
@@ -165,7 +181,10 @@ describe("QueueTab", () => {
     expect(within(rows[2]).getByText("✕ Título: 62%")).toBeInTheDocument();
     // An absence still shows — ranking, never filtering (never blank / never a
     // bare value). The sentence is the generator's own (:530), not a placeholder.
-    expect(within(rows[1]).getByText("– EAN")).toHaveAttribute("title", "ean: sem EAN para corroborar o CODPROD");
+    expect(within(rows[1]).getByText("– EAN")).toHaveAttribute(
+      "title",
+      "ean: sem EAN para corroborar o CODPROD",
+    );
 
     // Regression guard: confidence is already an integer 0-100 percentage (OpenAPI
     // ProductLinkCandidate.confidence). A candidate with confidence: 95 must render
@@ -193,9 +212,22 @@ describe("QueueTab", () => {
           confidence: 70,
           confidence_band: "MEDIA",
           reasons: [
-            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
-            { anchor: "title", direction: "INCOMPARABLE", side: "erp", detail: "produto ERP sem título comparável" },
-            { anchor: "ean", direction: "UNAVAILABLE", detail: "sem EAN para corroborar o CODPROD" },
+            {
+              anchor: "seller_sku",
+              direction: "FOR",
+              detail: "seller_sku resolve exato para codprod",
+            },
+            {
+              anchor: "title",
+              direction: "INCOMPARABLE",
+              side: "erp",
+              detail: "produto ERP sem título comparável",
+            },
+            {
+              anchor: "ean",
+              direction: "UNAVAILABLE",
+              detail: "sem EAN para corroborar o CODPROD",
+            },
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
         }),
@@ -249,7 +281,11 @@ describe("QueueTab", () => {
             provider_item_id: "MLB_LEGACY",
             internal_product_id: 10741,
             reasons: [
-              { anchor: "refforn", direction: "UNAVAILABLE", detail: "refforn inexistente no lado provider" },
+              {
+                anchor: "refforn",
+                direction: "UNAVAILABLE",
+                detail: "refforn inexistente no lado provider",
+              },
             ],
           },
         ),
@@ -302,8 +338,18 @@ describe("QueueTab", () => {
             internal_product_id: 444,
             internal_product_name: "PUXADOR FENG",
             reasons: [
-              { anchor: "seller_sku", direction: "INCOMPARABLE", side: "provider", detail: "anúncio sem seller_sku" },
-              { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "produto ERP sem ean cadastrado" },
+              {
+                anchor: "seller_sku",
+                direction: "INCOMPARABLE",
+                side: "provider",
+                detail: "anúncio sem seller_sku",
+              },
+              {
+                anchor: "ean",
+                direction: "INCOMPARABLE",
+                side: "erp",
+                detail: "produto ERP sem ean cadastrado",
+              },
             ],
           },
         ),
@@ -371,8 +417,17 @@ describe("QueueTab", () => {
               side: "erp",
               detail: "seller_sku sem correspondência",
             },
-            { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "ean sem correspondência" },
-            { anchor: "marca", direction: "UNAVAILABLE", detail: "provider não fornece a âncora marca" },
+            {
+              anchor: "ean",
+              direction: "INCOMPARABLE",
+              side: "erp",
+              detail: "ean sem correspondência",
+            },
+            {
+              anchor: "marca",
+              direction: "UNAVAILABLE",
+              detail: "provider não fornece a âncora marca",
+            },
           ],
         }),
       ],
@@ -393,7 +448,9 @@ describe("QueueTab", () => {
 
     // The permanent absence is not dropped — it is RANKED, and lives behind the
     // toggle. Ranking, never filtering.
-    expect(within(row).getByRole("button", { name: "Mostrar todos os 3 motivos" })).toBeInTheDocument();
+    expect(
+      within(row).getByRole("button", { name: "Mostrar todos os 3 motivos" }),
+    ).toBeInTheDocument();
     expect(within(row).queryByText("– Marca")).not.toBeInTheDocument();
   });
 
@@ -428,8 +485,17 @@ describe("QueueTab", () => {
           confidence_band: "MEDIA",
           reasons: [
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
-            { anchor: "ean", direction: "INCOMPARABLE", side: "both", detail: "sem EAN para corroborar o CODPROD" },
-            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
+            {
+              anchor: "ean",
+              direction: "INCOMPARABLE",
+              side: "both",
+              detail: "sem EAN para corroborar o CODPROD",
+            },
+            {
+              anchor: "seller_sku",
+              direction: "FOR",
+              detail: "seller_sku resolve exato para codprod",
+            },
           ],
         }),
       ],
@@ -441,12 +507,17 @@ describe("QueueTab", () => {
     const chips = within(row).getAllByTestId("motivo-chip");
     // FOR outranks the two absence states; INCOMPARABLE (actionable) outranks
     // UNAVAILABLE (permanent), so the UNAVAILABLE one is the one deferred to +N.
-    expect(chips.map((chip) => chip.getAttribute("data-direction"))).toEqual(["FOR", "INCOMPARABLE"]);
+    expect(chips.map((chip) => chip.getAttribute("data-direction"))).toEqual([
+      "FOR",
+      "INCOMPARABLE",
+    ]);
     expect(chips[1]).toHaveTextContent("? EAN (falta nos dois lados)");
     // Nothing was dropped — the remainder is behind the toggle, in full form.
     fireEvent.click(within(row).getByRole("button", { name: "Mostrar todos os 3 motivos" }));
     expect(screen.getByText(`marca: ${MARCA_UNAVAILABLE_DETAIL}`)).toBeInTheDocument();
-    expect(screen.getByText("ean (falta nos dois lados): sem EAN para corroborar o CODPROD")).toBeInTheDocument();
+    expect(
+      screen.getByText("ean (falta nos dois lados): sem EAN para corroborar o CODPROD"),
+    ).toBeInTheDocument();
   });
 
   it("MUST-FAIL 3 — an INCOMPARABLE `side` outside the SDK union renders VERBATIM", async () => {
@@ -460,19 +531,22 @@ describe("QueueTab", () => {
     // type-correct: the exact class this chip exists to close.
     listProductLinkCandidates.mockResolvedValue({
       items: [
-        driftCandidate("wire drift: the API ships a fourth `side` member before the SDK is regenerated", {
-          candidate_id: "cand_drift_side",
-          provider_item_id: "MLB_DRIFT_SIDE",
-          reasons: [
-            {
-              anchor: "seller_sku",
-              direction: "INCOMPARABLE",
-              side: "fornecedor" as ProductLinkReason["side"],
-              detail: "âncora sem correspondência",
-            },
-            { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
-          ],
-        }),
+        driftCandidate(
+          "wire drift: the API ships a fourth `side` member before the SDK is regenerated",
+          {
+            candidate_id: "cand_drift_side",
+            provider_item_id: "MLB_DRIFT_SIDE",
+            reasons: [
+              {
+                anchor: "seller_sku",
+                direction: "INCOMPARABLE",
+                side: "fornecedor" as ProductLinkReason["side"],
+                detail: "âncora sem correspondência",
+              },
+              { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
+            ],
+          },
+        ),
       ],
     });
 
@@ -501,7 +575,11 @@ describe("QueueTab", () => {
             provider_item_id: "MLB_NOSIDE",
             internal_product_id: 666,
             reasons: [
-              { anchor: "marca", direction: "INCOMPARABLE", detail: "não foi possível comparar a âncora marca" },
+              {
+                anchor: "marca",
+                direction: "INCOMPARABLE",
+                detail: "não foi possível comparar a âncora marca",
+              },
             ],
           },
         ),
@@ -534,7 +612,12 @@ describe("QueueTab", () => {
           confidence: 0,
           confidence_band: "BAIXA",
           reasons: [
-            { anchor: "seller_sku", direction: "INCOMPARABLE", side: "erp", detail: "seller_sku sem correspondência" },
+            {
+              anchor: "seller_sku",
+              direction: "INCOMPARABLE",
+              side: "erp",
+              detail: "seller_sku sem correspondência",
+            },
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
         }),
@@ -670,7 +753,11 @@ describe("QueueTab", () => {
             confidence_band: "ALTA",
             reasons: [
               { anchor: "ean", direction: "FOR", detail: "EAN idêntico" },
-              { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
+              {
+                anchor: "seller_sku",
+                direction: "FOR",
+                detail: "seller_sku resolve exato para codprod",
+              },
               { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
             ],
           }),
@@ -719,7 +806,11 @@ describe("QueueTab", () => {
           // in a field the test never looked at.
           reasons: [
             { anchor: "seller_sku", direction: "FOR", detail: "100%" },
-            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod, unicidade não comprovada" },
+            {
+              anchor: "ean",
+              direction: "FOR",
+              detail: "ean corrobora o mesmo codprod, unicidade não comprovada",
+            },
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
         }),
@@ -745,7 +836,9 @@ describe("QueueTab", () => {
       })
       // After apply, the page-local queue refetches — the applied item leaves the fila.
       .mockResolvedValue({
-        items: [candidate({ candidate_id: "cand_2", provider_item_id: "MLB2", internal_product_id: 222 })],
+        items: [
+          candidate({ candidate_id: "cand_2", provider_item_id: "MLB2", internal_product_id: 222 }),
+        ],
       });
     previewProductLinkBatch.mockResolvedValue({
       items: [
@@ -829,8 +922,16 @@ describe("QueueTab", () => {
           confidence: 95,
           confidence_band: "ALTA",
           reasons: [
-            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
-            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod, unicidade não comprovada" },
+            {
+              anchor: "seller_sku",
+              direction: "FOR",
+              detail: "seller_sku resolve exato para codprod",
+            },
+            {
+              anchor: "ean",
+              direction: "FOR",
+              detail: "ean corrobora o mesmo codprod, unicidade não comprovada",
+            },
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
         }),
@@ -935,7 +1036,11 @@ describe("QueueTab", () => {
             internal_product_id: 111,
             internal_product_name: "Parafuso A",
             reasons: [
-              { anchor: "ean", direction: "PARTIAL" as ProductLinkCandidateItem["reasons"][number]["direction"], detail: "ean parcial" },
+              {
+                anchor: "ean",
+                direction: "PARTIAL" as ProductLinkCandidateItem["reasons"][number]["direction"],
+                detail: "ean parcial",
+              },
               { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato" },
             ],
           },
@@ -1047,16 +1152,36 @@ describe("QueueTab", () => {
   it("does not let two provider codes collapse onto one name through separators (case is NOT covered)", async () => {
     listProductLinkCandidates.mockResolvedValue({
       items: [
-        driftCandidate(NO_DECLARATION_HERE, { candidate_id: "cand_a", provider_item_id: "MLB_A", provider_code: "amazon_marketplace" }),
-        driftCandidate(NO_DECLARATION_HERE, { candidate_id: "cand_b", provider_item_id: "MLB_B", provider_code: "amazon__marketplace" }),
-        driftCandidate(NO_DECLARATION_HERE, { candidate_id: "cand_c", provider_item_id: "MLB_C", provider_code: "_amazon" }),
-        driftCandidate(NO_DECLARATION_HERE, { candidate_id: "cand_d", provider_item_id: "MLB_D", provider_code: "amazon" }),
+        driftCandidate(NO_DECLARATION_HERE, {
+          candidate_id: "cand_a",
+          provider_item_id: "MLB_A",
+          provider_code: "amazon_marketplace",
+        }),
+        driftCandidate(NO_DECLARATION_HERE, {
+          candidate_id: "cand_b",
+          provider_item_id: "MLB_B",
+          provider_code: "amazon__marketplace",
+        }),
+        driftCandidate(NO_DECLARATION_HERE, {
+          candidate_id: "cand_c",
+          provider_item_id: "MLB_C",
+          provider_code: "_amazon",
+        }),
+        driftCandidate(NO_DECLARATION_HERE, {
+          candidate_id: "cand_d",
+          provider_item_id: "MLB_D",
+          provider_code: "amazon",
+        }),
         // The hyphen case, found by the round-8 gate and invisible to this test
         // before it: the old guard inferred injectivity from a round-trip rather
         // than checking a domain, and `typesetSlug` splits on `_` only, so a
         // hyphenated code was ONE token that survived the round-trip untouched
         // and got capitalised. Whitespace variants alone could never surface it.
-        driftCandidate(NO_DECLARATION_HERE, { candidate_id: "cand_f", provider_item_id: "MLB_F", provider_code: "amazon-marketplace" }),
+        driftCandidate(NO_DECLARATION_HERE, {
+          candidate_id: "cand_f",
+          provider_item_id: "MLB_F",
+          provider_code: "amazon-marketplace",
+        }),
         // What is deliberately NOT a fixture here: a code differing from another
         // only by CASE, e.g. `Amazon` beside `amazon`. That collision is real and
         // is NOT closed — `amazon` is inside the domain and typesets to "Amazon",

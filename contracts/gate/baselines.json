@@ -43,5 +43,32 @@
       "staticcheck": 17,
       "unused": 7
     }
+  },
+  "eslint": {
+    "measured_at": "2026-08-08",
+    "measured_on": "93492504",
+    "tool_version": "eslint 10.8.1 / typescript-eslint 8.66.0 / eslint-plugin-react-hooks 7.1.1",
+    "command": "npm run gate:lint-web",
+    "measured_note": [
+      "26 findings over 220 tracked .ts/.tsx sources, 0 parse failures. §2.3a predicted hundreds; it",
+      "was wrong in the cheap direction, and the number is small enough that paying it down is a real",
+      "option rather than a stall. It is still landed as a ratchet, because the rules have to block on",
+      "increase from the day they exist -- a debt of 26 that grows is worse than one that does not.",
+      "",
+      "Unlike golangci-lint this count is not platform-dependent: there are no build tags in",
+      "TypeScript, the file set comes from `git ls-files`, and the .ts/.tsx line endings are pinned to",
+      "LF in .gitattributes. The lane's coverage assertion is the real guard -- every tracked source",
+      "must appear in the report, because a file outside tsconfig.eslint.json is reported as clean by",
+      "the three type-aware rules that could not run on it."
+    ],
+    "total": 26,
+    "by_rule": {
+      "@typescript-eslint/await-thenable": 0,
+      "@typescript-eslint/no-floating-promises": 4,
+      "@typescript-eslint/no-misused-promises": 10,
+      "@typescript-eslint/no-unused-vars": 5,
+      "react-hooks/exhaustive-deps": 4,
+      "react-hooks/rules-of-hooks": 3
+    }
   }
 }

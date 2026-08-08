@@ -1,9 +1,6 @@
 import type { JSX } from "react";
 import { MarginChip, UnknownValue } from "@marketplace-central/ui";
-import type {
-  PricingCalcProfile,
-  PricingDecomposition,
-} from "@marketplace-central/sdk-runtime";
+import type { PricingCalcProfile, PricingDecomposition } from "@marketplace-central/sdk-runtime";
 import { TariffCarimbo } from "./tariffBadge";
 import type { TariffBlock } from "./tariffBadge";
 
@@ -67,32 +64,45 @@ export function DecompositionPanel({
   return (
     <div data-testid="decomposition-panel" className="flex flex-col gap-1 font-mono text-sm">
       {semCusto ? (
-        <p role="alert" data-testid="blocking-sem-custo" className="mb-2 rounded-md bg-warn-soft px-3 py-2 text-warn">
+        <p
+          role="alert"
+          data-testid="blocking-sem-custo"
+          className="mb-2 rounded-md bg-warn-soft px-3 py-2 text-warn"
+        >
           Sem custo do ERP para este produto — a margem não pode ser calculada (SEM_CUSTO).
         </p>
       ) : null}
 
       {!profile.difal_enabled ? (
-        <p data-testid="difal-off-warning" className="mb-2 rounded-md bg-amber-soft px-3 py-2 text-xs text-amber">
+        <p
+          data-testid="difal-off-warning"
+          className="mb-2 rounded-md bg-amber-soft px-3 py-2 text-xs text-amber"
+        >
           Margem sem DIFAL — não use para decisão de venda interestadual.
         </p>
       ) : null}
 
-      <Row label="Preço"><Value amount={d.preco} /></Row>
+      <Row label="Preço">
+        <Value amount={d.preco} />
+      </Row>
       <Row label="(−) Comissão">
         <span className="flex items-center gap-1.5">
           <Value amount={d.comissao} />
           <TariffCarimbo comp={tarifa?.comissao} testId="decomp-tarifa-comissao" />
         </span>
       </Row>
-      <Row label="(−) Taxa fixa"><Value amount={d.taxa_fixa} /></Row>
+      <Row label="(−) Taxa fixa">
+        <Value amount={d.taxa_fixa} />
+      </Row>
       <Row label="(−) Frete">
         <span className="flex items-center gap-1.5">
           <Value amount={d.frete} hint="frete calculado por peso e CEP" />
           {/* Carimbo only beside a shown value: never a provenance stamp next to "—",
               even if the backend's tarifa.frete disagrees with a null decomposition.frete
               (ADR-17). Comissão needs no such guard — decomposition.comissao is never null. */}
-          {d.frete !== null ? <TariffCarimbo comp={tarifa?.frete} testId="decomp-tarifa-frete" /> : null}
+          {d.frete !== null ? (
+            <TariffCarimbo comp={tarifa?.frete} testId="decomp-tarifa-frete" />
+          ) : null}
         </span>
       </Row>
       {/* imposto=null carries TWO different states and they need two different
@@ -133,8 +143,12 @@ export function DecompositionPanel({
       <Row label={`(−) DIFAL${difalUf ? ` ${difalUf}` : ""}`}>
         <Value amount={d.difal} hint="diferencial de alíquota da UF de destino" />
       </Row>
-      <Row label="(−) Tarifa Full"><Value amount={d.tarifa_full} /></Row>
-      <Row label="(−) Custo ERP"><Value amount={d.custo} hint="custo do produto vem do ERP" /></Row>
+      <Row label="(−) Tarifa Full">
+        <Value amount={d.tarifa_full} />
+      </Row>
+      <Row label="(−) Custo ERP">
+        <Value amount={d.custo} hint="custo do produto vem do ERP" />
+      </Row>
 
       <div className="mt-1 flex items-center justify-between border-t border-border pt-2">
         <span className="text-muted">Retorno /un</span>

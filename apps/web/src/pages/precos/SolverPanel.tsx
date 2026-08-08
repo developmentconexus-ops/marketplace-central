@@ -47,7 +47,7 @@ export function SolverPanel({
   const client = useClient();
   const [targetState, setTargetState] = useState<string>("");
   const controlled = onTargetChange !== undefined;
-  const target = controlled ? targetProp ?? "" : targetState;
+  const target = controlled ? (targetProp ?? "") : targetState;
   const setTarget = controlled ? onTargetChange : setTargetState;
   const [result, setResult] = useState<SolveResult | null>(null);
 
@@ -82,9 +82,12 @@ export function SolverPanel({
   // Custo unknown = BLOCKING structural (margin unknowable at any price) — wins over frete.
   const semCusto =
     !reached &&
-    (code === "SEM_CUSTO" || result?.blocking_state === "SEM_CUSTO" || desconhecidos.includes("custo"));
+    (code === "SEM_CUSTO" ||
+      result?.blocking_state === "SEM_CUSTO" ||
+      desconhecidos.includes("custo"));
   // Frete unknown = segment-conditional — actionable guidance, not "inatingível".
-  const semFrete = !reached && !semCusto && (code === "SEM_FRETE" || desconhecidos.includes("frete"));
+  const semFrete =
+    !reached && !semCusto && (code === "SEM_FRETE" || desconhecidos.includes("frete"));
   // Legitimate unreachable: explicit UNREACHABLE_TARGET (or legacy no-code) WITH a real
   // ceiling. An incomplete-data code carrying a ceiling must never masquerade as one.
   const unreachable =
@@ -128,23 +131,41 @@ export function SolverPanel({
       </div>
 
       {solve.isError ? (
-        <ErrorState onRetry={() => solve.mutate()} detail="Não foi possível calcular o preço para a margem alvo." />
+        <ErrorState
+          onRetry={() => solve.mutate()}
+          detail="Não foi possível calcular o preço para a margem alvo."
+        />
       ) : semCusto ? (
-        <p role="alert" data-testid="solver-blocking" className="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">
+        <p
+          role="alert"
+          data-testid="solver-blocking"
+          className="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn"
+        >
           Sem custo do ERP para este produto — o preço não pode ser resolvido (SEM_CUSTO).
         </p>
       ) : semFrete ? (
-        <p role="alert" data-testid="solver-sem-frete" className="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">
-          Sem dados de frete para este produto. Cadastre dimensões (peso, altura, largura, comprimento) OU
-          vincule um anúncio ML para cotar o frete.
+        <p
+          role="alert"
+          data-testid="solver-sem-frete"
+          className="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn"
+        >
+          Sem dados de frete para este produto. Cadastre dimensões (peso, altura, largura,
+          comprimento) OU vincule um anúncio ML para cotar o frete.
         </p>
       ) : unreachable ? (
-        <div data-testid="solver-unreachable" className="rounded-md bg-amber-soft px-3 py-2 text-sm text-amber">
+        <div
+          data-testid="solver-unreachable"
+          className="rounded-md bg-amber-soft px-3 py-2 text-sm text-amber"
+        >
           Alvo inatingível — a melhor margem possível para este produto é{" "}
           <span className="font-mono">{formatPercent(ceiling) ?? `${ceiling}%`}</span>.
         </div>
       ) : incomplete ? (
-        <p role="alert" data-testid="solver-incomplete" className="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">
+        <p
+          role="alert"
+          data-testid="solver-incomplete"
+          className="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn"
+        >
           Dados incompletos para resolver o preço deste produto.
         </p>
       ) : reached && result ? (
@@ -157,7 +178,12 @@ export function SolverPanel({
           </div>
           {result.tarifa ? (
             <div data-testid="solver-tarifa" className="flex flex-wrap gap-4 text-xs">
-              <TariffBadge testId="tarifa-comissao" label="Comissão" comp={result.tarifa.comissao} percent />
+              <TariffBadge
+                testId="tarifa-comissao"
+                label="Comissão"
+                comp={result.tarifa.comissao}
+                percent
+              />
               <TariffBadge testId="tarifa-frete" label="Frete" comp={result.tarifa.frete} />
             </div>
           ) : null}

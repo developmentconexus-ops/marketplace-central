@@ -43,9 +43,7 @@ export function DetailPanel({
       <div className="flex items-start justify-between px-5 py-4 border-b border-border shrink-0">
         <div className="min-w-0">
           <h3 className="text-sm font-semibold text-ink truncate">{title}</h3>
-          {subtitle && (
-            <p className="mt-0.5 text-xs text-muted truncate">{subtitle}</p>
-          )}
+          {subtitle && <p className="mt-0.5 text-xs text-muted truncate">{subtitle}</p>}
         </div>
         <button
           onClick={onClose}
@@ -56,15 +54,9 @@ export function DetailPanel({
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-        {children}
-      </div>
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">{children}</div>
 
-      {footer && (
-        <div className="px-5 py-4 border-t border-border shrink-0">
-          {footer}
-        </div>
-      )}
+      {footer && <div className="px-5 py-4 border-t border-border shrink-0">{footer}</div>}
     </div>
   );
 }

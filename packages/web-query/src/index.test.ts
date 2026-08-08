@@ -81,16 +81,8 @@ describe("web-query registry", () => {
       "list",
       { installation_id: "inst_1", filters },
     ]);
-    expect(mutationsQueryKeys.detail("MP-000001")).toEqual([
-      "mutations",
-      "detail",
-      "MP-000001",
-    ]);
-    expect(mutationsQueryKeys.items("MP-000001")).toEqual([
-      "mutations",
-      "items",
-      "MP-000001",
-    ]);
+    expect(mutationsQueryKeys.detail("MP-000001")).toEqual(["mutations", "detail", "MP-000001"]);
+    expect(mutationsQueryKeys.items("MP-000001")).toEqual(["mutations", "items", "MP-000001"]);
     expect(ordersQueryKeys.list("inst_1", filters)).toEqual([
       "orders",
       "list",
@@ -130,9 +122,7 @@ describe("formatRelativeAge", () => {
   // porque formatAsOf mostrava só a hora do dia. 15 min e 15 dias ficavam
   // byte-idênticos sempre que caíam no mesmo horário.
   it("distingue idades que caem no mesmo horário do dia", () => {
-    expect(formatRelativeAge(ago(15 * MIN), NOW)).not.toBe(
-      formatRelativeAge(ago(15 * DAY), NOW),
-    );
+    expect(formatRelativeAge(ago(15 * MIN), NOW)).not.toBe(formatRelativeAge(ago(15 * DAY), NOW));
     expect(formatRelativeAge(ago(2 * HOUR), NOW)).not.toBe(
       formatRelativeAge(ago(2 * HOUR + 3 * DAY), NOW),
     );

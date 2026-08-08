@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { createMarketplaceCentralClient, MarketplaceCentralClientError, isApiError, hasCode } from "./index";
+import {
+  createMarketplaceCentralClient,
+  MarketplaceCentralClientError,
+  isApiError,
+  hasCode,
+} from "./index";
 
 // Covers what errorContract.golden.test.ts (the acceptance test for this
 // slice, not to be edited here) does not: the fallback path for a body that
@@ -71,7 +76,12 @@ describe("SDK error contract — fallback and narrowing (VC-5)", () => {
   });
 
   it("rejects a bogus code at the TYPE level — discharged by tsc, not by this vitest run", () => {
-    const someError: unknown = new MarketplaceCentralClientError(400, "invalid_erp_source", "x", {});
+    const someError: unknown = new MarketplaceCentralClientError(
+      400,
+      "invalid_erp_source",
+      "x",
+      {},
+    );
     // esbuild (vitest's transform) erases types at runtime, so this line can
     // only prove itself via tsc: hasCode<C extends ApiErrorCode> rejects any
     // C not in the union, so a typo'd code ("invalid_erp_soruce", note the
@@ -91,7 +101,12 @@ describe("SDK error contract — fallback and narrowing (VC-5)", () => {
     // empty details object is a server bug, not a value hasCode should
     // narrow into. A consumer must fall through to its generic branch
     // instead of reading `undefined` while the type said `string`.
-    const err = new MarketplaceCentralClientError(400, "invalid_erp_source", "erp_source inválido", {});
+    const err = new MarketplaceCentralClientError(
+      400,
+      "invalid_erp_source",
+      "erp_source inválido",
+      {},
+    );
 
     expect(isApiError(err)).toBe(true);
     expect(err.code).toBe("invalid_erp_source");

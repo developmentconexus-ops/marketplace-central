@@ -25,7 +25,14 @@ export interface DifalDrawerProps {
  * table is a seed default, not fiscal guidance.
  */
 export function DifalDrawer({
-  open, data, isLoading, isError, onOverride, onRetry, onClose, savingUf,
+  open,
+  data,
+  isLoading,
+  isError,
+  onOverride,
+  onRetry,
+  onClose,
+  savingUf,
 }: DifalDrawerProps): JSX.Element | null {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
 
@@ -34,14 +41,29 @@ export function DifalDrawer({
   const disclaimer = data?.disclaimer ?? DIFAL_DISCLAIMER;
 
   return (
-    <aside role="dialog" aria-label="Tabela DIFAL" data-testid="difal-drawer"
-      className="flex w-96 flex-col gap-3 border-l border-border bg-surface p-4">
+    <aside
+      role="dialog"
+      aria-label="Tabela DIFAL"
+      data-testid="difal-drawer"
+      className="flex w-96 flex-col gap-3 border-l border-border bg-surface p-4"
+    >
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-ink">DIFAL por UF de destino</h2>
-        <button type="button" onClick={onClose} aria-label="Fechar" className="text-muted hover:text-ink">✕</button>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fechar"
+          className="text-muted hover:text-ink"
+        >
+          ✕
+        </button>
       </div>
 
-      <p role="note" data-testid="difal-disclaimer" className="rounded-md bg-surface-2 px-2 py-1 text-xs text-muted">
+      <p
+        role="note"
+        data-testid="difal-disclaimer"
+        className="rounded-md bg-surface-2 px-2 py-1 text-xs text-muted"
+      >
         {disclaimer}
       </p>
 
