@@ -138,6 +138,18 @@ jobs:
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane build
 
+      # golangci-lint, in this job rather than lint-go, because it type-checks
+      # the module and so wants the same toolchain and the same warm build cache
+      # that `go build` just filled. Running it in lint-go would compile the
+      # module twice per PR to keep a job name honest.
+      #
+      # It is a ratchet, not a zero: 120 findings at the baseline commit, which
+      # is the first time this repository has ever been linted. It blocks on
+      # INCREASE. contracts/gate/baselines.json holds the numbers and the reason.
+      - name: golangci-lint
+        shell: pwsh
+        run: ./scripts/gate.ps1 -Lane lint-go
+
   test-go-unit:
     name: test-go-unit
     runs-on: ubuntu-latest

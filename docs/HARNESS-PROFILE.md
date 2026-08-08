@@ -29,8 +29,10 @@ now-retired file as it stood at ratification time).
 
 - **One entry point: `npm run gate`** (`scripts/gate.ps1`, added 2026-08-08 for issue #2).
   Runs the L0 and non-integration L1 lanes as a set — gofmt, `go build` + `go vet`, typecheck,
-  `go test ./...`, vitest — in cost order, and `.github/workflows/ci.yml` invokes the same file
-  lane by lane (`-Lane gofmt|build|typecheck|test-go|test-web`). No lane logic lives in the
+  golangci-lint, `go test ./...`, vitest — in cost order, and `.github/workflows/ci.yml` invokes
+  the same file lane by lane (`-Lane gofmt|build|typecheck|lint-go|test-go|test-web`). The
+  `lint-go` lane is a **shrink-only ratchet** against `contracts/gate/baselines.json` (120
+  findings at `81611a70`, the first lint this repository has ever had), not a zero. No lane logic lives in the
   workflow. The audit finding this closes is that the checks existed and were good, but which
   ones ran on a given change was a function of what someone remembered; a second copy of the
   logic in CI would reproduce that in a form that looks like a fix. Every lane prints an

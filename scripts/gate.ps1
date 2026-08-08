@@ -10,7 +10,8 @@
   existed and were good; nothing invoked them as a set, so which ones ran on any
   given change was a function of what someone remembered.
 
-  This file is the set. `npm run gate` runs it locally; `.github/workflows/ci.yml`
+  This file is the set: gofmt, `go build` + `go vet`, typecheck, golangci-lint,
+  `go test ./...`, vitest. `npm run gate` runs it locally; `.github/workflows/ci.yml`
   invokes the same lanes by name. Neither owns a copy of the logic -- a gate the
   operator cannot reproduce on their own machine is its own defect class, and a
   gate whose CI form has drifted from its local form is that class wearing a
@@ -32,7 +33,7 @@
 #>
 [CmdletBinding()]
 param(
-  [ValidateSet('all', 'gofmt', 'build', 'test-go', 'typecheck', 'test-web')]
+  [ValidateSet('all', 'gofmt', 'build', 'lint-go', 'test-go', 'typecheck', 'test-web')]
   [string]$Lane = 'all',
   [switch]$ContinueOnFailure
 )
@@ -187,6 +188,106 @@ function Invoke-GateBuild {
   return New-GateVerdict -Lane 'build' -Passed $true -Counts 'build=ok vet=ok'
 }
 
+# Pinned, not `@latest`. A gate whose tool version floats reports a different
+# number on a different day, and the ratchet would attribute the change to
+# whoever happened to push that morning. Bump this deliberately, in a PR that
+# also re-measures the baseline.
+$script:GolangciLintVersion = 'v2.12.2'
+
+# The linters .golangci.yml asks for, plus `typecheck`, which golangci-lint
+# always runs. Asserted against what the tool reports as enabled: a config file
+# that failed to load leaves the tool running its own defaults and reporting a
+# healthy small number over the wrong rules.
+$script:GolangciLintExpected = @(
+  'bodyclose', 'errcheck', 'errorlint', 'exhaustive', 'ineffassign',
+  'noctx', 'rowserrcheck', 'sqlclosecheck', 'staticcheck', 'typecheck', 'unused'
+) | Sort-Object
+
+function Invoke-GateLintGo {
+  $baselinePath = Join-Path $repositoryRoot 'contracts/gate/baselines.json'
+  if (-not (Test-Path -LiteralPath $baselinePath -PathType Leaf)) {
+    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts 'baseline=missing' `
+      -Reason "no ratchet baseline at $baselinePath. A lint gate with no baseline either blocks on everything or on nothing."
+  }
+  $baselineDocument = Get-Content -LiteralPath $baselinePath -Raw | ConvertFrom-Json
+  $baseline = ConvertTo-GateCountMap -Object $baselineDocument.'golangci-lint'.by_linter
+
+  # The analysed file set is a function of the build tags in force, so the count
+  # is a function of the platform. Measured 2026-08-08: the Linux runner reports
+  # errcheck=30 and this Windows host reports 28, because gcc is present there
+  # and absent here, so `//go:build cgo` selects `oracle_cgo.go` and
+  # `open_cgo.go` on one and their `!cgo` twins on the other.
+  #
+  # The baseline is therefore pinned to the enforcing platform. A run elsewhere
+  # still blocks on an increase -- an increase is real everywhere -- but its
+  # shrinks are not evidence of anything, and must not be printed as though they
+  # were. Fewer findings because fewer files compiled is the same lie as a green
+  # suite that ran nothing, one level up.
+  $goos = (& go env GOOS 2>$null)
+  $cgo = (& go env CGO_ENABLED 2>$null)
+  $platform = "goos=$goos cgo=$cgo"
+  $baselinePlatform = "goos=$($baselineDocument.'golangci-lint'.measured_on_goos) cgo=$($baselineDocument.'golangci-lint'.measured_on_cgo)"
+  $platformMatches = ($platform -eq $baselinePlatform)
+  Write-Host "$platform baseline_platform=$baselinePlatform comparable=$platformMatches"
+
+  $reportPath = Join-Path $logDirectory 'golangci.json'
+  if (Test-Path -LiteralPath $reportPath) { Remove-Item -LiteralPath $reportPath -Force }
+  # `go run <module>@<version>` rather than an installed binary or a CI-only
+  # action: the same invocation has to work on a developer machine and on a
+  # runner, and it leaves go.mod and go.sum untouched (verified 2026-08-08).
+  $result = Invoke-GateTool -Name 'golangci-lint' -FilePath 'go' `
+    -ArgumentList @(
+      'run', "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$($script:GolangciLintVersion)",
+      'run', "--output.json.path=$reportPath", './...') `
+    -WorkingDirectory $serverCore
+
+  if (-not (Test-Path -LiteralPath $reportPath -PathType Leaf)) {
+    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts 'report=missing' `
+      -Reason "golangci-lint wrote no report (exit $($result.ExitCode)). The lane cannot report zero findings for a run that did not happen."
+  }
+  $measurement = Measure-GateGolangciLint -Json (Get-Content -LiteralPath $reportPath -Raw)
+
+  # Exit 1 is what golangci-lint returns when it found issues, which is the
+  # normal state under a ratchet. Anything else is the tool failing to run, and
+  # that must not read as a clean lane.
+  if ($result.ExitCode -notin @(0, 1)) {
+    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts "total=$($measurement.Total)" `
+      -Reason "golangci-lint exited $($result.ExitCode), which is neither clean nor findings."
+  }
+
+  $enabledDrift = @(Compare-Object -ReferenceObject $script:GolangciLintExpected -DifferenceObject $measurement.Enabled)
+  if ($enabledDrift.Count -ne 0) {
+    $detail = ($enabledDrift | ForEach-Object { "$($_.SideIndicator) $($_.InputObject)" }) -join ', '
+    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts "enabled=$($measurement.Enabled.Count)" `
+      -Reason "the enabled linter set is not the configured one ($detail). A count over the wrong rules is not a smaller count."
+  }
+
+  $measuredMap = @{}
+  foreach ($key in @($baseline.Keys)) { $measuredMap[$key] = 0 }
+  foreach ($key in @($measurement.ByLinter.Keys)) { $measuredMap[$key] = $measurement.ByLinter[$key] }
+  $comparison = Compare-GateRatchet -Measured $measuredMap -Baseline $baseline
+
+  $counts = "total=$($measurement.Total) baseline=$($baselineDocument.'golangci-lint'.total) enabled=$($measurement.Enabled.Count)"
+  Write-Host $counts
+  foreach ($line in @($measurement.ByLinter.Keys | Sort-Object)) {
+    Write-Host ("  {0,-14} {1,4}  baseline {2,4}" -f $line, $measurement.ByLinter[$line], $(if ($baseline.ContainsKey($line)) { $baseline[$line] } else { 'n/a' }))
+  }
+  foreach ($line in @($comparison.Decreased)) {
+    if ($platformMatches) {
+      Write-Host "shrink: $line -- commit the lower baseline in this PR"
+    } else {
+      Write-Host "lower here, NOT a shrink: $line -- measured on $platform, baseline on $baselinePlatform. Different build tags select different files; do not commit this number."
+    }
+  }
+  if (-not $comparison.Passed) {
+    foreach ($line in @($comparison.Increased)) { Write-Host "increase: $line" }
+    foreach ($line in @($comparison.Unknown)) { Write-Host "unknown linter, absent from the baseline: $line" }
+    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts $counts `
+      -Reason 'golangci-lint findings increased over the committed baseline, or a linter appeared that the baseline does not name.'
+  }
+  return New-GateVerdict -Lane 'lint-go' -Passed $true -Counts $counts
+}
+
 function Invoke-GateGoTest {
   # ./... and not ./tests/unit/...: the latter is 14 test files, internal/ holds
   # 353. The integration lane is invisible here regardless -- it sits behind
@@ -260,6 +361,7 @@ $lanes = [ordered]@{
   'gofmt'     = ${function:Invoke-GateGofmt}
   'build'     = ${function:Invoke-GateBuild}
   'typecheck' = ${function:Invoke-GateTypecheck}
+  'lint-go'   = ${function:Invoke-GateLintGo}
   'test-go'   = ${function:Invoke-GateGoTest}
   'test-web'  = ${function:Invoke-GateTestWeb}
 }

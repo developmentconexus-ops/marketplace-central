@@ -116,4 +116,111 @@ function Measure-GateGofmt {
   }
 }
 
-Export-ModuleMember -Function Measure-GateGoTest, Measure-GateVitest, Measure-GateTsc, Measure-GateGofmt, Remove-GateAnsi
+function Measure-GateGolangciLint {
+  <#
+    Reads golangci-lint's JSON report. The counts come from the issue list rather
+    than from the human-readable summary, because the summary is formatting and
+    the list is the fact.
+
+    `Enabled` is returned so the caller can assert the enabled linter set against
+    the one the config asks for. A config file that failed to load leaves
+    golangci-lint running its own defaults and reporting a healthy small number
+    over the wrong rules -- green, for a reason unrelated to the code.
+  #>
+  [CmdletBinding()]
+  param([Parameter(Mandatory)][AllowEmptyString()][string]$Json)
+
+  if ([string]::IsNullOrWhiteSpace($Json)) {
+    return [pscustomobject]@{ Total = -1; ByLinter = @{}; Enabled = @() }
+  }
+  $report = $Json | ConvertFrom-Json
+  $issues = @()
+  if ($report.PSObject.Properties.Name -contains 'Issues' -and $null -ne $report.Issues) {
+    $issues = @($report.Issues)
+  }
+  $byLinter = @{}
+  foreach ($issue in $issues) {
+    $linter = [string]$issue.FromLinter
+    if (-not $byLinter.ContainsKey($linter)) { $byLinter[$linter] = 0 }
+    $byLinter[$linter] = $byLinter[$linter] + 1
+  }
+  $enabled = @()
+  if ($report.PSObject.Properties.Name -contains 'Report' -and $null -ne $report.Report -and
+      $report.Report.PSObject.Properties.Name -contains 'Linters') {
+    $enabled = @($report.Report.Linters |
+      Where-Object { $_.PSObject.Properties.Name -contains 'Enabled' -and $_.Enabled } |
+      ForEach-Object { [string]$_.Name })
+  }
+  return [pscustomobject]@{
+    Total    = $issues.Count
+    ByLinter = $byLinter
+    Enabled  = @($enabled | Sort-Object)
+  }
+}
+
+function Compare-GateRatchet {
+  <#
+    Shrink-only comparison of measured counts against a committed baseline.
+
+    Three verdicts, and the third is the one that makes this an instrument rather
+    than a formality:
+
+      - measured <= baseline for every key: PASS, and any shrink is reported so
+        the lower number can be committed in the same PR that earned it.
+      - measured > baseline for any key: FAIL. This is the ratchet.
+      - a key present in the measurement and absent from the baseline: FAIL. An
+        unknown key means the enabled set moved without the baseline moving with
+        it. Treating it as a baseline of zero would be strictly stricter and
+        sounds safer, but it hides the drift behind a finding about code; the
+        drift is the thing to report.
+
+    A key present in the baseline and absent from the measurement is a shrink to
+    zero, not an error -- that is the direction this is supposed to move.
+  #>
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory)][hashtable]$Measured,
+    [Parameter(Mandatory)][hashtable]$Baseline
+  )
+
+  $increased = @()
+  $decreased = @()
+  $unknown = @()
+  foreach ($key in @($Measured.Keys | Sort-Object)) {
+    if (-not $Baseline.ContainsKey($key)) {
+      $unknown += "$key=$($Measured[$key])"
+      continue
+    }
+    $delta = [int]$Measured[$key] - [int]$Baseline[$key]
+    if ($delta -gt 0) { $increased += "$key=$($Measured[$key]) baseline=$($Baseline[$key]) +$delta" }
+    elseif ($delta -lt 0) { $decreased += "$key=$($Measured[$key]) baseline=$($Baseline[$key]) $delta" }
+  }
+  foreach ($key in @($Baseline.Keys | Sort-Object)) {
+    if ($Measured.ContainsKey($key)) { continue }
+    if ([int]$Baseline[$key] -gt 0) { $decreased += "$key=0 baseline=$($Baseline[$key]) -$($Baseline[$key])" }
+  }
+  return [pscustomobject]@{
+    Passed    = ($increased.Count -eq 0 -and $unknown.Count -eq 0)
+    Increased = $increased
+    Decreased = $decreased
+    Unknown   = $unknown
+  }
+}
+
+function ConvertTo-GateCountMap {
+  <#
+    PSCustomObject to hashtable. ConvertFrom-Json yields the former and
+    Compare-GateRatchet takes the latter; doing this inline at both call sites is
+    how the two ends come to disagree about a missing key.
+  #>
+  [CmdletBinding()]
+  param([Parameter(Mandatory)][AllowNull()]$Object)
+
+  $map = @{}
+  if ($null -eq $Object) { return $map }
+  foreach ($property in $Object.PSObject.Properties) { $map[$property.Name] = [int]$property.Value }
+  return $map
+}
+
+Export-ModuleMember -Function Measure-GateGoTest, Measure-GateVitest, Measure-GateTsc, Measure-GateGofmt, `
+  Remove-GateAnsi, Measure-GateGolangciLint, Compare-GateRatchet, ConvertTo-GateCountMap

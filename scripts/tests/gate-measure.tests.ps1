@@ -159,9 +159,100 @@ Assert-True ($gateSource -match '\$measurement\.Passed -le 0') `
   'the vitest lane no longer fails on a run with no stated result'
 Assert-True ($gateSource -match '\$discovered\.Count -eq 0') `
   'the gofmt lane no longer fails when the file filter reaches nothing'
+# Measured 2026-08-08: linux/cgo=1 reports errcheck=30, windows/cgo=0 reports 28.
+# Without this, a Windows run reports a shrink it did not earn and someone
+# commits a baseline the enforcing platform cannot meet.
+Assert-True ($gateSource -match '\$platformMatches') `
+  'the lint lane no longer distinguishes a real shrink from a smaller analysed file set'
+Assert-True ($gateSource -match 'NOT a shrink') `
+  'the lint lane once again prints a cross-platform decrease as though it were progress'
 Assert-True ($gateSource -match '\$gofmtExitFailures -gt 0') `
   'the gofmt lane no longer fails when gofmt itself exits non-zero'
 Assert-True ($gateSource -match 'Test-Path -LiteralPath \(Join-Path \$repositoryRoot \$_\) -PathType Leaf') `
   'the gofmt lane no longer filters index paths deleted from the worktree'
+
+# --- golangci-lint -------------------------------------------------------
+
+$lintReport = @'
+{
+  "Issues": [
+    { "FromLinter": "errcheck",  "Pos": { "Filename": "internal/a/a.go" } },
+    { "FromLinter": "errcheck",  "Pos": { "Filename": "internal/b/b.go" } },
+    { "FromLinter": "bodyclose", "Pos": { "Filename": "internal/c/c.go" } }
+  ],
+  "Report": {
+    "Linters": [
+      { "Name": "errcheck",  "Enabled": true },
+      { "Name": "bodyclose", "Enabled": true },
+      { "Name": "gocyclo" }
+    ]
+  }
+}
+'@
+$lintMeasured = Measure-GateGolangciLint -Json $lintReport
+Assert-True ($lintMeasured.Total -eq 3) "golangci total wrong: $($lintMeasured.Total)"
+Assert-True ($lintMeasured.ByLinter['errcheck'] -eq 2) 'golangci per-linter count wrong'
+Assert-True (@($lintMeasured.Enabled) -join ',' -eq 'bodyclose,errcheck') "golangci enabled set wrong: $(@($lintMeasured.Enabled) -join ',')"
+
+# A clean run still writes a report, and `Issues` is null rather than an empty
+# array. Reading that as -1 would make a genuinely clean lane look like a lane
+# that never ran.
+$lintClean = '{ "Issues": null, "Report": { "Linters": [ { "Name": "errcheck", "Enabled": true } ] } }'
+Assert-True ((Measure-GateGolangciLint -Json $lintClean).Total -eq 0) 'a clean golangci report did not measure as zero issues'
+
+# No report at all is a different fact: the tool did not run to completion, and
+# the lane must not report its findings as zero.
+Assert-True ((Measure-GateGolangciLint -Json '').Total -eq -1) 'a missing golangci report measured as zero findings'
+
+# --- the ratchet ---------------------------------------------------------
+
+$baseline = @{ errcheck = 28; bodyclose = 8; unused = 7 }
+
+$flat = Compare-GateRatchet -Measured @{ errcheck = 28; bodyclose = 8; unused = 7 } -Baseline $baseline
+Assert-True ($flat.Passed) 'an unchanged count did not pass the ratchet'
+Assert-True ($flat.Increased.Count -eq 0 -and $flat.Decreased.Count -eq 0) 'an unchanged count reported movement'
+
+$grew = Compare-GateRatchet -Measured @{ errcheck = 29; bodyclose = 8; unused = 7 } -Baseline $baseline
+Assert-True (-not $grew.Passed) 'the ratchet passed an increase'
+Assert-True ($grew.Increased[0] -match 'errcheck=29') 'the ratchet did not name the linter that grew'
+
+$shrank = Compare-GateRatchet -Measured @{ errcheck = 20; bodyclose = 8; unused = 7 } -Baseline $baseline
+Assert-True ($shrank.Passed) 'the ratchet blocked a decrease'
+Assert-True ($shrank.Decreased[0] -match 'errcheck=20') 'a decrease was not reported for committing'
+
+# A linter that appears in the run and not in the baseline. Treating it as a
+# baseline of zero would be stricter and sounds safer, but it hides the drift
+# behind a finding about code; the drift is the thing to report.
+$unknown = Compare-GateRatchet -Measured @{ errcheck = 28; bodyclose = 8; unused = 7; noctx = 1 } -Baseline $baseline
+Assert-True (-not $unknown.Passed) 'the ratchet passed a linter the baseline does not name'
+Assert-True ($unknown.Unknown[0] -match 'noctx=1') 'the unnamed linter was not reported'
+
+# The opposite direction is a shrink to zero, which is where this is supposed to
+# go -- not an error.
+$gone = Compare-GateRatchet -Measured @{ errcheck = 28; bodyclose = 8 } -Baseline $baseline
+Assert-True ($gone.Passed) 'a linter reaching zero findings failed the ratchet'
+Assert-True ($gone.Decreased[0] -match 'unused=0') 'a linter reaching zero was not reported as a shrink'
+
+# --- the committed baseline is the one the lane reads --------------------
+#
+# A baseline whose per-linter numbers do not add up to its own stated total is
+# how a ratchet quietly gains headroom.
+
+$baselinePath = Join-Path $repoRoot 'contracts/gate/baselines.json'
+Assert-True (Test-Path -LiteralPath $baselinePath -PathType Leaf) 'RED: no ratchet baseline committed'
+$baselineDocument = Get-Content -LiteralPath $baselinePath -Raw | ConvertFrom-Json
+$committed = ConvertTo-GateCountMap -Object $baselineDocument.'golangci-lint'.by_linter
+$sum = 0
+foreach ($value in $committed.Values) { $sum += [int]$value }
+Assert-True ($sum -eq [int]$baselineDocument.'golangci-lint'.total) `
+  "the golangci-lint baseline's per-linter counts sum to $sum but it states a total of $($baselineDocument.'golangci-lint'.total)"
+
+$gateSourceForLint = Get-Content -Raw -LiteralPath $gateScript
+foreach ($linter in @($committed.Keys)) {
+  Assert-True ($gateSourceForLint -match [regex]::Escape("'$linter'")) `
+    "the baseline names $linter but the lane's expected enabled set does not"
+}
+Assert-True ($gateSourceForLint -match '\$enabledDrift\.Count -ne 0') `
+  'the lint lane no longer fails when the enabled linter set drifts from the configured one'
 
 Write-Output 'PASS gate measurement tests'

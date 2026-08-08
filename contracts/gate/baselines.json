@@ -1,0 +1,47 @@
+{
+  "$comment": [
+    "Ratchet baselines. Each entry is a violation count that is allowed to shrink and never to grow.",
+    "GATE-TOPOLOGY.md §2.3a: these instruments have never run on this repository, so their first run",
+    "produces findings in the hundreds. Paying them down as a precondition would stall issue #2 behind",
+    "unrelated work; running them non-blocking would make them annotation, which is level 5 with a",
+    "config file on. So they block on INCREASE from the day they land.",
+    "",
+    "An unknown key is a failure, not a pass. A linter that appears in a run but not here means the",
+    "enabled set moved without the baseline moving with it, and the gate must not treat that as zero.",
+    "",
+    "When a count drops, commit the lower number in the same PR that dropped it. A baseline left above",
+    "the truth is headroom for a regression nobody will see."
+  ],
+  "golangci-lint": {
+    "measured_at": "2026-08-08",
+    "measured_on": "75106986",
+    "tool_version": "v2.12.2",
+    "command": "npm run gate:lint-go",
+    "measured_on_goos": "linux",
+    "measured_on_cgo": "1",
+    "platform_note": [
+      "Pinned to the enforcing platform, which is the CI runner, because the analysed file set is a",
+      "function of the build tags in force. gcc is present on the runner and absent on a bare Windows",
+      "host, so `//go:build cgo` selects oracle_cgo.go and open_cgo.go there and their `!cgo` twins",
+      "here. Measured 2026-08-08: errcheck 30 on linux/cgo=1, 28 on windows/cgo=0, every other linter",
+      "identical.",
+      "",
+      "A run on another platform still blocks on an increase -- an increase is real everywhere -- but",
+      "the lane refuses to call its lower numbers a shrink. Fewer findings because fewer files",
+      "compiled is not progress."
+    ],
+    "total": 122,
+    "by_linter": {
+      "bodyclose": 8,
+      "errcheck": 30,
+      "errorlint": 30,
+      "exhaustive": 19,
+      "ineffassign": 5,
+      "noctx": 3,
+      "rowserrcheck": 0,
+      "sqlclosecheck": 3,
+      "staticcheck": 17,
+      "unused": 7
+    }
+  }
+}
