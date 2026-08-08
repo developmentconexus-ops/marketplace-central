@@ -119,11 +119,19 @@ jobs:
           # -skip TestModuleBoundaryADR023: that test is RED on main today
           # (234 cross-module import violations, measured 2026-08-08 at
           # main d0a96216, identical count on this branch, which touches no
-          # imports). It is pre-existing architecture debt, not a regression.
-          # A required check that can never be green gets switched off, so the
-          # debt is named here instead of quietly widening the lane's silence.
-          # DELETE THIS SKIP when the ADR-023 violations reach zero; the issue
-          # tracking them is the only thing that removes this line.
+          # imports). It is red BY DESIGN and already has an owner -- its own
+          # header says so: "This test is the RED that opens Wave 1 ... the
+          # wave's acceptance is a measurement and not a green test."
+          #
+          # Owner: Onda 1 of docs/superpowers/plans/2026-08-05-arquitetura-\
+          # protocolo-de-modulo-plan.md, tasks 1.1 through 1.6, which drive the
+          # count to zero target by target. ADR-023 §2 is the rule itself.
+          #
+          # A required check that can never be green gets switched off, taking
+          # the rest of the lane with it, so the one deliberate red is skipped
+          # by name rather than the whole lane staying narrow. DELETE THIS SKIP
+          # when Onda 1 task 1.5 lands -- that is the task that either reaches
+          # zero or converts the residue into a baseline with a stated reason.
           #
           # -count=1 defeats the test cache: a cached PASS is not evidence that
           # this commit's tests ran.
