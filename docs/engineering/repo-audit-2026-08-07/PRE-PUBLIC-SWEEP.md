@@ -73,6 +73,30 @@ This is the textbook case the mission brief named: a file added before the ignor
 > staging, a prod mirror, anything not `127.0.0.1` — and the flip publishes a working credential.
 > **Answer before P6.**
 
+> ### B-1 + B-2 CLOSED — 2026-08-07, by operator answer
+>
+> **Operator states the role is valid only on their local `127.0.0.1` cluster.** That is the fact
+> this sweep said it did not have and would not guess at, and it settles both findings: a published
+> string that authenticates against nothing reachable is not a disclosed credential. B-1 and B-2
+> **move to the accepted column alongside N-1 and N-2**, and this sweep over-rated them — correctly,
+> given what it could see, because credential shape is not credential reach and it declined to
+> assume the difference.
+>
+> **No rotation. No history rewrite.** Rewriting would invalidate every SHA from 2026-04-04 onward
+> for a dead string, which is the worse trade even when it is free.
+>
+> Two things still hold, and neither blocks P6:
+>
+> - B-1's working-tree copy stays scrubbed (`1ec2d081`). Not because the value is dangerous, but so
+>   it is not re-copied into a new file by someone reading the plan later.
+> - Remediation step 4 — the pre-commit guard against `PGPASSWORD=`, against `postgres://*:*@` with
+>   a non-`${...}` password, and against staging `.claude/settings.local.json` — **is still worth
+>   building, and is now the only part of this remediation that is.** It is level 5 as a hook, so it
+>   belongs in the gate as a check, not in `.githooks/`. Carried to issue #2's design as a candidate;
+>   it costs one grep and it closes the class rather than this instance.
+>
+> **P6 is unblocked.**
+
 Both findings are **one credential**. One rotation closes both.
 
 1. **ROTATE THE PASSWORD.** Change the password of that PostgreSQL role on every cluster where it is valid (local dev, any staging, any prod mirror). Update whatever consumes it — `.env` (untracked), Docker Compose overrides, the operator's own shell profile.

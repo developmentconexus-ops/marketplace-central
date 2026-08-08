@@ -56,13 +56,48 @@ pela onda, uma seção; para **cada campo visível**, uma linha.
 |---|---|---|
 | **VIVO** | cadeia completa e valor real medido na tela com dado de produção | print/leitura da tela + a linha correspondente no banco |
 | **ÓRFÃO** | a tela mostra, mas não há produtor a montante — o valor nasce no FE | busca do campo no handler/serviço não encontra produtor |
-| **FANTASMA** | existe no contrato/banco, nenhuma tela consome | `operationId` sem chamador no `apps/web` |
+| **FANTASMA** | existe no contrato/banco, nenhuma tela consome | export do SDK sem importador nas **cinco** raízes de FE (§1.5) |
 | **MENTIRA** | desconhecido renderizado como valor plausível | ADR-17: o produtor devolve default em vez de ausência |
 | **MUDO** | cadeia existe, mas na base real a coluna é sempre nula/vazia | `SELECT count(*) ... WHERE col IS NOT NULL` = 0 |
 
 ÓRFÃO e MENTIRA são defeito. FANTASMA é desperdício (ou fatia futura, e então
 tem que estar nomeada como tal). MUDO é o mais perigoso: passa em toda lane e a
 tela fica verde — só aparece contando linhas na base real.
+
+### 1.5 Duas armadilhas medidas no próprio vocabulário (2026-08-07)
+
+A definição anterior de FANTASMA era *"`operationId` sem chamador no `apps/web`"*. Medida,
+ela erra por dois motivos independentes, e os dois valem para **qualquer** busca deste
+documento — não só para FANTASMA.
+
+**a) `apps/web` não é o FE.** Cinco raízes carregam `.tsx`:
+
+```bash
+git ls-files '*.tsx' | sed 's#/[^/]*$##' | cut -d/ -f1-3 | sort -u
+# apps/web/src
+# packages/feature-classifications/src
+# packages/feature-inventory/src
+# packages/feature-products/src
+# packages/ui/src
+```
+
+Dos 111 `operationId` únicos do OpenAPI, **55** aparecem em `apps/web`. A regra antiga
+declararia **56 FANTASMA**, a maioria falsos. Qualquer varredura de consumo de FE cobre as
+cinco raízes ou não é varredura.
+
+**b) O `operationId` não é âncora; é convenção não-imposta.** 98 dos 111 aparecem literalmente
+no `packages/sdk-runtime` porque o método do SDK *por hábito* tem o mesmo nome. **13 não.** O
+SDK é escrito à mão e `GOV_API_SDK_SPLIT` só exige mesmo commit, nunca concordância de nome. E
+a rota também não salva: são **44 literais de path entre aspas** para 111 operações — o resto é
+template literal (`packages/sdk-runtime/src/index.ts:2327` monta `/orders/summary?...` para
+`getOrdersSummary`, cujo nome não existe em lado nenhum do FE).
+
+Consequência prática: **a busca §4.3 (operação de contrato sem consumidor) e o veredito FANTASMA
+só viram check automático depois que o método do SDK carregar o `operationId` como dado e um
+check afirmar a bijeção `operationId ↔ export do SDK`.** Enquanto não houver, os dois são
+manuais e o número tem que ser conferido caso a caso. Esta é a classe geral registrada em
+`docs/engineering/repo-audit-2026-08-07/GATE-DESIGN.md` §9d: enumeração sincronizada à mão,
+longe do que descreve, apodrece — a única questão é quando.
 
 ### 1.3 O que a Ficha responde ao operador
 
@@ -80,6 +115,13 @@ A mesma ficha, escrita **antes** da implementação, com a coluna Veredito troca
 por **Prometido**. Serve de contrato de aceitação: no fechamento, cada linha
 Prometido tem que virar VIVO ou virar dívida nomeada. Linha que some sem virar
 nenhum dos dois é escopo perdido em silêncio.
+
+Nota de disparo (2026-08-07): esta ficha é hoje item de checklist — **nível 5 na hierarquia do
+`GATE-TOPOLOGY.md`, e nível 5 não é controle.** A parte mecanizável é exatamente esta: a
+diferença entre a ficha prospectiva e a de fechamento é diff entre dois arquivos, logo pode
+virar check de PR. O resto da ficha é humano por construção e fica no fechamento de onda, porque
+seu custo é uma passada humana por onda × tela × campo e não escala como CI escala. Ver
+`docs/engineering/repo-audit-2026-08-07/GATE-DESIGN.md` §9f.
 
 ---
 
@@ -153,8 +195,8 @@ buscas, todas com resultado numérico:
 2. **Fórmula sem consumidor.** Para cada função exportada de `domain`, quem chama?
    Zero chamadores = fórmula morta. (Caso pago: margem com 4 fórmulas, 2 mortas.)
 3. **Operação de contrato sem consumidor.** Cada `operationId` do OpenAPI tem
-   chamador no `apps/web` ou consumidor externo declarado? (Caso pago: 11 operações
-   sem consumidor.)
+   chamador nas **cinco** raízes de FE (§1.5) ou consumidor externo declarado?
+   (Caso pago: 11 operações sem consumidor.) Manual até a bijeção de §1.5b existir.
 4. **Campo sem produtor.** O inverso: veredito ÓRFÃO da §1.2.
 5. **Abstração que não abstrai.** Porta com uma única implementação e um único
    chamador, onde a interface só repete o concreto, é cerimônia. Porta com
