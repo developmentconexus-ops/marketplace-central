@@ -44,6 +44,29 @@
       "unused": 7
     }
   },
+  "archscan": {
+    "measured_at": "2026-08-08",
+    "measured_on": "f00fffe5",
+    "tool_version": "internal/arch @ this commit",
+    "command": "npm run gate:arch",
+    "measured_note": [
+      "6 findings over 909 Go files in cmd/, internal/ and tests/, after the scanner itself was",
+      "fixed: substring matching and a guessed exemption list had produced 483, of which 1 was real.",
+      "The 6 are 3 production sites (lifecycle.go:17 names shopee in the integrations domain, twice",
+      "on one line; ingest_service.go:334 and assisted_sankhya_linkage_service.go:296 both branch on",
+      "\"mercado_livre\" in the application layer) and 2 test call sites discarding the bool from",
+      ".Value(). All are real debt: vendor identity as control flow outside the vendor-aware layers,",
+      "and unknown-reads-as-zero. Ratcheted rather than paid because the fixes change production",
+      "behavior and an instrument PR must not."
+    ],
+    "total": 6,
+    "by_rule": {
+      "adapters/vendor-token-outside-adapters": 4,
+      "facts/value-discarded": 2,
+      "context/internal-import": 0,
+      "numbers/float-in-contracts": 0
+    }
+  },
   "eslint": {
     "measured_at": "2026-08-08",
     "measured_on": "93492504",

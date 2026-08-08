@@ -1,0 +1,8 @@
+package pricing
+
+// Vendor identity as camel-case structure, outside every vendor-aware layer.
+// Segment matching must catch both: the joined run mercado+livre and the
+// single segment meli.
+type MercadoLivrePlugin struct{}
+
+func meliSiteID() string { return "" }

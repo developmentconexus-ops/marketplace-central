@@ -255,6 +255,37 @@ foreach ($linter in @($committed.Keys)) {
 Assert-True ($gateSourceForLint -match '\$enabledDrift\.Count -ne 0') `
   'the lint lane no longer fails when the enabled linter set drifts from the configured one'
 
+# --- archscan ------------------------------------------------------------
+
+$archscanOutput = @'
+internal/modules/integrations/domain/lifecycle.go:17: adapters/vendor-token-outside-adapters: shopee in identifier
+internal/modules/orders/application/ingest_service.go:334: adapters/vendor-token-outside-adapters: mercado_livre in string literal
+internal/contexts/catalog/internal/domain/product_test.go:158: facts/value-discarded: the bool from .Value() is discarded
+archscan: scanned=909 findings=3
+'@
+$archMeasured = Measure-GateArchscan -Text $archscanOutput
+Assert-True ($archMeasured.Scanned -eq 909) "archscan scanned count wrong: $($archMeasured.Scanned)"
+Assert-True ($archMeasured.Total -eq 3) "archscan findings count wrong: $($archMeasured.Total)"
+Assert-True ($archMeasured.ByRule['adapters/vendor-token-outside-adapters'] -eq 2) 'archscan by-rule count wrong'
+Assert-True ($archMeasured.ByRule['facts/value-discarded'] -eq 1) 'archscan by-rule count wrong for facts'
+
+# A stream without the summary line is a run that did not finish, and -1 is not
+# 0: "scanned nothing" is a verdict, "nothing is known" is not.
+$archDead = Measure-GateArchscan -Text 'internal/x.go:1: facts/value-discarded: the bool'
+Assert-True ($archDead.Scanned -eq -1) 'a truncated archscan stream reported a scanned count'
+Assert-True ((Measure-GateArchscan -Text '').Scanned -eq -1) 'an empty archscan stream reported a scanned count'
+
+$archCommitted = ConvertTo-GateCountMap -Object $baselineDocument.archscan.by_rule
+$archSum = 0
+foreach ($value in $archCommitted.Values) { $archSum += [int]$value }
+Assert-True ($archSum -eq [int]$baselineDocument.archscan.total) `
+  "the archscan baseline's per-rule counts sum to $archSum but it states a total of $($baselineDocument.archscan.total)"
+
+Assert-True ($gateSourceForLint -match '\$measurement\.Scanned -eq 0') `
+  'the arch lane no longer fails when archscan parsed zero Go files'
+Assert-True ($gateSourceForLint -match '\$measurement\.Scanned -lt 0') `
+  'the arch lane no longer fails when archscan died before printing its count'
+
 # --- eslint --------------------------------------------------------------
 
 $eslintReport = @'

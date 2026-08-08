@@ -1,0 +1,4 @@
+package registry
+
+// The plugin registry's job is to say which vendor a plugin is. Exempt.
+func code() string { return "mercado_livre" }

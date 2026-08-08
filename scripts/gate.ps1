@@ -11,7 +11,7 @@
   given change was a function of what someone remembered.
 
   This file is the set: gofmt, Prettier, `go build` + `go vet`, typecheck,
-  golangci-lint, ESLint, `go test ./...`, vitest. `npm run gate` runs it locally; `.github/workflows/ci.yml`
+  archscan, golangci-lint, ESLint, `go test ./...`, vitest. `npm run gate` runs it locally; `.github/workflows/ci.yml`
   invokes the same lanes by name. Neither owns a copy of the logic -- a gate the
   operator cannot reproduce on their own machine is its own defect class, and a
   gate whose CI form has drifted from its local form is that class wearing a
@@ -33,7 +33,7 @@
 #>
 [CmdletBinding()]
 param(
-  [ValidateSet('all', 'gofmt', 'format', 'build', 'lint-go', 'lint-web', 'test-go', 'typecheck', 'test-web')]
+  [ValidateSet('all', 'gofmt', 'format', 'build', 'typecheck', 'arch', 'lint-go', 'lint-web', 'test-go', 'test-web')]
   [string]$Lane = 'all',
   [switch]$ContinueOnFailure
 )
@@ -229,6 +229,62 @@ $script:EslintExpected = @(
   'react-hooks/exhaustive-deps',
   'react-hooks/rules-of-hooks'
 ) | Sort-Object
+
+function Invoke-GateArch {
+  # The architecture detectors: rules the Go compiler cannot express. The
+  # scanner had zero invokers from the day it was written until 2026-08-08, and
+  # the absence was rational rather than forgotten -- substring matching and a
+  # guessed exemption list produced 483 findings of which 1 was real, and an
+  # instrument that cries 483 times for 1 defect costs more to read than it
+  # returns. The scanner was fixed first (segment matching, declared
+  # vendor-aware layers, a scanned-file count) and wired here after, at 6.
+  $baselinePath = Join-Path $repositoryRoot 'contracts/gate/baselines.json'
+  if (-not (Test-Path -LiteralPath $baselinePath -PathType Leaf)) {
+    return New-GateVerdict -Lane 'arch' -Passed $false -Counts 'baseline=missing' `
+      -Reason "no ratchet baseline at $baselinePath."
+  }
+  $baselineDocument = Get-Content -LiteralPath $baselinePath -Raw | ConvertFrom-Json
+  $baseline = ConvertTo-GateCountMap -Object $baselineDocument.archscan.by_rule
+
+  $result = Invoke-GateTool -Name 'archscan' -FilePath 'go' `
+    -ArgumentList @('run', './internal/arch/cmd/archscan') `
+    -WorkingDirectory $serverCore
+  $measurement = Measure-GateArchscan -Text $result.Text
+
+  $counts = "scanned=$($measurement.Scanned) total=$($measurement.Total) baseline=$($baselineDocument.archscan.total)"
+  Write-Host $counts
+  foreach ($rule in @($measurement.ByRule.Keys | Sort-Object)) {
+    Write-Host ("  {0,-42} {1,4}  baseline {2,4}" -f $rule, $measurement.ByRule[$rule], $(if ($baseline.ContainsKey($rule)) { $baseline[$rule] } else { 'n/a' }))
+  }
+
+  if ($measurement.Scanned -lt 0) {
+    return New-GateVerdict -Lane 'arch' -Passed $false -Counts $counts `
+      -Reason "archscan printed no summary line (exit $($result.ExitCode)). A stream without the count is a run that did not finish."
+  }
+  if ($measurement.Scanned -eq 0) {
+    return New-GateVerdict -Lane 'arch' -Passed $false -Counts $counts `
+      -Reason 'archscan parsed zero Go files. A verdict over the empty set is not a verdict.'
+  }
+  # Exit 1 is findings, the normal state under a ratchet. Exit 2 is the scanner
+  # failing to run, and anything else is unknown.
+  if ($result.ExitCode -notin @(0, 1)) {
+    return New-GateVerdict -Lane 'arch' -Passed $false -Counts $counts `
+      -Reason "archscan exited $($result.ExitCode), which is neither clean nor findings."
+  }
+
+  $measuredMap = @{}
+  foreach ($key in @($baseline.Keys)) { $measuredMap[$key] = 0 }
+  foreach ($key in @($measurement.ByRule.Keys)) { $measuredMap[$key] = $measurement.ByRule[$key] }
+  $comparison = Compare-GateRatchet -Measured $measuredMap -Baseline $baseline
+  foreach ($line in @($comparison.Decreased)) { Write-Host "shrink: $line -- commit the lower baseline in this PR" }
+  if (-not $comparison.Passed) {
+    foreach ($line in @($comparison.Increased)) { Write-Host "increase: $line" }
+    foreach ($line in @($comparison.Unknown)) { Write-Host "unknown rule, absent from the baseline: $line" }
+    return New-GateVerdict -Lane 'arch' -Passed $false -Counts $counts `
+      -Reason 'archscan findings increased over the committed baseline, or a rule appeared that the baseline does not name.'
+  }
+  return New-GateVerdict -Lane 'arch' -Passed $true -Counts $counts
+}
 
 function Invoke-GateLintGo {
   $baselinePath = Join-Path $repositoryRoot 'contracts/gate/baselines.json'
@@ -570,6 +626,7 @@ $lanes = [ordered]@{
   'format'    = ${function:Invoke-GateFormat}
   'build'     = ${function:Invoke-GateBuild}
   'typecheck' = ${function:Invoke-GateTypecheck}
+  'arch'      = ${function:Invoke-GateArch}
   'lint-go'   = ${function:Invoke-GateLintGo}
   'lint-web'  = ${function:Invoke-GateLintWeb}
   'test-go'   = ${function:Invoke-GateGoTest}

@@ -162,6 +162,16 @@ jobs:
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane build
 
+      # The architecture detectors -- the rules the compiler cannot express:
+      # cross-context internal imports, float in contracts, vendor identity as
+      # structure outside the vendor-aware layers, discarded fact booleans. In
+      # this job for the same cache reason as golangci-lint below. A ratchet at
+      # 6; the scanner had zero invokers until 2026-08-08 because it reported
+      # 483 findings of which 1 was real, and it was fixed before being wired.
+      - name: archscan
+        shell: pwsh
+        run: ./scripts/gate.ps1 -Lane arch
+
       # golangci-lint, in this job rather than lint-go, because it type-checks
       # the module and so wants the same toolchain and the same warm build cache
       # that `go build` just filled. Running it in lint-go would compile the

@@ -1,0 +1,4 @@
+package composition
+
+// A composition root exists to name concrete adapters. Exempt by declaration.
+const mercadoLivreProviderCode = "mercado_livre"
