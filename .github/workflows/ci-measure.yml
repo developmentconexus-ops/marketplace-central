@@ -14,6 +14,22 @@
 # will never appear in a ruleset, and it is allowed to be red. Its output is a
 # measurement that feeds the shape of `verify-full`. If the integration lane cannot
 # run on ubuntu-latest, that job changes shape and everything downstream re-plans.
+#
+# SEQUENCING CONSTRAINT, measured 2026-08-08 and not predicted:
+#
+#   gh workflow run ci-measure.yml --ref issue-2-ci-workflow
+#   HTTP 404: workflow ci-measure.yml not found on the default branch
+#
+# `workflow_dispatch` is registered from the DEFAULT BRANCH only. `--ref` selects
+# which revision of an already-registered workflow runs; it cannot register one.
+# So this instrument cannot be fired from the PR that introduces it -- it measures
+# nothing until it is merged to main.
+#
+# That inverts the order this workflow's own header assumes. Step 0 said "unknowns
+# go first", and the unknown here is reachable only AFTER the merge. It stays
+# harmless in the meantime: dispatch-only, no `push`/`pull_request` trigger, so
+# merging it adds no lane to any PR and blocks nothing. The measurement is the
+# first thing to run once it lands.
 
 name: ci-measure
 
