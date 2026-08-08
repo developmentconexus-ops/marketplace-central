@@ -116,8 +116,17 @@ function Invoke-GateGofmt {
   # tracked and the omission is invisible; locally it means the gate is blind to
   # exactly the file the developer is writing. --exclude-standard keeps .gitignore
   # in force, so the .gomodcache property above survives.
-  $discovered = @(& git -C $repositoryRoot ls-files --cached --others --exclude-standard '*.go')
-  Write-Host "discovered=$($discovered.Count)"
+  #
+  # Filtered to paths that still exist. `--cached` reports the index, and a file
+  # deleted from the worktree but not yet staged is still in it. Handing that path
+  # to gofmt yields `GetFileAttributesEx <path>: The system cannot find the file
+  # specified.` on stderr, which 2>&1 folds into the output and Measure-GateGofmt
+  # counts as an unformatted file -- a red lane blaming formatting for a perfectly
+  # legitimate uncommitted deletion. Measured 2026-08-08: exit 2, one stderr line
+  # per missing path.
+  $listed = @(& git -C $repositoryRoot ls-files --cached --others --exclude-standard '*.go')
+  $discovered = @($listed | Where-Object { Test-Path -LiteralPath (Join-Path $repositoryRoot $_) -PathType Leaf })
+  Write-Host "listed=$($listed.Count) discovered=$($discovered.Count)"
   if ($discovered.Count -eq 0) {
     return New-GateVerdict -Lane 'gofmt' -Passed $false -Counts 'discovered=0' `
       -Reason 'no Go files reached the formatter; the filter is broken, not the tree'
@@ -133,15 +142,26 @@ function Invoke-GateGofmt {
   # disagreement would surface as a pile of "file does not exist" lines counted as
   # violations the first time someone ran it from anywhere else.
   $output = New-Object System.Text.StringBuilder
+  $gofmtExitFailures = 0
   for ($index = 0; $index -lt $discovered.Count; $index += 200) {
     $batch = @($discovered[$index..([Math]::Min($index + 199, $discovered.Count - 1))] |
       ForEach-Object { Join-Path $repositoryRoot $_ })
     $result = & gofmt -l @batch 2>&1
+    if ($LASTEXITCODE -ne 0) { $gofmtExitFailures++ }
     foreach ($line in @($result)) { [void]$output.AppendLine([string]$line) }
   }
   $measurement = Measure-GateGofmt -Text $output.ToString()
-  $counts = "run=$($discovered.Count) unformatted=$($measurement.Unformatted)"
+  $counts = "run=$($discovered.Count) unformatted=$($measurement.Unformatted) tool_failures=$gofmtExitFailures"
   Write-Host $counts
+  # Checked before the violation count, because a batch that errored makes the
+  # output untrustworthy in both directions: `gofmt -l` exits 0 while listing
+  # unformatted files, so a non-zero exit is never a finding about the code -- it
+  # is the tool saying it did not do the job it was asked to do.
+  if ($gofmtExitFailures -gt 0) {
+    $measurement.Paths | ForEach-Object { Write-Host $_ }
+    return New-GateVerdict -Lane 'gofmt' -Passed $false -Counts $counts `
+      -Reason "gofmt exited non-zero on $gofmtExitFailures batch(es); its output above is not a formatting verdict"
+  }
   if ($measurement.Unformatted -ne 0) {
     $measurement.Paths | ForEach-Object { Write-Host $_ }
     return New-GateVerdict -Lane 'gofmt' -Passed $false -Counts $counts `

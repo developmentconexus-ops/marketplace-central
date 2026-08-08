@@ -100,8 +100,10 @@ Assert-True ($vitestMixedMeasured.Passed -eq 603) "vitest mixed pass count wrong
 # which is a different fact from a suite that ran and found nothing.
 $vitestCrashed = "RUN  v3.0.0`nError: Cannot find module './setup'"
 Assert-True ((Measure-GateVitest -Text $vitestCrashed).Passed -eq -1) 'a crashed vitest run reported a pass count'
+Assert-True ((Measure-GateVitest -Text $vitestCrashed).Failed -eq -1) 'a crashed vitest run claimed zero failures'
 $vitestNoFiles = "No test files found, exiting with code 0"
 Assert-True ((Measure-GateVitest -Text $vitestNoFiles).Passed -eq -1) 'a no-files vitest run reported a pass count'
+Assert-True ((Measure-GateVitest -Text $vitestNoFiles).Failed -eq -1) 'a no-files vitest run claimed zero failures'
 
 # --- tsc -----------------------------------------------------------------
 
@@ -157,5 +159,9 @@ Assert-True ($gateSource -match '\$measurement\.Passed -le 0') `
   'the vitest lane no longer fails on a run with no stated result'
 Assert-True ($gateSource -match '\$discovered\.Count -eq 0') `
   'the gofmt lane no longer fails when the file filter reaches nothing'
+Assert-True ($gateSource -match '\$gofmtExitFailures -gt 0') `
+  'the gofmt lane no longer fails when gofmt itself exits non-zero'
+Assert-True ($gateSource -match 'Test-Path -LiteralPath \(Join-Path \$repositoryRoot \$_\) -PathType Leaf') `
+  'the gofmt lane no longer filters index paths deleted from the worktree'
 
 Write-Output 'PASS gate measurement tests'

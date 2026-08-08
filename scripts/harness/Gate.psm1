@@ -65,7 +65,13 @@ function Measure-GateVitest {
     Files   = if ($files.Success) { [int]$files.Groups['total'].Value } else { -1 }
     Tests   = if ($tests.Success) { [int]$tests.Groups['total'].Value } else { -1 }
     Passed  = if ($passed.Success) { [int]$passed.Groups['passed'].Value } else { -1 }
-    Failed  = if ($failed.Success) { [int]$failed.Groups['failed'].Value } else { 0 }
+    # Three states, not two. A summary that names no failures is the fact "zero
+    # failed"; no summary at all is "unknown", and reporting that as zero turns a
+    # crashed run into an affirmative claim that nothing failed -- the one thing
+    # AGENTS.md forbids an unknown operational fact from becoming.
+    Failed  = if ($failed.Success) { [int]$failed.Groups['failed'].Value }
+              elseif ($tests.Success) { 0 }
+              else { -1 }
   }
 }
 
