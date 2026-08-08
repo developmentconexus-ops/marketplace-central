@@ -1843,3 +1843,45 @@ measured at <commit> ..."`) OU ser reescrita para citar a contagem corrente com 
 que a produziu, seguindo a convenção `**Amended DATE — título.**` que o próprio ficheiro já usa nas
 linhas 62 e 84. Verificação: `grep -n "35" docs/architecture/decisions/023-module-protocol.md`
 não devolver nenhuma ocorrência de contagem de violações sem carimbo de medição.
+
+---
+
+**D-56. `AGENTS.md:31-32` continua a imprimir `GOCACHE=.gocache` — o literal relativo que
+HARNESS-PROFILE §2 proibiu em 2026-07-28, depois de ter produzido um verde vazio.**
+
+`AGENTS.md` diz, em forma copiável e sem qualificação:
+
+```
+Use `GOCACHE=.gocache` for Go tests.
+```
+
+`docs/HARNESS-PROFILE.md:36-39` obriga ao contrário:
+
+```
+GOCACHE must resolve to an ABSOLUTE path on Windows/pwsh (D-14, M-01): relative
+  export GOCACHE="$(pwd)/.gocache"   (bash)
+  $env:GOCACHE = (Join-Path (Get-Location) '.gocache')   (pwsh)
+```
+
+E o log de emendas do próprio perfil (`docs/HARNESS-PROFILE.md:1030`) regista que a forma relativa
+já foi retirada de três sítios do perfil precisamente por isto: *"um chip copiou-a e obteve um
+EXIT 1 de 83 bytes com zero `=== RUN` — a sexta instância de verde vazio, e a única que a doutrina
+entregou ela própria."*
+
+**Como foi medida.** Encontrada em campo, não por varredura: o revisor automático da PR #14 citou
+`AGENTS.md:L29-L33` como fundamento para exigir `GOCACHE=.gocache` num workflow de CI. O achado
+está correto quanto ao binding existir; o remédio que propôs é o literal banido. Um revisor a ler
+o `AGENTS.md` chega à conclusão errada com razão — a fonte que lhe foi dada di-lo.
+
+**Por que é dívida e não erro de escrita.** `AGENTS.md` é carregado em TODO arranque de sessão via
+`CLAUDE.md`, enquanto o `HARNESS-PROFILE.md` só é lido por quem segue o ponteiro. O ficheiro de
+maior alcance imprime a forma proibida; o de menor alcance carrega a correção. A assimetria garante
+que a versão errada é a mais lida.
+
+**Por que NÃO foi corrigida aqui.** `AGENTS.md` é doutrina de hub (`AGENTS.md:4-13` declara a
+ordem vinculativa) e um chip não emenda doutrina de hub por iniciativa própria. A correção pertence
+ao hub e é de uma linha.
+
+**Condição de remoção.** `AGENTS.md` deixar de conter uma forma relativa copiável — ou apontar para
+`HARNESS-PROFILE.md §2` em vez de reimprimir a regra, que é a disposição que o perfil já tomou para
+si próprio. Verificação: `grep -n 'GOCACHE=\.gocache' AGENTS.md` não devolver nada.
