@@ -41,8 +41,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: apps/server_core/go.mod
           cache-dependency-path: apps/server_core/go.sum
@@ -70,8 +70,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: npm
@@ -85,8 +85,8 @@ jobs:
     timeout-minutes: 15
     needs: [lint-go]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: apps/server_core/go.mod
           cache-dependency-path: apps/server_core/go.sum
@@ -100,8 +100,8 @@ jobs:
     timeout-minutes: 20
     needs: [build-go]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: apps/server_core/go.mod
           cache-dependency-path: apps/server_core/go.sum
@@ -152,8 +152,8 @@ jobs:
     timeout-minutes: 15
     needs: [lint-frontend]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: npm
@@ -189,7 +189,7 @@ jobs:
       NEEDS_JSON: ${{ toJSON(needs) }}
       EXPECTED: '["lint-go","lint-frontend","build-go","test-go-unit","test-frontend"]'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The runtime guard below compares needs against EXPECTED, which does not
       # catch the case that matters most: a job added to this file and wired into

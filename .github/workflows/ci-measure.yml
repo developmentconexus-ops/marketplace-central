@@ -29,12 +29,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The governance lane diffs against the merge target's tip, so it needs
           # real history rather than a depth-1 cone.
           fetch-depth: 0
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: apps/server_core/go.mod
           cache-dependency-path: apps/server_core/go.sum
@@ -83,7 +83,7 @@ jobs:
 
       - name: evidence
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ci-measure-logs
           path: |
