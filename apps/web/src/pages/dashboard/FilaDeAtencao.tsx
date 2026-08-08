@@ -46,7 +46,10 @@ export function FilaDeAtencao({ summary }: { summary: DashboardOverview }) {
   const items = buildItems(summary);
 
   return (
-    <section aria-labelledby="fila-atencao-title" className="rounded-card border border-border bg-surface p-4">
+    <section
+      aria-labelledby="fila-atencao-title"
+      className="rounded-card border border-border bg-surface p-4"
+    >
       <h2 id="fila-atencao-title" className="text-sm font-semibold text-ink">
         Fila de atenção
       </h2>

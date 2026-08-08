@@ -72,7 +72,11 @@ describe("VinculosPage", () => {
           confidence: 95,
           confidence_band: "ALTA",
           reasons: [
-            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
+            {
+              anchor: "seller_sku",
+              direction: "FOR",
+              detail: "seller_sku resolve exato para codprod",
+            },
             { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod" },
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
@@ -109,12 +113,28 @@ describe("VinculosPage", () => {
       items: [
         {
           identity: { installation_id: "inst_1", provider_item_id: "MLB1" },
-          current_link: { state: "resolved", updated_at: "2020-01-01T00:00:00Z", internal_product_id: 111, internal_product_name: "Produto Y" },
+          current_link: {
+            state: "resolved",
+            updated_at: "2020-01-01T00:00:00Z",
+            internal_product_id: 111,
+            internal_product_name: "Produto Y",
+          },
           candidates: [],
-          audit: [{ audit_id: "aud_1", next_state: "resolved", created_at: "2020-01-01T00:00:00Z" }],
+          audit: [
+            { audit_id: "aud_1", next_state: "resolved", created_at: "2020-01-01T00:00:00Z" },
+          ],
         },
-        { identity: { installation_id: "inst_1", provider_item_id: "MLB2" }, current_link: { state: "conflict", updated_at: "2020-01-01T00:00:00Z" }, candidates: [], audit: [] },
-        { identity: { installation_id: "inst_1", provider_item_id: "MLB3" }, candidates: [], audit: [] },
+        {
+          identity: { installation_id: "inst_1", provider_item_id: "MLB2" },
+          current_link: { state: "conflict", updated_at: "2020-01-01T00:00:00Z" },
+          candidates: [],
+          audit: [],
+        },
+        {
+          identity: { installation_id: "inst_1", provider_item_id: "MLB3" },
+          candidates: [],
+          audit: [],
+        },
       ],
     });
 

@@ -1,4 +1,7 @@
-import type { ApplyProductLinkBatchResponse, ProductLinkCandidateItem } from "@marketplace-central/sdk-runtime";
+import type {
+  ApplyProductLinkBatchResponse,
+  ProductLinkCandidateItem,
+} from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -121,11 +124,17 @@ export function QueueTab({ installationId, onViewResolved }: QueueTabProps) {
         />
       ) : null}
 
-      <BulkBar selectedCount={selectedIds.size} onPreview={openBatchPreview} onClear={clearSelection} />
+      <BulkBar
+        selectedCount={selectedIds.size}
+        onPreview={openBatchPreview}
+        onClear={clearSelection}
+      />
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[860px] border-collapse text-left text-sm">
-          <caption className="sr-only">Fila de candidatos de vínculo (anúncio → produto sugerido)</caption>
+          <caption className="sr-only">
+            Fila de candidatos de vínculo (anúncio → produto sugerido)
+          </caption>
           <thead className="border-b border-border bg-surface-2 text-xs font-medium tracking-[0.04em] text-faint">
             <tr>
               <th className="px-3 py-3" scope="col">
@@ -134,14 +143,31 @@ export function QueueTab({ installationId, onViewResolved }: QueueTabProps) {
               {/* Rótulos ESTRUTURAIS são neutros de provider (F-05): a tela
                   serve qualquer marketplace. De qual provider o anúncio é
                   continua na tela — como DADO, na coluna Canal. */}
-              <th className="px-3 py-3" scope="col">Anúncio</th>
-              <th className="px-3 py-3" scope="col">Canal</th>
-              <th className="px-3 py-3" scope="col">Produto sugerido</th>
-              <th className="px-3 py-3" scope="col">SKU HUB</th>
-              <th className="px-3 py-3" scope="col">Identificado por</th>
-              <th className="px-3 py-3" scope="col">Confiança</th>
-              <th className="px-3 py-3" scope="col">Motivo</th>
-              <th className="sticky right-0 border-l border-border bg-surface-2 px-3 py-3 text-right" scope="col">
+              <th className="px-3 py-3" scope="col">
+                Anúncio
+              </th>
+              <th className="px-3 py-3" scope="col">
+                Canal
+              </th>
+              <th className="px-3 py-3" scope="col">
+                Produto sugerido
+              </th>
+              <th className="px-3 py-3" scope="col">
+                SKU HUB
+              </th>
+              <th className="px-3 py-3" scope="col">
+                Identificado por
+              </th>
+              <th className="px-3 py-3" scope="col">
+                Confiança
+              </th>
+              <th className="px-3 py-3" scope="col">
+                Motivo
+              </th>
+              <th
+                className="sticky right-0 border-l border-border bg-surface-2 px-3 py-3 text-right"
+                scope="col"
+              >
                 Ação
               </th>
             </tr>

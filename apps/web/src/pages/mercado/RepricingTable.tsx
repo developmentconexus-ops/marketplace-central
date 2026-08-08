@@ -32,7 +32,13 @@ export interface RepricingTableProps {
 /**
  * Money cell — honest dash when the amount is missing (ADR-17), never "R$ —".
  */
-function MoneyCell({ value, muted = false }: { value: string | null; muted?: boolean }): JSX.Element {
+function MoneyCell({
+  value,
+  muted = false,
+}: {
+  value: string | null;
+  muted?: boolean;
+}): JSX.Element {
   if (value === null) return <UnknownValue />;
   return <span className={`font-mono ${muted ? "text-muted" : ""}`}>{value}</span>;
 }
@@ -79,7 +85,9 @@ export function RepricingTable({ rows }: RepricingTableProps): JSX.Element {
                   <span className="font-mono text-[11px] text-faint">{r.provider_listing_id}</span>{" "}
                   {r.title}
                   {r.variation_id ? (
-                    <span className="ml-1 font-mono text-[11px] text-faint">var. {r.variation_id}</span>
+                    <span className="ml-1 font-mono text-[11px] text-faint">
+                      var. {r.variation_id}
+                    </span>
                   ) : null}
                 </span>
                 <MoneyCell value={meu} />
@@ -138,8 +146,8 @@ export function RepricingTable({ rows }: RepricingTableProps): JSX.Element {
       </div>
       <p className="text-[11.5px] text-faint">
         margem, "se igualar menor" e sugestão dependem do motor de precificação (M-07){DASH}exibidos
-        como "{DASH}" até então · "Aplicar" mudará o preço via fila de sync com preview e protocolo ·
-        posição vem da busca pública do ML
+        como "{DASH}" até então · "Aplicar" mudará o preço via fila de sync com preview e protocolo
+        · posição vem da busca pública do ML
       </p>
     </>
   );

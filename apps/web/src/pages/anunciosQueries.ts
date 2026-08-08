@@ -24,7 +24,10 @@ export function anunciosPageQuery(
   };
 }
 
-export function anunciosSummaryQuery(client: Pick<AnunciosClient, "getListingsSummary">, installationId: string) {
+export function anunciosSummaryQuery(
+  client: Pick<AnunciosClient, "getListingsSummary">,
+  installationId: string,
+) {
   return {
     queryKey: listingsQueryKeys.summary(installationId),
     queryFn: () => client.getListingsSummary(installationId),

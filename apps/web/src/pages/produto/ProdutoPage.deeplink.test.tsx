@@ -42,7 +42,10 @@ describe("ProdutoPage deep-link + F5 restore", () => {
       "aria-selected",
       "true",
     );
-    expect(screen.getByRole("tab", { name: "Veredicto" })).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByRole("tab", { name: "Veredicto" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
     expect(screen.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "false");
   });
 
@@ -64,8 +67,14 @@ describe("ProdutoPage deep-link + F5 restore", () => {
   it("falls back to Veredicto for a bogus ?tab= value without crashing", async () => {
     renderAt("/catalogo/produtos/90008?tab=bogus");
 
-    expect(await screen.findByRole("tab", { name: "Veredicto" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tab", { name: "Anúncios vinculados" })).toHaveAttribute("aria-selected", "false");
+    expect(await screen.findByRole("tab", { name: "Veredicto" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("tab", { name: "Anúncios vinculados" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
     expect(screen.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "false");
   });
 

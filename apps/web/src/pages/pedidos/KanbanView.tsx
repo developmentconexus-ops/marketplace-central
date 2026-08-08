@@ -1,6 +1,11 @@
 import type { OrderBucket, OrderRead } from "@marketplace-central/sdk-runtime";
 import { UnknownValue } from "@marketplace-central/ui";
-import { actionLabelForBucket, formatMoney, orderComprador, orderItensLabel } from "./pedidosFormatters";
+import {
+  actionLabelForBucket,
+  formatMoney,
+  orderComprador,
+  orderItensLabel,
+} from "./pedidosFormatters";
 
 export interface KanbanViewProps {
   items: OrderRead[];
@@ -14,7 +19,13 @@ const columnDefs: { bucket: OrderBucket; title: string }[] = [
   { bucket: "enviado", title: "ENVIADOS" },
 ];
 
-function KanbanCard({ item, onOpenOrder }: { item: OrderRead; onOpenOrder: (orderId: string) => void }) {
+function KanbanCard({
+  item,
+  onOpenOrder,
+}: {
+  item: OrderRead;
+  onOpenOrder: (orderId: string) => void;
+}) {
   const label = actionLabelForBucket(item.bucket);
   const money = formatMoney(item.total);
   // Card description mirrors the design (comprador · itens); valor sits in the row above, destino
@@ -77,7 +88,11 @@ export function KanbanView({ items, onOpenOrder }: KanbanViewProps) {
         {columnDefs.map((column) => {
           const cards = items.filter((item) => item.bucket === column.bucket);
           return (
-            <div key={column.bucket} style={{ minWidth: "258px" }} className="flex flex-none flex-col gap-2">
+            <div
+              key={column.bucket}
+              style={{ minWidth: "258px" }}
+              className="flex flex-none flex-col gap-2"
+            >
               <div className="text-[11px] font-bold tracking-wide text-faint">
                 {column.title} · {cards.length}
               </div>

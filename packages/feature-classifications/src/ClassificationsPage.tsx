@@ -44,9 +44,7 @@ function formatCurrency(value: string | null | undefined): string {
 
 // Fact pages are cursor-paginated (max 100/page); drain every page so the
 // membership table sees the full catalog, matching the pre-migration behaviour.
-async function loadAllFacts(
-  client: ClassificationsClient,
-): Promise<CatalogProductFact[]> {
+async function loadAllFacts(client: ClassificationsClient): Promise<CatalogProductFact[]> {
   const items: CatalogProductFact[] = [];
   let cursor: string | undefined;
   do {
@@ -115,9 +113,7 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
   // Derived state
   // -----------------------------------------------------------------------
 
-  const selectedClassification = classifications.find(
-    (c) => c.classification_id === selectedId
-  );
+  const selectedClassification = classifications.find((c) => c.classification_id === selectedId);
 
   const selectedProductIds = useMemo(() => {
     if (!selectedClassification) return new Set<string>();
@@ -202,8 +198,8 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
         prev.map((c) =>
           c.classification_id === selectedClassification.classification_id
             ? { ...c, name: editName.trim() }
-            : c
-        )
+            : c,
+        ),
       );
     } catch (err: any) {
       setActionError(err?.error?.message ?? "Failed to update name.");
@@ -222,8 +218,8 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
         prev.map((c) =>
           c.classification_id === selectedClassification.classification_id
             ? { ...c, ai_context: editAiContext.trim() }
-            : c
-        )
+            : c,
+        ),
       );
     } catch (err: any) {
       setActionError(err?.error?.message ?? "Failed to update context.");
@@ -254,8 +250,8 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
       prev.map((c) =>
         c.classification_id === selectedClassification.classification_id
           ? { ...c, product_ids: updatedIds, product_count: updatedIds.length }
-          : c
-      )
+          : c,
+      ),
     );
 
     try {
@@ -270,8 +266,8 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
         prev.map((c) =>
           c.classification_id === selectedClassification.classification_id
             ? { ...c, product_ids: currentIds, product_count: currentIds.length }
-            : c
-        )
+            : c,
+        ),
       );
       setActionError(err?.error?.message ?? "Failed to update membership.");
     }
@@ -290,8 +286,8 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
       prev.map((c) =>
         c.classification_id === selectedClassification.classification_id
           ? { ...c, product_ids: merged, product_count: merged.length }
-          : c
-      )
+          : c,
+      ),
     );
 
     try {
@@ -313,8 +309,8 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
       prev.map((c) =>
         c.classification_id === selectedClassification.classification_id
           ? { ...c, product_ids: [], product_count: 0 }
-          : c
-      )
+          : c,
+      ),
     );
 
     try {
@@ -338,7 +334,7 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
     try {
       await client.deleteClassification(cls.classification_id);
       setClassifications((prev) =>
-        prev.filter((c) => c.classification_id !== cls.classification_id)
+        prev.filter((c) => c.classification_id !== cls.classification_id),
       );
       if (selectedId === cls.classification_id) {
         setSelectedId(null);
@@ -366,7 +362,9 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
         <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
           {error}
         </div>
-        <Button variant="primary" onClick={loadData}>Retry</Button>
+        <Button variant="primary" onClick={loadData}>
+          Retry
+        </Button>
       </div>
     );
   }
@@ -424,14 +422,19 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
                 }`}
               >
                 <div className="min-w-0 flex-1">
-                  <p className={`text-sm font-medium truncate ${isSelected ? "text-blue-700" : "text-slate-700"}`}>
+                  <p
+                    className={`text-sm font-medium truncate ${isSelected ? "text-blue-700" : "text-slate-700"}`}
+                  >
                     {cls.name}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-2">
                   <span className="text-xs text-slate-400 tabular-nums">{cls.product_count}</span>
                   <button
-                    onClick={(e) => { e.stopPropagation(); handleDelete(cls); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(cls);
+                    }}
                     aria-label={`Delete ${cls.name}`}
                     className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all cursor-pointer"
                   >
@@ -487,7 +490,9 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     onBlur={handleNameBlur}
-                    onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                    }}
                     className="w-full max-w-sm px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 )}
@@ -591,7 +596,9 @@ export function ClassificationsPage({ client }: ClassificationsPageProps) {
                       />
                     </td>
                     <td className="px-4 py-3 font-medium text-slate-900">{p.description ?? "—"}</td>
-                    <td className="px-4 py-3 text-slate-500 font-mono text-xs">{p.reference ?? "—"}</td>
+                    <td className="px-4 py-3 text-slate-500 font-mono text-xs">
+                      {p.reference ?? "—"}
+                    </td>
                     <td className="px-4 py-3 text-right font-mono text-slate-600 tabular-nums">
                       {formatCurrency(p.cost.amount)}
                     </td>

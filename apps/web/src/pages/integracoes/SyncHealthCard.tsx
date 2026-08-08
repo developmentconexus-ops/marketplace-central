@@ -1,4 +1,9 @@
-import { isApiError, type SyncHealth, type SyncHealthEntity, type SyncHealthWebhook } from "@marketplace-central/sdk-runtime";
+import {
+  isApiError,
+  type SyncHealth,
+  type SyncHealthEntity,
+  type SyncHealthWebhook,
+} from "@marketplace-central/sdk-runtime";
 import { ErrorState, LoadingState } from "@marketplace-central/ui";
 import { formatRelativeAge, useSyncHealthQuery } from "@marketplace-central/web-query";
 import type { UseQueryResult } from "@tanstack/react-query";
@@ -32,7 +37,6 @@ function entityLabel(entity: string): string {
     .join(" ");
 }
 
-
 function entityBadgeLabel(entity: SyncHealthEntity, tone: EntityTone): string {
   if (tone === "red") {
     return entity.consecutive_failures === 1 ? "1 falha" : `${entity.consecutive_failures} falhas`;
@@ -51,7 +55,9 @@ function EntityRow({ entity }: { entity: SyncHealthEntity }) {
       <div className="flex flex-col gap-0.5">
         <span className="font-medium text-ink">
           {entityLabel(entity.entity)}
-          {entity.phase ? <span className="ml-1.5 font-normal text-faint">({entity.phase})</span> : null}
+          {entity.phase ? (
+            <span className="ml-1.5 font-normal text-faint">({entity.phase})</span>
+          ) : null}
         </span>
         {entity.last_success_at !== null ? (
           <span className="text-faint" title={entity.last_success_at}>
@@ -157,7 +163,10 @@ function SyncHealthCardBody({ query }: { query: UseQueryResult<SyncHealth> }) {
   if (query.status === "error") {
     return (
       <div className="mt-2">
-        <ErrorState onRetry={() => void query.refetch()} detail={syncHealthErrorDetail(query.error)} />
+        <ErrorState
+          onRetry={() => void query.refetch()}
+          detail={syncHealthErrorDetail(query.error)}
+        />
       </div>
     );
   }
@@ -202,7 +211,10 @@ export function SyncHealthCard() {
   const query = useSyncHealthQuery(client);
 
   return (
-    <section aria-labelledby="sync-health-title" className="rounded-card border border-border bg-surface p-4">
+    <section
+      aria-labelledby="sync-health-title"
+      className="rounded-card border border-border bg-surface p-4"
+    >
       <h2 id="sync-health-title" className="text-sm font-semibold text-ink">
         Saúde do sync
       </h2>

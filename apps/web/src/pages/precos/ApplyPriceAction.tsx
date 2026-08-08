@@ -22,7 +22,11 @@ export interface ApplyPriceActionProps {
  * that step is forbidden. The point is to show governance: a protocol parked at
  * `previewed`, awaiting human approval, with zero writes leaving the platform.
  */
-export function ApplyPriceAction({ installationId, listingId, newPrice }: ApplyPriceActionProps): JSX.Element {
+export function ApplyPriceAction({
+  installationId,
+  listingId,
+  newPrice,
+}: ApplyPriceActionProps): JSX.Element {
   const client = useClient();
   const [result, setResult] = useState<MutationPreview | null>(null);
 
@@ -67,13 +71,16 @@ export function ApplyPriceAction({ installationId, listingId, newPrice }: ApplyP
         </p>
       ) : (
         <p className="text-xs text-muted">
-          A aplicação para no estado <span className="font-mono text-ink">previewed</span> — aprovação é manual e fora
-          desta tela.
+          A aplicação para no estado <span className="font-mono text-ink">previewed</span> —
+          aprovação é manual e fora desta tela.
         </p>
       )}
 
       {apply.isError ? (
-        <ErrorState onRetry={() => apply.mutate()} detail="Não foi possível preparar a aplicação do preço." />
+        <ErrorState
+          onRetry={() => apply.mutate()}
+          detail="Não foi possível preparar a aplicação do preço."
+        />
       ) : null}
 
       {result ? (
@@ -83,10 +90,16 @@ export function ApplyPriceAction({ installationId, listingId, newPrice }: ApplyP
           className="flex flex-col gap-1 rounded-md border border-border bg-surface-2 p-3 text-sm"
         >
           <div className="flex items-center gap-2">
-            <span data-testid="apply-state" className="rounded bg-amber-soft px-1.5 py-0.5 text-xs font-medium text-amber">
+            <span
+              data-testid="apply-state"
+              className="rounded bg-amber-soft px-1.5 py-0.5 text-xs font-medium text-amber"
+            >
               {result.state}
             </span>
-            <Link to={`/protocolos/${result.protocol_id}`} className="font-mono text-accent hover:underline">
+            <Link
+              to={`/protocolos/${result.protocol_id}`}
+              className="font-mono text-accent hover:underline"
+            >
               {result.protocol_id}
             </Link>
           </div>

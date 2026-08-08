@@ -38,7 +38,10 @@ describe("FilaDeAtencao", () => {
       "href",
       "/anuncios?filter.exception=below_margin",
     );
-    expect(screen.getByRole("link", { name: /sem v[ií]nculo/i })).toHaveAttribute("href", "/vinculos");
+    expect(screen.getByRole("link", { name: /sem v[ií]nculo/i })).toHaveAttribute(
+      "href",
+      "/vinculos",
+    );
   });
 
   it("omits an item when its count is null or zero", () => {

@@ -7,7 +7,10 @@ import type { IntegrationInstallation } from "@marketplace-central/sdk-runtime";
 import { StockSeguroPage, type StockSeguroClient } from "./StockSeguroPage";
 
 const baseRender = testingRender;
-function render(ui: React.ReactNode, queryClient = new QueryClient({ defaultOptions: { queries: { retry: 0 } } })) {
+function render(
+  ui: React.ReactNode,
+  queryClient = new QueryClient({ defaultOptions: { queries: { retry: 0 } } }),
+) {
   return baseRender(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 }
 
@@ -41,29 +44,31 @@ function makeClient(items: any[], overrides?: Partial<StockSeguroClient>): Stock
   };
 }
 
-const installations: IntegrationInstallation[] = [{
-  installation_id: "inst-1",
-  tenant_id: "tenant_default",
-  provider_code: "mercado_livre",
-  family: "marketplace",
-  display_name: "Mercado Livre",
-  status: "connected",
-  health_status: "healthy",
-  external_account_id: "acct-1",
-  external_account_name: "Acct 1",
-  connection: {
-    state: "connected",
-    health: "healthy",
+const installations: IntegrationInstallation[] = [
+  {
+    installation_id: "inst-1",
+    tenant_id: "tenant_default",
     provider_code: "mercado_livre",
+    family: "marketplace",
+    display_name: "Mercado Livre",
+    status: "connected",
+    health_status: "healthy",
     external_account_id: "acct-1",
     external_account_name: "Acct 1",
-    auth_strategy: "oauth2",
-    next_action: "none",
+    connection: {
+      state: "connected",
+      health: "healthy",
+      provider_code: "mercado_livre",
+      external_account_id: "acct-1",
+      external_account_name: "Acct 1",
+      auth_strategy: "oauth2",
+      next_action: "none",
+    },
+    runtime_capabilities: [],
+    created_at: "2026-07-09T12:00:00Z",
+    updated_at: "2026-07-09T12:00:00Z",
   },
-  runtime_capabilities: [],
-  created_at: "2026-07-09T12:00:00Z",
-  updated_at: "2026-07-09T12:00:00Z",
-}];
+];
 
 const oversellItem = {
   identity: { installation_id: "inst-1", provider_item_id: "MLB123" },
@@ -126,7 +131,9 @@ describe("StockSeguroPage", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText("Nenhuma linha de Stock Seguro para os filtros selecionados.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Nenhuma linha de Stock Seguro para os filtros selecionados."),
+    ).toBeInTheDocument();
   });
 
   it("renders error state", async () => {
@@ -151,9 +158,34 @@ describe("StockSeguroPage", () => {
       <MemoryRouter initialEntries={["/inventory/stock-seguro?installation=inst-1"]}>
         <StockSeguroPage
           client={makeClient([
-            { ...oversellItem, state: "conflict", link_state: "conflict", actionability: "blocked", actionable: false, blocking_reason: { code: "conflict_link", message: "product link is in conflict" } },
-            { ...oversellItem, state: "unresolved", link_state: "unresolved", actionability: "blocked", actionable: false, blocking_reason: { code: "unresolved_link", message: "product link is not resolved" }, identity: { installation_id: "inst-1", provider_item_id: "MLB124" } },
-            { ...oversellItem, state: "stale", actionability: "blocked", actionable: false, blocking_reason: { code: "stale_provider_source", message: "source_older_than_policy" }, identity: { installation_id: "inst-1", provider_item_id: "MLB125" } },
+            {
+              ...oversellItem,
+              state: "conflict",
+              link_state: "conflict",
+              actionability: "blocked",
+              actionable: false,
+              blocking_reason: { code: "conflict_link", message: "product link is in conflict" },
+            },
+            {
+              ...oversellItem,
+              state: "unresolved",
+              link_state: "unresolved",
+              actionability: "blocked",
+              actionable: false,
+              blocking_reason: { code: "unresolved_link", message: "product link is not resolved" },
+              identity: { installation_id: "inst-1", provider_item_id: "MLB124" },
+            },
+            {
+              ...oversellItem,
+              state: "stale",
+              actionability: "blocked",
+              actionable: false,
+              blocking_reason: {
+                code: "stale_provider_source",
+                message: "source_older_than_policy",
+              },
+              identity: { installation_id: "inst-1", provider_item_id: "MLB125" },
+            },
           ])}
           installations={installations}
         />
@@ -176,7 +208,10 @@ describe("StockSeguroPage", () => {
               actionability: "blocked",
               actionable: false,
               internal_observed_at: "2026-07-18T20:23:27Z",
-              blocking_reason: { code: "stale_internal_source", message: "source_older_than_policy" },
+              blocking_reason: {
+                code: "stale_internal_source",
+                message: "source_older_than_policy",
+              },
             },
           ])}
           installations={installations}
@@ -192,7 +227,10 @@ describe("StockSeguroPage", () => {
   it("renders healthy, undersell, and ineligible states and counts all blocked rows", async () => {
     render(
       <MemoryRouter initialEntries={["/inventory/stock-seguro?installation=inst-1"]}>
-        <StockSeguroPage client={makeClient([undersellItem, healthyItem, ineligibleItem])} installations={installations} />
+        <StockSeguroPage
+          client={makeClient([undersellItem, healthyItem, ineligibleItem])}
+          installations={installations}
+        />
       </MemoryRouter>,
     );
 
@@ -226,13 +264,22 @@ describe("StockSeguroPage", () => {
         created_at: "2026-07-09T12:00:00Z",
         updated_at: "2026-07-09T12:00:00Z",
       },
-      risk: { ...oversellItem, state: "healthy", actionable: false, actionability: "blocked", provider_quantity: 7 },
+      risk: {
+        ...oversellItem,
+        state: "healthy",
+        actionable: false,
+        actionability: "blocked",
+        provider_quantity: 7,
+      },
     }));
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 0 } } });
     const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
     render(
       <MemoryRouter initialEntries={["/inventory/stock-seguro?installation=inst-1"]}>
-        <StockSeguroPage client={makeClient([oversellItem], { applyInventoryManualStockAction })} installations={installations} />
+        <StockSeguroPage
+          client={makeClient([oversellItem], { applyInventoryManualStockAction })}
+          installations={installations}
+        />
       </MemoryRouter>,
       queryClient,
     );
@@ -254,13 +301,22 @@ describe("StockSeguroPage", () => {
     const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
     render(
       <MemoryRouter initialEntries={["/inventory/stock-seguro?installation=inst-1"]}>
-        <StockSeguroPage client={makeClient([oversellItem], { applyInventoryManualStockAction: vi.fn().mockRejectedValue(new Error("stock action failed")) })} installations={installations} />
+        <StockSeguroPage
+          client={makeClient([oversellItem], {
+            applyInventoryManualStockAction: vi
+              .fn()
+              .mockRejectedValue(new Error("stock action failed")),
+          })}
+          installations={installations}
+        />
       </MemoryRouter>,
       queryClient,
     );
 
     fireEvent.click(await screen.findByRole("button", { name: "Aplicar quantidade recomendada" }));
-    fireEvent.change(await screen.findByPlaceholderText("Seu nome"), { target: { value: "Leandro" } });
+    fireEvent.change(await screen.findByPlaceholderText("Seu nome"), {
+      target: { value: "Leandro" },
+    });
     fireEvent.click(await screen.findByRole("button", { name: "Confirmar aplicação" }));
     await waitFor(() => expect(screen.getByText("stock action failed")).toBeInTheDocument());
     expect(invalidateQueries).not.toHaveBeenCalled();
@@ -271,7 +327,9 @@ describe("StockSeguroPage", () => {
     render(
       <MemoryRouter initialEntries={["/inventory/stock-seguro?installation=inst-1"]}>
         <StockSeguroPage
-          client={makeClient([oversellItem], { applyInventoryManualStockAction: applyInventoryManualStockAction as never })}
+          client={makeClient([oversellItem], {
+            applyInventoryManualStockAction: applyInventoryManualStockAction as never,
+          })}
           installations={installations}
         />
       </MemoryRouter>,
@@ -301,7 +359,10 @@ describe("StockSeguroPage", () => {
             {
               ...oversellItem,
               identity: { installation_id: "inst-1", provider_item_id: "MLB130" },
-              blocking_reason: { code: "code_the_screen_does_not_know", message: "raw engineering detail" },
+              blocking_reason: {
+                code: "code_the_screen_does_not_know",
+                message: "raw engineering detail",
+              },
             },
           ])}
           installations={installations}
@@ -309,7 +370,9 @@ describe("StockSeguroPage", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText("Anúncio sem vínculo com um produto do ERP.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Anúncio sem vínculo com um produto do ERP."),
+    ).toBeInTheDocument();
     expect(screen.queryByText("product link is not resolved")).not.toBeInTheDocument();
     expect(screen.getByText("raw engineering detail")).toBeInTheDocument();
   });

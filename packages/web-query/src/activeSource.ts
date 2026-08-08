@@ -31,7 +31,9 @@ export const activeSourceQueryKeys = {
  * unknown_erp_source), and inventing "xlsx" here would show the operator a
  * source the platform is not actually reading.
  */
-export function useActiveSourceQuery(client: ActiveSourceClient): UseQueryResult<ActiveSourceConfig> {
+export function useActiveSourceQuery(
+  client: ActiveSourceClient,
+): UseQueryResult<ActiveSourceConfig> {
   return useQuery({
     queryKey: activeSourceQueryKeys.config(),
     queryFn: () => client.getActiveSource(),

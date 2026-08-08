@@ -28,10 +28,7 @@ const mutationInvalidationNamespaces = {
   listing_resync: ["listings", "mutations"],
   listing_edit: ["listings", "mutations"],
   product_enrichment: ["catalog"],
-} as const satisfies Record<
-  MutationInvalidationType,
-  readonly (keyof typeof queryKeyNamespaces)[]
->;
+} as const satisfies Record<MutationInvalidationType, readonly (keyof typeof queryKeyNamespaces)[]>;
 
 export async function invalidateAfterMutation(
   queryClient: QueryClient,

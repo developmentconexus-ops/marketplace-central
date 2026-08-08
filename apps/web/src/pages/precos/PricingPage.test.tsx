@@ -36,8 +36,21 @@ const decompose: PricingDecomposeResponse = {
   },
   blocking_state: null,
   tarifa: {
-    comissao: { valor: "15.13", fonte: "COTACAO", degrau: 3, data: "2026-07-18T12:00:00Z", estimativa: false },
-    frete: { valor: null, fonte: "PADRAO", degrau: 4, data: null, estimativa: false, sem_dados: true },
+    comissao: {
+      valor: "15.13",
+      fonte: "COTACAO",
+      degrau: 3,
+      data: "2026-07-18T12:00:00Z",
+      estimativa: false,
+    },
+    frete: {
+      valor: null,
+      fonte: "PADRAO",
+      degrau: 4,
+      data: null,
+      estimativa: false,
+      sem_dados: true,
+    },
   },
 };
 
@@ -66,8 +79,22 @@ const productFactsPage = {
 const difalList: PricingDifalListResponse = {
   disclaimer: "seed padrão 2026 — não é orientação fiscal",
   items: [
-    { uf: "SP", interna_pct: "18", interestadual_pct: "12", efetivo_pct: "6", origem_versao: "padrao-2026", override: null },
-    { uf: "BA", interna_pct: "19", interestadual_pct: "7", efetivo_pct: "12", origem_versao: "padrao-2026", override: null },
+    {
+      uf: "SP",
+      interna_pct: "18",
+      interestadual_pct: "12",
+      efetivo_pct: "6",
+      origem_versao: "padrao-2026",
+      override: null,
+    },
+    {
+      uf: "BA",
+      interna_pct: "19",
+      interestadual_pct: "7",
+      efetivo_pct: "12",
+      origem_versao: "padrao-2026",
+      override: null,
+    },
   ],
 };
 
@@ -97,7 +124,9 @@ const pricingDecompose = vi.fn((_req: unknown) => Promise.resolve(decompose));
 const pricingSolveTarget = vi.fn();
 const putPricingProfile = vi.fn((next: PricingCalcProfile) => Promise.resolve(next));
 const listPricingDifal = vi.fn(() => Promise.resolve(difalList));
-const putPricingDifalOverride = vi.fn(() => Promise.resolve({ persisted: true, rate: difalList.items[0] }));
+const putPricingDifalOverride = vi.fn(() =>
+  Promise.resolve({ persisted: true, rate: difalList.items[0] }),
+);
 const listIntegrationInstallations = vi.fn(() =>
   Promise.resolve({ items: [{ installation_id: "inst_test" }] }),
 );
@@ -345,7 +374,9 @@ describe("PricingPage scaffold", () => {
 
     expect(await screen.findByTestId("difal-drawer")).toBeInTheDocument();
     await waitFor(() => expect(listPricingDifal).toHaveBeenCalled());
-    expect(await screen.findByTestId("difal-disclaimer")).toHaveTextContent("não é orientação fiscal");
+    expect(await screen.findByTestId("difal-disclaimer")).toHaveTextContent(
+      "não é orientação fiscal",
+    );
     expect(screen.getByRole("row", { name: /^SP/ })).toBeInTheDocument();
   });
 

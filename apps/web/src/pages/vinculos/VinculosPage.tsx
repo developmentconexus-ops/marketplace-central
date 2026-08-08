@@ -1,5 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import type { ProductLinkCandidateItem, ProductLinkWorkflowItem } from "@marketplace-central/sdk-runtime";
+import type {
+  ProductLinkCandidateItem,
+  ProductLinkWorkflowItem,
+} from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
 import { QUERY_STALE_TIME } from "@marketplace-central/web-query";
 import { useState } from "react";
@@ -75,10 +78,8 @@ export function VinculosPage() {
   const queueIsCapped = queueItems.length >= VINCULOS_QUEUE_PAGE_SIZE;
   const pendentesLabel = queueIsCapped ? `${pendentesCount}+` : pendentesCount;
 
-  const kpiValue = (
-    query: { isPending: boolean; isError: boolean },
-    value: string | number,
-  ) => (query.isPending ? "…" : query.isError ? "—" : value);
+  const kpiValue = (query: { isPending: boolean; isError: boolean }, value: string | number) =>
+    query.isPending ? "…" : query.isError ? "—" : value;
 
   return (
     <section aria-labelledby="vinculos-title" className="mx-auto flex max-w-7xl flex-col gap-6">
@@ -88,11 +89,15 @@ export function VinculosPage() {
           Vínculos
         </h1>
         <p className="max-w-2xl text-sm text-muted">
-          Revise candidatos de vínculo entre anúncios e produtos internos, e acompanhe o que já foi resolvido.
+          Revise candidatos de vínculo entre anúncios e produtos internos, e acompanhe o que já foi
+          resolvido.
         </p>
       </header>
 
-      <section aria-labelledby="vinculos-kpis-title" className="rounded-card border border-border bg-surface p-4">
+      <section
+        aria-labelledby="vinculos-kpis-title"
+        className="rounded-card border border-border bg-surface p-4"
+      >
         <h2 id="vinculos-kpis-title" className="text-sm font-semibold text-ink">
           Resumo
         </h2>
@@ -127,13 +132,17 @@ export function VinculosPage() {
       </div>
 
       {tab === "fila" ? (
-        <section aria-labelledby="vinculos-fila-title" className="rounded-card border border-border bg-surface p-4">
+        <section
+          aria-labelledby="vinculos-fila-title"
+          className="rounded-card border border-border bg-surface p-4"
+        >
           <h2 id="vinculos-fila-title" className="text-sm font-semibold text-ink">
             Fila de candidatos
           </h2>
           {queueIsCapped ? (
             <p className="mt-1 text-xs text-muted">
-              Mostrando os {VINCULOS_QUEUE_PAGE_SIZE} candidatos de maior confiança. Há mais na fila.
+              Mostrando os {VINCULOS_QUEUE_PAGE_SIZE} candidatos de maior confiança. Há mais na
+              fila.
             </p>
           ) : null}
           {queueQuery.isPending ? (
@@ -147,14 +156,16 @@ export function VinculosPage() {
           )}
         </section>
       ) : (
-        <section aria-labelledby="vinculos-resolvidos-title" className="rounded-card border border-border bg-surface p-4">
+        <section
+          aria-labelledby="vinculos-resolvidos-title"
+          className="rounded-card border border-border bg-surface p-4"
+        >
           <h2 id="vinculos-resolvidos-title" className="text-sm font-semibold text-ink">
             Resolvidos
           </h2>
           <ResolvidosTab installationId={installationId} />
         </section>
       )}
-
     </section>
   );
 }

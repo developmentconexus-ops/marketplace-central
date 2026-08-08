@@ -39,7 +39,11 @@ export function useCatalogFactsQuery(
   includeAll: boolean,
 ) {
   return useInfiniteQuery({
-    queryKey: catalogQueryKeys.facts({ limit: 50, erp_source: erpSource ?? null, include_all: includeAll }),
+    queryKey: catalogQueryKeys.facts({
+      limit: 50,
+      erp_source: erpSource ?? null,
+      include_all: includeAll,
+    }),
     queryFn: ({ pageParam }) =>
       client.listCatalogProductFacts({
         cursor: pageParam,
@@ -66,7 +70,10 @@ export function useCatalogSearchQuery(
   includeAll: boolean,
 ) {
   return useInfiniteQuery({
-    queryKey: catalogQueryKeys.search(query, { erp_source: erpSource ?? null, include_all: includeAll }),
+    queryKey: catalogQueryKeys.search(query, {
+      erp_source: erpSource ?? null,
+      include_all: includeAll,
+    }),
     queryFn: ({ pageParam }) =>
       client.searchCatalogProductFacts({
         q: query,

@@ -111,9 +111,12 @@ describe("ClassificationsPage", () => {
     await waitFor(() => expect(screen.getByText("Product 0")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("checkbox", { name: /select product 3/i }));
     await waitFor(() =>
-      expect(client.updateClassification).toHaveBeenCalledWith("cls1", expect.objectContaining({
-        product_ids: expect.arrayContaining(["0", "1", "2", "3"]),
-      }))
+      expect(client.updateClassification).toHaveBeenCalledWith(
+        "cls1",
+        expect.objectContaining({
+          product_ids: expect.arrayContaining(["0", "1", "2", "3"]),
+        }),
+      ),
     );
   });
 
@@ -125,9 +128,12 @@ describe("ClassificationsPage", () => {
     await waitFor(() => expect(screen.getByText("Product 0")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("checkbox", { name: /select product 0/i }));
     await waitFor(() =>
-      expect(client.updateClassification).toHaveBeenCalledWith("cls1", expect.objectContaining({
-        product_ids: expect.not.arrayContaining(["0"]),
-      }))
+      expect(client.updateClassification).toHaveBeenCalledWith(
+        "cls1",
+        expect.objectContaining({
+          product_ids: expect.not.arrayContaining(["0"]),
+        }),
+      ),
     );
   });
 
@@ -141,8 +147,8 @@ describe("ClassificationsPage", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: /select product 10/i }));
     await waitFor(() =>
       expect(client.createClassification).toHaveBeenCalledWith(
-        expect.objectContaining({ name: "New One", product_ids: ["10"] })
-      )
+        expect.objectContaining({ name: "New One", product_ids: ["10"] }),
+      ),
     );
   });
 
@@ -152,9 +158,7 @@ describe("ClassificationsPage", () => {
     render(<ClassificationsPage client={client} />);
     await waitFor(() => expect(screen.getByText("Mercado Livre Ready")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: /delete mercado livre ready/i }));
-    await waitFor(() =>
-      expect(client.deleteClassification).toHaveBeenCalledWith("cls1")
-    );
+    await waitFor(() => expect(client.deleteClassification).toHaveBeenCalledWith("cls1"));
     expect(screen.queryByText("Mercado Livre Ready")).not.toBeInTheDocument();
     vi.restoreAllMocks();
   });
@@ -167,9 +171,12 @@ describe("ClassificationsPage", () => {
     await waitFor(() => expect(screen.getByText("Product 0")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: /select all filtered/i }));
     await waitFor(() =>
-      expect(client.updateClassification).toHaveBeenCalledWith("cls1", expect.objectContaining({
-        product_ids: expect.arrayContaining(["0", "1", "2", "59"]),
-      }))
+      expect(client.updateClassification).toHaveBeenCalledWith(
+        "cls1",
+        expect.objectContaining({
+          product_ids: expect.arrayContaining(["0", "1", "2", "59"]),
+        }),
+      ),
     );
   });
 
@@ -181,9 +188,12 @@ describe("ClassificationsPage", () => {
     await waitFor(() => expect(screen.getByText("Product 0")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: /clear all/i }));
     await waitFor(() =>
-      expect(client.updateClassification).toHaveBeenCalledWith("cls1", expect.objectContaining({
-        product_ids: [],
-      }))
+      expect(client.updateClassification).toHaveBeenCalledWith(
+        "cls1",
+        expect.objectContaining({
+          product_ids: [],
+        }),
+      ),
     );
   });
 
@@ -196,9 +206,12 @@ describe("ClassificationsPage", () => {
     fireEvent.change(nameInput, { target: { value: "Mercado Livre Premium" } });
     fireEvent.blur(nameInput);
     await waitFor(() =>
-      expect(client.updateClassification).toHaveBeenCalledWith("cls1", expect.objectContaining({
-        name: "Mercado Livre Premium",
-      }))
+      expect(client.updateClassification).toHaveBeenCalledWith(
+        "cls1",
+        expect.objectContaining({
+          name: "Mercado Livre Premium",
+        }),
+      ),
     );
   });
 
@@ -211,9 +224,12 @@ describe("ClassificationsPage", () => {
     fireEvent.change(contextInput, { target: { value: "Updated context" } });
     fireEvent.blur(contextInput);
     await waitFor(() =>
-      expect(client.updateClassification).toHaveBeenCalledWith("cls1", expect.objectContaining({
-        ai_context: "Updated context",
-      }))
+      expect(client.updateClassification).toHaveBeenCalledWith(
+        "cls1",
+        expect.objectContaining({
+          ai_context: "Updated context",
+        }),
+      ),
     );
   });
 
@@ -240,7 +256,9 @@ describe("ClassificationsPage", () => {
     await waitFor(() => expect(screen.getByText("Mercado Livre Ready")).toBeInTheDocument());
     fireEvent.click(screen.getByText("Mercado Livre Ready"));
     await waitFor(() => expect(screen.getByText("Product 0")).toBeInTheDocument());
-    fireEvent.change(screen.getByPlaceholderText(/search products/i), { target: { value: "Product 5" } });
+    fireEvent.change(screen.getByPlaceholderText(/search products/i), {
+      target: { value: "Product 5" },
+    });
     expect(screen.queryByText("Product 0")).not.toBeInTheDocument();
     expect(screen.getByText("Product 5")).toBeInTheDocument();
   });

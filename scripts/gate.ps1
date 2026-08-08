@@ -10,8 +10,8 @@
   existed and were good; nothing invoked them as a set, so which ones ran on any
   given change was a function of what someone remembered.
 
-  This file is the set: gofmt, `go build` + `go vet`, typecheck, golangci-lint,
-  `go test ./...`, vitest. `npm run gate` runs it locally; `.github/workflows/ci.yml`
+  This file is the set: gofmt, Prettier, `go build` + `go vet`, typecheck,
+  golangci-lint, ESLint, `go test ./...`, vitest. `npm run gate` runs it locally; `.github/workflows/ci.yml`
   invokes the same lanes by name. Neither owns a copy of the logic -- a gate the
   operator cannot reproduce on their own machine is its own defect class, and a
   gate whose CI form has drifted from its local form is that class wearing a
@@ -33,7 +33,7 @@
 #>
 [CmdletBinding()]
 param(
-  [ValidateSet('all', 'gofmt', 'build', 'lint-go', 'test-go', 'typecheck', 'test-web')]
+  [ValidateSet('all', 'gofmt', 'format', 'build', 'lint-go', 'lint-web', 'test-go', 'typecheck', 'test-web')]
   [string]$Lane = 'all',
   [switch]$ContinueOnFailure
 )
@@ -70,7 +70,11 @@ function Invoke-GateTool {
     [Parameter(Mandatory)][string]$Name,
     [Parameter(Mandatory)][string]$FilePath,
     [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$ArgumentList,
-    [string]$WorkingDirectory = $repositoryRoot
+    [string]$WorkingDirectory = $repositoryRoot,
+    # For a tool run at a debug verbosity that the lane reads but the operator
+    # should not have to. The log file is written either way, so the evidence is
+    # identical; only the console differs.
+    [switch]$Quiet
   )
 
   $logPath = Join-Path $logDirectory "$Name.log"
@@ -78,7 +82,11 @@ function Invoke-GateTool {
   try {
     # 2>&1 folds stderr into the stream: go and tsc write real diagnostics there,
     # and a count taken over stdout alone would miss them.
-    & $FilePath @ArgumentList 2>&1 | Tee-Object -FilePath $logPath | Out-Host
+    if ($Quiet) {
+      & $FilePath @ArgumentList 2>&1 | Out-File -LiteralPath $logPath -Encoding utf8
+    } else {
+      & $FilePath @ArgumentList 2>&1 | Tee-Object -FilePath $logPath | Out-Host
+    }
     $exitCode = $LASTEXITCODE
   } finally {
     Pop-Location
@@ -203,6 +211,25 @@ $script:GolangciLintExpected = @(
   'noctx', 'rowserrcheck', 'sqlclosecheck', 'staticcheck', 'typecheck', 'unused'
 ) | Sort-Object
 
+# The same assertion for the TypeScript side, and it arrived one review later
+# than the Go one. Reported by CodeRabbit on PR #21 and reproduced 2026-08-08:
+# setting `no-misused-promises` and `rules-of-hooks` to "off" in
+# `eslint.config.mjs` left this lane PASSing with `total=13 baseline=26`, and it
+# printed `shrink: ... -- commit the lower baseline in this PR`. Turning a rule
+# off is reported as progress by any instrument that only counts findings, and
+# the ratchet then locks the lower number in.
+#
+# GATE-TOPOLOGY §2.3a names these six. The list is the contract; the baseline's
+# by_rule keys are checked against it too, so the two cannot drift apart.
+$script:EslintExpected = @(
+  '@typescript-eslint/await-thenable',
+  '@typescript-eslint/no-floating-promises',
+  '@typescript-eslint/no-misused-promises',
+  '@typescript-eslint/no-unused-vars',
+  'react-hooks/exhaustive-deps',
+  'react-hooks/rules-of-hooks'
+) | Sort-Object
+
 function Invoke-GateLintGo {
   $baselinePath = Join-Path $repositoryRoot 'contracts/gate/baselines.json'
   if (-not (Test-Path -LiteralPath $baselinePath -PathType Leaf)) {
@@ -288,6 +315,187 @@ function Invoke-GateLintGo {
   return New-GateVerdict -Lane 'lint-go' -Passed $true -Counts $counts
 }
 
+function Get-GateWebSources {
+  <#
+    The .ts/.tsx files this repository owns, by the same rule the gofmt lane uses:
+    `git ls-files` rather than a tree walk, tracked plus untracked-not-ignored, so
+    the file the developer is writing right now is in scope and `.gomodcache` is
+    not.
+
+    Generated output and tsc's `.d.ts` emit are dropped here because they are
+    dropped in `eslint.config.mjs` too; the two lists have to agree or the
+    coverage assertion below reports drift that is really disagreement between
+    two ignore lists.
+  #>
+  $listed = @(& git -C $repositoryRoot ls-files --cached --others --exclude-standard '*.ts' '*.tsx')
+  return @($listed |
+    Where-Object { $_ -notmatch 'generated/' -and $_ -notmatch '\.d\.ts$' } |
+    Where-Object { Test-Path -LiteralPath (Join-Path $repositoryRoot $_) -PathType Leaf } |
+    Sort-Object)
+}
+
+function Invoke-GateFormat {
+  # Prettier, blocking at zero and never ratcheted. GATE-TOPOLOGY §2.3a: formatting
+  # admits no legitimate exception, so a ratchet would only record how long the
+  # drift had been tolerated.
+  #
+  # Markdown is deliberately out of scope and `.prettierignore` carries the
+  # measurement -- Prettier's markdown printer damages nested lists whose
+  # continuation line sits inside a wrapped code span, in 77 of 236 files here.
+  #
+  # --log-level debug, and the reason is the whole anti-vacuity guard for this
+  # lane. At its default verbosity Prettier names no file on a clean run, so its
+  # output cannot tell a formatted tree from a glob that matched nothing: it
+  # prints the same clean marker either way. At debug it emits one
+  # `resolve config from '<path>'` line per file it actually processed, which is
+  # the effective file set and the only number here that a widened
+  # `.prettierignore` can move. The stream is ~3 lines per file, so it goes to
+  # the log and not to the console.
+  $result = Invoke-GateTool -Name 'prettier' -FilePath 'npx' -Quiet `
+    -ArgumentList @('--no-install', 'prettier', '--check', '--log-level', 'debug', '**/*.{ts,tsx,mjs,json,yml,yaml}')
+  $measurement = Measure-GatePrettier -Text $result.Text
+
+  # Two counts, and they answer different questions. `candidates` comes from git
+  # and says how many files of these extensions exist; `checked` comes from
+  # Prettier and says how many it read. The first was the lane's only guard until
+  # CodeRabbit reported on PR #21 that it does not constrain the second.
+  # Reproduced 2026-08-08: appending an ignore pattern for every extension left
+  # this lane PASSing with `candidates=342 unformatted=0 clean_marker=True` while
+  # Prettier checked zero files. Measured on the committed tree, `checked` is 264
+  # and drops to 0 the moment the ignore list swallows the glob.
+  $candidates = @(& git -C $repositoryRoot ls-files --cached --others --exclude-standard `
+      '*.ts' '*.tsx' '*.mjs' '*.json' '*.yml' '*.yaml').Count
+  $counts = "candidates=$candidates checked=$($measurement.Checked) unformatted=$($measurement.Unformatted) clean_marker=$($measurement.Clean)"
+  Write-Host $counts
+  foreach ($path in @($measurement.Paths)) { Write-Host "  unformatted: $path" }
+
+  if ($candidates -eq 0) {
+    return New-GateVerdict -Lane 'format' -Passed $false -Counts $counts `
+      -Reason 'git reports no file of any formatted extension. The lane would pass over an empty set.'
+  }
+  if ($measurement.Checked -eq 0) {
+    return New-GateVerdict -Lane 'format' -Passed $false -Counts $counts `
+      -Reason "prettier read no file at all, over $candidates candidate(s). Its clean marker is about the empty set. Check .prettierignore and the glob."
+  }
+  # A floor rather than equality: `candidates` deliberately overcounts, because
+  # .prettierignore excludes the lockfile, generated output and recorded evidence
+  # on purpose and each exclusion is argued in that file. What must never happen
+  # again is the ignore list quietly eating most of the tree, so the floor is set
+  # where an accident is loud and the standing exclusions are not.
+  $floor = [math]::Ceiling($candidates * 0.5)
+  if ($measurement.Checked -lt $floor) {
+    return New-GateVerdict -Lane 'format' -Passed $false -Counts $counts `
+      -Reason "prettier read $($measurement.Checked) of $candidates candidate file(s), below the floor of $floor. An ignore rule is excluding more than .prettierignore accounts for."
+  }
+  if ($result.ExitCode -ne 0 -or $measurement.Unformatted -gt 0) {
+    return New-GateVerdict -Lane 'format' -Passed $false -Counts $counts `
+      -Reason "prettier exited $($result.ExitCode) with $($measurement.Unformatted) unformatted file(s). Run: npx prettier --write `"**/*.{ts,tsx,json,yml,yaml}`""
+  }
+  if (-not $measurement.Clean) {
+    return New-GateVerdict -Lane 'format' -Passed $false -Counts $counts `
+      -Reason 'prettier exited 0 without printing its clean marker. Silence is not a verdict.'
+  }
+  return New-GateVerdict -Lane 'format' -Passed $true -Counts $counts
+}
+
+function Invoke-GateLintWeb {
+  $baselinePath = Join-Path $repositoryRoot 'contracts/gate/baselines.json'
+  if (-not (Test-Path -LiteralPath $baselinePath -PathType Leaf)) {
+    return New-GateVerdict -Lane 'lint-web' -Passed $false -Counts 'baseline=missing' `
+      -Reason "no ratchet baseline at $baselinePath."
+  }
+  $baselineDocument = Get-Content -LiteralPath $baselinePath -Raw | ConvertFrom-Json
+  $baseline = ConvertTo-GateCountMap -Object $baselineDocument.eslint.by_rule
+
+  # The baseline names the rules it counted. If that set and $script:EslintExpected
+  # disagree, one of the two moved alone, and every number below is over a rule set
+  # nobody declared.
+  $baselineDrift = @(Compare-Object -ReferenceObject $script:EslintExpected -DifferenceObject @($baseline.Keys | Sort-Object))
+  if ($baselineDrift.Count -ne 0) {
+    $detail = ($baselineDrift | ForEach-Object { "$($_.SideIndicator) $($_.InputObject)" }) -join ', '
+    return New-GateVerdict -Lane 'lint-web' -Passed $false -Counts "baseline_rules=$($baseline.Count)" `
+      -Reason "the baseline's by_rule keys are not the configured rule set ($detail)."
+  }
+
+  # Rule set before findings, for the same reason coverage comes before findings
+  # below: a rule that is off produces zero findings and looks like a rule that
+  # found nothing. `--print-config` resolves the flat config the way ESLint itself
+  # will for that file, so this reads the effective severity rather than the text
+  # of eslint.config.mjs.
+  $sources = Get-GateWebSources
+  if ($sources.Count -eq 0) {
+    return New-GateVerdict -Lane 'lint-web' -Passed $false -Counts 'sources=0' `
+      -Reason 'git reports no .ts/.tsx source. The lane would lint an empty set.'
+  }
+  $probe = Invoke-GateTool -Name 'eslint-print-config' -FilePath 'npx' -Quiet `
+    -ArgumentList @('--no-install', 'eslint', '--print-config', $sources[0])
+  $enabled = Measure-GateEslintRules -Json $probe.Text
+  $enabledDrift = @(Compare-Object -ReferenceObject $script:EslintExpected -DifferenceObject @($enabled))
+  if ($probe.ExitCode -ne 0 -or $enabledDrift.Count -ne 0) {
+    $detail = ($enabledDrift | ForEach-Object { "$($_.SideIndicator) $($_.InputObject)" }) -join ', '
+    return New-GateVerdict -Lane 'lint-web' -Passed $false -Counts "enabled=$(@($enabled).Count) expected=$($script:EslintExpected.Count) probe_exit=$($probe.ExitCode)" `
+      -Reason "the enabled rule set for $($sources[0]) is not the configured one ($detail). A rule that is off reports zero findings, and the ratchet would take the drop for a shrink."
+  }
+
+  $reportPath = Join-Path $logDirectory 'eslint.json'
+  if (Test-Path -LiteralPath $reportPath) { Remove-Item -LiteralPath $reportPath -Force }
+  $result = Invoke-GateTool -Name 'eslint' -FilePath 'npx' `
+    -ArgumentList @('--no-install', 'eslint', '.', '--format', 'json', '--output-file', $reportPath)
+
+  if (-not (Test-Path -LiteralPath $reportPath -PathType Leaf)) {
+    return New-GateVerdict -Lane 'lint-web' -Passed $false -Counts 'report=missing' `
+      -Reason "eslint wrote no report (exit $($result.ExitCode)). The lane cannot report zero findings for a run that did not happen."
+  }
+  $measurement = Measure-GateEslint -Json (Get-Content -LiteralPath $reportPath -Raw)
+
+  # Coverage before findings, and this order is the lesson of the lane. The
+  # type-aware rules -- no-floating-promises, no-misused-promises, await-thenable
+  # -- need a file to belong to a tsconfig. `tsconfig.eslint.json` exists to cover
+  # all of them, and a file that slips out of it is still reported by ESLint,
+  # still contributes zero findings, and still looks exactly like a clean file.
+  # So the tracked source list is the reference and every entry must appear.
+  $expected = $sources
+  $linted = @{}
+  $prefix = ($repositoryRoot -replace '\\', '/').TrimEnd('/') + '/'
+  foreach ($path in @($measurement.Paths)) { $linted[($path -replace [regex]::Escape($prefix), '')] = $true }
+  $uncovered = @($expected | Where-Object { -not $linted.ContainsKey($_) })
+
+  $counts = "linted=$($measurement.Files) sources=$($expected.Count) uncovered=$($uncovered.Count) enabled=$(@($enabled).Count) total=$($measurement.Total) baseline=$($baselineDocument.eslint.total) fatal=$($measurement.Fatal)"
+  Write-Host $counts
+  foreach ($rule in @($measurement.ByRule.Keys | Sort-Object)) {
+    Write-Host ("  {0,-42} {1,4}  baseline {2,4}" -f $rule, $measurement.ByRule[$rule], $(if ($baseline.ContainsKey($rule)) { $baseline[$rule] } else { 'n/a' }))
+  }
+
+  if ($uncovered.Count -gt 0) {
+    foreach ($path in @($uncovered | Select-Object -First 20)) { Write-Host "  uncovered: $path" }
+    return New-GateVerdict -Lane 'lint-web' -Passed $false -Counts $counts `
+      -Reason 'ESLint did not lint every tracked .ts/.tsx source. A file outside the lint project is reported as clean by rules that could not run on it.'
+  }
+  if ($measurement.Fatal -gt 0) {
+    return New-GateVerdict -Lane 'lint-web' -Passed $false -Counts $counts `
+      -Reason 'ESLint could not parse one or more files. A file that failed to parse was not linted, whatever the findings count says.'
+  }
+  # Exit 1 is findings, which is the normal state under a ratchet. Anything else
+  # is the tool failing to run.
+  if ($result.ExitCode -notin @(0, 1)) {
+    return New-GateVerdict -Lane 'lint-web' -Passed $false -Counts $counts `
+      -Reason "eslint exited $($result.ExitCode), which is neither clean nor findings."
+  }
+
+  $measuredMap = @{}
+  foreach ($key in @($baseline.Keys)) { $measuredMap[$key] = 0 }
+  foreach ($key in @($measurement.ByRule.Keys)) { $measuredMap[$key] = $measurement.ByRule[$key] }
+  $comparison = Compare-GateRatchet -Measured $measuredMap -Baseline $baseline
+  foreach ($line in @($comparison.Decreased)) { Write-Host "shrink: $line -- commit the lower baseline in this PR" }
+  if (-not $comparison.Passed) {
+    foreach ($line in @($comparison.Increased)) { Write-Host "increase: $line" }
+    foreach ($line in @($comparison.Unknown)) { Write-Host "unknown rule, absent from the baseline: $line" }
+    return New-GateVerdict -Lane 'lint-web' -Passed $false -Counts $counts `
+      -Reason 'ESLint findings increased over the committed baseline, or a rule fired that the baseline does not name.'
+  }
+  return New-GateVerdict -Lane 'lint-web' -Passed $true -Counts $counts
+}
+
 function Invoke-GateGoTest {
   # ./... and not ./tests/unit/...: the latter is 14 test files, internal/ holds
   # 353. The integration lane is invisible here regardless -- it sits behind
@@ -359,9 +567,11 @@ function Invoke-GateTestWeb {
 # is the order of this array.
 $lanes = [ordered]@{
   'gofmt'     = ${function:Invoke-GateGofmt}
+  'format'    = ${function:Invoke-GateFormat}
   'build'     = ${function:Invoke-GateBuild}
   'typecheck' = ${function:Invoke-GateTypecheck}
   'lint-go'   = ${function:Invoke-GateLintGo}
+  'lint-web'  = ${function:Invoke-GateLintWeb}
   'test-go'   = ${function:Invoke-GateGoTest}
   'test-web'  = ${function:Invoke-GateTestWeb}
 }

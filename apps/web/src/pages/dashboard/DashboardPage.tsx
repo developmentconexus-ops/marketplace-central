@@ -27,7 +27,11 @@ interface KpiCardConfig {
   source: DashboardDegradedSource;
 }
 
-function KpiCard({ config, degraded, onRetry }: {
+function KpiCard({
+  config,
+  degraded,
+  onRetry,
+}: {
   config: KpiCardConfig;
   degraded: DashboardDegradedSource[];
   onRetry: () => void;
@@ -45,8 +49,13 @@ function KpiCard({ config, degraded, onRetry }: {
   return <StatCard label={config.label} value={formatKpi(config.value)} sub={config.sub} />;
 }
 
-
-function UltimoImportCard({ summary, onRetry }: { summary: DashboardOverview; onRetry: () => void }) {
+function UltimoImportCard({
+  summary,
+  onRetry,
+}: {
+  summary: DashboardOverview;
+  onRetry: () => void;
+}) {
   if (summary.last_import) {
     const at = new Date(summary.last_import.at);
     return (

@@ -14,7 +14,14 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "root", "code_owner_path", "composition_required", "openapi_prefixes", "dependencies"],
+        "required": [
+          "id",
+          "root",
+          "code_owner_path",
+          "composition_required",
+          "openapi_prefixes",
+          "dependencies"
+        ],
         "properties": {
           "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
           "kind": {
@@ -25,8 +32,16 @@
           "root": { "$ref": "#/$defs/path" },
           "code_owner_path": { "$ref": "#/$defs/path" },
           "composition_required": { "type": "boolean" },
-          "openapi_prefixes": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^/[a-z0-9][a-z0-9/-]*$" } },
-          "dependencies": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" } }
+          "openapi_prefixes": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "pattern": "^/[a-z0-9][a-z0-9/-]*$" }
+          },
+          "dependencies": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }
+          }
         }
       }
     },
@@ -36,7 +51,17 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "rule_id", "source_module", "target_module", "target_layer", "path", "import_path", "reason", "removal_owner"],
+        "required": [
+          "id",
+          "rule_id",
+          "source_module",
+          "target_module",
+          "target_layer",
+          "path",
+          "import_path",
+          "reason",
+          "removal_owner"
+        ],
         "properties": {
           "id": { "$ref": "#/$defs/id" },
           "rule_id": { "$ref": "#/$defs/id" },
@@ -44,7 +69,10 @@
           "target_module": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
           "target_layer": { "enum": ["adapters", "transport", "registry"] },
           "path": { "$ref": "#/$defs/path" },
-          "import_path": { "type": "string", "pattern": "^marketplace-central/apps/server_core/internal/modules/[a-z0-9_/-]+$" },
+          "import_path": {
+            "type": "string",
+            "pattern": "^marketplace-central/apps/server_core/internal/modules/[a-z0-9_/-]+$"
+          },
           "reason": { "type": "string", "minLength": 1 },
           "removal_owner": { "type": "string", "pattern": "^M-[0-9]{2}(?:/F-[0-9]{2})?$" }
         }

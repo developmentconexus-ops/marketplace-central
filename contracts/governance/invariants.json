@@ -2,23 +2,92 @@
   "schema_version": "1.0",
   "registry_id": "invariants",
   "invariants": [
-    { "id": "module-coverage", "check": "module-coverage", "scope_paths": ["apps/server_core/internal/modules"], "reason_code": "GOV_MODULE_COVERAGE", "exception_mode": "none" },
-    { "id": "module-dependency", "check": "module-dependency", "scope_paths": ["apps/server_core/internal/modules"], "reason_code": "GOV_MODULE_DEPENDENCY", "exception_mode": "exact-edge" },
-    { "id": "module-target-layer", "check": "module-target-layer", "scope_paths": ["apps/server_core/internal/modules"], "reason_code": "GOV_MODULE_LAYER", "exception_mode": "exact-edge" },
-    { "id": "composition-import", "check": "composition-import", "scope_paths": ["apps/server_core/internal/composition/root.go"], "reason_code": "GOV_COMPOSITION_MISSING", "exception_mode": "none" },
-    { "id": "application-import", "check": "application-import", "scope_paths": ["apps/server_core/internal/modules"], "reason_code": "GOV_APPLICATION_IMPORT", "exception_mode": "exact-edge" },
-    { "id": "postgres-driver", "check": "postgres-driver", "scope_paths": ["apps/server_core/internal/modules"], "reason_code": "GOV_POSTGRES_DRIVER", "exception_mode": "exact-path" },
-    { "id": "production-panic", "check": "production-panic", "scope_paths": ["apps/server_core"], "reason_code": "GOV_PRODUCTION_PANIC", "exception_mode": "exact-occurrence" },
-    { "id": "api-sdk-atomicity", "check": "api-sdk-atomicity", "scope_paths": ["contracts/api/marketplace-central.openapi.yaml", "packages/sdk-runtime"], "reason_code": "GOV_API_SDK_SPLIT", "exception_mode": "none" },
-    { "id": "frontend-fetch", "check": "frontend-fetch", "scope_paths": ["apps/web/src", "packages"], "reason_code": "GOV_FRONTEND_FETCH", "exception_mode": "exact-path" },
-    { "id": "migration-prefix", "check": "migration-prefix", "scope_paths": ["apps/server_core/migrations"], "reason_code": "GOV_MIGRATION_PREFIX", "exception_mode": "exact-path-set" }
+    {
+      "id": "module-coverage",
+      "check": "module-coverage",
+      "scope_paths": ["apps/server_core/internal/modules"],
+      "reason_code": "GOV_MODULE_COVERAGE",
+      "exception_mode": "none"
+    },
+    {
+      "id": "module-dependency",
+      "check": "module-dependency",
+      "scope_paths": ["apps/server_core/internal/modules"],
+      "reason_code": "GOV_MODULE_DEPENDENCY",
+      "exception_mode": "exact-edge"
+    },
+    {
+      "id": "module-target-layer",
+      "check": "module-target-layer",
+      "scope_paths": ["apps/server_core/internal/modules"],
+      "reason_code": "GOV_MODULE_LAYER",
+      "exception_mode": "exact-edge"
+    },
+    {
+      "id": "composition-import",
+      "check": "composition-import",
+      "scope_paths": ["apps/server_core/internal/composition/root.go"],
+      "reason_code": "GOV_COMPOSITION_MISSING",
+      "exception_mode": "none"
+    },
+    {
+      "id": "application-import",
+      "check": "application-import",
+      "scope_paths": ["apps/server_core/internal/modules"],
+      "reason_code": "GOV_APPLICATION_IMPORT",
+      "exception_mode": "exact-edge"
+    },
+    {
+      "id": "postgres-driver",
+      "check": "postgres-driver",
+      "scope_paths": ["apps/server_core/internal/modules"],
+      "reason_code": "GOV_POSTGRES_DRIVER",
+      "exception_mode": "exact-path"
+    },
+    {
+      "id": "production-panic",
+      "check": "production-panic",
+      "scope_paths": ["apps/server_core"],
+      "reason_code": "GOV_PRODUCTION_PANIC",
+      "exception_mode": "exact-occurrence"
+    },
+    {
+      "id": "api-sdk-atomicity",
+      "check": "api-sdk-atomicity",
+      "scope_paths": ["contracts/api/marketplace-central.openapi.yaml", "packages/sdk-runtime"],
+      "reason_code": "GOV_API_SDK_SPLIT",
+      "exception_mode": "none"
+    },
+    {
+      "id": "frontend-fetch",
+      "check": "frontend-fetch",
+      "scope_paths": ["apps/web/src", "packages"],
+      "reason_code": "GOV_FRONTEND_FETCH",
+      "exception_mode": "exact-path"
+    },
+    {
+      "id": "migration-prefix",
+      "check": "migration-prefix",
+      "scope_paths": ["apps/server_core/migrations"],
+      "reason_code": "GOV_MIGRATION_PREFIX",
+      "exception_mode": "exact-path-set"
+    }
   ],
   "temporary_exceptions": [
     {
       "id": "production-panic-product-link-transition",
       "rule_id": "production-panic",
-      "paths": ["apps/server_core/internal/modules/product_links/application/resolution_service.go"],
-      "occurrences": [{ "path": "apps/server_core/internal/modules/product_links/application/resolution_service.go", "symbol": "ResolutionService.buildTransition", "fingerprint": "panic(\"unsupported product link transition input\")", "count": 1 }],
+      "paths": [
+        "apps/server_core/internal/modules/product_links/application/resolution_service.go"
+      ],
+      "occurrences": [
+        {
+          "path": "apps/server_core/internal/modules/product_links/application/resolution_service.go",
+          "symbol": "ResolutionService.buildTransition",
+          "fingerprint": "panic(\"unsupported product link transition input\")",
+          "count": 1
+        }
+      ],
       "reason": "Current product-link transition guard uses panic for an unsupported input.",
       "removal_owner": "M-09"
     },
@@ -26,14 +95,24 @@
       "id": "production-panic-apierror-recover-abort-handler",
       "rule_id": "production-panic",
       "paths": ["apps/server_core/internal/platform/apierror/recover.go"],
-      "occurrences": [{ "path": "apps/server_core/internal/platform/apierror/recover.go", "symbol": "Recover", "fingerprint": "panic(rec)", "count": 1 }],
+      "occurrences": [
+        {
+          "path": "apps/server_core/internal/platform/apierror/recover.go",
+          "symbol": "Recover",
+          "fingerprint": "panic(rec)",
+          "count": 1
+        }
+      ],
       "reason": "Recover must re-raise http.ErrAbortHandler: it is the net/http contract for aborting the connection silently; converting it into a 500 envelope would be the defect. The panic is a deliberate pass-through of the sentinel, not a failure path. Removal = the production-panic checker learning to sanction the ErrAbortHandler re-raise idiom (HARNESS-DEBTS D-9), then this entry dies.",
       "removal_owner": "HARNESS-D-9"
     },
     {
       "id": "migration-prefix-0021-duplicate",
       "rule_id": "migration-prefix",
-      "paths": ["apps/server_core/migrations/0021_integration_operation_run_evidence.sql", "apps/server_core/migrations/0021_integrations_provider_auth_strategy_shopee_partner.sql"],
+      "paths": [
+        "apps/server_core/migrations/0021_integration_operation_run_evidence.sql",
+        "apps/server_core/migrations/0021_integrations_provider_auth_strategy_shopee_partner.sql"
+      ],
       "occurrences": [],
       "reason": "Two current migrations use numeric prefix 0021.",
       "removal_owner": "M-08/F-03"
@@ -42,7 +121,14 @@
       "id": "production-panic-pricing-decompose-mustrat",
       "rule_id": "production-panic",
       "paths": ["apps/server_core/internal/modules/pricing/domain/decompose.go"],
-      "occurrences": [{ "path": "apps/server_core/internal/modules/pricing/domain/decompose.go", "symbol": "mustRat", "fingerprint": "panic(err)", "count": 1 }],
+      "occurrences": [
+        {
+          "path": "apps/server_core/internal/modules/pricing/domain/decompose.go",
+          "symbol": "mustRat",
+          "fingerprint": "panic(err)",
+          "count": 1
+        }
+      ],
       "reason": "mustRat backs round2, the 2dp rounding primitive whose inputs are FormatRatHalfUp output (provably parseable); every input-derived decimal is validated at the application layer (calc_service Decompose/SolveTarget INVALID_PRICE guards, 422) before reaching the frozen no-error IC-04 ports domain.Decompose/SolveTargetPrice, so the panic is unreachable from the API. Threading an error would break the frozen port signatures and every round2 call site.",
       "removal_owner": "M-10"
     },
@@ -50,7 +136,14 @@
       "id": "production-panic-pricing-difal-efetivo",
       "rule_id": "production-panic",
       "paths": ["apps/server_core/internal/modules/pricing/domain/difal.go"],
-      "occurrences": [{ "path": "apps/server_core/internal/modules/pricing/domain/difal.go", "symbol": "computeEfetivoPct", "fingerprint": "panic(err)", "count": 2 }],
+      "occurrences": [
+        {
+          "path": "apps/server_core/internal/modules/pricing/domain/difal.go",
+          "symbol": "computeEfetivoPct",
+          "fingerprint": "panic(err)",
+          "count": 2
+        }
+      ],
       "reason": "computeEfetivoPct feeds domain.DifalForUF, the frozen S3 IC-04 read port (no error in its signature, consumed by M-08) via ports.DifalForUF and transport; its inputs are DB-NUMERIC-typed (interna_pct/interestadual_pct) or rateInRange-gated override writes, with no verified client-input path (hub-analyst verified @594d7a48). Threading an error would break the frozen port and its four call sites.",
       "removal_owner": "M-10"
     },
@@ -58,7 +151,14 @@
       "id": "production-panic-kernel-decimal-mustparse",
       "rule_id": "production-panic",
       "paths": ["apps/server_core/internal/kernel/exact/decimal.go"],
-      "occurrences": [{ "path": "apps/server_core/internal/kernel/exact/decimal.go", "symbol": "MustParseDecimal", "fingerprint": "panic(err)", "count": 1 }],
+      "occurrences": [
+        {
+          "path": "apps/server_core/internal/kernel/exact/decimal.go",
+          "symbol": "MustParseDecimal",
+          "fingerprint": "panic(err)",
+          "count": 1
+        }
+      ],
       "reason": "MustParseDecimal is the idiom for compile-time-known literals in tests and package initialization; it panics on bad input, which is correct only because the input is a literal in the source and never data. Removal = the constructor ceasing to exist (HARNESS-DEBTS D-40).",
       "removal_owner": "HARNESS-D-40"
     },
@@ -66,7 +166,14 @@
       "id": "production-panic-kernel-decimal-stringfixed-negative-scale",
       "rule_id": "production-panic",
       "paths": ["apps/server_core/internal/kernel/exact/decimal.go"],
-      "occurrences": [{ "path": "apps/server_core/internal/kernel/exact/decimal.go", "symbol": "Decimal.StringFixed", "fingerprint": "panic(ErrNegativeScale)", "count": 1 }],
+      "occurrences": [
+        {
+          "path": "apps/server_core/internal/kernel/exact/decimal.go",
+          "symbol": "Decimal.StringFixed",
+          "fingerprint": "panic(ErrNegativeScale)",
+          "count": 1
+        }
+      ],
       "reason": "StringFixed with a negative scale is a programming error, not a data error. Removal = the signature changing to return an error instead (HARNESS-DEBTS D-41).",
       "removal_owner": "HARNESS-D-41"
     },
@@ -75,8 +182,18 @@
       "rule_id": "production-panic",
       "paths": ["apps/server_core/internal/kernel/fact/knowledge.go"],
       "occurrences": [
-        { "path": "apps/server_core/internal/kernel/fact/knowledge.go", "symbol": "Fact.MustValue", "fingerprint": "panic(fmt.Errorf(\"%w: state=%s reason=%q evidence=%s\",\r\n\t\t\tErrNotUsable, f.state, f.reason, f.evidence.Ref()", "count": 1 },
-        { "path": "apps/server_core/internal/kernel/fact/knowledge.go", "symbol": "Fact.MustValue", "fingerprint": "panic(fmt.Errorf(\"%w: state=%s reason=%q evidence=%s\",\n\t\t\tErrNotUsable, f.state, f.reason, f.evidence.Ref()", "count": 1 }
+        {
+          "path": "apps/server_core/internal/kernel/fact/knowledge.go",
+          "symbol": "Fact.MustValue",
+          "fingerprint": "panic(fmt.Errorf(\"%w: state=%s reason=%q evidence=%s\",\r\n\t\t\tErrNotUsable, f.state, f.reason, f.evidence.Ref()",
+          "count": 1
+        },
+        {
+          "path": "apps/server_core/internal/kernel/fact/knowledge.go",
+          "symbol": "Fact.MustValue",
+          "fingerprint": "panic(fmt.Errorf(\"%w: state=%s reason=%q evidence=%s\",\n\t\t\tErrNotUsable, f.state, f.reason, f.evidence.Ref()",
+          "count": 1
+        }
       ],
       "reason": "MustValue is the package contract: it is callable only after IsUsable has been checked in the same function. Removal = the Task 5 detector (ScanFactValueDiscard) learning to require IsUsable in the same block, at which point this entry dies (HARNESS-DEBTS D-42). The occurrence is declared TWICE, once per line-ending variant, because the checker (Policy.psm1 production-panic block) compares the fingerprint by exact string equality against raw on-disk text (Get-Content -Raw); the same git blob legitimately materializes with either line ending depending on when/how the working tree was checked out under core.autocrlf=true (a freshly created worktree gets CRLF, an existing checkout may still hold LF from before autocrlf normalization). Only one variant matches in any given checkout, but the checker only requires one occurrence entry per exception to match its declared count for coverage to hold, so both checkouts pass without either declaring an undetected panic.",
       "removal_owner": "HARNESS-D-42"
@@ -84,7 +201,11 @@
     {
       "id": "postgres-driver-erp-import-database-sql",
       "rule_id": "postgres-driver",
-      "paths": ["apps/server_core/internal/modules/erp_import/adapters/postgres/query_repository.go", "apps/server_core/internal/modules/erp_import/adapters/postgres/mirror_query_repository.go", "apps/server_core/internal/modules/erp_import/adapters/postgres/mirror_repository.go"],
+      "paths": [
+        "apps/server_core/internal/modules/erp_import/adapters/postgres/query_repository.go",
+        "apps/server_core/internal/modules/erp_import/adapters/postgres/mirror_query_repository.go",
+        "apps/server_core/internal/modules/erp_import/adapters/postgres/mirror_repository.go"
+      ],
       "occurrences": [],
       "reason": "erp_import postgres adapters import database/sql only for driver-neutral scan helpers (sql.NullString/sql.NullTime) over pgx connections; no database/sql driver is opened. Migrating the scans to pgx-native types is the removal path.",
       "removal_owner": "F-01"

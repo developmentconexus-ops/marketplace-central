@@ -60,19 +60,28 @@ export function ImportChainPanel({ importId }: ImportChainPanelProps) {
             <dl className="mt-3 grid grid-cols-3 gap-3">
               <div>
                 <dt className="text-xs text-faint">Linhas importadas</dt>
-                <dd data-testid="erp-import-chain-importados" className="mt-0.5 font-mono text-sm font-semibold text-ink">
+                <dd
+                  data-testid="erp-import-chain-importados"
+                  className="mt-0.5 font-mono text-sm font-semibold text-ink"
+                >
                   {renderCounter(chainQuery.data.importados, "linhas importadas desconhecidas")}
                 </dd>
               </div>
               <div>
                 <dt className="text-xs text-faint">Produtos vinculados</dt>
-                <dd data-testid="erp-import-chain-vinculados" className="mt-0.5 font-mono text-sm font-semibold text-ink">
+                <dd
+                  data-testid="erp-import-chain-vinculados"
+                  className="mt-0.5 font-mono text-sm font-semibold text-ink"
+                >
                   {renderCounter(chainQuery.data.vinculados, "produtos vinculados desconhecidos")}
                 </dd>
               </div>
               <div>
                 <dt className="text-xs text-faint">Linhas na fila de sync</dt>
-                <dd data-testid="erp-import-chain-enfileirados" className="mt-0.5 font-mono text-sm font-semibold text-ink">
+                <dd
+                  data-testid="erp-import-chain-enfileirados"
+                  className="mt-0.5 font-mono text-sm font-semibold text-ink"
+                >
                   {renderCounter(chainQuery.data.enfileirados, "linhas na fila desconhecidas")}
                 </dd>
               </div>

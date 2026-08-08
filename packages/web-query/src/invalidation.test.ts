@@ -1,8 +1,5 @@
 import { createWebQueryClient, queryKeyNamespaces } from "./index";
-import {
-  invalidateAfterMutation,
-  UnknownMutationInvalidationTypeError,
-} from "./invalidation";
+import { invalidateAfterMutation, UnknownMutationInvalidationTypeError } from "./invalidation";
 
 describe("invalidateAfterMutation", () => {
   const cases = [
@@ -21,9 +18,7 @@ describe("invalidateAfterMutation", () => {
 
     await invalidateAfterMutation(queryClient, type);
 
-    const actual = new Set(
-      invalidateQueries.mock.calls.map(([filters]) => filters.queryKey[0]),
-    );
+    const actual = new Set(invalidateQueries.mock.calls.map(([filters]) => filters.queryKey[0]));
     expect(actual).toEqual(new Set(expected));
     expect(invalidateQueries).toHaveBeenCalledTimes(expected.length);
     for (const namespace of expected) {
@@ -37,9 +32,9 @@ describe("invalidateAfterMutation", () => {
     const queryClient = createWebQueryClient();
     const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
 
-    await expect(
-      invalidateAfterMutation(queryClient, "bogus" as any),
-    ).rejects.toBeInstanceOf(UnknownMutationInvalidationTypeError);
+    await expect(invalidateAfterMutation(queryClient, "bogus" as any)).rejects.toBeInstanceOf(
+      UnknownMutationInvalidationTypeError,
+    );
     expect(invalidateQueries).not.toHaveBeenCalled();
   });
 });

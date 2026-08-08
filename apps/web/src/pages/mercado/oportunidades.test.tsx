@@ -79,7 +79,9 @@ describe("buildOppRows", () => {
   });
 
   it("excludes products the market cannot price (status != OK or no median)", () => {
-    expect(buildOppRows([fact90008()], [agg90008("INSUFFICIENT_MARKET")], [verdict90008()])).toHaveLength(0);
+    expect(
+      buildOppRows([fact90008()], [agg90008("INSUFFICIENT_MARKET")], [verdict90008()]),
+    ).toHaveLength(0);
     // no aggregate at all for the codprod
     expect(buildOppRows([fact90008()], [], [])).toHaveLength(0);
   });
@@ -89,9 +91,18 @@ describe("buildOppRows", () => {
     // FEWER offers than 90008 — so ["99999","90008"] can ONLY come from an n_sellers-desc sort,
     // never from a SKU sort (that yields ["90008","99999"]) nor an n_offers sort.
     const otherFact: CatalogProductFact = { ...fact90008(), internal_product_id: 99999 };
-    const moreSellers: MarketPriceIntelAggregate = { ...agg90008(), product_id: "99999", n_sellers: 9, n_offers: 6 };
+    const moreSellers: MarketPriceIntelAggregate = {
+      ...agg90008(),
+      product_id: "99999",
+      n_sellers: 9,
+      n_offers: 6,
+    };
     const fewerSellers: MarketPriceIntelAggregate = { ...agg90008(), n_sellers: 5, n_offers: 20 };
-    const rows = buildOppRows([fact90008(), otherFact], [fewerSellers, moreSellers], [verdict90008(), verdict90008()]);
+    const rows = buildOppRows(
+      [fact90008(), otherFact],
+      [fewerSellers, moreSellers],
+      [verdict90008(), verdict90008()],
+    );
     expect(rows.map((r) => r.sku)).toEqual(["99999", "90008"]); // 9 sellers first, despite later SKU + fewer offers
   });
 });

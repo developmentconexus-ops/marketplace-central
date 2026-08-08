@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { isRefreshInProgressError } from "@marketplace-central/sdk-runtime";
-import { formatRelativeAge, queryKeyNamespaces, syncQueryKeys } from "@marketplace-central/web-query";
+import {
+  formatRelativeAge,
+  queryKeyNamespaces,
+  syncQueryKeys,
+} from "@marketplace-central/web-query";
 import { useEffect, useRef, useState } from "react";
 import { useClient } from "../app/ClientContext";
 
@@ -23,7 +27,6 @@ function isRefreshRun(run: { operation_type: string }): boolean {
 function isActive(status: string | undefined): boolean {
   return status === "queued" || status === "running";
 }
-
 
 function attachedRunId(error: unknown): string | null {
   return isRefreshInProgressError(error) ? error.details.operation_run_id : null;
@@ -97,10 +100,9 @@ export function ListingsRefreshControl({ installationId }: { installationId: str
   const adoptedRunId =
     runs.find((item) => isRefreshRun(item) && isActive(item.status))?.operation_run_id ?? null;
   const trackedRunId = observedRunId ?? adoptedRunId;
-  const observedRun = trackedRunId === null
-    ? undefined
-    : runs.find((item) => item.operation_run_id === trackedRunId);
-  const status: RunStatus | null = trackedRunId === null ? null : observedRun?.status ?? "queued";
+  const observedRun =
+    trackedRunId === null ? undefined : runs.find((item) => item.operation_run_id === trackedRunId);
+  const status: RunStatus | null = trackedRunId === null ? null : (observedRun?.status ?? "queued");
 
   useEffect(() => {
     if (
@@ -124,13 +126,15 @@ export function ListingsRefreshControl({ installationId }: { installationId: str
     const timer = setInterval(() => setNow(Date.now()), 1_000);
     return () => clearInterval(timer);
   }, [runIsActive]);
-  const elapsed = runIsActive && observedRun?.started_at ? formatRelativeAge(observedRun.started_at, now) : null;
+  const elapsed =
+    runIsActive && observedRun?.started_at ? formatRelativeAge(observedRun.started_at, now) : null;
 
-  const terminalError = status === "failed"
-    ? "Atualização falhou."
-    : status === "cancelled"
-      ? "Atualização cancelada."
-      : null;
+  const terminalError =
+    status === "failed"
+      ? "Atualização falhou."
+      : status === "cancelled"
+        ? "Atualização cancelada."
+        : null;
 
   return (
     <div className="flex items-center gap-2">
@@ -151,8 +155,16 @@ export function ListingsRefreshControl({ installationId }: { installationId: str
           {elapsed !== null ? ` ${elapsed}` : ""}
         </small>
       ) : null}
-      {startError !== null ? <small role="alert" className="text-warn">{startError}</small> : null}
-      {terminalError !== null ? <small role="alert" className="text-warn">{terminalError}</small> : null}
+      {startError !== null ? (
+        <small role="alert" className="text-warn">
+          {startError}
+        </small>
+      ) : null}
+      {terminalError !== null ? (
+        <small role="alert" className="text-warn">
+          {terminalError}
+        </small>
+      ) : null}
     </div>
   );
 }

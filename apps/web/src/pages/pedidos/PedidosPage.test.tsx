@@ -478,7 +478,9 @@ describe("PedidosPage", () => {
     // retorno_liquido:null → honest "—" for retorno, scoped to THIS Fila row (not the page): the
     // assertion must pin FilaRetorno's UnknownValue, not be satisfied by the unconditional DIFAL
     // KPI dash elsewhere on the page. A regression to a fabricated "R$ 0,00" here must fail this.
-    const goldenRow = screen.getByRole("button", { name: "Abrir detalhe do pedido 2000017336572246" });
+    const goldenRow = screen.getByRole("button", {
+      name: "Abrir detalhe do pedido 2000017336572246",
+    });
     expect(within(goldenRow).getByText("—")).toBeInTheDocument();
     // num column shows the order number, never the channel slug.
     expect(within(goldenRow).getByText("2000017336572246")).toBeInTheDocument();
@@ -797,7 +799,9 @@ describe("PedidosPage", () => {
     const icmsRow = drawer.getByText("ICMS saída").closest("div");
     expect(icmsRow).not.toBeNull();
     expect(
-      within(icmsRow as HTMLElement).getByTitle(/célula ICMS ausente\/ambígua para este destino\/grupo/),
+      within(icmsRow as HTMLElement).getByTitle(
+        /célula ICMS ausente\/ambígua para este destino\/grupo/,
+      ),
     ).toBeInTheDocument();
   });
 

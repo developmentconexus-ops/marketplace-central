@@ -78,10 +78,34 @@ const headerExceptionChips: Array<{
   tone: string;
   count: (exceptions: ListingSummaryExceptions) => number | null | undefined;
 }> = [
-  { filterKey: "sync_error", label: "erro", glyph: "●", tone: "text-warn", count: (e) => e.sync_error },
-  { filterKey: "stale", label: "desatualizado", glyph: "●", tone: "text-amber", count: (e) => e.stale },
-  { filterKey: "sem_vinculo", label: "sem vínculo", glyph: "○", tone: "text-muted", count: (e) => e.sem_vinculo ?? e.unlinked },
-  { filterKey: "below_margin", label: "abaixo da margem", glyph: "●", tone: "text-amber", count: (e) => e.below_margin_worst_case },
+  {
+    filterKey: "sync_error",
+    label: "erro",
+    glyph: "●",
+    tone: "text-warn",
+    count: (e) => e.sync_error,
+  },
+  {
+    filterKey: "stale",
+    label: "desatualizado",
+    glyph: "●",
+    tone: "text-amber",
+    count: (e) => e.stale,
+  },
+  {
+    filterKey: "sem_vinculo",
+    label: "sem vínculo",
+    glyph: "○",
+    tone: "text-muted",
+    count: (e) => e.sem_vinculo ?? e.unlinked,
+  },
+  {
+    filterKey: "below_margin",
+    label: "abaixo da margem",
+    glyph: "●",
+    tone: "text-amber",
+    count: (e) => e.below_margin_worst_case,
+  },
 ];
 
 const numberFormatter = new Intl.NumberFormat("pt-BR");
@@ -98,7 +122,7 @@ function buildListingsCsv(items: ListingReadModel[]): string {
   const rows = items.map((item) => {
     const produto =
       item.link.product_id ??
-      (item.link.state === "conflict" ? linkLabels.conflict : linkLabels[item.link.state] ?? "");
+      (item.link.state === "conflict" ? linkLabels.conflict : (linkLabels[item.link.state] ?? ""));
     return [
       item.provider_listing_id ?? "",
       item.title ?? "",
@@ -114,7 +138,15 @@ function buildListingsCsv(items: ListingReadModel[]): string {
   return [header.join(","), ...rows].join("\r\n");
 }
 
-function ActiveFilterChip({ kind, value, onDismiss }: { kind: string; value: string; onDismiss: () => void }) {
+function ActiveFilterChip({
+  kind,
+  value,
+  onDismiss,
+}: {
+  kind: string;
+  value: string;
+  onDismiss: () => void;
+}) {
   return (
     <span className="inline-flex items-center gap-2 rounded-full bg-surface-2 px-3 py-1 text-sm font-medium text-muted">
       <span>{`${kind}: ${value}`}</span>
@@ -150,7 +182,8 @@ export function AnunciosPage() {
   const paginationIdentity = JSON.stringify([installationId, state]);
   const previousPaginationIdentity = useRef(paginationIdentity);
   const selectionInstallationId = useRef(installationId);
-  const cursorForQuery = previousPaginationIdentity.current === paginationIdentity ? cursor : undefined;
+  const cursorForQuery =
+    previousPaginationIdentity.current === paginationIdentity ? cursor : undefined;
   const pageOptions = {
     ...toListingListOptions(state, installationId),
     ...(cursorForQuery ? { cursor: cursorForQuery } : {}),
@@ -159,7 +192,8 @@ export function AnunciosPage() {
     queryKey: state.grouped
       ? listingsQueryKeys.byProduct(installationId, pageOptions)
       : listingsQueryKeys.page(installationId, pageOptions),
-    queryFn: () => (state.grouped ? client.listListingsByProduct(pageOptions) : client.listListings(pageOptions)),
+    queryFn: () =>
+      state.grouped ? client.listListingsByProduct(pageOptions) : client.listListings(pageOptions),
     staleTime: QUERY_STALE_TIME.listings,
   });
   const pageData = pageQuery.data;
@@ -167,7 +201,7 @@ export function AnunciosPage() {
   const flatItems = pageData && "items" in pageData ? pageData.items : undefined;
   const visibleListings: ListingReadModel[] = groups
     ? groups.flatMap((group) => group.listings)
-    : flatItems ?? [];
+    : (flatItems ?? []);
   const isEmptyPage = groups ? groups.length === 0 : (flatItems?.length ?? 0) === 0;
   const summaryQuery = useQuery(anunciosSummaryQuery(client, installationId));
 
@@ -255,7 +289,10 @@ export function AnunciosPage() {
   const chips = summary
     ? headerExceptionChips
         .map((chip) => ({ ...chip, value: chip.count(summary.exceptions) }))
-        .filter((chip): chip is typeof chip & { value: number } => typeof chip.value === "number" && chip.value > 0)
+        .filter(
+          (chip): chip is typeof chip & { value: number } =>
+            typeof chip.value === "number" && chip.value > 0,
+        )
     : [];
 
   return (
@@ -288,10 +325,14 @@ export function AnunciosPage() {
                   })
                 }
                 className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1 text-xs font-semibold ${chip.tone} ${
-                  active ? "border-current bg-surface-2" : "border-border bg-surface hover:bg-surface-2"
+                  active
+                    ? "border-current bg-surface-2"
+                    : "border-border bg-surface hover:bg-surface-2"
                 }`}
               >
-                <span aria-hidden="true" className="text-[10px]">{chip.glyph}</span>
+                <span aria-hidden="true" className="text-[10px]">
+                  {chip.glyph}
+                </span>
                 <span>{chip.label}</span>
                 <span className="font-mono">{chip.value}</span>
               </button>
@@ -328,7 +369,11 @@ export function AnunciosPage() {
       </header>
 
       {/* Status tabs — underline style of the prototype. */}
-      <div aria-label="Filtros de status" role="tablist" className="flex gap-0.5 border-b border-border text-sm">
+      <div
+        aria-label="Filtros de status"
+        role="tablist"
+        className="flex gap-0.5 border-b border-border text-sm"
+      >
         {tabs.map((tab) => {
           const active = state.tab === tab.value;
           return (
@@ -370,28 +415,39 @@ export function AnunciosPage() {
             <ActiveFilterChip
               kind="Exceção"
               value={exceptionLabels[state.filters.exception]}
-              onDismiss={() => updateState({ ...state, filters: { ...state.filters, exception: undefined } })}
+              onDismiss={() =>
+                updateState({ ...state, filters: { ...state.filters, exception: undefined } })
+              }
             />
           ) : null}
           {state.filters.sync_state ? (
             <ActiveFilterChip
               kind="Sync"
               value={syncLabels[state.filters.sync_state]}
-              onDismiss={() => updateState({ ...state, filters: { ...state.filters, sync_state: undefined } })}
+              onDismiss={() =>
+                updateState({ ...state, filters: { ...state.filters, sync_state: undefined } })
+              }
             />
           ) : null}
           {state.filters.link_state ? (
             <ActiveFilterChip
               kind="Vínculo"
               value={linkLabels[state.filters.link_state]}
-              onDismiss={() => updateState({ ...state, filters: { ...state.filters, link_state: undefined } })}
+              onDismiss={() =>
+                updateState({ ...state, filters: { ...state.filters, link_state: undefined } })
+              }
             />
           ) : null}
           {state.filters.listing_type_code ? (
             <ActiveFilterChip
               kind="Modalidade"
               value={state.filters.listing_type_code}
-              onDismiss={() => updateState({ ...state, filters: { ...state.filters, listing_type_code: undefined } })}
+              onDismiss={() =>
+                updateState({
+                  ...state,
+                  filters: { ...state.filters, listing_type_code: undefined },
+                })
+              }
             />
           ) : null}
         </div>
@@ -409,7 +465,11 @@ export function AnunciosPage() {
             }}
           />
           <span className="text-xs text-faint">preview antes de aplicar</span>
-          <button type="button" onClick={clearSelection} className="ml-auto text-muted hover:text-ink">
+          <button
+            type="button"
+            onClick={clearSelection}
+            className="ml-auto text-muted hover:text-ink"
+          >
             ✕ Limpar
           </button>
         </div>

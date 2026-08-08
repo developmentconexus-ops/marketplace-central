@@ -21,7 +21,9 @@ const profile: PricingCalcProfile = {
   origem: "operator",
 };
 
-function fact(over: Partial<CatalogProductFact> & { internal_product_id: number }): CatalogProductFact {
+function fact(
+  over: Partial<CatalogProductFact> & { internal_product_id: number },
+): CatalogProductFact {
   return {
     reference: null,
     description: null,
@@ -175,7 +177,15 @@ describe("PricingMatrix (EXEMPLO-IO golden)", () => {
     renderMatrix({ listMarketAggregates });
 
     // 7 design columns present.
-    for (const col of ["SKU", "DESCRIÇÃO", "CUSTO", "NOSSO PREÇO", "PREÇO MERCADO", "MARGEM", "VEREDICTO"]) {
+    for (const col of [
+      "SKU",
+      "DESCRIÇÃO",
+      "CUSTO",
+      "NOSSO PREÇO",
+      "PREÇO MERCADO",
+      "MARGEM",
+      "VEREDICTO",
+    ]) {
       expect(screen.getByRole("columnheader", { name: col })).toBeInTheDocument();
     }
     // All three product rows rendered.
@@ -295,7 +305,9 @@ describe("PricingMatrix (EXEMPLO-IO golden)", () => {
 
     const row = await screen.findByTestId("matrix-row-90001");
     await waitFor(() =>
-      expect(within(row).getByTestId("matrix-veredicto-90001")).toHaveTextContent("MERCADO_INSUFICIENTE"),
+      expect(within(row).getByTestId("matrix-veredicto-90001")).toHaveTextContent(
+        "MERCADO_INSUFICIENTE",
+      ),
     );
     // No usable median → honest dash, never a fabricated price.
     expect(within(row).getByTestId("matrix-mercado-90001")).toHaveTextContent("—");

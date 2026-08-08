@@ -1,6 +1,12 @@
 import type { ProductLinkCandidateItem } from "@marketplace-central/sdk-runtime";
 import { DetailPanel, UnknownValue } from "@marketplace-central/ui";
-import { bandClass, bandLabel, directionClass, providerDisplayName, reasonChipLabel } from "./QueueRow";
+import {
+  bandClass,
+  bandLabel,
+  directionClass,
+  providerDisplayName,
+  reasonChipLabel,
+} from "./QueueRow";
 
 export interface VinculoDrawerProps {
   candidateId: string | null;
@@ -24,7 +30,9 @@ export interface VinculoDrawerProps {
 
 function pill(label: string, className: string) {
   return (
-    <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${className}`}>
+    <span
+      className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${className}`}
+    >
       {label}
     </span>
   );
@@ -68,16 +76,16 @@ function CandidateCompareCard({
           Candidato #{rank}
           {isSelected ? " (selecionado)" : ""}
         </span>
-        {noCandidate
-          ? pill("Sem candidato", "bg-surface-2 text-faint")
-          : (
-            <span className="flex items-center gap-1">
-              {pill(bandLabel(candidate.confidence_band), bandClass(candidate.confidence_band))}
-              <span className="font-mono text-xs font-medium tabular-nums text-muted">
-                {confidencePercent(candidate.confidence)}
-              </span>
+        {noCandidate ? (
+          pill("Sem candidato", "bg-surface-2 text-faint")
+        ) : (
+          <span className="flex items-center gap-1">
+            {pill(bandLabel(candidate.confidence_band), bandClass(candidate.confidence_band))}
+            <span className="font-mono text-xs font-medium tabular-nums text-muted">
+              {confidencePercent(candidate.confidence)}
             </span>
-          )}
+          </span>
+        )}
       </div>
 
       <dl className="space-y-2">
@@ -89,17 +97,23 @@ function CandidateCompareCard({
           )}
         </Fact>
         <Fact label="Produto sugerido">
-          {candidate.internal_product_name ? candidate.internal_product_name : <UnknownValue hint="sem descrição no ERP" />}
+          {candidate.internal_product_name ? (
+            candidate.internal_product_name
+          ) : (
+            <UnknownValue hint="sem descrição no ERP" />
+          )}
         </Fact>
         {/* `internal_reference_code` é a referência do lado ERP; `refforn` é o
             nome da coluna no ERP, não vocabulário de tela (D-A tirou o termo do
             vocabulário cross-side). */}
         <Fact label="GTIN / Ref. interna">
-          {candidate.internal_reference_code
-            ? <span className="font-mono">{candidate.internal_reference_code}</span>
-            : candidate.match_input === "ean" && candidate.match_value
-              ? <span className="font-mono">{candidate.match_value}</span>
-              : <UnknownValue />}
+          {candidate.internal_reference_code ? (
+            <span className="font-mono">{candidate.internal_reference_code}</span>
+          ) : candidate.match_input === "ean" && candidate.match_value ? (
+            <span className="font-mono">{candidate.match_value}</span>
+          ) : (
+            <UnknownValue />
+          )}
         </Fact>
         <Fact label="Entrada de match">{candidate.match_input}</Fact>
         <Fact label="Preço">
@@ -151,7 +165,12 @@ export function VinculoDrawer({
   // show an honest "not found" state instead of a blank drawer.
   if (!selected) {
     return (
-      <DetailPanel open onClose={onClose} closeLabel="Fechar painel" title="Candidato não encontrado">
+      <DetailPanel
+        open
+        onClose={onClose}
+        closeLabel="Fechar painel"
+        title="Candidato não encontrado"
+      >
         <p className="text-sm text-muted">
           Este candidato não está mais na fila. Ele pode já ter sido resolvido ou removido.
         </p>

@@ -37,8 +37,18 @@ const baseListing = {
 
 const pageOne = {
   items: [
-    { ...baseListing, listing_id: "inst_1~MLB1~-", provider_listing_id: "MLB1", title: "Página 1 A" },
-    { ...baseListing, listing_id: "inst_1~MLB2~-", provider_listing_id: "MLB2", title: "Página 1 B" },
+    {
+      ...baseListing,
+      listing_id: "inst_1~MLB1~-",
+      provider_listing_id: "MLB1",
+      title: "Página 1 A",
+    },
+    {
+      ...baseListing,
+      listing_id: "inst_1~MLB2~-",
+      provider_listing_id: "MLB2",
+      title: "Página 1 B",
+    },
   ],
   next_cursor: "c2",
   page_size: 2,
@@ -47,7 +57,12 @@ const pageOne = {
 
 const pageTwo = {
   items: [
-    { ...baseListing, listing_id: "inst_1~MLB3~-", provider_listing_id: "MLB3", title: "Página 2 A" },
+    {
+      ...baseListing,
+      listing_id: "inst_1~MLB3~-",
+      provider_listing_id: "MLB3",
+      title: "Página 2 A",
+    },
   ],
   next_cursor: null,
   page_size: 1,
@@ -195,7 +210,9 @@ describe("AnunciosPage selection and pagination", () => {
 
     fireEvent.click(await screen.findByLabelText("Selecionar anúncio Página 1 A"));
 
-    const header = screen.getByLabelText<HTMLInputElement>("Selecionar todos os anúncios desta página");
+    const header = screen.getByLabelText<HTMLInputElement>(
+      "Selecionar todos os anúncios desta página",
+    );
     expect(header.indeterminate).toBe(true);
     expect(header).not.toBeChecked();
 
@@ -252,7 +269,14 @@ describe("AnunciosPage selection and pagination", () => {
     renderPage();
     await screen.findByText("Página 1 A");
 
-    const bulkActions = ["Atualizar preço", "Corrigir estoque", "Pausar", "Ressincronizar", "Vincular", "Editar"];
+    const bulkActions = [
+      "Atualizar preço",
+      "Corrigir estoque",
+      "Pausar",
+      "Ressincronizar",
+      "Vincular",
+      "Editar",
+    ];
 
     // Design: the bulk bar is gated on selection — no actions render at zero.
     for (const name of bulkActions) {
@@ -303,14 +327,16 @@ describe("AnunciosPage selection and pagination", () => {
     fireEvent.click(screen.getByRole("button", { name: "Gerar prévia" }));
 
     await waitFor(() => expect(createMutation).toHaveBeenCalledOnce());
-    expect(createMutation).toHaveBeenCalledWith(expect.objectContaining({
-      installation_id: "inst_1",
-      type: "listing_resync",
-      selection: {
-        mode: "explicit",
-        listing_ids: ["inst_1~MLB1~-", "inst_1~MLB2~-", "inst_1~MLB3~-"],
-      },
-    }));
+    expect(createMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        installation_id: "inst_1",
+        type: "listing_resync",
+        selection: {
+          mode: "explicit",
+          listing_ids: ["inst_1~MLB1~-", "inst_1~MLB2~-", "inst_1~MLB3~-"],
+        },
+      }),
+    );
   });
 
   it("clears selection and closes an unsubmitted modal when installation changes", async () => {

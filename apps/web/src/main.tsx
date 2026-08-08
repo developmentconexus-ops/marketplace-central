@@ -21,5 +21,5 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
         <App />
       </QueryClientProvider>
     </ClientProvider>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

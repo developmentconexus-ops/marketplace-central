@@ -5,7 +5,13 @@ import type {
   SetActiveSourceRequest,
   SetSellableAssortmentRequest,
 } from "./activeSource";
-import type { ErpImportChain, ErpImportCreated, ErpImportDetail, ErpImportList, ErpImportSourceInput } from "./erpImport";
+import type {
+  ErpImportChain,
+  ErpImportCreated,
+  ErpImportDetail,
+  ErpImportList,
+  ErpImportSourceInput,
+} from "./erpImport";
 
 export * from "./erpImport";
 export * from "./market";
@@ -82,35 +88,35 @@ export interface CredentialField {
   secret: boolean;
 }
 
-export type CapabilityStatus = 'supported' | 'unsupported' | 'degraded' | 'blocked'
+export type CapabilityStatus = "supported" | "unsupported" | "degraded" | "blocked";
 
 export interface CapabilityProfile {
-  listing_read: CapabilityStatus
-  stock_read: CapabilityStatus
-  stock_write: CapabilityStatus
-  order_read: CapabilityStatus
-  messages: CapabilityStatus
-  questions: CapabilityStatus
-  freight_quotes: CapabilityStatus
-  webhooks: CapabilityStatus
-  sandbox: CapabilityStatus
+  listing_read: CapabilityStatus;
+  stock_read: CapabilityStatus;
+  stock_write: CapabilityStatus;
+  order_read: CapabilityStatus;
+  messages: CapabilityStatus;
+  questions: CapabilityStatus;
+  freight_quotes: CapabilityStatus;
+  webhooks: CapabilityStatus;
+  sandbox: CapabilityStatus;
 }
 
 export interface PluginMetadata {
-  icon_url?: string
-  color?: string
-  docs_url?: string
-  rollout_stage: 'v1' | 'wave_2' | 'blocked'
-  execution_mode: 'live' | 'blocked'
+  icon_url?: string;
+  color?: string;
+  docs_url?: string;
+  rollout_stage: "v1" | "wave_2" | "blocked";
+  execution_mode: "live" | "blocked";
 }
 
 export interface MarketplaceDefinition {
-  code: string
-  display_name: string
-  auth_strategy: 'oauth2' | 'lwa' | 'shopee_partner' | 'api_key' | 'token' | 'unknown'
-  is_active: boolean
-  capability_profile: CapabilityProfile
-  metadata: PluginMetadata
+  code: string;
+  display_name: string;
+  auth_strategy: "oauth2" | "lwa" | "shopee_partner" | "api_key" | "token" | "unknown";
+  is_active: boolean;
+  capability_profile: CapabilityProfile;
+  metadata: PluginMetadata;
 }
 
 export interface IntegrationProviderMetadata {
@@ -286,10 +292,25 @@ export type CatalogErrorCode =
   | "deadline_exceeded"
   | "internal_error";
 
-export type ListingStatus = "active" | "paused" | "closed" | "unknown" | "under_review" | "inactive" | "payment_required" | "not_yet_active";
+export type ListingStatus =
+  | "active"
+  | "paused"
+  | "closed"
+  | "unknown"
+  | "under_review"
+  | "inactive"
+  | "payment_required"
+  | "not_yet_active";
 export type ListingSyncState = "synced" | "error" | "stale" | "queued" | "syncing" | "paused_sync";
 export type ListingLinkState = "unresolved" | "conflict" | "resolved" | "rejected";
-export type ListingException = "sync_error" | "stale" | "unlinked" | "below_margin" | "sem_vinculo" | "abaixo_custo" | "sem_evidencia";
+export type ListingException =
+  | "sync_error"
+  | "stale"
+  | "unlinked"
+  | "below_margin"
+  | "sem_vinculo"
+  | "abaixo_custo"
+  | "sem_evidencia";
 
 export interface ListingListOptions {
   installation_id: string;
@@ -363,7 +384,8 @@ export interface ListingSyncError {
   message_provider: string | null;
 }
 
-export type ListingPendingIssueKind = "sync_error" | "stale" | "unlinked" | "below_margin" | "attribute_required";
+export type ListingPendingIssueKind =
+  "sync_error" | "stale" | "unlinked" | "below_margin" | "attribute_required";
 
 export interface ListingPendingIssue {
   kind: ListingPendingIssueKind;
@@ -475,7 +497,8 @@ export interface CategoryAttributesResponse {
 }
 
 export interface IntegrationConnectionSnapshot {
-  state: "draft" | "pending_connection" | "connected" | "degraded" | "needs_reauth" | "disconnected";
+  state:
+    "draft" | "pending_connection" | "connected" | "degraded" | "needs_reauth" | "disconnected";
   health: "healthy" | "warning" | "critical";
   provider_code: string;
   external_account_id: string;
@@ -895,7 +918,8 @@ export interface ConfirmAssistedSankhyaLinkageRequest {
   idempotency_key: string;
 }
 
-export type AssistedSankhyaLineageState = "none" | "partial" | "complete" | "conflict" | "unavailable";
+export type AssistedSankhyaLineageState =
+  "none" | "partial" | "complete" | "conflict" | "unavailable";
 
 export interface AssistedSankhyaDescendant {
   internal_document_id: number;
@@ -935,7 +959,8 @@ export type ProfitabilityInputQuality =
   | "stale"
   | "manual"
   | "partial";
-export type ProfitabilityManualAdjustmentCategory = "freight" | "commission" | "cost" | "generic_adjustment";
+export type ProfitabilityManualAdjustmentCategory =
+  "freight" | "commission" | "cost" | "generic_adjustment";
 
 export interface ProfitabilityActor {
   actor_type: string;
@@ -1078,12 +1103,7 @@ export interface ProductLinkListingSnapshotImportResult {
 }
 
 export type ProductLinkCandidateState =
-  | "manual"
-  | "exact_sku"
-  | "exact_ean"
-  | "title_match"
-  | "unresolved"
-  | "conflict";
+  "manual" | "exact_sku" | "exact_ean" | "title_match" | "unresolved" | "conflict";
 
 export type ProductLinkCandidateMatchInput = "manual" | "seller_sku" | "ean" | "title" | "none";
 
@@ -1093,12 +1113,7 @@ export type ProductLinkConfidenceBand = "ALTA" | "MEDIA" | "BAIXA";
  * product with nothing against it and nothing corroborating it, so it waits for
  * a human yes. Distinct from REVIEW, which means the anchors disagree or are
  * ambiguous — the two are counted and filtered separately. */
-export type ProductLinkMatchStatus =
-  | "ACCEPT"
-  | "REVIEW"
-  | "REJECT"
-  | "NO_CANDIDATE"
-  | "CONFIRM";
+export type ProductLinkMatchStatus = "ACCEPT" | "REVIEW" | "REJECT" | "NO_CANDIDATE" | "CONFIRM";
 
 export type ProductLinkReasonDirection = "FOR" | "AGAINST" | "UNAVAILABLE" | "INCOMPARABLE";
 export type ProductLinkReasonSide = "provider" | "erp" | "both";
@@ -1289,7 +1304,8 @@ export interface InventoryStockRiskItem {
   blocking_reason?: InventoryBlockingReason;
 }
 
-export type InventoryStockActionState = "proposed" | "blocked" | "approved" | "applied" | "failed" | "skipped";
+export type InventoryStockActionState =
+  "proposed" | "blocked" | "approved" | "applied" | "failed" | "skipped";
 
 export interface InventoryStockActionOperator {
   actor_type: string;
@@ -1386,11 +1402,10 @@ export interface IntegrationAuthStatusResponse {
   connection: IntegrationConnectionSnapshot;
 }
 
-export type SubmitIntegrationCredentialsRequest =
-  { metadata?: Record<string, string> } & (
-    | { api_key: string; credentials?: Record<string, string> }
-    | { api_key?: string; credentials: Record<string, string> }
-  );
+export type SubmitIntegrationCredentialsRequest = { metadata?: Record<string, string> } & (
+  | { api_key: string; credentials?: Record<string, string> }
+  | { api_key?: string; credentials: Record<string, string> }
+);
 
 export interface CreateIntegrationInstallationRequest {
   installation_id: string;
@@ -1407,7 +1422,7 @@ export interface MarketplaceFeeSchedule {
   commission_percent: number;
   fixed_fee_amount: number;
   notes: string;
-  source: 'api_sync' | 'seeded' | 'manual';
+  source: "api_sync" | "seeded" | "manual";
   synced_at: string;
 }
 
@@ -1664,7 +1679,8 @@ export type MutationState =
   | "failed_preserved"
   | "cancelled";
 
-export type MutationItemState = "previewed" | "approved" | "applying" | "applied" | "failed" | "skipped";
+export type MutationItemState =
+  "previewed" | "approved" | "applying" | "applied" | "failed" | "skipped";
 
 export interface CreateMutationRequest {
   installation_id: string;
@@ -1801,15 +1817,9 @@ export type ErpImportErrorCode =
   | "import_in_progress";
 
 export type ActiveSourceErrorCode =
-  | "unknown_erp_source"
-  | "invalid_active_source"
-  | "invalid_body"
-  | "internal_error";
+  "unknown_erp_source" | "invalid_active_source" | "invalid_body" | "internal_error";
 
-export type SellableAssortmentErrorCode =
-  | "unknown_erp_source"
-  | "invalid_body"
-  | "internal_error";
+export type SellableAssortmentErrorCode = "unknown_erp_source" | "invalid_body" | "internal_error";
 
 export type ApiErrorCode =
   | CatalogErrorCode
@@ -1927,7 +1937,9 @@ export function hasCode<C extends ApiErrorCode>(
   // of the map, so the lookup is legitimately a miss for them and `undefined`
   // is the honest result. The cast only loosens the key type for the read; it
   // cannot weaken the completeness the RequiredDetailFields literal enforces.
-  const requiredFields = (REQUIRED_DETAIL_FIELDS as Record<string, readonly string[] | undefined>)[code];
+  const requiredFields = (REQUIRED_DETAIL_FIELDS as Record<string, readonly string[] | undefined>)[
+    code
+  ];
   if (requiredFields === undefined) return true;
   return requiredFields.every((field) => hasStringField(value.details, field));
 }
@@ -1941,9 +1953,7 @@ export function hasCode<C extends ApiErrorCode>(
  * power hasCode gives ApiErrorCode members, without inventing a code that
  * isn't in the spec's closed unions.
  */
-export function isRefreshInProgressError(
-  value: unknown,
-): value is MarketplaceCentralClientError & {
+export function isRefreshInProgressError(value: unknown): value is MarketplaceCentralClientError & {
   status: 409;
   code: "refresh_in_progress";
   details: { operation_run_id: string } & Record<string, unknown>;
@@ -1989,7 +1999,12 @@ export function parseApiError(status: number, data: unknown): MarketplaceCentral
       details !== null && typeof details === "object" ? (details as Record<string, unknown>) : {},
     );
   }
-  return new MarketplaceCentralClientError(status, "internal_error", "erro inesperado do servidor", { raw: data });
+  return new MarketplaceCentralClientError(
+    status,
+    "internal_error",
+    "erro inesperado do servidor",
+    { raw: data },
+  );
 }
 
 export function createMarketplaceCentralClient(options: {
@@ -2155,16 +2170,19 @@ export function createMarketplaceCentralClient(options: {
       getJson<ListingPage>(`/listings${listingQuery(options)}`),
     listListingsByProduct: (options: ListingListOptions) =>
       getJson<ListingGroupPage>(`/listings/by-product${listingQuery(options)}`),
-    getListing: (id: string) =>
-      getJson<ListingDetail>(`/listings/${encodeURIComponent(id)}`),
+    getListing: (id: string) => getJson<ListingDetail>(`/listings/${encodeURIComponent(id)}`),
     getCategoryAttributes: (categoryId: string) =>
       getJson<CategoryAttributesResponse>(
         `/listings/categories/${encodeURIComponent(categoryId)}/attributes`,
       ),
     getListingsSummary: (installationId: string) =>
-      getJson<ListingSummary>(`/listings/summary?installation_id=${encodeURIComponent(installationId)}`),
+      getJson<ListingSummary>(
+        `/listings/summary?installation_id=${encodeURIComponent(installationId)}`,
+      ),
     getDashboardSummary: (installationId: string) =>
-      getJson<DashboardSummary>(`/dashboard/summary?installation_id=${encodeURIComponent(installationId)}`),
+      getJson<DashboardSummary>(
+        `/dashboard/summary?installation_id=${encodeURIComponent(installationId)}`,
+      ),
     listSyncRuns: (options: SyncRunListOptions) =>
       getJson<SyncRunPage>(`/sync/runs${syncRunQuery(options)}`),
     getSyncHealth: () => getJson<SyncHealth>("/sync/health"),
@@ -2188,34 +2206,65 @@ export function createMarketplaceCentralClient(options: {
     getActiveSource: () => getJson<ActiveSourceConfig>("/config/active-source"),
     setActiveSource: (req: SetActiveSourceRequest) =>
       putJson<ActiveSourceConfig>("/config/active-source", req),
-    getSellableAssortment: () =>
-      getJson<SellableAssortmentConfig>("/config/sellable-assortment"),
+    getSellableAssortment: () => getJson<SellableAssortmentConfig>("/config/sellable-assortment"),
     setSellableAssortment: (req: SetSellableAssortmentRequest) =>
       putJson<SellableAssortmentConfig>("/config/sellable-assortment", req),
     listErpImports: () => getJson<ErpImportList>("/erp/imports"),
-    getErpImport: (id: string) => getJson<ErpImportDetail>(`/erp/imports/${encodeURIComponent(id)}`),
-    getErpImportChain: (id: string) => getJson<ErpImportChain>(`/erp/imports/${encodeURIComponent(id)}/chain`),
-    listMarketplaceAccounts: () => getJson<ListResponse<MarketplaceAccount>>("/marketplaces/accounts"),
-    listMarketplacePolicies: () => getJson<ListResponse<MarketplacePolicy>>("/marketplaces/policies"),
-    listMarketplaceDefinitions: () => getJson<ListResponse<MarketplaceDefinition>>("/marketplaces/definitions"),
-    listIntegrationProviders: () => getJson<ListResponse<IntegrationProviderDefinition>>("/integrations/providers"),
-    listIntegrationInstallations: () => getJson<ListResponse<IntegrationInstallation>>("/integrations/installations"),
+    getErpImport: (id: string) =>
+      getJson<ErpImportDetail>(`/erp/imports/${encodeURIComponent(id)}`),
+    getErpImportChain: (id: string) =>
+      getJson<ErpImportChain>(`/erp/imports/${encodeURIComponent(id)}/chain`),
+    listMarketplaceAccounts: () =>
+      getJson<ListResponse<MarketplaceAccount>>("/marketplaces/accounts"),
+    listMarketplacePolicies: () =>
+      getJson<ListResponse<MarketplacePolicy>>("/marketplaces/policies"),
+    listMarketplaceDefinitions: () =>
+      getJson<ListResponse<MarketplaceDefinition>>("/marketplaces/definitions"),
+    listIntegrationProviders: () =>
+      getJson<ListResponse<IntegrationProviderDefinition>>("/integrations/providers"),
+    listIntegrationInstallations: () =>
+      getJson<ListResponse<IntegrationInstallation>>("/integrations/installations"),
     listIntegrationOperationRuns: (installationId: string) =>
-      getJson<ListResponse<IntegrationOperationRun>>(`/integrations/installations/${installationId}/operations`),
+      getJson<ListResponse<IntegrationOperationRun>>(
+        `/integrations/installations/${installationId}/operations`,
+      ),
     startIntegrationAuthorization: (installationId: string) =>
-      postJson<IntegrationAuthorizeResponse>(`/integrations/installations/${installationId}/auth/authorize`, {}),
+      postJson<IntegrationAuthorizeResponse>(
+        `/integrations/installations/${installationId}/auth/authorize`,
+        {},
+      ),
     startIntegrationReauthorization: (installationId: string) =>
-      postJson<IntegrationAuthorizeResponse>(`/integrations/installations/${installationId}/reauth/authorize`, {}),
-    submitIntegrationCredentials: (installationId: string, req: SubmitIntegrationCredentialsRequest) =>
-      postJson<IntegrationAuthStatusResponse>(`/integrations/installations/${installationId}/auth/credentials`, req),
+      postJson<IntegrationAuthorizeResponse>(
+        `/integrations/installations/${installationId}/reauth/authorize`,
+        {},
+      ),
+    submitIntegrationCredentials: (
+      installationId: string,
+      req: SubmitIntegrationCredentialsRequest,
+    ) =>
+      postJson<IntegrationAuthStatusResponse>(
+        `/integrations/installations/${installationId}/auth/credentials`,
+        req,
+      ),
     disconnectIntegrationInstallation: (installationId: string) =>
-      postJson<IntegrationAuthStatusResponse>(`/integrations/installations/${installationId}/disconnect`, {}),
+      postJson<IntegrationAuthStatusResponse>(
+        `/integrations/installations/${installationId}/disconnect`,
+        {},
+      ),
     getIntegrationAuthStatus: (installationId: string) =>
-      getJson<IntegrationAuthStatusResponse>(`/integrations/installations/${installationId}/auth/status`),
+      getJson<IntegrationAuthStatusResponse>(
+        `/integrations/installations/${installationId}/auth/status`,
+      ),
     startIntegrationFeeSync: (installationId: string) =>
-      postJson<IntegrationFeeSyncAccepted>(`/integrations/installations/${installationId}/fee-sync`, {}),
+      postJson<IntegrationFeeSyncAccepted>(
+        `/integrations/installations/${installationId}/fee-sync`,
+        {},
+      ),
     probeIntegrationAccount: (installationId: string) =>
-      postJson<IntegrationAccountProbe>(`/integrations/installations/${installationId}/probes/account`, {}),
+      postJson<IntegrationAccountProbe>(
+        `/integrations/installations/${installationId}/probes/account`,
+        {},
+      ),
     probeIntegrationListings: (installationId: string, limit = 20) =>
       getJson<ListResponse<IntegrationListingProbe>>(
         `/integrations/installations/${installationId}/probes/listings?limit=${encodeURIComponent(String(limit))}`,
@@ -2226,7 +2275,13 @@ export function createMarketplaceCentralClient(options: {
       ),
     probeIntegrationFeeQuote: (
       installationId: string,
-      input: { listing_type_id: string; price: number; site_id?: string; category_id?: string; currency_id?: string },
+      input: {
+        listing_type_id: string;
+        price: number;
+        site_id?: string;
+        category_id?: string;
+        currency_id?: string;
+      },
     ) =>
       getJson<IntegrationFeeQuoteSnapshot>(
         `/integrations/installations/${installationId}/probes/fee-quote?listing_type_id=${encodeURIComponent(input.listing_type_id)}&price=${encodeURIComponent(String(input.price))}${input.site_id ? `&site_id=${encodeURIComponent(input.site_id)}` : ""}${input.category_id ? `&category_id=${encodeURIComponent(input.category_id)}` : ""}${input.currency_id ? `&currency_id=${encodeURIComponent(input.currency_id)}` : ""}`,
@@ -2239,9 +2294,15 @@ export function createMarketplaceCentralClient(options: {
         `/integrations/installations/${installationId}/probes/stock?provider_item_id=${encodeURIComponent(input.provider_item_id)}${input.provider_variation_id ? `&provider_variation_id=${encodeURIComponent(input.provider_variation_id)}` : ""}`,
       ),
     importProductLinkListingSnapshots: (req: { installation_id: string; limit?: number }) =>
-      postJson<ProductLinkListingSnapshotImportResult>("/product-links/listing-snapshots/imports", req),
+      postJson<ProductLinkListingSnapshotImportResult>(
+        "/product-links/listing-snapshots/imports",
+        req,
+      ),
     generateProductLinkCandidates: (req: { installation_id: string; limit?: number }) =>
-      postJson<ProductLinkCandidateGenerationResult>("/product-links/link-candidates/generations", req),
+      postJson<ProductLinkCandidateGenerationResult>(
+        "/product-links/link-candidates/generations",
+        req,
+      ),
     listProductLinkCandidates: (installationId: string, limit = 20) =>
       getJson<ListResponse<ProductLinkCandidateItem>>(
         `/product-links/link-candidates?installation_id=${encodeURIComponent(installationId)}&limit=${encodeURIComponent(String(limit))}`,
@@ -2250,8 +2311,15 @@ export function createMarketplaceCentralClient(options: {
       getJson<ListResponse<ProductLinkWorkflowItem>>(
         `/product-links/link-workflows?installation_id=${encodeURIComponent(installationId)}&limit=${encodeURIComponent(String(limit))}`,
       ),
-    approveProductLinkCandidate: (req: { candidate_id: string; reason?: string; actor: ProductLinkActor }) =>
-      postJson<ProductLinkResolutionResult>("/product-links/link-resolutions/approve-candidate", req),
+    approveProductLinkCandidate: (req: {
+      candidate_id: string;
+      reason?: string;
+      actor: ProductLinkActor;
+    }) =>
+      postJson<ProductLinkResolutionResult>(
+        "/product-links/link-resolutions/approve-candidate",
+        req,
+      ),
     rejectProductLinkListing: (req: {
       installation_id: string;
       provider_code: string;
@@ -2259,7 +2327,8 @@ export function createMarketplaceCentralClient(options: {
       provider_variation_id?: string;
       reason?: string;
       actor: ProductLinkActor;
-    }) => postJson<ProductLinkResolutionResult>("/product-links/link-resolutions/reject-listing", req),
+    }) =>
+      postJson<ProductLinkResolutionResult>("/product-links/link-resolutions/reject-listing", req),
     manualResolveProductLink: (req: {
       installation_id: string;
       provider_code: string;
@@ -2274,16 +2343,33 @@ export function createMarketplaceCentralClient(options: {
       if (!Number.isInteger(req.internal_product_id) || req.internal_product_id <= 0) {
         throw new Error("invalid_identity: internal_product_id must be a positive integer");
       }
-      return postJson<ProductLinkResolutionResult>("/product-links/link-resolutions/manual-resolve", req);
+      return postJson<ProductLinkResolutionResult>(
+        "/product-links/link-resolutions/manual-resolve",
+        req,
+      );
     },
     previewProductLinkBatch: (req: { approvals: ProductLinkBatchApproval[] }) =>
-      postJson<PreviewProductLinkBatchResponse>("/product-links/link-resolutions/batch-preview", req),
-    applyProductLinkBatch: (req: { approvals: ProductLinkBatchApproval[]; actor: ProductLinkActor }) =>
-      postJson<ApplyProductLinkBatchResponse>("/product-links/link-resolutions/batch", req),
-    undoProductLinkResolution: (auditId: string, req: { reason?: string; actor?: ProductLinkActor } = {}) =>
-      postJson<ProductLinkResolutionResult>(`/product-links/link-resolutions/${encodeURIComponent(auditId)}/undo`, req),
+      postJson<PreviewProductLinkBatchResponse>(
+        "/product-links/link-resolutions/batch-preview",
+        req,
+      ),
+    applyProductLinkBatch: (req: {
+      approvals: ProductLinkBatchApproval[];
+      actor: ProductLinkActor;
+    }) => postJson<ApplyProductLinkBatchResponse>("/product-links/link-resolutions/batch", req),
+    undoProductLinkResolution: (
+      auditId: string,
+      req: { reason?: string; actor?: ProductLinkActor } = {},
+    ) =>
+      postJson<ProductLinkResolutionResult>(
+        `/product-links/link-resolutions/${encodeURIComponent(auditId)}/undo`,
+        req,
+      ),
     undoProductLinkBatch: (batchId: string) =>
-      postJson<UndoProductLinkBatchResponse>(`/product-links/link-resolutions/batch/${encodeURIComponent(batchId)}/undo`, {}),
+      postJson<UndoProductLinkBatchResponse>(
+        `/product-links/link-resolutions/batch/${encodeURIComponent(batchId)}/undo`,
+        {},
+      ),
     listInventoryStockRisks: (input: {
       installation_id: string;
       state?: StockRiskState;
@@ -2310,8 +2396,7 @@ export function createMarketplaceCentralClient(options: {
       getJson<ListResponse<MarketplaceOrder>>(
         `/orders?installation_id=${encodeURIComponent(installationId)}&limit=${encodeURIComponent(String(limit))}`,
       ),
-    listOrders: (options: OrderListOptions) =>
-      getJson<OrderPage>(`/orders${orderQuery(options)}`),
+    listOrders: (options: OrderListOptions) => getJson<OrderPage>(`/orders${orderQuery(options)}`),
     getOrder: (installationId: string, providerOrderId: string) =>
       getJson<OrderRead>(
         `/orders/${encodeURIComponent(providerOrderId)}?installation_id=${encodeURIComponent(installationId)}`,
@@ -2367,13 +2452,18 @@ export function createMarketplaceCentralClient(options: {
         `/profitability/manual-adjustments?installation_id=${encodeURIComponent(installationId)}&limit=${encodeURIComponent(String(limit))}`,
       ),
     calculateProfitabilityProfitSnapshots: (req: { installation_id: string; limit?: number }) =>
-      postJson<CalculateProfitabilityProfitSnapshotsResponse>("/profitability/profit-snapshots/calculate", req),
+      postJson<CalculateProfitabilityProfitSnapshotsResponse>(
+        "/profitability/profit-snapshots/calculate",
+        req,
+      ),
     listProfitabilityProfitSnapshots: (installationId: string, limit = 50) =>
       getJson<ListResponse<ProfitabilityProfitSnapshot>>(
         `/profitability/profit-snapshots?installation_id=${encodeURIComponent(installationId)}&limit=${encodeURIComponent(String(limit))}`,
       ),
     listMarketplaceFeeSchedules: (marketplaceCode: string) =>
-      getJson<ListResponse<MarketplaceFeeSchedule>>(`/marketplaces/fee-schedules?marketplace_code=${encodeURIComponent(marketplaceCode)}`),
+      getJson<ListResponse<MarketplaceFeeSchedule>>(
+        `/marketplaces/fee-schedules?marketplace_code=${encodeURIComponent(marketplaceCode)}`,
+      ),
     listPricingSimulations: () => getJson<ListResponse<PricingSimulation>>("/pricing/simulations"),
     createMarketplaceAccount: (req: CreateMarketplaceAccountRequest) =>
       postJson<MarketplaceAccount>("/marketplaces/accounts", req),
@@ -2400,10 +2490,8 @@ export function createMarketplaceCentralClient(options: {
       postJson<PricingDecomposeResponse>("/pricing/decompose", req),
     pricingSolveTarget: (req: PricingCalcInput) =>
       postJson<PricingSolveResponse>("/pricing/solve", req),
-    getMelhorEnvioStatus: () =>
-      getJson<{ connected: boolean }>("/connectors/melhor-envio/status"),
-    createMutation: (req: CreateMutationRequest) =>
-      postJson<MutationProtocol>("/mutations", req),
+    getMelhorEnvioStatus: () => getJson<{ connected: boolean }>("/connectors/melhor-envio/status"),
+    createMutation: (req: CreateMutationRequest) => postJson<MutationProtocol>("/mutations", req),
     previewMutation: (protocolId: string) =>
       postJson<MutationPreview>(`/mutations/${encodeURIComponent(protocolId)}/preview`, {}),
     approveMutation: (protocolId: string, req: ApproveMutationRequest) =>
@@ -2436,27 +2524,25 @@ export function createMarketplaceCentralClient(options: {
     // Catalog
     /** @deprecated Use searchCatalogProductFacts; the endpoint now returns the IC-01 page envelope. */
     searchCatalogProducts: (query: string, limit?: number) =>
-      getJson<CatalogProductFactPage>(`/catalog/products/search${catalogQuery({ q: query, limit })}`),
+      getJson<CatalogProductFactPage>(
+        `/catalog/products/search${catalogQuery({ q: query, limit })}`,
+      ),
     getCatalogProduct: (productId: number) =>
       getJson<CanonicalCatalogProduct>(`/catalog/products/${productId}`),
-    listTaxonomyNodes: () =>
-      getJson<ListResponse<TaxonomyNode>>("/catalog/taxonomy"),
+    listTaxonomyNodes: () => getJson<ListResponse<TaxonomyNode>>("/catalog/taxonomy"),
     getProductEnrichment: (productId: string) =>
       getJson<ProductEnrichment>(`/catalog/products/${productId}/enrichment`),
     updateProductEnrichment: (productId: string, data: Partial<ProductEnrichment>) =>
       putJson<ProductEnrichment>(`/catalog/products/${productId}/enrichment`, data),
 
     // Classifications
-    listClassifications: () =>
-      getJson<ListResponse<Classification>>("/classifications"),
+    listClassifications: () => getJson<ListResponse<Classification>>("/classifications"),
     createClassification: (req: CreateClassificationRequest) =>
       postJson<Classification>("/classifications", req),
-    getClassification: (id: string) =>
-      getJson<Classification>(`/classifications/${id}`),
+    getClassification: (id: string) => getJson<Classification>(`/classifications/${id}`),
     updateClassification: (id: string, req: UpdateClassificationRequest) =>
       putJson<Classification>(`/classifications/${id}`, req),
-    deleteClassification: (id: string) =>
-      deleteJson(`/classifications/${id}`),
+    deleteClassification: (id: string) => deleteJson(`/classifications/${id}`),
     listMarketObservations: (installationId: string, listingIds: string[]) => {
       const query = new URLSearchParams();
       query.set("installation_id", installationId);

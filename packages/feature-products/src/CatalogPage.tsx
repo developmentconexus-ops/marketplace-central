@@ -1,12 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button, formatMoneyOr, FreshnessIndicator, PaginatedTable, SurfaceCard } from "@marketplace-central/ui";
-import type { ActiveSourceName, CatalogProductFact } from "@marketplace-central/sdk-runtime";
 import {
-  catalogQueryKeys,
-  useCatalogAssortmentCountsQuery,
-} from "@marketplace-central/web-query";
-import { useCatalogFactsQuery, useCatalogSearchQuery, type CatalogQueriesClient } from "./catalogQueries";
+  Button,
+  formatMoneyOr,
+  FreshnessIndicator,
+  PaginatedTable,
+  SurfaceCard,
+} from "@marketplace-central/ui";
+import type { ActiveSourceName, CatalogProductFact } from "@marketplace-central/sdk-runtime";
+import { catalogQueryKeys, useCatalogAssortmentCountsQuery } from "@marketplace-central/web-query";
+import {
+  useCatalogFactsQuery,
+  useCatalogSearchQuery,
+  type CatalogQueriesClient,
+} from "./catalogQueries";
 
 export interface CatalogPageProps {
   client: CatalogQueriesClient;
@@ -51,7 +58,9 @@ function StockCell({ quantity, quality }: { quantity: number | null; quality: st
 function errorMessage(error: unknown): string {
   if (error && typeof error === "object") {
     const structured = error as { error?: { message?: string }; message?: string };
-    return structured.error?.message ?? structured.message ?? "Não foi possível carregar o catálogo.";
+    return (
+      structured.error?.message ?? structured.message ?? "Não foi possível carregar o catálogo."
+    );
   }
   return "Não foi possível carregar o catálogo.";
 }
@@ -89,11 +98,18 @@ export function CatalogPage({ client, erpSource }: CatalogPageProps) {
       const run = async () => {
         if (debouncedSearch) {
           await queryClient.refetchQueries({
-            queryKey: catalogQueryKeys.search(debouncedSearch, { erp_source: erpSource ?? null, include_all: includeAll }),
+            queryKey: catalogQueryKeys.search(debouncedSearch, {
+              erp_source: erpSource ?? null,
+              include_all: includeAll,
+            }),
           });
         } else {
           await queryClient.refetchQueries({
-            queryKey: catalogQueryKeys.facts({ limit: 50, erp_source: erpSource ?? null, include_all: includeAll }),
+            queryKey: catalogQueryKeys.facts({
+              limit: 50,
+              erp_source: erpSource ?? null,
+              include_all: includeAll,
+            }),
           });
         }
       };
@@ -119,13 +135,15 @@ export function CatalogPage({ client, erpSource }: CatalogPageProps) {
               Vendáveis {countsQuery.data.sellable_count} de {countsQuery.data.total_count}
             </span>
           ) : null}
-          <Button
-            variant="secondary"
-            onClick={() => setIncludeAll((current) => !current)}
-          >
+          <Button variant="secondary" onClick={() => setIncludeAll((current) => !current)}>
             {includeAll ? "Ver sortimento filtrado" : "Ver todos"}
           </Button>
-          <Button variant="secondary" disabled={refreshing || isLoading} loading={refreshing} onClick={() => void refresh()}>
+          <Button
+            variant="secondary"
+            disabled={refreshing || isLoading}
+            loading={refreshing}
+            onClick={() => void refresh()}
+          >
             Atualizar
           </Button>
         </div>
@@ -187,7 +205,10 @@ export function CatalogPage({ client, erpSource }: CatalogPageProps) {
               <td className="px-4 py-3 text-muted">{fact.ean ?? "—"}</td>
               <td className="px-4 py-3 text-muted">{fact.active ? "Sim" : "Não"}</td>
               <td className="px-4 py-3 text-right text-muted">
-                <StockCell quantity={fact.sellable_stock.quantity} quality={fact.sellable_stock.quality} />
+                <StockCell
+                  quantity={fact.sellable_stock.quantity}
+                  quality={fact.sellable_stock.quality}
+                />
               </td>
               <td className="px-4 py-3 text-right font-mono text-muted">
                 {factAmount(fact.current_price.amount, fact.current_price.quality)}

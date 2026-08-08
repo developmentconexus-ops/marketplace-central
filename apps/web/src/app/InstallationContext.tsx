@@ -2,14 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { IntegrationInstallation } from "@marketplace-central/sdk-runtime";
 import { EmptyState, ErrorState, LoadingState } from "@marketplace-central/ui";
 import { installationsQueryKeys } from "@marketplace-central/web-query";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useClient } from "./ClientContext";
 
@@ -56,8 +49,8 @@ export function InstallationProvider({ children }: { children: ReactNode }) {
     authorizedInstallations.find((installation) => installation.status === "connected") ??
     authorizedInstallations[0];
   const installationId = requestedInstallationExists
-    ? requestedInstallationId ?? ""
-    : defaultInstallation?.installation_id ?? "";
+    ? (requestedInstallationId ?? "")
+    : (defaultInstallation?.installation_id ?? "");
 
   useEffect(() => {
     if (!query.isSuccess || !defaultInstallation || requestedInstallationExists) return;
@@ -103,9 +96,7 @@ export function InstallationGate({ children }: { children: ReactNode }) {
   if (status === "error") {
     return (
       <ErrorState
-        onRetry={() =>
-          void queryClient.refetchQueries({ queryKey: installationsQueryKeys.list() })
-        }
+        onRetry={() => void queryClient.refetchQueries({ queryKey: installationsQueryKeys.list() })}
       />
     );
   }

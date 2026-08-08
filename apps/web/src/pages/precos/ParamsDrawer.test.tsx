@@ -15,11 +15,20 @@ const profile: PricingCalcProfile = {
   origem: "operator",
 };
 
-function renderDrawer(overrides: Partial<PricingCalcProfile> = {}, props: Partial<Parameters<typeof ParamsDrawer>[0]> = {}) {
+function renderDrawer(
+  overrides: Partial<PricingCalcProfile> = {},
+  props: Partial<Parameters<typeof ParamsDrawer>[0]> = {},
+) {
   const onSave = vi.fn();
   const onClose = vi.fn();
   render(
-    <ParamsDrawer open profile={{ ...profile, ...overrides }} onSave={onSave} onClose={onClose} {...props} />,
+    <ParamsDrawer
+      open
+      profile={{ ...profile, ...overrides }}
+      onSave={onSave}
+      onClose={onClose}
+      {...props}
+    />,
   );
   return { onSave, onClose };
 }
@@ -95,7 +104,12 @@ describe("ParamsDrawer", () => {
 
   it("renders the read-only MODALIDADES ML box with 'vem do ML' tiers + the resolved active rate", () => {
     // Active modalidade = premium; the resolved comissão tarifa is display-only.
-    const comissao: TariffComponent = { valor: "17", fonte: "COTACAO", degrau: 3, data: "2026-07-18T12:00:00Z" };
+    const comissao: TariffComponent = {
+      valor: "17",
+      fonte: "COTACAO",
+      degrau: 3,
+      data: "2026-07-18T12:00:00Z",
+    };
     renderDrawer({}, { modalidade: "premium", comissaoTarifa: comissao });
     const box = screen.getByTestId("params-modalidades-ml");
     expect(box).toHaveTextContent("Comissão Clássico");
@@ -115,7 +129,9 @@ describe("ParamsDrawer", () => {
 
   it("shows the in-drawer DIFAL destino context from the analysis CEP", () => {
     renderDrawer({ difal_enabled: true, difal_destino_uf: "SP" });
-    expect(screen.getByTestId("params-difal-context")).toHaveTextContent("Destino atual: SP (do CEP da análise).");
+    expect(screen.getByTestId("params-difal-context")).toHaveTextContent(
+      "Destino atual: SP (do CEP da análise).",
+    );
   });
 
   it("opens the full DIFAL-por-UF table via the in-drawer link", () => {
@@ -126,7 +142,12 @@ describe("ParamsDrawer", () => {
   });
 
   it("restores drawer fields to defaults on 'Restaurar padrão' (client-side, no save)", () => {
-    const defaults: PricingCalcProfile = { ...profile, aliquota_pct: "4", limiar_verde_pct: "18", limiar_amarelo_pct: "10" };
+    const defaults: PricingCalcProfile = {
+      ...profile,
+      aliquota_pct: "4",
+      limiar_verde_pct: "18",
+      limiar_amarelo_pct: "10",
+    };
     const { onSave } = renderDrawer({ aliquota_pct: "9.25", limiar_verde_pct: "25" }, { defaults });
     // Edit away from defaults, then restore.
     fireEvent.change(screen.getByLabelText("Alíquota"), { target: { value: "12" } });

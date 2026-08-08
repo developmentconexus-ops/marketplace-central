@@ -11,7 +11,11 @@ import { MonitoradosTab } from "./MonitoradosTab";
 import { buildOppRows, chunk } from "./oportunidades";
 import { useMercadoMarketClient, type MercadoMarketClient } from "./marketClient";
 import { DASH, formatCollectedAt, MARGIN_MIN_PCT } from "./mercadoFormatters";
-import { COLLECTION_CEILING, useMarketCollection, type MarketCollectionSummary } from "./useMarketCollection";
+import {
+  COLLECTION_CEILING,
+  useMarketCollection,
+  type MarketCollectionSummary,
+} from "./useMarketCollection";
 
 type MercadoTab = "reprice" | "opp" | "mon";
 
@@ -76,10 +80,17 @@ function TruncationNote(): JSX.Element {
  * (no candidate on ML, market too thin, no price, no cost). A product that came
  * back empty is reported as empty — the radar never fills the gap itself.
  */
-function CollectionNote({ state }: { state: ReturnType<typeof useMarketCollection>["state"] }): JSX.Element | null {
+function CollectionNote({
+  state,
+}: {
+  state: ReturnType<typeof useMarketCollection>["state"];
+}): JSX.Element | null {
   if (state.nothingToCollect) {
     return (
-      <p role="status" className="rounded-card border border-border bg-surface-2 px-3 py-2 text-[12px] text-muted">
+      <p
+        role="status"
+        className="rounded-card border border-border bg-surface-2 px-3 py-2 text-[12px] text-muted"
+      >
         Nenhum produto vinculado nesta aba para coletar.
       </p>
     );
@@ -99,7 +110,10 @@ function CollectionNote({ state }: { state: ReturnType<typeof useMarketCollectio
   ];
   if (failed > 0) parts.push(`${failed} com falha na coleta`);
   return (
-    <p role="status" className="rounded-card border border-border bg-surface-2 px-3 py-2 text-[12px] text-muted">
+    <p
+      role="status"
+      className="rounded-card border border-border bg-surface-2 px-3 py-2 text-[12px] text-muted"
+    >
       Coleta concluída em {attempted} produto(s): {parts.join(" · ")}.
       {skipped > 0 &&
         ` ${skipped} produto(s) ficaram de fora — cada coleta consulta o ML ao vivo, então uma rodada cobre no máximo ${COLLECTION_CEILING}.`}
@@ -131,7 +145,8 @@ export function MercadoPage({ marketClient: injectedMarket }: MercadoPageProps =
       // walk. If the summary read fails, fall back to the walked length (still honest).
       const summary = await client.getListingsSummary(installationId).catch(() => null);
       const walk = await walkAll<ListingReadModel>(
-        (cursor) => client.listListings({ installation_id: installationId, limit: PAGE_SIZE, cursor }),
+        (cursor) =>
+          client.listListings({ installation_id: installationId, limit: PAGE_SIZE, cursor }),
         MAX_PAGES,
       );
       return {
@@ -180,13 +195,12 @@ export function MercadoPage({ marketClient: injectedMarket }: MercadoPageProps =
   const rawListingRows = listingsQuery.data?.items ?? [];
   const listingGap = (r: (typeof rawListingRows)[number]): number => {
     const meu = r.price == null ? NaN : Number(r.price.amount);
-    const mediana =
-      r.market_signal?.median == null ? NaN : Number(r.market_signal.median.amount);
+    const mediana = r.market_signal?.median == null ? NaN : Number(r.market_signal.median.amount);
     const value = mediana - meu;
     return Number.isFinite(value) ? value : -Infinity;
   };
   const listingRows = [...rawListingRows].sort((a, b) => listingGap(b) - listingGap(a));
-  const repriceCount = listingsQuery.data ? listingsQuery.data.total ?? listingRows.length : null;
+  const repriceCount = listingsQuery.data ? (listingsQuery.data.total ?? listingRows.length) : null;
   const oppRows = oppQuery.data?.rows ?? [];
   const oppCount = oppQuery.data ? oppRows.length : null;
   const collectedAt = formatCollectedAt(listingsQuery.data?.asOf);
@@ -224,7 +238,12 @@ export function MercadoPage({ marketClient: injectedMarket }: MercadoPageProps =
   if (tab === "reprice") {
     if (listingsQuery.isPending) body = <LoadingState />;
     else if (listingsQuery.isError)
-      body = <ErrorState onRetry={() => void listingsQuery.refetch()} detail="Falha ao carregar os anúncios." />;
+      body = (
+        <ErrorState
+          onRetry={() => void listingsQuery.refetch()}
+          detail="Falha ao carregar os anúncios."
+        />
+      );
     else if (listingRows.length === 0)
       body = (
         <>
@@ -242,7 +261,12 @@ export function MercadoPage({ marketClient: injectedMarket }: MercadoPageProps =
   } else if (tab === "opp") {
     if (oppQuery.isPending) body = <LoadingState />;
     else if (oppQuery.isError)
-      body = <ErrorState onRetry={() => void oppQuery.refetch()} detail="Falha ao carregar as oportunidades." />;
+      body = (
+        <ErrorState
+          onRetry={() => void oppQuery.refetch()}
+          detail="Falha ao carregar as oportunidades."
+        />
+      );
     else if (oppRows.length === 0)
       body = (
         <>
@@ -307,9 +331,12 @@ export function MercadoPage({ marketClient: injectedMarket }: MercadoPageProps =
 
       <CollectionNote state={collection} />
 
-
       {/* Underline-active tabs */}
-      <div role="tablist" aria-label="Seções do radar" className="flex gap-[2px] overflow-x-auto border-b border-border text-[13px]">
+      <div
+        role="tablist"
+        aria-label="Seções do radar"
+        className="flex gap-[2px] overflow-x-auto border-b border-border text-[13px]"
+      >
         {tabs.map((t) => {
           const active = tab === t.key;
           return (

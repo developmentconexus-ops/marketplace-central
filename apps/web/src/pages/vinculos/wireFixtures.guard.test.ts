@@ -132,7 +132,10 @@ describe("wireFixtures vocabulary vs the Go source it mirrors", () => {
     for (const key of Object.keys(GO_SEAM) as SeamKey[]) {
       const { path, symbol, what } = GO_SEAM[key];
 
-      expect(SOURCES[key].error, `${path} — the file this guard reads for ${what} is gone or moved`).toBeNull();
+      expect(
+        SOURCES[key].error,
+        `${path} — the file this guard reads for ${what} is gone or moved`,
+      ).toBeNull();
       expect(SOURCES[key].text.length, `${path} is empty`).toBeGreaterThan(0);
 
       // The path existing is not enough: the FACT has to still be in it, in the
@@ -152,11 +155,16 @@ describe("wireFixtures vocabulary vs the Go source it mirrors", () => {
   it("KNOWN_IDENTITY_ANCHORS is exactly knownIdentityAnchors", () => {
     const capabilityPort = sourceOf("capabilityPort");
     const constants = identityAnchorConstants(capabilityPort);
-    expect(constants.size, "no `IdentityAnchor… = \"…\"` constants found — the declaration form changed").toBeGreaterThan(0);
+    expect(
+      constants.size,
+      'no `IdentityAnchor… = "…"` constants found — the declaration form changed',
+    ).toBeGreaterThan(0);
 
     const block = capabilityPort.match(GO_SEAM.capabilityPort.extract);
     if (block === null) {
-      throw new Error("could not find `var knownIdentityAnchors` — the declaration moved or was renamed");
+      throw new Error(
+        "could not find `var knownIdentityAnchors` — the declaration moved or was renamed",
+      );
     }
 
     const anchors = Array.from(block[1].matchAll(/(IdentityAnchor\w+)/g)).map((entry) => {
@@ -164,7 +172,9 @@ describe("wireFixtures vocabulary vs the Go source it mirrors", () => {
       if (value === undefined) throw new Error(`no constant found for ${entry[1]}`);
       return value;
     });
-    expect(anchors.length, "the knownIdentityAnchors block parsed to zero anchors").toBeGreaterThan(0);
+    expect(anchors.length, "the knownIdentityAnchors block parsed to zero anchors").toBeGreaterThan(
+      0,
+    );
 
     // Order matters as little as the Go slice's does, so compare as sets — but
     // compare BOTH directions, because a vocabulary that only grew and a
@@ -176,19 +186,30 @@ describe("wireFixtures vocabulary vs the Go source it mirrors", () => {
 
   it("MERCADO_LIVRE_SUPPLIED_ANCHORS is exactly what its capability adapter declares", () => {
     const constants = identityAnchorConstants(sourceOf("capabilityPort"));
-    expect(constants.size, "no IdentityAnchor constants to resolve the declaration against").toBeGreaterThan(0);
+    expect(
+      constants.size,
+      "no IdentityAnchor constants to resolve the declaration against",
+    ).toBeGreaterThan(0);
 
-    const declaration = sourceOf("mercadoLivreCapability").match(GO_SEAM.mercadoLivreCapability.extract);
-    expect(declaration, "could not find mercado_livre's IdentityAnchors declaration").not.toBeNull();
-
-    const declared = Array.from((declaration as RegExpMatchArray)[1].matchAll(/ports\.(IdentityAnchor\w+)/g)).map(
-      (entry) => {
-        const value = constants.get(entry[1]);
-        if (value === undefined) throw new Error(`no constant found for ${entry[1]}`);
-        return value;
-      },
+    const declaration = sourceOf("mercadoLivreCapability").match(
+      GO_SEAM.mercadoLivreCapability.extract,
     );
-    expect(declared.length, "the IdentityAnchors declaration parsed to zero anchors").toBeGreaterThan(0);
+    expect(
+      declaration,
+      "could not find mercado_livre's IdentityAnchors declaration",
+    ).not.toBeNull();
+
+    const declared = Array.from(
+      (declaration as RegExpMatchArray)[1].matchAll(/ports\.(IdentityAnchor\w+)/g),
+    ).map((entry) => {
+      const value = constants.get(entry[1]);
+      if (value === undefined) throw new Error(`no constant found for ${entry[1]}`);
+      return value;
+    });
+    expect(
+      declared.length,
+      "the IdentityAnchors declaration parsed to zero anchors",
+    ).toBeGreaterThan(0);
 
     expect([...declared].sort()).toEqual([...MERCADO_LIVRE_SUPPLIED_ANCHORS].sort());
     // The consequence the fixtures depend on, asserted rather than assumed: the
@@ -227,7 +248,11 @@ describe("wireCandidate rejects what generation_service.go cannot emit", () => {
         confidence_band: "ALTA",
         reasons: [
           { anchor: "ean", direction: "FOR", detail: "EAN idêntico" },
-          { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
+          {
+            anchor: "seller_sku",
+            direction: "FOR",
+            detail: "seller_sku resolve exato para codprod",
+          },
           { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
         ],
       }),
@@ -240,7 +265,9 @@ describe("wireCandidate rejects what generation_service.go cannot emit", () => {
     // exactly one declaration (mercado_livre, capability_adapter.go:90). So a
     // `shopee` candidate is not a wire row here at all.
     expect(() => wireCandidate({ provider_code: "shopee" })).toThrow(/driftCandidate/);
-    expect(() => wireCandidate({ provider_code: "shopee" })).toThrow(/declares no marketplace capability/);
+    expect(() => wireCandidate({ provider_code: "shopee" })).toThrow(
+      /declares no marketplace capability/,
+    );
   });
 
   it("MUST-FAIL 3 — a producible tuple with a signal set no site emits", () => {
@@ -259,8 +286,17 @@ describe("wireCandidate rejects what generation_service.go cannot emit", () => {
         confidence: 95,
         confidence_band: "ALTA",
         reasons: [
-          { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
-          { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "ean sem correspondência" },
+          {
+            anchor: "seller_sku",
+            direction: "FOR",
+            detail: "seller_sku resolve exato para codprod",
+          },
+          {
+            anchor: "ean",
+            direction: "INCOMPARABLE",
+            side: "erp",
+            detail: "ean sem correspondência",
+          },
           { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
         ],
       }),
@@ -280,7 +316,11 @@ describe("wireCandidate rejects what generation_service.go cannot emit", () => {
         confidence: 70,
         confidence_band: "MEDIA",
         reasons: [
-          { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
+          {
+            anchor: "seller_sku",
+            direction: "FOR",
+            detail: "seller_sku resolve exato para codprod",
+          },
           { anchor: "seller_sku", direction: "UNAVAILABLE", detail: "sem seller_sku" },
           { anchor: "ean", direction: "UNAVAILABLE", detail: "sem EAN para corroborar o CODPROD" },
           { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
@@ -306,10 +346,24 @@ describe("wireCandidate rejects what generation_service.go cannot emit", () => {
         confidence: 25,
         confidence_band: "BAIXA",
         reasons: [
-          { anchor: "title", direction: "FOR", detail: "match por título (ranking-only, nunca ACCEPT)" },
+          {
+            anchor: "title",
+            direction: "FOR",
+            detail: "match por título (ranking-only, nunca ACCEPT)",
+          },
           { anchor: "title", direction: "AGAINST", detail: "similaridade de título 62%" },
-          { anchor: "seller_sku", direction: "INCOMPARABLE", side: "erp", detail: "seller_sku sem correspondência" },
-          { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "ean sem correspondência" },
+          {
+            anchor: "seller_sku",
+            direction: "INCOMPARABLE",
+            side: "erp",
+            detail: "seller_sku sem correspondência",
+          },
+          {
+            anchor: "ean",
+            direction: "INCOMPARABLE",
+            side: "erp",
+            detail: "ean sem correspondência",
+          },
           { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
         ],
       }),
@@ -335,8 +389,17 @@ describe("wireCandidate rejects what generation_service.go cannot emit", () => {
         confidence: 70,
         confidence_band: "MEDIA",
         reasons: [
-          { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
-          { anchor: "ean", direction: "UNAVAILABLE", side: "erp", detail: "sem EAN para corroborar o CODPROD" },
+          {
+            anchor: "seller_sku",
+            direction: "FOR",
+            detail: "seller_sku resolve exato para codprod",
+          },
+          {
+            anchor: "ean",
+            direction: "UNAVAILABLE",
+            side: "erp",
+            detail: "sem EAN para corroborar o CODPROD",
+          },
           { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
         ],
       }),

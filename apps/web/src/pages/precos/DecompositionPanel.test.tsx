@@ -1,9 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type {
-  PricingCalcProfile,
-  PricingDecomposition,
-} from "@marketplace-central/sdk-runtime";
+import type { PricingCalcProfile, PricingDecomposition } from "@marketplace-central/sdk-runtime";
 import { DecompositionPanel } from "./DecompositionPanel";
 
 const profile: PricingCalcProfile = {
@@ -36,7 +33,9 @@ function decomposition(overrides: Partial<PricingDecomposition> = {}): PricingDe
 
 describe("DecompositionPanel", () => {
   it("renders each IC-04 component and the resulting margin band", () => {
-    render(<DecompositionPanel decomposition={decomposition()} profile={profile} blockingState={null} />);
+    render(
+      <DecompositionPanel decomposition={decomposition()} profile={profile} blockingState={null} />,
+    );
 
     const panel = screen.getByTestId("decomposition-panel");
     expect(within(panel).getByText("100.00")).toBeInTheDocument();
@@ -183,7 +182,11 @@ describe("DecompositionPanel", () => {
 
   it("classifies the margin by the operator's CalcProfile thresholds, not hard-coded bands", () => {
     // margem 12% is below the operator's verde 18 but at/above amarelo 10 ⇒ tight.
-    const tightProfile: PricingCalcProfile = { ...profile, limiar_verde_pct: "18", limiar_amarelo_pct: "10" };
+    const tightProfile: PricingCalcProfile = {
+      ...profile,
+      limiar_verde_pct: "18",
+      limiar_amarelo_pct: "10",
+    };
     const d = decomposition({ margem_pct: "12.00", margem_valor: "12.00" });
     render(<DecompositionPanel decomposition={d} profile={tightProfile} blockingState={null} />);
 
@@ -191,7 +194,9 @@ describe("DecompositionPanel", () => {
   });
 
   it("warns that the margin excludes DIFAL when DIFAL is disabled", () => {
-    render(<DecompositionPanel decomposition={decomposition()} profile={profile} blockingState={null} />);
+    render(
+      <DecompositionPanel decomposition={decomposition()} profile={profile} blockingState={null} />,
+    );
     const warning = screen.getByTestId("difal-off-warning");
     expect(warning).toHaveTextContent(/sem DIFAL/i);
     expect(warning).toHaveTextContent(/não use/i);
@@ -229,8 +234,22 @@ describe("DecompositionPanel", () => {
         profile={profile}
         blockingState={null}
         tarifa={{
-          comissao: { valor: "14.5", fonte: "COTACAO", degrau: 3, data: "2026-07-19T10:00:00Z", estimativa: false, sem_dados: false },
-          frete: { valor: "12.00", fonte: "CATEGORIA", degrau: 2, data: null, estimativa: false, sem_dados: false },
+          comissao: {
+            valor: "14.5",
+            fonte: "COTACAO",
+            degrau: 3,
+            data: "2026-07-19T10:00:00Z",
+            estimativa: false,
+            sem_dados: false,
+          },
+          frete: {
+            valor: "12.00",
+            fonte: "CATEGORIA",
+            degrau: 2,
+            data: null,
+            estimativa: false,
+            sem_dados: false,
+          },
         }}
       />,
     );
@@ -249,7 +268,14 @@ describe("DecompositionPanel", () => {
         profile={profile}
         blockingState={null}
         tarifa={{
-          comissao: { valor: "13.00", fonte: "PADRAO", degrau: 4, data: null, estimativa: true, sem_dados: false },
+          comissao: {
+            valor: "13.00",
+            fonte: "PADRAO",
+            degrau: 4,
+            data: null,
+            estimativa: true,
+            sem_dados: false,
+          },
           frete: null,
         }}
       />,
@@ -270,14 +296,23 @@ describe("DecompositionPanel", () => {
         blockingState={null}
         tarifa={{
           comissao: null,
-          frete: { valor: null, fonte: "PADRAO", degrau: 4, data: null, estimativa: false, sem_dados: true },
+          frete: {
+            valor: null,
+            fonte: "PADRAO",
+            degrau: 4,
+            data: null,
+            estimativa: false,
+            sem_dados: true,
+          },
         }}
       />,
     );
 
     expect(screen.queryByTestId("decomp-tarifa-frete")).toBeNull();
     const panel = screen.getByTestId("decomposition-panel");
-    expect(within(panel).getAllByText("—", { selector: "span.text-faint" }).length).toBeGreaterThanOrEqual(1);
+    expect(
+      within(panel).getAllByText("—", { selector: "span.text-faint" }).length,
+    ).toBeGreaterThanOrEqual(1);
     expect(panel).not.toHaveTextContent("ESTIMATIVA");
   });
 
@@ -293,7 +328,14 @@ describe("DecompositionPanel", () => {
         blockingState={null}
         tarifa={{
           comissao: null,
-          frete: { valor: "12.00", fonte: "COTACAO", degrau: 3, data: "2026-07-19T10:00:00Z", estimativa: false, sem_dados: false },
+          frete: {
+            valor: "12.00",
+            fonte: "COTACAO",
+            degrau: 3,
+            data: "2026-07-19T10:00:00Z",
+            estimativa: false,
+            sem_dados: false,
+          },
         }}
       />,
     );
@@ -304,7 +346,9 @@ describe("DecompositionPanel", () => {
   });
 
   it("renders no carimbo when no tarifa block is passed (backward compatible)", () => {
-    render(<DecompositionPanel decomposition={decomposition()} profile={profile} blockingState={null} />);
+    render(
+      <DecompositionPanel decomposition={decomposition()} profile={profile} blockingState={null} />,
+    );
 
     expect(screen.queryByTestId("decomp-tarifa-comissao")).toBeNull();
     expect(screen.queryByTestId("decomp-tarifa-frete")).toBeNull();
@@ -319,8 +363,22 @@ describe("DecompositionPanel", () => {
         profile={profile}
         blockingState={null}
         tarifa={{
-          comissao: { valor: "14.5", fonte: "COTACAO", degrau: 3, data: "2026-07-19T10:00:00Z", estimativa: false, sem_dados: false },
-          frete: { valor: "12.00", fonte: "CATEGORIA", degrau: 2, data: null, estimativa: false, sem_dados: false },
+          comissao: {
+            valor: "14.5",
+            fonte: "COTACAO",
+            degrau: 3,
+            data: "2026-07-19T10:00:00Z",
+            estimativa: false,
+            sem_dados: false,
+          },
+          frete: {
+            valor: "12.00",
+            fonte: "CATEGORIA",
+            degrau: 2,
+            data: null,
+            estimativa: false,
+            sem_dados: false,
+          },
         }}
       />,
     );

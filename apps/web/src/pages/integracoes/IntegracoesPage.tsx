@@ -76,7 +76,15 @@ function uploadErrorMessage(error: ErpImportUploadError): string {
   }
 }
 
-function IssueList({ title, issues, testId }: { title: string; issues: { row: number; code: string; detail: string; offending_value?: string | null }[]; testId: string }) {
+function IssueList({
+  title,
+  issues,
+  testId,
+}: {
+  title: string;
+  issues: { row: number; code: string; detail: string; offending_value?: string | null }[];
+  testId: string;
+}) {
   if (issues.length === 0) return null;
   return (
     <div className="mt-2">
@@ -88,7 +96,9 @@ function IssueList({ title, issues, testId }: { title: string; issues: { row: nu
             className="rounded-control border border-border bg-surface-2 px-2 py-1 text-xs text-muted"
           >
             <span className="font-medium">Linha {issue.row}</span> — {issue.code}: {issue.detail}
-            {issue.offending_value ? <span className="text-faint"> (valor: {issue.offending_value})</span> : null}
+            {issue.offending_value ? (
+              <span className="text-faint"> (valor: {issue.offending_value})</span>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -180,13 +190,16 @@ function UploadCard() {
   }
 
   return (
-    <section aria-labelledby={`${fieldId}-title`} className="rounded-card border border-border bg-surface p-4">
+    <section
+      aria-labelledby={`${fieldId}-title`}
+      className="rounded-card border border-border bg-surface p-4"
+    >
       <h2 id={`${fieldId}-title`} className="text-sm font-semibold text-ink">
         Importar catálogo
       </h2>
       <p className="mt-1 text-xs text-faint">
-        Envie a planilha de produtos (.xlsx). Selecione a fonte para escolher entre a importação do catálogo
-        do cliente ou a exportação Sankhya com custo e estoque.
+        Envie a planilha de produtos (.xlsx). Selecione a fonte para escolher entre a importação do
+        catálogo do cliente ou a exportação Sankhya com custo e estoque.
       </p>
 
       <fieldset className="mt-3">
@@ -196,7 +209,9 @@ function UploadCard() {
             <label
               key={option.value}
               className={`flex flex-1 cursor-pointer flex-col gap-0.5 rounded-control border p-2.5 text-xs ${
-                source === option.value ? "border-accent bg-accent-soft" : "border-border bg-surface-2"
+                source === option.value
+                  ? "border-accent bg-accent-soft"
+                  : "border-border bg-surface-2"
               }`}
             >
               <span className="flex items-center gap-2">
@@ -267,7 +282,9 @@ function UploadCard() {
         >
           {upload.isPending ? "Importando…" : "Importar"}
         </button>
-        {upload.isPending ? <span className="text-xs text-muted">Processando planilha…</span> : null}
+        {upload.isPending ? (
+          <span className="text-xs text-muted">Processando planilha…</span>
+        ) : null}
       </div>
 
       {localError ? (
@@ -276,7 +293,11 @@ function UploadCard() {
         </p>
       ) : null}
       {upload.isError && upload.error ? (
-        <p className="mt-2 rounded-control border border-warn/40 bg-warn-soft px-2 py-1.5 text-xs text-warn" role="alert" data-testid="erp-import-error">
+        <p
+          className="mt-2 rounded-control border border-warn/40 bg-warn-soft px-2 py-1.5 text-xs text-warn"
+          role="alert"
+          data-testid="erp-import-error"
+        >
           {uploadErrorMessage(upload.error)}
         </p>
       ) : null}
@@ -293,8 +314,16 @@ function UploadCard() {
 // source.
 const ACTIVE_SOURCE_OPTIONS: { value: ActiveSourceName; label: string; hint: string }[] = [
   { value: "sankhya", label: "Sankhya (ao vivo)", hint: "Lê o ERP Sankhya direto, sem planilha." },
-  { value: "xlsx", label: "Planilha Sankhya", hint: "Última planilha Sankhya importada — custo e estoque." },
-  { value: "catalogo_cliente", label: "Catálogo do cliente", hint: "Catálogo importado do cliente — custo e estoque aparecem como “—”." },
+  {
+    value: "xlsx",
+    label: "Planilha Sankhya",
+    hint: "Última planilha Sankhya importada — custo e estoque.",
+  },
+  {
+    value: "catalogo_cliente",
+    label: "Catálogo do cliente",
+    hint: "Catálogo importado do cliente — custo e estoque aparecem como “—”.",
+  },
 ];
 
 const SOURCE_UNSET_COPY = "Nenhuma fonte definida ainda — escolha a fonte que o app vai ler.";
@@ -320,24 +349,33 @@ function ActiveSourceCard() {
   const sourceUnset = !activeSource && !activeSourceQuery.isFetching && !readFailed;
   const fieldId = useId();
   return (
-    <section aria-labelledby={`${fieldId}-active-title`} className="rounded-card border border-border bg-surface p-4">
+    <section
+      aria-labelledby={`${fieldId}-active-title`}
+      className="rounded-card border border-border bg-surface p-4"
+    >
       <h2 id={`${fieldId}-active-title`} className="text-sm font-semibold text-ink">
         Fonte ativa
       </h2>
       <p className="mt-1 text-xs text-faint">
-        Selecione a fonte que o app inteiro lê: catálogo, custo, estoque, preço e a sincronização automática.
+        Selecione a fonte que o app inteiro lê: catálogo, custo, estoque, preço e a sincronização
+        automática.
       </p>
       {/* Disabled only while a request is actually in flight: keying this off
           `isPending` kept the selector dead forever once the read failed, which
           is exactly the state a fresh workspace starts in. */}
-      <fieldset className="mt-3" disabled={activeSourceQuery.isFetching || setActiveSource.isPending}>
+      <fieldset
+        className="mt-3"
+        disabled={activeSourceQuery.isFetching || setActiveSource.isPending}
+      >
         <legend className="sr-only">Fonte ativa de dados</legend>
         <div className="flex flex-col gap-2 sm:flex-row" data-testid="active-source-selector">
           {ACTIVE_SOURCE_OPTIONS.map((option) => (
             <label
               key={option.value}
               className={`flex flex-1 cursor-pointer flex-col gap-0.5 rounded-control border p-2.5 text-xs ${
-                activeSource === option.value ? "border-accent bg-accent-soft" : "border-border bg-surface-2"
+                activeSource === option.value
+                  ? "border-accent bg-accent-soft"
+                  : "border-border bg-surface-2"
               }`}
             >
               <span className="flex items-center gap-2">
@@ -407,7 +445,10 @@ function SellableAssortmentCard() {
   const client = useClient();
   const activeSourceQuery = useActiveSourceQuery(client);
   const assortmentQuery = useSellableAssortmentQuery(client);
-  const countsQuery = useCatalogAssortmentCountsQuery(client, activeSourceQuery.data?.active_source);
+  const countsQuery = useCatalogAssortmentCountsQuery(
+    client,
+    activeSourceQuery.data?.active_source,
+  );
   const setAssortment = useSetSellableAssortmentMutation(client);
   const assortment = assortmentQuery.data;
   const sourceUnset =
@@ -426,21 +467,29 @@ function SellableAssortmentCard() {
   }
 
   return (
-    <section aria-labelledby={`${fieldId}-assortment-title`} className="rounded-card border border-border bg-surface p-4">
+    <section
+      aria-labelledby={`${fieldId}-assortment-title`}
+      className="rounded-card border border-border bg-surface p-4"
+    >
       <h2 id={`${fieldId}-assortment-title`} className="text-sm font-semibold text-ink">
         Sortimento vendável
       </h2>
       <p className="mt-1 text-xs text-faint">
         Define quais produtos entram no sortimento que o app considera vendável.
       </p>
-      <fieldset className="mt-3" disabled={assortmentQuery.isFetching || setAssortment.isPending || !assortment}>
+      <fieldset
+        className="mt-3"
+        disabled={assortmentQuery.isFetching || setAssortment.isPending || !assortment}
+      >
         <legend className="sr-only">Regras do sortimento vendável</legend>
         <div className="flex flex-col gap-2" data-testid="sellable-assortment-selector">
           {SELLABLE_ASSORTMENT_OPTIONS.map((option) => (
             <label
               key={option.key}
               className={`flex cursor-pointer flex-col gap-0.5 rounded-control border p-2.5 text-xs ${
-                assortment?.[option.key] ? "border-accent bg-accent-soft" : "border-border bg-surface-2"
+                assortment?.[option.key]
+                  ? "border-accent bg-accent-soft"
+                  : "border-border bg-surface-2"
               }`}
             >
               <span className="flex items-center gap-2">
@@ -536,11 +585,16 @@ function ProviderConnectCard() {
   }
 
   return (
-    <section aria-labelledby="provider-connect-title" className="rounded-card border border-border bg-surface p-4">
+    <section
+      aria-labelledby="provider-connect-title"
+      className="rounded-card border border-border bg-surface p-4"
+    >
       <h2 id="provider-connect-title" className="text-sm font-semibold text-ink">
         Conectar marketplace
       </h2>
-      <p className="mt-1 text-xs text-faint">Conecte uma conta de marketplace para sincronizar anúncios e pedidos.</p>
+      <p className="mt-1 text-xs text-faint">
+        Conecte uma conta de marketplace para sincronizar anúncios e pedidos.
+      </p>
       <div className="mt-3 flex items-center justify-between rounded-control border border-border bg-surface-2 p-3">
         <span className="text-sm font-medium text-ink">Mercado Livre</span>
         <button
@@ -564,12 +618,17 @@ export function IntegracoesPage() {
     searchParams.get("auth") === "failed" ? (searchParams.get("reason") ?? "unknown") : null;
 
   return (
-    <section aria-labelledby="integracoes-title" className="mx-auto flex max-w-5xl flex-col gap-[14px]">
+    <section
+      aria-labelledby="integracoes-title"
+      className="mx-auto flex max-w-5xl flex-col gap-[14px]"
+    >
       <header>
         <h1 id="integracoes-title" className="text-[22px] font-bold tracking-tight text-ink">
           Configuração da plataforma
         </h1>
-        <p className="mt-1 text-sm text-muted">Importe o catálogo de produtos e conecte marketplaces.</p>
+        <p className="mt-1 text-sm text-muted">
+          Importe o catálogo de produtos e conecte marketplaces.
+        </p>
       </header>
       {/* O código cru é deliberado, mesma decisão do reauth_reason no
           ConnectionHealthCard: é o único diagnóstico que existe e traduzi-lo

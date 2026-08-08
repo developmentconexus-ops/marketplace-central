@@ -112,7 +112,12 @@ const CASES: Case[] = [
       isLoadingError: true,
       isSuccess: false,
       data: undefined,
-      error: new MarketplaceCentralClientError(500, "internal_error", "falha ao ler sync_state", {}),
+      error: new MarketplaceCentralClientError(
+        500,
+        "internal_error",
+        "falha ao ler sync_state",
+        {},
+      ),
       refetch: refetchStub(),
     } as UseQueryResult<SyncHealth>,
   },

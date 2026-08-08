@@ -181,7 +181,9 @@ export function providerDisplayName(providerCode: string): string {
   // types the lookup as `string` and TypeScript never models the prototype
   // chain here. Unreachable today (`provider_code` is a Go literal at
   // `capability_adapter.go:81`), which is exactly why it would have survived.
-  const mapped = Object.hasOwn(providerDisplayNames, providerCode) ? providerDisplayNames[providerCode] : undefined;
+  const mapped = Object.hasOwn(providerDisplayNames, providerCode)
+    ? providerDisplayNames[providerCode]
+    : undefined;
   if (mapped) return mapped;
 
   // Reject BEFORE transforming. The old form typeset first and then asked
@@ -250,7 +252,9 @@ export function decidingAnchors(candidate: ProductLinkCandidateItem): string[] {
 
 function pill(label: string, className: string) {
   return (
-    <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${className}`}>
+    <span
+      className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${className}`}
+    >
       {label}
     </span>
   );
@@ -373,7 +377,9 @@ function compactChipLabel(reason: ProductLinkReason): string {
   const side = reasonSideLabel(reason);
   // The side rides inline, not only in the tooltip: "where do I go fix it" is
   // the whole point of an INCOMPARABLE, and a tooltip is not readable on a scan.
-  const anchor = side ? `${anchorShortLabel(reason.anchor)} (${side})` : anchorShortLabel(reason.anchor);
+  const anchor = side
+    ? `${anchorShortLabel(reason.anchor)} (${side})`
+    : anchorShortLabel(reason.anchor);
   const head = `${directionGlyph(reason.direction)} ${anchor}`;
   if (reason.direction === "AGAINST" && reason.detail) {
     return `${head}: ${reason.detail}`;
@@ -495,7 +501,11 @@ function AnchorChips({ reasons }: { reasons: ProductLinkReason[] }) {
     .map((reason, index) => ({ reason, index }))
     // The index tiebreak keeps the wire order inside a direction, so the cell
     // does not reshuffle between renders for reasons that rank equally.
-    .sort((a, b) => directionRankOf(a.reason.direction) - directionRankOf(b.reason.direction) || a.index - b.index)
+    .sort(
+      (a, b) =>
+        directionRankOf(a.reason.direction) - directionRankOf(b.reason.direction) ||
+        a.index - b.index,
+    )
     .slice(0, COMPACT_CHIP_LIMIT)
     .map((entry) => entry.reason);
   const hidden = reasons.length - shown.length;
@@ -524,12 +534,24 @@ function AnchorChips({ reasons }: { reasons: ProductLinkReason[] }) {
   );
 }
 
-export function QueueRow({ candidate, onOpen, onApprove, onReject, pending, selected, onToggleSelect }: QueueRowProps) {
+export function QueueRow({
+  candidate,
+  onOpen,
+  onApprove,
+  onReject,
+  pending,
+  selected,
+  onToggleSelect,
+}: QueueRowProps) {
   const noCandidate = candidate.match_status === "NO_CANDIDATE";
   const decided = decidingAnchors(candidate);
 
   return (
-    <tr className="align-top text-ink" data-testid="queue-row" data-match-status={candidate.match_status}>
+    <tr
+      className="align-top text-ink"
+      data-testid="queue-row"
+      data-match-status={candidate.match_status}
+    >
       {/* Seleção em lote */}
       <td className="px-3 py-3">
         <input
@@ -555,7 +577,11 @@ export function QueueRow({ candidate, onOpen, onApprove, onReject, pending, sele
           pelo nome de exibição em vez do slug. */}
       <td className="px-3 py-3">
         <span className="text-xs text-muted">
-          {candidate.provider_code ? providerDisplayName(candidate.provider_code) : <UnknownValue />}
+          {candidate.provider_code ? (
+            providerDisplayName(candidate.provider_code)
+          ) : (
+            <UnknownValue />
+          )}
         </span>
       </td>
 

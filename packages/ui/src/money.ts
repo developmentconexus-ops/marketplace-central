@@ -16,7 +16,10 @@ const brl = new Intl.NumberFormat("pt-BR", {
  * <UnknownValue />), because a fabricated "R$ 0,00" is a lie about the data
  * (ADR-17 honest-unknown).
  */
-export function formatMoney(amount: string | number | null | undefined, currency = "BRL"): string | null {
+export function formatMoney(
+  amount: string | number | null | undefined,
+  currency = "BRL",
+): string | null {
   if (amount === null || amount === undefined || amount === "") return null;
   const value = typeof amount === "number" ? amount : Number(amount);
   if (!Number.isFinite(value)) return null;
@@ -37,7 +40,10 @@ export function formatMoney(amount: string | number | null | undefined, currency
  * trailing zeros are dropped (25 → "25%", -65.49 → "-65,49%"). Absent or
  * unparseable returns null: the caller renders "—", never a fabricated "0%".
  */
-export function formatPercent(rate: string | number | null | undefined, fractionDigits = 2): string | null {
+export function formatPercent(
+  rate: string | number | null | undefined,
+  fractionDigits = 2,
+): string | null {
   if (rate === null || rate === undefined || rate === "") return null;
   const value = typeof rate === "number" ? rate : Number(rate);
   if (!Number.isFinite(value)) return null;
@@ -54,7 +60,10 @@ export function formatPercent(rate: string | number | null | undefined, fraction
  * "+" on non-negative values ("-3.2" → "-3,2%", "3.2" → "+3,2%"). Null for an
  * absent/unparseable rate, same honest-unknown contract as formatPercent.
  */
-export function formatSignedPercent(rate: string | number | null | undefined, fractionDigits = 1): string | null {
+export function formatSignedPercent(
+  rate: string | number | null | undefined,
+  fractionDigits = 1,
+): string | null {
   const formatted = formatPercent(rate, fractionDigits);
   if (formatted === null) return null;
   return formatted.startsWith("-") ? formatted : `+${formatted}`;

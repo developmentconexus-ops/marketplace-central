@@ -52,7 +52,13 @@ describe("MarketComparison", () => {
 
   it("shows INSUFFICIENT_MARKET without fabricating a price", async () => {
     const client = marketClient([
-      aggregate({ status: "INSUFFICIENT_MARKET", median: null, min_valid: null, n_offers: 1, n_sellers: 1 }),
+      aggregate({
+        status: "INSUFFICIENT_MARKET",
+        median: null,
+        min_valid: null,
+        n_offers: 1,
+        n_sellers: 1,
+      }),
     ]);
     renderPanel(<MarketComparison productId="90001" client={client} />);
 
@@ -65,7 +71,13 @@ describe("MarketComparison", () => {
 
   it("shows NO_PRICE_EVIDENCE without fabricating a price", async () => {
     const client = marketClient([
-      aggregate({ status: "NO_PRICE_EVIDENCE", median: null, min_valid: null, n_offers: 0, n_sellers: 0 }),
+      aggregate({
+        status: "NO_PRICE_EVIDENCE",
+        median: null,
+        min_valid: null,
+        n_offers: 0,
+        n_sellers: 0,
+      }),
     ]);
     renderPanel(<MarketComparison productId="90001" client={client} />);
     expect(await screen.findByTestId("market-status")).toHaveTextContent("NO_PRICE_EVIDENCE");

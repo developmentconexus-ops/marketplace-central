@@ -143,7 +143,8 @@ const blockingReasonCopy: Record<string, string> = {
   missing_internal_stock: "O ERP não informou o estoque disponível deste produto.",
   missing_provider_quantity: "O Mercado Livre não informou a quantidade deste anúncio.",
   stale_internal_source: "O estoque do ERP está mais antigo que o permitido pela política.",
-  stale_provider_source: "O estoque do Mercado Livre está mais antigo que o permitido pela política.",
+  stale_provider_source:
+    "O estoque do Mercado Livre está mais antigo que o permitido pela política.",
   ineligible_product: "Produto fora da política de Stock Seguro.",
 };
 
@@ -173,7 +174,13 @@ function itemKey(item: InventoryStockRiskItem): string {
 }
 
 function actorIdFromName(name: string): string {
-  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "operator";
+  return (
+    name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "") || "operator"
+  );
 }
 
 export function StockSeguroPage({ client, installations }: StockSeguroPageProps) {
@@ -193,8 +200,10 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
 
   const selectedInstallationID = searchParams.get("installation") ?? "";
   const selectedState = (searchParams.get("state") ?? "") as InventoryStockRiskItem["state"] | "";
-  const selectedLinkState = (searchParams.get("link_state") ?? "") as InventoryStockRiskItem["link_state"] | "";
-  const selectedActionability = (searchParams.get("actionability") ?? "") as InventoryStockRiskItem["actionability"] | "";
+  const selectedLinkState = (searchParams.get("link_state") ?? "") as
+    InventoryStockRiskItem["link_state"] | "";
+  const selectedActionability = (searchParams.get("actionability") ?? "") as
+    InventoryStockRiskItem["actionability"] | "";
 
   const riskFilters = {
     state: selectedState || undefined,
@@ -204,10 +213,11 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
   };
   const riskQuery = useQuery({
     queryKey: inventoryQueryKeys.risks(selectedInstallationID, riskFilters),
-    queryFn: () => client.listInventoryStockRisks({
-      installation_id: selectedInstallationID,
-      ...riskFilters,
-    }),
+    queryFn: () =>
+      client.listInventoryStockRisks({
+        installation_id: selectedInstallationID,
+        ...riskFilters,
+      }),
     staleTime: QUERY_STALE_TIME.stock,
     enabled: Boolean(selectedInstallationID),
   });
@@ -231,12 +241,10 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
   const displayedItems = riskQuery.data?.items ?? items;
   const displayedError =
     error ??
-    (riskQuery.error ? normalizeError(riskQuery.error, "Não foi possível carregar os riscos de estoque.") : null);
-  const displayedState: LoadState = riskQuery.error
-    ? "error"
-    : riskQuery.data
-      ? "ready"
-      : state;
+    (riskQuery.error
+      ? normalizeError(riskQuery.error, "Não foi possível carregar os riscos de estoque.")
+      : null);
+  const displayedState: LoadState = riskQuery.error ? "error" : riskQuery.data ? "ready" : state;
 
   const summary = useMemo(() => {
     return displayedItems.reduce(
@@ -285,7 +293,9 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
           },
         },
       });
-      setActionMessage(`Ação ${actionStateLabel(result.action.state)} para ${item.identity.provider_item_id}.`);
+      setActionMessage(
+        `Ação ${actionStateLabel(result.action.state)} para ${item.identity.provider_item_id}.`,
+      );
       setOpenConfirmKey(null);
     } catch (runError) {
       setActionError(normalizeError(runError, "Não foi possível aplicar a ação de estoque."));
@@ -298,9 +308,10 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
     if (!selectedInstallationID) {
       return;
     }
-    const run = () => queryClient.refetchQueries({
-      queryKey: inventoryQueryKeys.risks(selectedInstallationID, riskFilters),
-    });
+    const run = () =>
+      queryClient.refetchQueries({
+        queryKey: inventoryQueryKeys.risks(selectedInstallationID, riskFilters),
+      });
     await (client.withNoCache ? client.withNoCache(run) : run());
   }
 
@@ -316,7 +327,8 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
     setSearchParams(next);
   }
 
-  const selectClass = "w-full rounded-control border border-border bg-surface px-3 py-2 text-sm text-ink";
+  const selectClass =
+    "w-full rounded-control border border-border bg-surface px-3 py-2 text-sm text-ink";
 
   return (
     <div className="space-y-5">
@@ -325,7 +337,8 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
           <p className="text-xs uppercase tracking-[0.2em] text-faint">Estoque</p>
           <h1 className="text-2xl font-semibold text-ink">Stock Seguro</h1>
           <p className="text-sm text-muted">
-            Compara o estoque publicado no Mercado Livre com o estoque interno e aplica correções manuais explícitas.
+            Compara o estoque publicado no Mercado Livre com o estoque interno e aplica correções
+            manuais explícitas.
           </p>
           <p className="text-sm text-muted">
             <FreshnessIndicator asOf={riskQuery.data?.as_of} />
@@ -411,37 +424,60 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
       <section className="grid gap-4 md:grid-cols-4">
         <SurfaceCard>
           <p className="text-xs uppercase tracking-[0.18em] text-faint">Linhas</p>
-          <p data-testid="stock-summary-total" className="mt-2 text-3xl font-semibold text-ink">{summary.total}</p>
+          <p data-testid="stock-summary-total" className="mt-2 text-3xl font-semibold text-ink">
+            {summary.total}
+          </p>
         </SurfaceCard>
         <SurfaceCard>
           <p className="text-xs uppercase tracking-[0.18em] text-faint">Acionáveis</p>
-          <p data-testid="stock-summary-actionable" className="mt-2 text-3xl font-semibold text-ink">{summary.actionable}</p>
+          <p
+            data-testid="stock-summary-actionable"
+            className="mt-2 text-3xl font-semibold text-ink"
+          >
+            {summary.actionable}
+          </p>
         </SurfaceCard>
         <SurfaceCard>
           <p className="text-xs uppercase tracking-[0.18em] text-faint">Oversell</p>
-          <p data-testid="stock-summary-oversell" className="mt-2 text-3xl font-semibold text-ink">{summary.oversell}</p>
+          <p data-testid="stock-summary-oversell" className="mt-2 text-3xl font-semibold text-ink">
+            {summary.oversell}
+          </p>
         </SurfaceCard>
         <SurfaceCard>
           <p className="text-xs uppercase tracking-[0.18em] text-faint">Bloqueadas</p>
-          <p data-testid="stock-summary-blockers" className="mt-2 text-3xl font-semibold text-ink">{summary.blockers}</p>
+          <p data-testid="stock-summary-blockers" className="mt-2 text-3xl font-semibold text-ink">
+            {summary.blockers}
+          </p>
         </SurfaceCard>
       </section>
 
       {actionError ? (
-        <div className="rounded-card border border-border bg-warn-soft px-4 py-3 text-sm text-warn">{actionError}</div>
+        <div className="rounded-card border border-border bg-warn-soft px-4 py-3 text-sm text-warn">
+          {actionError}
+        </div>
       ) : null}
       {actionMessage ? (
-        <div className="rounded-card border border-border bg-accent-soft px-4 py-3 text-sm text-accent-ink">{actionMessage}</div>
+        <div className="rounded-card border border-border bg-accent-soft px-4 py-3 text-sm text-accent-ink">
+          {actionMessage}
+        </div>
       ) : null}
 
       {displayedState === "loading" ? (
-        <SurfaceCard><p className="text-sm text-muted">Carregando Stock Seguro...</p></SurfaceCard>
+        <SurfaceCard>
+          <p className="text-sm text-muted">Carregando Stock Seguro...</p>
+        </SurfaceCard>
       ) : null}
       {displayedState === "error" && displayedError ? (
-        <SurfaceCard><p className="text-sm text-warn">{displayedError}</p></SurfaceCard>
+        <SurfaceCard>
+          <p className="text-sm text-warn">{displayedError}</p>
+        </SurfaceCard>
       ) : null}
       {displayedState === "ready" && displayedItems.length === 0 ? (
-        <SurfaceCard><p className="text-sm text-muted">Nenhuma linha de Stock Seguro para os filtros selecionados.</p></SurfaceCard>
+        <SurfaceCard>
+          <p className="text-sm text-muted">
+            Nenhuma linha de Stock Seguro para os filtros selecionados.
+          </p>
+        </SurfaceCard>
       ) : null}
 
       {displayedState === "ready" && displayedItems.length > 0 ? (
@@ -455,14 +491,26 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className={`rounded-pill px-3 py-1 text-xs font-semibold ${stateTone(item.state)}`}>{stateLabel(item.state)}</span>
-                        <span className="rounded-pill bg-surface-2 px-3 py-1 text-xs font-semibold text-muted">{actionabilityLabel(item.actionable)}</span>
-                        <span className="rounded-pill bg-surface-2 px-3 py-1 text-xs font-semibold text-muted">{linkStateLabel(item.link_state)}</span>
+                        <span
+                          className={`rounded-pill px-3 py-1 text-xs font-semibold ${stateTone(item.state)}`}
+                        >
+                          {stateLabel(item.state)}
+                        </span>
+                        <span className="rounded-pill bg-surface-2 px-3 py-1 text-xs font-semibold text-muted">
+                          {actionabilityLabel(item.actionable)}
+                        </span>
+                        <span className="rounded-pill bg-surface-2 px-3 py-1 text-xs font-semibold text-muted">
+                          {linkStateLabel(item.link_state)}
+                        </span>
                       </div>
-                      <h2 className="text-lg font-semibold text-ink">{item.title || item.identity.provider_item_id}</h2>
+                      <h2 className="text-lg font-semibold text-ink">
+                        {item.title || item.identity.provider_item_id}
+                      </h2>
                       <p className="text-sm text-muted">
                         {item.identity.provider_item_id}
-                        {item.identity.provider_variation_id ? ` / ${item.identity.provider_variation_id}` : ""}
+                        {item.identity.provider_variation_id
+                          ? ` / ${item.identity.provider_variation_id}`
+                          : ""}
                         {item.internal_reference_code ? ` · ${item.internal_reference_code}` : ""}
                       </p>
                     </div>
@@ -480,15 +528,23 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-card bg-surface-2 p-4">
                       <p className="text-xs uppercase tracking-[0.16em] text-faint">Qtd. no ML</p>
-                      <p className="mt-2 text-2xl font-semibold text-ink">{item.provider_quantity ?? "—"}</p>
+                      <p className="mt-2 text-2xl font-semibold text-ink">
+                        {item.provider_quantity ?? "—"}
+                      </p>
                     </div>
                     <div className="rounded-card bg-surface-2 p-4">
-                      <p className="text-xs uppercase tracking-[0.16em] text-faint">Estoque interno</p>
-                      <p className="mt-2 text-2xl font-semibold text-ink">{item.internal_quantity ?? "—"}</p>
+                      <p className="text-xs uppercase tracking-[0.16em] text-faint">
+                        Estoque interno
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-ink">
+                        {item.internal_quantity ?? "—"}
+                      </p>
                     </div>
                     <div className="rounded-card bg-surface-2 p-4">
                       <p className="text-xs uppercase tracking-[0.16em] text-faint">Recomendado</p>
-                      <p className="mt-2 text-2xl font-semibold text-ink">{item.recommended_quantity ?? "—"}</p>
+                      <p className="mt-2 text-2xl font-semibold text-ink">
+                        {item.recommended_quantity ?? "—"}
+                      </p>
                     </div>
                   </div>
 
@@ -496,8 +552,9 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
                     <div className="rounded-card border border-border bg-surface-2 p-4">
                       <p className="text-sm font-medium text-ink">Confirmar aplicação manual</p>
                       <p className="mt-1 text-sm text-muted">
-                        Isto vai pedir ao Mercado Livre a quantidade <strong>{item.recommended_quantity ?? "—"}</strong> para
-                        este anúncio, usando a evidência da política atual.
+                        Isto vai pedir ao Mercado Livre a quantidade{" "}
+                        <strong>{item.recommended_quantity ?? "—"}</strong> para este anúncio,
+                        usando a evidência da política atual.
                       </p>
                       <div className="mt-4 grid gap-3 md:grid-cols-2">
                         <label className="space-y-1 text-sm text-ink">
@@ -520,11 +577,14 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
                       </div>
                       {!operatorName.trim() ? (
                         <p className="mt-2 text-xs text-muted">
-                          A ação fica registrada no nome de quem aprova — informe o operador para confirmar.
+                          A ação fica registrada no nome de quem aprova — informe o operador para
+                          confirmar.
                         </p>
                       ) : null}
                       <div className="mt-4 flex justify-end gap-2">
-                        <Button variant="secondary" onClick={() => setOpenConfirmKey(null)}>Cancelar</Button>
+                        <Button variant="secondary" onClick={() => setOpenConfirmKey(null)}>
+                          Cancelar
+                        </Button>
                         <Button
                           variant="primary"
                           disabled={!operatorName.trim()}
@@ -551,15 +611,32 @@ export function StockSeguroPage({ client, installations }: StockSeguroPageProps)
             <SurfaceCard className="space-y-4 rounded-card">
               <div>
                 <p className="text-xs uppercase tracking-[0.18em] text-faint">Detalhe da linha</p>
-                <h2 className="mt-2 text-xl font-semibold text-ink">{selected.title || selected.identity.provider_item_id}</h2>
+                <h2 className="mt-2 text-xl font-semibold text-ink">
+                  {selected.title || selected.identity.provider_item_id}
+                </h2>
               </div>
               <div className="grid gap-3 text-sm text-muted">
-                <p><strong className="text-ink">Política:</strong> {selected.policy_id}</p>
-                <p><strong className="text-ink">Observado no ML:</strong> {formatDateTime(selected.provider_observed_at) ?? "—"}</p>
-                <p><strong className="text-ink">Observado no ERP:</strong> {formatDateTime(selected.internal_observed_at) ?? "—"}</p>
-                <p><strong className="text-ink">Produto interno:</strong> {selected.internal_product_name || selected.internal_reference_code || "—"}</p>
-                <p><strong className="text-ink">SKU:</strong> {selected.seller_sku || "—"}</p>
-                <p><strong className="text-ink">EAN:</strong> {selected.ean || "—"}</p>
+                <p>
+                  <strong className="text-ink">Política:</strong> {selected.policy_id}
+                </p>
+                <p>
+                  <strong className="text-ink">Observado no ML:</strong>{" "}
+                  {formatDateTime(selected.provider_observed_at) ?? "—"}
+                </p>
+                <p>
+                  <strong className="text-ink">Observado no ERP:</strong>{" "}
+                  {formatDateTime(selected.internal_observed_at) ?? "—"}
+                </p>
+                <p>
+                  <strong className="text-ink">Produto interno:</strong>{" "}
+                  {selected.internal_product_name || selected.internal_reference_code || "—"}
+                </p>
+                <p>
+                  <strong className="text-ink">SKU:</strong> {selected.seller_sku || "—"}
+                </p>
+                <p>
+                  <strong className="text-ink">EAN:</strong> {selected.ean || "—"}
+                </p>
               </div>
             </SurfaceCard>
           ) : null}

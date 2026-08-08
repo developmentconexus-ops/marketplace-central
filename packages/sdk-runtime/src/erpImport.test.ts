@@ -70,21 +70,42 @@ describe("ERP import SDK contract", () => {
   });
 
   it("keeps the OpenAPI ERP import schemas in parity with the SDK", () => {
-    const openapi = readFileSync(resolve(process.cwd(), "../../contracts/api/marketplace-central.openapi.yaml"), "utf8");
+    const openapi = readFileSync(
+      resolve(process.cwd(), "../../contracts/api/marketplace-central.openapi.yaml"),
+      "utf8",
+    );
     const region = openapi.slice(openapi.indexOf("    ErpImportStatus:"));
-    const issueCodeSchema = region.slice(region.indexOf("    ErpImportIssueCode:"), region.indexOf("    ErpImportIssue:"));
-    const summary = region.slice(region.indexOf("    ErpImportSummary:"), region.indexOf("    ErpImportIssueCode:"));
-    const issue = region.slice(region.indexOf("    ErpImportIssue:"), region.indexOf("    ErpImportDetail:"));
-    const error = region.slice(region.indexOf("    ErpImportError:"), region.indexOf("    ErpImportConflict:"));
+    const issueCodeSchema = region.slice(
+      region.indexOf("    ErpImportIssueCode:"),
+      region.indexOf("    ErpImportIssue:"),
+    );
+    const summary = region.slice(
+      region.indexOf("    ErpImportSummary:"),
+      region.indexOf("    ErpImportIssueCode:"),
+    );
+    const issue = region.slice(
+      region.indexOf("    ErpImportIssue:"),
+      region.indexOf("    ErpImportDetail:"),
+    );
+    const error = region.slice(
+      region.indexOf("    ErpImportError:"),
+      region.indexOf("    ErpImportConflict:"),
+    );
     const conflict = region.slice(region.indexOf("    ErpImportConflict:"));
 
     expect(region).toContain("enum: [COMPLETED, REJECTED]");
-    expect(summary).toContain("required: [import_id, protocol, file_sha256, source, imported_at, status, accepted_count, rejected_count, warning_count]");
+    expect(summary).toContain(
+      "required: [import_id, protocol, file_sha256, source, imported_at, status, accepted_count, rejected_count, warning_count]",
+    );
     expect(summary).toContain("file_sha256:");
     expect(summary).toContain("source:");
     expect(summary).not.toContain("filename:");
-    expect(issueCodeSchema).toContain("enum: [EMPTY_CODPROD, DUPLICATE_CODPROD, EMPTY_DESCRPROD, INVALID_CUSTO, INVALID_ESTOQUE, INVALID_EAN, INVALID_NCM, MISSING_CUSTO, MISSING_ESTOQUE, MISSING_REQUIRED_COLUMN]");
-    expect(error).toContain("enum: [invalid_file, missing_required_column, invalid_import_id, import_not_found, internal_error]");
+    expect(issueCodeSchema).toContain(
+      "enum: [EMPTY_CODPROD, DUPLICATE_CODPROD, EMPTY_DESCRPROD, INVALID_CUSTO, INVALID_ESTOQUE, INVALID_EAN, INVALID_NCM, MISSING_CUSTO, MISSING_ESTOQUE, MISSING_REQUIRED_COLUMN]",
+    );
+    expect(error).toContain(
+      "enum: [invalid_file, missing_required_column, invalid_import_id, import_not_found, internal_error]",
+    );
     expect(error).not.toContain("$ref: '#/components/schemas/ErrorResponse'");
     expect(issue).toContain("required: [row, code, detail]");
     expect(issue).toMatch(/column:\s*\n\s*type: string\s*\n\s*nullable: true/);
@@ -95,7 +116,10 @@ describe("ERP import SDK contract", () => {
   });
 
   it("declares a flat 500 ErpImportError on every erp import operation", () => {
-    const openapi = readFileSync(resolve(process.cwd(), "../../contracts/api/marketplace-central.openapi.yaml"), "utf8");
+    const openapi = readFileSync(
+      resolve(process.cwd(), "../../contracts/api/marketplace-central.openapi.yaml"),
+      "utf8",
+    );
     // Window RE-POINTED BY VALUE (hub ruling A-19), assertions unchanged. It used to
     // run from this anchor to `\ncomponents:` — the END of the paths section — so any
     // path appended after /erp/imports was swallowed into this family's counts.
@@ -103,7 +127,10 @@ describe("ERP import SDK contract", () => {
     // the next path OUTSIDE the family is the fix; inflating the count to 6 would have
     // been absorbing a foreign path into the erp-import guard, the same collision under
     // another name.
-    const region = openapi.slice(openapi.indexOf("  /erp/imports:"), openapi.indexOf("\ncomponents:"));
+    const region = openapi.slice(
+      openapi.indexOf("  /erp/imports:"),
+      openapi.indexOf("\ncomponents:"),
+    );
     const nextFamily = region.search(/\n {2}\/(?!erp\/imports)\S*:/);
     const paths = nextFamily === -1 ? region : region.slice(0, nextFamily);
     // handler emits {"error":"internal_error"} (500) on POST, list, detail, and chain — spec must cover all four.
@@ -117,10 +144,16 @@ describe("ERP import SDK contract", () => {
   });
 
   it("declares the malformed-id 400 on BOTH {id} routes", () => {
-    const openapi = readFileSync(resolve(process.cwd(), "../../contracts/api/marketplace-central.openapi.yaml"), "utf8");
+    const openapi = readFileSync(
+      resolve(process.cwd(), "../../contracts/api/marketplace-central.openapi.yaml"),
+      "utf8",
+    );
     // handler validates {id} before the query and emits {"error":"invalid_import_id"} (400)
     // on GET /erp/imports/{id} and GET /erp/imports/{id}/chain — both must be declared.
-    const idRoutes = openapi.slice(openapi.indexOf("  /erp/imports/{id}:"), openapi.indexOf("  /config/active-source:"));
+    const idRoutes = openapi.slice(
+      openapi.indexOf("  /erp/imports/{id}:"),
+      openapi.indexOf("  /config/active-source:"),
+    );
     const fourHundreds = idRoutes.match(/"400":/g) ?? [];
     expect(fourHundreds).toHaveLength(2);
     for (const block of idRoutes.split(/"400":/).slice(1)) {

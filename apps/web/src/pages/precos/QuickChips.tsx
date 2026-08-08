@@ -50,10 +50,10 @@ export function QuickChips({
   const aggregate =
     productId === null
       ? null
-      : query.data?.find((a) => a.product_id === productId) ?? query.data?.[0] ?? null;
+      : (query.data?.find((a) => a.product_id === productId) ?? query.data?.[0] ?? null);
   const priced = aggregate?.status === "OK";
-  const median = priced ? aggregate?.median ?? null : null;
-  const minValid = priced ? aggregate?.min_valid ?? null : null;
+  const median = priced ? (aggregate?.median ?? null) : null;
+  const minValid = priced ? (aggregate?.min_valid ?? null) : null;
 
   const chip = (key: string, label: string, onClick: () => void) => (
     <button
@@ -71,7 +71,9 @@ export function QuickChips({
 
   return (
     <div data-testid="quick-chips" className="flex flex-wrap gap-1.5">
-      {median ? chip("mediana", `mediana ${money(median)}`, () => onSeedPreco(median.amount)) : null}
+      {median
+        ? chip("mediana", `mediana ${money(median)}`, () => onSeedPreco(median.amount))
+        : null}
       {minValid
         ? chip("menor", `menor conc. ${money(minValid)}`, () => onSeedPreco(minValid.amount))
         : null}

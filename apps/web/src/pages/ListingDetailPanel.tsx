@@ -56,12 +56,22 @@ const syncPillClassName: Record<ListingSyncState, string> = {
 };
 
 function stateTag(label: string, className = "bg-surface-2 text-muted") {
-  return <span className={`inline-flex whitespace-nowrap rounded-pill px-2 py-0.5 text-xs font-medium ${className}`}>{label}</span>;
+  return (
+    <span
+      className={`inline-flex whitespace-nowrap rounded-pill px-2 py-0.5 text-xs font-medium ${className}`}
+    >
+      {label}
+    </span>
+  );
 }
 
 function renderMargin(item: ListingReadModel) {
   if (item.below_margin_worst_case === null) {
-    return item.cost === null ? <UnknownValue hint="sem custo no ERP → não simulado" /> : <UnknownValue />;
+    return item.cost === null ? (
+      <UnknownValue hint="sem custo no ERP → não simulado" />
+    ) : (
+      <UnknownValue />
+    );
   }
   return item.below_margin_worst_case
     ? stateTag("abaixo da margem", "bg-warn-soft text-warn")
@@ -96,7 +106,10 @@ function renderEvidenceCount(value: number | null) {
 }
 
 function formatPriceToWin(signal: ListingMarketSignal) {
-  const formatted = signal.price_to_win === null ? null : formatBRL(signal.price_to_win.amount, signal.price_to_win.currency);
+  const formatted =
+    signal.price_to_win === null
+      ? null
+      : formatBRL(signal.price_to_win.amount, signal.price_to_win.currency);
   return formatted === null ? <UnknownValue /> : formatted;
 }
 
@@ -130,9 +143,7 @@ function formatPosition(signal: ListingMarketSignal) {
 }
 
 function formatDelta(signal: ListingMarketSignal) {
-  return signal.delta_pct === null
-    ? <UnknownValue />
-    : formatSignedPercent(signal.delta_pct);
+  return signal.delta_pct === null ? <UnknownValue /> : formatSignedPercent(signal.delta_pct);
 }
 
 // 2x2 (and evidence-grid) bordered card idiom from the ratified drawer:
@@ -157,7 +168,10 @@ function InfoCard({ label, children }: { label: string; children: React.ReactNod
 function EvidenceSection({ detail }: { detail: ListingDetail }) {
   const status = detail.signal_status ?? "NO_PRICE_EVIDENCE";
   const heading = (
-    <h4 id="listing-detail-evidence-title" className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-faint">
+    <h4
+      id="listing-detail-evidence-title"
+      className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-faint"
+    >
       Vs. mercado
     </h4>
   );
@@ -168,7 +182,10 @@ function EvidenceSection({ detail }: { detail: ListingDetail }) {
         {heading}
         <p className="text-sm text-muted">
           Anúncio sem vínculo com produto — sem evidência de mercado.{" "}
-          <Link to="/vinculos" className="font-medium text-accent-ink underline underline-offset-2 hover:opacity-80">
+          <Link
+            to="/vinculos"
+            className="font-medium text-accent-ink underline underline-offset-2 hover:opacity-80"
+          >
             Vincular produto
           </Link>
         </p>
@@ -182,7 +199,8 @@ function EvidenceSection({ detail }: { detail: ListingDetail }) {
       <section aria-labelledby="listing-detail-evidence-title">
         {heading}
         <p className="text-sm text-muted">
-          <UnknownValue hint="sem evidência de preço de mercado" /> Sem evidência de preço de mercado
+          <UnknownValue hint="sem evidência de preço de mercado" /> Sem evidência de preço de
+          mercado
         </p>
       </section>
     );
@@ -201,11 +219,17 @@ function EvidenceSection({ detail }: { detail: ListingDetail }) {
         <InfoCard label="Concorrentes">{renderEvidenceCount(signal.n_sellers)}</InfoCard>
         <InfoCard label="Fonte">{signal.evidence?.source ?? <UnknownValue />}</InfoCard>
         <InfoCard label="Coletado em">
-          {signal.evidence?.fetched_at ? <FreshnessIndicator asOf={signal.evidence.fetched_at} /> : <UnknownValue />}
+          {signal.evidence?.fetched_at ? (
+            <FreshnessIndicator asOf={signal.evidence.fetched_at} />
+          ) : (
+            <UnknownValue />
+          )}
         </InfoCard>
       </div>
       {status === "STALE" ? (
-        <p className="mt-2 text-xs text-amber">Evidência desatualizada — pode não refletir o mercado atual.</p>
+        <p className="mt-2 text-xs text-amber">
+          Evidência desatualizada — pode não refletir o mercado atual.
+        </p>
       ) : null}
       {detail.link.product_id ? (
         <Link
@@ -225,11 +249,13 @@ function EvidenceSection({ detail }: { detail: ListingDetail }) {
 // link-state label, else the conflict tag) — see
 // pages/AnunciosTable.tsx:64-77 for the source pattern.
 function IdentityRow({ detail }: { detail: ListingDetail }) {
-  const produtoNode = detail.link.product_id
-    ? detail.link.product_id
-    : detail.link.state === "conflict"
-      ? <ConflictTag />
-      : linkStateLabels[detail.link.state];
+  const produtoNode = detail.link.product_id ? (
+    detail.link.product_id
+  ) : detail.link.state === "conflict" ? (
+    <ConflictTag />
+  ) : (
+    linkStateLabels[detail.link.state]
+  );
   const modalidade = detail.listing_type?.label;
 
   return (
@@ -241,7 +267,9 @@ function IdentityRow({ detail }: { detail: ListingDetail }) {
         foto
       </div>
       <div className="min-w-0">
-        <p className="text-[12.5px] font-semibold text-ink">{detail.title ?? detail.provider_listing_id}</p>
+        <p className="text-[12.5px] font-semibold text-ink">
+          {detail.title ?? detail.provider_listing_id}
+        </p>
         <p className="mt-0.5 truncate text-[11.5px] text-faint">
           {produtoNode}
           {modalidade ? ` · ${modalidade}` : ""}
@@ -264,17 +292,29 @@ function DetailBody({ detail }: { detail: ListingDetail }) {
       <IdentityRow detail={detail} />
 
       {detail.sync_error ? (
-        <section aria-labelledby="listing-detail-sync-error-title" className="rounded-lg border border-warn bg-warn-soft p-3">
-          <h4 id="listing-detail-sync-error-title" className="text-sm font-semibold text-warn">Erro de sincronização</h4>
+        <section
+          aria-labelledby="listing-detail-sync-error-title"
+          className="rounded-lg border border-warn bg-warn-soft p-3"
+        >
+          <h4 id="listing-detail-sync-error-title" className="text-sm font-semibold text-warn">
+            Erro de sincronização
+          </h4>
           <p className="mt-1 text-sm text-warn">{detail.sync_error.message_pt}</p>
           {detail.sync_error.message_provider !== null ? (
             <details
               className="mt-2 text-sm text-warn"
               onToggle={(event) => setTechnicalDetailsOpen(event.currentTarget.open)}
             >
-              <summary className="cursor-pointer" onClick={() => setTechnicalDetailsOpen((open) => !open)}>▸ técnico</summary>
+              <summary
+                className="cursor-pointer"
+                onClick={() => setTechnicalDetailsOpen((open) => !open)}
+              >
+                ▸ técnico
+              </summary>
               {technicalDetailsOpen ? (
-                <p className="mt-2 break-words font-mono text-xs text-faint">{detail.sync_error.message_provider}</p>
+                <p className="mt-2 break-words font-mono text-xs text-faint">
+                  {detail.sync_error.message_provider}
+                </p>
               ) : null}
             </details>
           ) : null}
@@ -294,13 +334,22 @@ function DetailBody({ detail }: { detail: ListingDetail }) {
       <EvidenceSection detail={detail} />
 
       <section aria-labelledby="listing-detail-timeline-title">
-        <h4 id="listing-detail-timeline-title" className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-faint">
+        <h4
+          id="listing-detail-timeline-title"
+          className="mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-faint"
+        >
           Linha do tempo
         </h4>
         <ol className="space-y-1.5">
           {detail.timeline.map((event, index) => (
-            <li key={`${event.at}-${index}`} data-testid="timeline-event" className="flex gap-2 text-xs">
-              <time dateTime={event.at} className="flex-none font-mono text-faint">{formatEventTime(event.at)}</time>
+            <li
+              key={`${event.at}-${index}`}
+              data-testid="timeline-event"
+              className="flex gap-2 text-xs"
+            >
+              <time dateTime={event.at} className="flex-none font-mono text-faint">
+                {formatEventTime(event.at)}
+              </time>
               <span className={timelineColor(event.kind)}>{event.message_pt}</span>
             </li>
           ))}
@@ -308,7 +357,10 @@ function DetailBody({ detail }: { detail: ListingDetail }) {
       </section>
 
       {detail.link.product_id ? (
-        <Link to={`/catalogo/produtos/${detail.link.product_id}`} className="text-xs font-semibold text-accent-ink hover:underline">
+        <Link
+          to={`/catalogo/produtos/${detail.link.product_id}`}
+          className="text-xs font-semibold text-accent-ink hover:underline"
+        >
           Abrir edição completa →
         </Link>
       ) : null}
@@ -382,13 +434,21 @@ export function ListingDetailPanel({ listingId, onClose }: ListingDetailPanelPro
           {detail?.provider_listing_id ?? listingId}
         </span>
         {detail?.title ? (
-          <b data-testid="listing-detail-header-title" className="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink">
+          <b
+            data-testid="listing-detail-header-title"
+            className="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink"
+          >
             {detail.title}
           </b>
         ) : (
           <span className="flex-1" />
         )}
-        <button type="button" onClick={onClose} aria-label="Fechar painel" className="flex-none text-faint hover:text-ink">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fechar painel"
+          className="flex-none text-faint hover:text-ink"
+        >
           ✕
         </button>
       </div>

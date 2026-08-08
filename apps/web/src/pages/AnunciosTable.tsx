@@ -7,7 +7,13 @@ import type {
   ListingReadModel,
   ListingSyncState,
 } from "@marketplace-central/sdk-runtime";
-import { ConflictTag, formatMoney, formatSignedPercent, FreshnessIndicator, UnknownValue } from "@marketplace-central/ui";
+import {
+  ConflictTag,
+  formatMoney,
+  formatSignedPercent,
+  FreshnessIndicator,
+  UnknownValue,
+} from "@marketplace-central/ui";
 import { formatAsOf } from "@marketplace-central/web-query";
 
 export interface AnunciosTableProps {
@@ -55,7 +61,9 @@ const syncPillClassName = {
 
 function renderSyncPill(state: ListingSyncState) {
   return (
-    <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-pill px-2 py-0.5 text-xs font-medium ${syncPillClassName[state]}`}>
+    <span
+      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-pill px-2 py-0.5 text-xs font-medium ${syncPillClassName[state]}`}
+    >
       <span className="h-1 w-1 rounded-pill bg-current" aria-hidden="true" />
       {syncLabels[state]}
     </span>
@@ -74,7 +82,11 @@ function renderProductCell(item: ListingReadModel) {
       </Link>
     );
   }
-  return <span className="font-mono text-xs text-faint">{linkLabels[item.link.state as Exclude<ListingLinkState, "conflict">]}</span>;
+  return (
+    <span className="font-mono text-xs text-faint">
+      {linkLabels[item.link.state as Exclude<ListingLinkState, "conflict">]}
+    </span>
+  );
 }
 
 function formatMarketDeltaPct(signal: ListingMarketSignal): string | null {
@@ -108,12 +120,19 @@ function renderPriceCell(item: ListingReadModel) {
     // Sign-colored per the delta: acima do mercado (positive) -> warn/vermelho,
     // abaixo ou igual ao mercado (<= 0) -> accent/verde; STALE always âmbar.
     const isAboveMarket = Number(item.market_signal.delta_pct) > 0;
-    const chipClassName = status === "STALE" ? "bg-amber-soft text-amber" : isAboveMarket ? "bg-warn-soft text-warn" : "bg-accent-soft text-accent-ink";
+    const chipClassName =
+      status === "STALE"
+        ? "bg-amber-soft text-amber"
+        : isAboveMarket
+          ? "bg-warn-soft text-warn"
+          : "bg-accent-soft text-accent-ink";
     return (
       <div className="flex flex-col gap-0.5">
         <span className="flex items-center gap-1.5">
           <span className="font-mono tabular-nums">{priceValue}</span>
-          <span className={`inline-flex whitespace-nowrap rounded-pill px-1.5 py-0.5 font-mono text-[11px] font-medium ${chipClassName}`}>
+          <span
+            className={`inline-flex whitespace-nowrap rounded-pill px-1.5 py-0.5 font-mono text-[11px] font-medium ${chipClassName}`}
+          >
             {delta}
           </span>
         </span>
@@ -137,7 +156,15 @@ function groupKey(group: ListingGroup) {
   return group.product_id ?? "sem-produto";
 }
 
-export function AnunciosTable({ items, groups, asOf, selectedIds, onToggle, onTogglePage, onOpen }: AnunciosTableProps) {
+export function AnunciosTable({
+  items,
+  groups,
+  asOf,
+  selectedIds,
+  onToggle,
+  onTogglePage,
+  onOpen,
+}: AnunciosTableProps) {
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
   // Groups start expanded (preserves the flat-list demo behaviour); the chevron
   // collapses a group to just its header row. Set holds the collapsed keys.
@@ -154,7 +181,7 @@ export function AnunciosTable({ items, groups, asOf, selectedIds, onToggle, onTo
   // Agrupar-por-produto renders per-CODPROD groups (group-header row + child
   // listing rows); the flat W1 view (groups absent) is unchanged. Both modes
   // select over the same flattened listing set.
-  const flatItems = groups ? groups.flatMap((group) => group.listings) : items ?? [];
+  const flatItems = groups ? groups.flatMap((group) => group.listings) : (items ?? []);
   const pageIds = flatItems.map((item) => item.listing_id);
   const selectedOnPage = pageIds.filter((id) => selectedIds.has(id)).length;
   const allSelected = flatItems.length > 0 && selectedOnPage === flatItems.length;
@@ -196,7 +223,9 @@ export function AnunciosTable({ items, groups, asOf, selectedIds, onToggle, onTo
           </button>
         </td>
         <td className="px-3 py-3">{renderProductCell(item)}</td>
-        <td className="px-3 py-3" data-testid="preco-cell">{renderPriceCell(item)}</td>
+        <td className="px-3 py-3" data-testid="preco-cell">
+          {renderPriceCell(item)}
+        </td>
         <td className="px-3 py-3 font-mono tabular-nums">{item.published_quantity}</td>
         <td className="px-3 py-3">{renderSyncPill(item.sync_state)}</td>
         <td className="px-3 py-3 text-xs text-faint">
@@ -233,7 +262,9 @@ export function AnunciosTable({ items, groups, asOf, selectedIds, onToggle, onTo
               <span aria-hidden="true">{expanded ? "▾" : "▸"}</span>
             </button>
             <span className="text-sm font-semibold">{title}</span>
-            <span className="text-faint" aria-hidden="true">·</span>
+            <span className="text-faint" aria-hidden="true">
+              ·
+            </span>
             {/*
               Estoque do ERP saiu do cabeçalho: era o literal "ERP est. —", texto escrito
               no componente que mostraria o mesmo traço com o estoque cheio. ADR-C1 — sem
@@ -241,7 +272,9 @@ export function AnunciosTable({ items, groups, asOf, selectedIds, onToggle, onTo
               Volta quando o espelho do ERP expuser o saldo por anúncio vinculado.
             */}
             <span className="text-xs font-normal text-faint">{listingsLabel}</span>
-            <span className="text-faint" aria-hidden="true">·</span>
+            <span className="text-faint" aria-hidden="true">
+              ·
+            </span>
             {errorCount > 0 ? (
               <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-pill bg-warn-soft px-2 py-0.5 text-xs font-medium text-warn">
                 {`${errorCount} ${errorCount === 1 ? "erro" : "erros"}`}
@@ -276,20 +309,36 @@ export function AnunciosTable({ items, groups, asOf, selectedIds, onToggle, onTo
                 aria-label="Selecionar todos os anúncios desta página"
               />
             </th>
-            <th className="px-3 py-3" scope="col">MLB</th>
-            <th className="px-3 py-3" scope="col">TÍTULO</th>
-            <th className="px-3 py-3" scope="col">PRODUTO</th>
-            <th className="px-3 py-3" scope="col">PREÇO</th>
-            <th className="px-3 py-3" scope="col">EST.</th>
-            <th className="px-3 py-3" scope="col">SYNC</th>
-            <th className="px-3 py-3" scope="col">PENDÊNCIA</th>
+            <th className="px-3 py-3" scope="col">
+              MLB
+            </th>
+            <th className="px-3 py-3" scope="col">
+              TÍTULO
+            </th>
+            <th className="px-3 py-3" scope="col">
+              PRODUTO
+            </th>
+            <th className="px-3 py-3" scope="col">
+              PREÇO
+            </th>
+            <th className="px-3 py-3" scope="col">
+              EST.
+            </th>
+            <th className="px-3 py-3" scope="col">
+              SYNC
+            </th>
+            <th className="px-3 py-3" scope="col">
+              PENDÊNCIA
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border-2">
           {groups
             ? groups.flatMap((group) => [
                 renderGroupHeader(group),
-                ...(collapsedGroups.has(groupKey(group)) ? [] : group.listings.map((item) => renderRow(item))),
+                ...(collapsedGroups.has(groupKey(group))
+                  ? []
+                  : group.listings.map((item) => renderRow(item))),
               ])
             : flatItems.map((item) => renderRow(item))}
         </tbody>

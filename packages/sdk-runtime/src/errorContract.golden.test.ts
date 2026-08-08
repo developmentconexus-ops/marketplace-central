@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { createMarketplaceCentralClient, MarketplaceCentralClientError, isApiError, hasCode } from "./index";
+import {
+  createMarketplaceCentralClient,
+  MarketplaceCentralClientError,
+  isApiError,
+  hasCode,
+} from "./index";
 
 // This test pins the FUTURE unified SDK error surface (day-1 golden test,
 // RED before the chip's SDK refactor lands): a typed client-side error class,

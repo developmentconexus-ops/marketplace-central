@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  formatCollectedAt,
-  formatMoney,
-  formatPosition,
-} from "./mercadoFormatters";
+import { formatCollectedAt, formatMoney, formatPosition } from "./mercadoFormatters";
 
 describe("mercadoFormatters", () => {
   it("formats a decimal-string amount as pt-BR currency", () => {

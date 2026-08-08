@@ -13,7 +13,8 @@ export interface ListaViewProps {
 
 const placeholderCopy: Record<string, string> = {
   concluido: "Concluídos — em breve",
-  cancelado: "Cancelados — em breve: causas (estoque, prazo, arrependimento) e impacto na reputação",
+  cancelado:
+    "Cancelados — em breve: causas (estoque, prazo, arrependimento) e impacto na reputação",
   devolucao: "Devoluções — em breve: fluxo de tratativa e reintegração de estoque",
 };
 

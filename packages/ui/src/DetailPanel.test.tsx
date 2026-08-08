@@ -7,7 +7,7 @@ describe("DetailPanel", () => {
     render(
       <DetailPanel open={false} onClose={vi.fn()} title="Edit Product">
         <p>Panel content</p>
-      </DetailPanel>
+      </DetailPanel>,
     );
     expect(screen.queryByText("Edit Product")).not.toBeInTheDocument();
     expect(screen.queryByText("Panel content")).not.toBeInTheDocument();
@@ -17,7 +17,7 @@ describe("DetailPanel", () => {
     render(
       <DetailPanel open={true} onClose={vi.fn()} title="Edit Product">
         <p>Panel content</p>
-      </DetailPanel>
+      </DetailPanel>,
     );
     expect(screen.getByText("Edit Product")).toBeInTheDocument();
     expect(screen.getByText("Panel content")).toBeInTheDocument();
@@ -27,7 +27,7 @@ describe("DetailPanel", () => {
     render(
       <DetailPanel open={true} onClose={vi.fn()} title="Edit Product">
         <p>Panel content</p>
-      </DetailPanel>
+      </DetailPanel>,
     );
     const panel = screen.getByRole("complementary", { name: "Edit Product" });
 
@@ -40,7 +40,7 @@ describe("DetailPanel", () => {
     render(
       <DetailPanel open={true} onClose={vi.fn()} title="Edit Product" subtitle="SKU-001">
         <p>content</p>
-      </DetailPanel>
+      </DetailPanel>,
     );
     expect(screen.getByText("SKU-001")).toBeInTheDocument();
   });
@@ -50,7 +50,7 @@ describe("DetailPanel", () => {
     render(
       <DetailPanel open={true} onClose={onClose} title="Edit Product">
         <p>content</p>
-      </DetailPanel>
+      </DetailPanel>,
     );
     fireEvent.click(screen.getByLabelText("Close panel"));
     expect(onClose).toHaveBeenCalledOnce();
@@ -61,7 +61,7 @@ describe("DetailPanel", () => {
     render(
       <DetailPanel open={true} onClose={onClose} title="Edit Product">
         <p>content</p>
-      </DetailPanel>
+      </DetailPanel>,
     );
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onClose).toHaveBeenCalledOnce();
@@ -72,7 +72,7 @@ describe("DetailPanel", () => {
     render(
       <DetailPanel open={false} onClose={onClose} title="Edit Product">
         <p>content</p>
-      </DetailPanel>
+      </DetailPanel>,
     );
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onClose).not.toHaveBeenCalled();
@@ -80,9 +80,14 @@ describe("DetailPanel", () => {
 
   it("renders footer when provided", () => {
     render(
-      <DetailPanel open={true} onClose={vi.fn()} title="Edit Product" footer={<button>Save</button>}>
+      <DetailPanel
+        open={true}
+        onClose={vi.fn()}
+        title="Edit Product"
+        footer={<button>Save</button>}
+      >
         <p>content</p>
-      </DetailPanel>
+      </DetailPanel>,
     );
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
   });

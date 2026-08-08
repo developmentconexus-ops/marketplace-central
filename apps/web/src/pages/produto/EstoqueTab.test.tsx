@@ -30,9 +30,27 @@ const baseProduct: CanonicalCatalogProduct = {
   product_group_name: null,
   ncm: null,
   quality_flags: [],
-  cost_amount: { source: "erp", value: null, quality: "unknown", observed_at: null, quality_reason: null },
-  price_amount: { source: "erp", value: null, quality: "unknown", observed_at: null, quality_reason: null },
-  stock_quantity: { source: "erp", value: null, quality: "unknown", observed_at: null, quality_reason: null },
+  cost_amount: {
+    source: "erp",
+    value: null,
+    quality: "unknown",
+    observed_at: null,
+    quality_reason: null,
+  },
+  price_amount: {
+    source: "erp",
+    value: null,
+    quality: "unknown",
+    observed_at: null,
+    quality_reason: null,
+  },
+  stock_quantity: {
+    source: "erp",
+    value: null,
+    quality: "unknown",
+    observed_at: null,
+    quality_reason: null,
+  },
 };
 
 describe("EstoqueTab", () => {
@@ -40,7 +58,13 @@ describe("EstoqueTab", () => {
     const product: CanonicalCatalogProduct = {
       ...baseProduct,
       quality_flags: [],
-      stock_quantity: { source: "erp", value: 42, quality: "current", observed_at: "2026-07-15T10:00:00Z", quality_reason: null },
+      stock_quantity: {
+        source: "erp",
+        value: 42,
+        quality: "current",
+        observed_at: "2026-07-15T10:00:00Z",
+        quality_reason: null,
+      },
     };
     const client = makeClient(product);
 
@@ -57,7 +81,13 @@ describe("EstoqueTab", () => {
     const product: CanonicalCatalogProduct = {
       ...baseProduct,
       quality_flags: ["missing_stock"],
-      stock_quantity: { source: "erp", value: null, quality: "unknown", observed_at: null, quality_reason: null },
+      stock_quantity: {
+        source: "erp",
+        value: null,
+        quality: "unknown",
+        observed_at: null,
+        quality_reason: null,
+      },
     };
     const client = makeClient(product);
 
@@ -71,7 +101,13 @@ describe("EstoqueTab", () => {
     const product: CanonicalCatalogProduct = {
       ...baseProduct,
       quality_flags: ["missing_stock"],
-      stock_quantity: { source: "erp", value: 0, quality: "stale", observed_at: "2026-07-10T10:00:00Z", quality_reason: "stale erp read" },
+      stock_quantity: {
+        source: "erp",
+        value: 0,
+        quality: "stale",
+        observed_at: "2026-07-10T10:00:00Z",
+        quality_reason: "stale erp read",
+      },
     };
     const client = makeClient(product);
 
@@ -85,7 +121,13 @@ describe("EstoqueTab", () => {
     const product: CanonicalCatalogProduct = {
       ...baseProduct,
       quality_flags: [],
-      stock_quantity: { source: "erp", value: 7, quality: "current", observed_at: "2026-07-15T10:00:00Z", quality_reason: null },
+      stock_quantity: {
+        source: "erp",
+        value: 7,
+        quality: "current",
+        observed_at: "2026-07-15T10:00:00Z",
+        quality_reason: null,
+      },
     };
     const client = makeClient(product);
 
@@ -98,7 +140,9 @@ describe("EstoqueTab", () => {
   });
 
   it("shows LoadingState while the query is pending", () => {
-    const client = { getCatalogProduct: vi.fn(() => new Promise(() => undefined)) } as unknown as Client;
+    const client = {
+      getCatalogProduct: vi.fn(() => new Promise(() => undefined)),
+    } as unknown as Client;
 
     renderTab(client);
 
@@ -106,7 +150,9 @@ describe("EstoqueTab", () => {
   });
 
   it("shows ErrorState when the query fails", async () => {
-    const client = { getCatalogProduct: vi.fn().mockRejectedValue(new Error("boom")) } as unknown as Client;
+    const client = {
+      getCatalogProduct: vi.fn().mockRejectedValue(new Error("boom")),
+    } as unknown as Client;
 
     renderTab(client);
 

@@ -27,7 +27,9 @@ if (typeof globalThis.localStorage === "undefined") {
     (this as Storage & { __store: Map<string, string> }).__store.clear();
   });
   define("key", function (this: Storage, index: number) {
-    return Array.from((this as Storage & { __store: Map<string, string> }).__store.keys())[index] ?? null;
+    return (
+      Array.from((this as Storage & { __store: Map<string, string> }).__store.keys())[index] ?? null
+    );
   });
   const storageEntries: Array<["localStorage" | "sessionStorage", Map<string, string>]> = [
     ["localStorage", stores[0]],
@@ -71,7 +73,12 @@ vi.mock("../../app/ClientContext", () => ({
 }));
 
 function activeSourceConfig(source: string) {
-  return { active_source: source, source_kind: source === "sankhya" ? "live_read_through" : "upload_snapshot", set_at: "2026-07-24T10:00:00Z", set_by: null };
+  return {
+    active_source: source,
+    source_kind: source === "sankhya" ? "live_read_through" : "upload_snapshot",
+    set_at: "2026-07-24T10:00:00Z",
+    set_by: null,
+  };
 }
 
 function renderPage(initialEntry = "/integracoes") {
@@ -173,8 +180,13 @@ describe("IntegracoesPage", () => {
     const estoque = assortmentToggle("Somente com estoque disponível");
     const ecommerce = assortmentToggle("Somente elegíveis ao e-commerce");
     expect(revenda.checked, "Somente produtos de revenda must bind to only_revenda").toBe(true);
-    expect(estoque.checked, "Somente com estoque disponível must bind to only_em_estoque").toBe(false);
-    expect(ecommerce.checked, "Somente elegíveis ao e-commerce must bind to only_ecommerce_eligible").toBe(false);
+    expect(estoque.checked, "Somente com estoque disponível must bind to only_em_estoque").toBe(
+      false,
+    );
+    expect(
+      ecommerce.checked,
+      "Somente elegíveis ao e-commerce must bind to only_ecommerce_eligible",
+    ).toBe(false);
 
     fireEvent.click(revenda);
     await waitFor(() =>
@@ -197,7 +209,9 @@ describe("IntegracoesPage", () => {
       }),
     );
     await waitFor(() =>
-      expect(estoque.checked, "Somente com estoque disponível must bind to only_em_estoque").toBe(true),
+      expect(estoque.checked, "Somente com estoque disponível must bind to only_em_estoque").toBe(
+        true,
+      ),
     );
 
     fireEvent.click(estoque);
@@ -209,7 +223,9 @@ describe("IntegracoesPage", () => {
       }),
     );
     await waitFor(() =>
-      expect(estoque.checked, "Somente com estoque disponível must bind to only_em_estoque").toBe(false),
+      expect(estoque.checked, "Somente com estoque disponível must bind to only_em_estoque").toBe(
+        false,
+      ),
     );
 
     fireEvent.click(ecommerce);
@@ -221,7 +237,10 @@ describe("IntegracoesPage", () => {
       }),
     );
     await waitFor(() =>
-      expect(ecommerce.checked, "Somente elegíveis ao e-commerce must bind to only_ecommerce_eligible").toBe(true),
+      expect(
+        ecommerce.checked,
+        "Somente elegíveis ao e-commerce must bind to only_ecommerce_eligible",
+      ).toBe(true),
     );
 
     expect(window.localStorage.length).toBe(0);
@@ -250,7 +269,9 @@ describe("IntegracoesPage", () => {
 
     fireEvent.click(estoque);
     await waitFor(() =>
-      expect(estoque.checked, "Somente com estoque disponível must bind to only_em_estoque").toBe(true),
+      expect(estoque.checked, "Somente com estoque disponível must bind to only_em_estoque").toBe(
+        true,
+      ),
     );
     expect(setSellableAssortment).toHaveBeenLastCalledWith({
       only_revenda: false,
@@ -259,12 +280,17 @@ describe("IntegracoesPage", () => {
     });
     fireEvent.click(estoque);
     await waitFor(() =>
-      expect(estoque.checked, "Somente com estoque disponível must bind to only_em_estoque").toBe(false),
+      expect(estoque.checked, "Somente com estoque disponível must bind to only_em_estoque").toBe(
+        false,
+      ),
     );
 
     fireEvent.click(ecommerce);
     await waitFor(() =>
-      expect(ecommerce.checked, "Somente elegíveis ao e-commerce must bind to only_ecommerce_eligible").toBe(true),
+      expect(
+        ecommerce.checked,
+        "Somente elegíveis ao e-commerce must bind to only_ecommerce_eligible",
+      ).toBe(true),
     );
     expect(setSellableAssortment).toHaveBeenLastCalledWith({
       only_revenda: false,
@@ -297,7 +323,9 @@ describe("IntegracoesPage", () => {
     getSellableAssortment.mockRejectedValueOnce(new Error("assortment unavailable"));
     renderPage();
 
-    expect(await screen.findByText("Não foi possível ler a regra de sortimento configurada.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Não foi possível ler a regra de sortimento configurada."),
+    ).toBeInTheDocument();
     expect(
       screen.queryAllByRole("checkbox"),
       "Failed assortment read must render no toggle for only_revenda, only_em_estoque, or only_ecommerce_eligible",
@@ -317,7 +345,9 @@ describe("IntegracoesPage", () => {
       screen.queryAllByRole("checkbox"),
       "Unknown assortment source must render no toggle for only_revenda, only_em_estoque, or only_ecommerce_eligible",
     ).toHaveLength(0);
-    expect(screen.queryByText("Não foi possível ler a regra de sortimento configurada.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Não foi possível ler a regra de sortimento configurada."),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the configure-source state when counts have no active source", async () => {
@@ -339,7 +369,11 @@ describe("IntegracoesPage", () => {
   });
 
   it("posts the upload with the default catálogo-do-cliente source and shows the result summary", async () => {
-    createErpImport.mockResolvedValue({ import_id: "imp_1", protocol: "#004-E", status: "COMPLETED" });
+    createErpImport.mockResolvedValue({
+      import_id: "imp_1",
+      protocol: "#004-E",
+      status: "COMPLETED",
+    });
     getErpImport.mockResolvedValue(detailFixture);
     renderPage();
 
@@ -357,7 +391,11 @@ describe("IntegracoesPage", () => {
   });
 
   it("posts the strict xlsx source when Sankhya is selected", async () => {
-    createErpImport.mockResolvedValue({ import_id: "imp_2", protocol: "#005-E", status: "COMPLETED" });
+    createErpImport.mockResolvedValue({
+      import_id: "imp_2",
+      protocol: "#005-E",
+      status: "COMPLETED",
+    });
     getErpImport.mockResolvedValue({ ...detailFixture, import_id: "imp_2" });
     renderPage();
 
@@ -387,9 +425,14 @@ describe("IntegracoesPage", () => {
 
   it("shows the missing-column name on a 422 missing_required_column", async () => {
     createErpImport.mockRejectedValue(
-      new MarketplaceCentralClientError(422, "missing_required_column", "coluna obrigatória ausente", {
-        column: "CUSTO",
-      }),
+      new MarketplaceCentralClientError(
+        422,
+        "missing_required_column",
+        "coluna obrigatória ausente",
+        {
+          column: "CUSTO",
+        },
+      ),
     );
     renderPage();
     selectFile();
@@ -421,7 +464,9 @@ describe("IntegracoesPage", () => {
 
     // The write goes to the server; the selection only moves once it succeeds,
     // because the source decides what the whole platform reads.
-    await waitFor(() => expect(setActiveSource).toHaveBeenCalledWith({ active_source: "catalogo_cliente" }));
+    await waitFor(() =>
+      expect(setActiveSource).toHaveBeenCalledWith({ active_source: "catalogo_cliente" }),
+    );
     await waitFor(() => expect(catalogo.checked).toBe(true));
     expect(xlsx.checked).toBe(false);
   });

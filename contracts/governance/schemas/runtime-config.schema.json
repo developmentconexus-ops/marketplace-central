@@ -7,7 +7,12 @@
   "properties": {
     "schema_version": { "const": "1.0" },
     "registry_id": { "const": "runtime-config" },
-    "exception_rules": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "const": "runtime-direct-reader" } },
+    "exception_rules": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "const": "runtime-direct-reader" }
+    },
     "keys": {
       "type": "array",
       "minItems": 1,
@@ -20,9 +25,21 @@
           "key": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
           "owner": { "type": "string", "pattern": "^[a-z0-9_./-]+$" },
           "sensitivity": { "enum": ["public", "internal", "secret"] },
-          "lifecycle": { "enum": ["active", "legacy_current", "legacy_alias", "temporary_test_contract", "reserved_not_ambient"] },
+          "lifecycle": {
+            "enum": [
+              "active",
+              "legacy_current",
+              "legacy_alias",
+              "temporary_test_contract",
+              "reserved_not_ambient"
+            ]
+          },
           "alias_for": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
-          "allowed_lanes": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/lane" } },
+          "allowed_lanes": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/lane" }
+          },
           "readers": {
             "type": "array",
             "minItems": 1,
@@ -38,16 +55,45 @@
                 "exception_id": { "$ref": "#/$defs/id" }
               },
               "allOf": [
-                { "if": { "properties": { "status": { "const": "temporary_exception" } }, "required": ["status"] }, "then": { "required": ["exception_id"] } },
-                { "if": { "properties": { "status": { "const": "approved" } }, "required": ["status"] }, "then": { "not": { "required": ["exception_id"] } } },
-                { "if": { "properties": { "kind": { "const": "registry" } }, "required": ["kind"] }, "then": { "properties": { "status": { "const": "approved" } } } }
+                {
+                  "if": {
+                    "properties": { "status": { "const": "temporary_exception" } },
+                    "required": ["status"]
+                  },
+                  "then": { "required": ["exception_id"] }
+                },
+                {
+                  "if": {
+                    "properties": { "status": { "const": "approved" } },
+                    "required": ["status"]
+                  },
+                  "then": { "not": { "required": ["exception_id"] } }
+                },
+                {
+                  "if": { "properties": { "kind": { "const": "registry" } }, "required": ["kind"] },
+                  "then": { "properties": { "status": { "const": "approved" } } }
+                }
               ]
             }
           }
         },
         "allOf": [
-          { "if": { "properties": { "lifecycle": { "const": "legacy_alias" } }, "required": ["lifecycle"] }, "then": { "required": ["alias_for"] } },
-          { "if": { "not": { "properties": { "lifecycle": { "const": "legacy_alias" } }, "required": ["lifecycle"] } }, "then": { "not": { "required": ["alias_for"] } } }
+          {
+            "if": {
+              "properties": { "lifecycle": { "const": "legacy_alias" } },
+              "required": ["lifecycle"]
+            },
+            "then": { "required": ["alias_for"] }
+          },
+          {
+            "if": {
+              "not": {
+                "properties": { "lifecycle": { "const": "legacy_alias" } },
+                "required": ["lifecycle"]
+              }
+            },
+            "then": { "not": { "required": ["alias_for"] } }
+          }
         ]
       }
     },
@@ -64,14 +110,26 @@
           "key": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
           "path": { "$ref": "#/$defs/path" },
           "reason": { "type": "string", "minLength": 1 },
-          "removal_owner": { "type": "string", "pattern": "^(?:M-[0-9]{2}|F-[0-9]{2}|M-[0-9]{2}/F-[0-9]{2})$" }
+          "removal_owner": {
+            "type": "string",
+            "pattern": "^(?:M-[0-9]{2}|F-[0-9]{2}|M-[0-9]{2}/F-[0-9]{2})$"
+          }
         }
       }
     }
   },
   "$defs": {
     "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
-    "lane": { "enum": ["unit", "integration", "live-oracle", "live-provider-read", "browser", "provider-write"] },
+    "lane": {
+      "enum": [
+        "unit",
+        "integration",
+        "live-oracle",
+        "live-provider-read",
+        "browser",
+        "provider-write"
+      ]
+    },
     "path": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$" }
   }
 }

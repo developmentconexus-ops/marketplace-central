@@ -76,7 +76,11 @@ function base(overrides: Partial<ProductLinkCandidateItem>): ProductLinkCandidat
     confidence_band: "MEDIA",
     match_status: "CONFIRM",
     reasons: [
-      { anchor: "ean", direction: "FOR", detail: "ean corrobora codprod, unicidade não comprovada" },
+      {
+        anchor: "ean",
+        direction: "FOR",
+        detail: "ean corrobora codprod, unicidade não comprovada",
+      },
       {
         anchor: "seller_sku",
         direction: "INCOMPARABLE",
@@ -118,7 +122,8 @@ function renderPage() {
 // blue-600, emerald-100, red-700, amber-800). The design tokens never do
 // (bg-surface, text-ink, bg-accent-soft, text-amber, text-warn). So any
 // `-<color>-<digit>` in the markup is an off-theme regression.
-const OFF_THEME = /\b(?:bg|text|border|ring|divide|from|to|hover:bg|hover:text|hover:border)-(?:slate|blue|emerald|red|amber|indigo|gray|zinc|green|sky|violet)-\d/;
+const OFF_THEME =
+  /\b(?:bg|text|border|ring|divide|from|to|hover:bg|hover:text|hover:border)-(?:slate|blue|emerald|red|amber|indigo|gray|zinc|green|sky|violet)-\d/;
 
 describe("Vínculos design golden", () => {
   beforeEach(() => {
@@ -165,7 +170,10 @@ describe("Vínculos design golden", () => {
     // expansão "+N" / no drawer.
     const motivoChip = cells.getByText("✓ EAN");
     expect(motivoChip).toBeInTheDocument();
-    expect(motivoChip).toHaveAttribute("title", "ean: ean corrobora codprod, unicidade não comprovada");
+    expect(motivoChip).toHaveAttribute(
+      "title",
+      "ean: ean corrobora codprod, unicidade não comprovada",
+    );
     // ...and the anchor that is MISSING rides beside it with the side that says
     // where to go fix it (D-122/D-B), in its own tokens.
     const incomparableChip = cells.getByText("? SKU (falta no anúncio)");
@@ -179,7 +187,16 @@ describe("Vínculos design golden", () => {
     expect(cells.getByRole("button", { name: "Vincular" })).toBeInTheDocument(); // AÇÃO
 
     // Column headers present (anúncio-cêntrica order).
-    for (const header of ["Anúncio", "Canal", "Produto sugerido", "SKU HUB", "Identificado por", "Confiança", "Motivo", "Ação"]) {
+    for (const header of [
+      "Anúncio",
+      "Canal",
+      "Produto sugerido",
+      "SKU HUB",
+      "Identificado por",
+      "Confiança",
+      "Motivo",
+      "Ação",
+    ]) {
       expect(screen.getByRole("columnheader", { name: header })).toBeInTheDocument();
     }
   });
@@ -216,7 +233,12 @@ describe("Vínculos design golden", () => {
               side: "erp",
               detail: "seller_sku sem correspondência",
             },
-            { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "ean sem correspondência" },
+            {
+              anchor: "ean",
+              direction: "INCOMPARABLE",
+              side: "erp",
+              detail: "ean sem correspondência",
+            },
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
         }),
@@ -255,8 +277,16 @@ describe("Vínculos design golden", () => {
           confidence: 95,
           confidence_band: "ALTA",
           reasons: [
-            { anchor: "seller_sku", direction: "FOR", detail: "seller_sku resolve exato para codprod" },
-            { anchor: "ean", direction: "FOR", detail: "ean corrobora o mesmo codprod, unicidade não comprovada" },
+            {
+              anchor: "seller_sku",
+              direction: "FOR",
+              detail: "seller_sku resolve exato para codprod",
+            },
+            {
+              anchor: "ean",
+              direction: "FOR",
+              detail: "ean corrobora o mesmo codprod, unicidade não comprovada",
+            },
             // Same always-declared `marca` as in base(): `buildConcordantCandidate`
             // (generation_service.go:493-507) also finalizes through
             // `appendProviderDeclaredUnavailableReasons`.
@@ -281,7 +311,12 @@ describe("Vínculos design golden", () => {
               side: "erp",
               detail: "seller_sku sem correspondência",
             },
-            { anchor: "ean", direction: "INCOMPARABLE", side: "erp", detail: "ean sem correspondência" },
+            {
+              anchor: "ean",
+              direction: "INCOMPARABLE",
+              side: "erp",
+              detail: "ean sem correspondência",
+            },
             { anchor: "marca", direction: "UNAVAILABLE", detail: MARCA_UNAVAILABLE_DETAIL },
           ],
         }),

@@ -5,31 +5,48 @@
   "additionalProperties": false,
   "required": ["schema_version", "registry_id", "routes"],
   "properties": {
-    "schema_version": {"const": "1.0"},
-    "registry_id": {"const": "knowledge-routes"},
-    "routes": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/route"}}
+    "schema_version": { "const": "1.0" },
+    "registry_id": { "const": "knowledge-routes" },
+    "routes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/route" }
+    }
   },
   "$defs": {
-    "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
-    "path": {"type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$"},
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "path": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$" },
     "route": {
-      "type": "object", "additionalProperties": false,
+      "type": "object",
+      "additionalProperties": false,
       "required": ["id", "module_id", "concerns", "selectors"],
       "properties": {
-        "id": {"$ref": "#/$defs/id"},
-        "module_id": {"$ref": "#/$defs/id"},
-        "concerns": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
-        "selectors": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/selector"}}
+        "id": { "$ref": "#/$defs/id" },
+        "module_id": { "$ref": "#/$defs/id" },
+        "concerns": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/id" }
+        },
+        "selectors": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/selector" }
+        }
       }
     },
     "selector": {
-      "type": "object", "additionalProperties": false,
+      "type": "object",
+      "additionalProperties": false,
       "required": ["path", "selector", "reason", "estimated_tokens"],
       "properties": {
-        "path": {"$ref": "#/$defs/path"},
-        "selector": {"type": "string", "minLength": 1},
-        "reason": {"type": "string", "minLength": 1},
-        "estimated_tokens": {"type": "integer", "minimum": 1, "maximum": 2000}
+        "path": { "$ref": "#/$defs/path" },
+        "selector": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "estimated_tokens": { "type": "integer", "minimum": 1, "maximum": 2000 }
       }
     }
   }

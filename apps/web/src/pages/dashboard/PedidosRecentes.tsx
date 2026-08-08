@@ -15,12 +15,16 @@ export function PedidosRecentes() {
   // orders list — no backend change, no reshaping of the summary contract.
   const query = useQuery({
     queryKey: ["dashboard", "pedidos-recentes", { installation_id: installationId }],
-    queryFn: () => client.listOrders({ installation_id: installationId, limit: RECENT_ORDERS_LIMIT }),
+    queryFn: () =>
+      client.listOrders({ installation_id: installationId, limit: RECENT_ORDERS_LIMIT }),
     refetchOnWindowFocus: false,
   });
 
   return (
-    <section aria-labelledby="pedidos-recentes-title" className="rounded-card border border-border bg-surface p-4">
+    <section
+      aria-labelledby="pedidos-recentes-title"
+      className="rounded-card border border-border bg-surface p-4"
+    >
       <div className="flex items-center justify-between">
         <h2 id="pedidos-recentes-title" className="text-sm font-semibold text-ink">
           Pedidos recentes
@@ -46,7 +50,12 @@ export function PedidosRecentes() {
               >
                 <span className="truncate">{order.buyer_nickname ?? order.provider_order_id}</span>
                 <span className="font-semibold" style={{ fontFamily: "var(--font-mono)" }}>
-                  {order.total !== null ? order.total.toLocaleString("pt-BR", { style: "currency", currency: order.currency ?? "BRL" }) : "—"}
+                  {order.total !== null
+                    ? order.total.toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: order.currency ?? "BRL",
+                      })
+                    : "—"}
                 </span>
               </li>
             ))}

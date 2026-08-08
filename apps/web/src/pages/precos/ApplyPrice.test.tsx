@@ -51,7 +51,9 @@ vi.mock("../../app/ClientContext", () => ({
 }));
 
 function renderAction(props: Partial<Parameters<typeof ApplyPriceAction>[0]> = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>

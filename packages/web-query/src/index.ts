@@ -44,7 +44,9 @@ export const catalogQueryKeys = {
   // The trailing params object is appended only when a caller supplies params,
   // so the pre-toggle two-arg key shape (["catalog","search",q]) stays byte-stable.
   search: (q: string, params?: QueryFilters) =>
-    (params && Object.keys(params).length > 0 ? ["catalog", "search", q, { params }] : ["catalog", "search", q]) as
+    (params && Object.keys(params).length > 0
+      ? ["catalog", "search", q, { params }]
+      : ["catalog", "search", q]) as
       | readonly ["catalog", "search", string]
       | readonly ["catalog", "search", string, { params: QueryFilters }],
 };
@@ -145,10 +147,7 @@ export function formatRelativeAge(
  * Rótulo de frescor exibido ao lado de um fato. Alias fino sobre
  * formatRelativeAge, mantido porque dez sítios já o importam por este nome.
  */
-export function formatAsOf(
-  asOf: string | null | undefined,
-  now: number = Date.now(),
-): string {
+export function formatAsOf(asOf: string | null | undefined, now: number = Date.now()): string {
   return formatRelativeAge(asOf, now);
 }
 
@@ -208,7 +207,11 @@ export function createRefreshableFetch(baseFetch: typeof fetch = fetch): {
   return { fetchImpl, withNoCache };
 }
 
-export { invalidateAfterMutation, UnknownMutationInvalidationTypeError, type MutationInvalidationType } from "./invalidation";
+export {
+  invalidateAfterMutation,
+  UnknownMutationInvalidationTypeError,
+  type MutationInvalidationType,
+} from "./invalidation";
 export { failureCodes, failureCopy, type FailureCode } from "./failureCopy";
 export {
   type ActiveSourceClient,

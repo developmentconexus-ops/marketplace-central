@@ -1,0 +1,88 @@
+# What Prettier is not allowed to touch, and why.
+#
+# Formatting admits no legitimate exception, so this file is short on purpose and
+# every entry names a reason. An ignore with no reason is a defect deferred.
+
+# Not ours to format. npm owns the lockfile's shape and rewrites it on every
+# install; a formatter fighting it would churn on every dependency change.
+package-lock.json
+node_modules/
+**/node_modules/
+.gomodcache/
+apps/server_core/.gomodcache/
+dist/
+build/
+.next/
+coverage/
+.gate/
+
+# Generated. The authority is the generator, not this file, and reformatting the
+# output makes the regen-diff check red for a reason unrelated to the schema.
+apps/web/src/api/generated/
+packages/sdk-runtime/src/generated/
+
+# Captured output, in JSON rather than markdown. Same rule as `.mnfs/` below:
+# what a tool or a provider actually returned is evidence, and evidence that has
+# been reflowed is no longer verbatim.
+#
+#   - testdata/ under the provider adapters holds recorded Mercado Livre response
+#     bodies -- item multiget, order, shipment. Their value is that they are what
+#     the API sent.
+#   - docs/research/evidence/ and docs/marketplaces/ are captured crawler and API
+#     output; several are still wrapped in the caller's `{"success":true,"data":…}`
+#     envelope, which is the giveaway that nobody authored them by hand.
+#
+# Governance JSON under contracts/governance/ is deliberately NOT here: those are
+# declarations this repository authors, and a formatter is welcome to them.
+**/testdata/
+docs/research/evidence/
+docs/marketplaces/
+
+# The published API contract, and this one was found the hard way.
+#
+# Running Prettier over it rewrote 839 lines: every `$ref: '#/...'` became
+# `$ref: "#/..."`, plus reflow. Two Go contract-parity tests then went red --
+# TestRefreshListingsOpenAPIContractParity and
+# TestMarketCollectVerdictOpenAPIContractParity, both in `root_test.go`, which
+# assert the literal text of this file. The formatter and the parity tests are
+# two instruments over one document, and that is how they come to disagree.
+#
+# The spec is also the authority for the SDK and for the route/spec/SDK equality
+# checks of GATE-TOPOLOGY §2.3. A cosmetic rewrite of an authority is not
+# cosmetic. Its shape is owned by whoever edits the contract, not by this
+# formatter.
+contracts/api/*.yaml
+
+# Markdown, all of it. This started as an exclusion of `.mnfs/` only, and the
+# measurement widened it.
+#
+# Prettier's markdown printer cannot re-indent a line that sits inside an inline
+# code span spanning a line break, so it strips the indentation instead. In a
+# nested list that moves the continuation line to column 0 and lifts it out of
+# the list -- a change to document structure, not to formatting. Found first in
+# docs/HARNESS-PROFILE.md §2, then measured across the whole scope on 2026-08-08:
+# 77 of the 236 markdown files Prettier wanted to rewrite show the pattern.
+#
+# A formatter that damages one document in three cannot run unattended over a
+# ratified profile, an ADR, or an audit record. Markdown therefore has no
+# formatting gate here; that is a decision with a number behind it, not an
+# oversight. Revisit if Prettier's markdown printer learns to preserve the
+# indentation of wrapped code spans.
+*.md
+
+# Evidence, and this is the entry that matters.
+#
+# `.mnfs/` holds 1000 markdown files: mission artifacts, dispatch ledgers,
+# measured output pasted verbatim from tools. Reformatting them rewrites the
+# record -- line breaks, table alignment, list markers -- and evidence that has
+# been reflowed is no longer verbatim. `AGENTS.md` puts it as "evidence lives in
+# .mnfs artifacts"; a formatter with write access to the audit trail is a worse
+# problem than an unaligned table.
+#
+# The same applies, at lower stakes, to the vendored agent/tooling trees below:
+# they are copies of upstream, and diffing them against upstream is easier when
+# they have not been through our formatter.
+.mnfs/
+.claude/
+.superpowers/
+.agents/

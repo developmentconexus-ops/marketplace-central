@@ -158,6 +158,124 @@ function Measure-GateGolangciLint {
   }
 }
 
+function Measure-GateEslint {
+  <#
+    Reads ESLint's JSON report.
+
+    `Paths` is the point of this function, not `Total`. ESLint reports one entry
+    per file it linted, including files with nothing to say, so the report states
+    what was covered as well as what was found -- and coverage is the failure mode
+    here. A type-aware rule over a file that belongs to no tsconfig cannot run;
+    ESLint reports the file, the rule stays silent, and the lane reads a clean
+    zero it did not earn. The caller compares `Paths` against the tracked source
+    list and fails on a file that is missing.
+
+    `Fatal` is counted apart from the rules. A parse failure is a message with no
+    `ruleId`, so folding it into the findings total would let a file that could
+    not be read at all shrink the ratchet the moment someone adds it to an
+    ignore list.
+  #>
+  [CmdletBinding()]
+  param([Parameter(Mandatory)][AllowEmptyString()][string]$Json)
+
+  if ([string]::IsNullOrWhiteSpace($Json)) {
+    return [pscustomobject]@{ Files = -1; Total = -1; Fatal = -1; ByRule = @{}; Paths = @() }
+  }
+  $report = @($Json | ConvertFrom-Json)
+  $byRule = @{}
+  $fatal = 0
+  $paths = @()
+  foreach ($file in $report) {
+    $paths += ([string]$file.filePath -replace '\\', '/')
+    foreach ($message in @($file.messages)) {
+      if ($message.PSObject.Properties.Name -contains 'fatal' -and $message.fatal) { $fatal++; continue }
+      $rule = if ($message.ruleId) { [string]$message.ruleId } else { '(no-rule)' }
+      if (-not $byRule.ContainsKey($rule)) { $byRule[$rule] = 0 }
+      $byRule[$rule] = $byRule[$rule] + 1
+    }
+  }
+  return [pscustomobject]@{
+    Files  = $report.Count
+    Total  = @($byRule.Values | Measure-Object -Sum).Sum
+    Fatal  = $fatal
+    ByRule = $byRule
+    Paths  = $paths
+  }
+}
+
+function Measure-GatePrettier {
+  <#
+    Reads `prettier --check` output.
+
+    Prettier prints one `[warn] <path>` line per file whose formatting differs and
+    a final `[warn] Code style issues found in N files`. On a clean run it prints
+    `All matched files use Prettier code style!` and names no file, which is the
+    reason the caller must count the candidate set itself: a glob that matched
+    nothing and a tree that is perfectly formatted produce the same two lines.
+
+    `Clean` is the affirmative marker, not the absence of warnings. A run that
+    died before printing anything has no warnings either.
+
+    `Checked` is the effective file set, and it needs `--log-level debug` to
+    exist. At that verbosity Prettier emits one `resolve config from '<path>'`
+    line per file it actually reads, and nothing else in its output distinguishes
+    a formatted tree from a glob that matched nothing. Counted distinct, because
+    the same path resolving twice is one file. Without the debug flag this is 0
+    and the caller must treat that as the failure it is.
+  #>
+  [CmdletBinding()]
+  param([Parameter(Mandatory)][AllowEmptyString()][string]$Text)
+
+  $plain = Remove-GateAnsi -Text $Text
+  $summary = [regex]::Match($plain, '(?m)Code style issues found in (?<count>\d+) file')
+  $listed = @([regex]::Matches($plain, '(?m)^\[warn\] (?<path>(?!Code style)\S.*)$') |
+    ForEach-Object { $_.Groups['path'].Value.Trim() })
+  $resolved = @{}
+  foreach ($match in [regex]::Matches($plain, "(?m)resolve config from '(?<path>[^']+)'")) {
+    $resolved[$match.Groups['path'].Value] = $true
+  }
+  return [pscustomobject]@{
+    Clean       = ($plain -match 'All matched files use Prettier code style!')
+    Unformatted = if ($summary.Success) { [int]$summary.Groups['count'].Value } else { $listed.Count }
+    Paths       = $listed
+    Checked     = $resolved.Count
+  }
+}
+
+function Measure-GateEslintRules {
+  <#
+    Reads `eslint --print-config <file>` and returns the rules that are actually
+    ON for that file.
+
+    This is the ESLint half of the lint-go lane's enabled-linter assertion, and
+    it exists because a findings count cannot tell "the code got better" from
+    "the rule got turned off". Reproduced 2026-08-08 on PR #21: setting two of
+    the six rules to "off" dropped the lane's total from 26 to 13, and the ratchet
+    reported the drop as a shrink worth committing.
+
+    ESLint's severity is 0/1/2 or "off"/"warn"/"error", and a configured rule is
+    an array whose first element is the severity. Anything resolving to 0 is
+    absent from the returned set, exactly as if it had never been named.
+  #>
+  [CmdletBinding()]
+  param([Parameter(Mandatory)][AllowEmptyString()][string]$Json)
+
+  if ([string]::IsNullOrWhiteSpace($Json)) { return @() }
+  $document = $Json | ConvertFrom-Json
+  if ($null -eq $document -or $null -eq $document.rules) { return @() }
+
+  $enabled = @()
+  foreach ($property in $document.rules.PSObject.Properties) {
+    $value = $property.Value
+    $severity = if ($value -is [array] -or $value -is [System.Collections.IList]) {
+      if (@($value).Count -eq 0) { 0 } else { @($value)[0] }
+    } else { $value }
+    $isOff = ($null -eq $severity) -or ($severity -eq 0) -or ("$severity" -eq 'off')
+    if (-not $isOff) { $enabled += $property.Name }
+  }
+  return @($enabled | Sort-Object)
+}
+
 function Compare-GateRatchet {
   <#
     Shrink-only comparison of measured counts against a committed baseline.
@@ -223,4 +341,5 @@ function ConvertTo-GateCountMap {
 }
 
 Export-ModuleMember -Function Measure-GateGoTest, Measure-GateVitest, Measure-GateTsc, Measure-GateGofmt, `
-  Remove-GateAnsi, Measure-GateGolangciLint, Compare-GateRatchet, ConvertTo-GateCountMap
+  Remove-GateAnsi, Measure-GateGolangciLint, Measure-GateEslint, Measure-GateEslintRules, Measure-GatePrettier, `
+  Compare-GateRatchet, ConvertTo-GateCountMap

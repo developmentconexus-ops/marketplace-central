@@ -45,7 +45,11 @@ function isListingLinkState(value: string): value is ListingLinkState {
   return linkStateValues.includes(value as ListingLinkState);
 }
 
-function setFilterParam(searchParams: URLSearchParams, key: string, value: string | undefined): void {
+function setFilterParam(
+  searchParams: URLSearchParams,
+  key: string,
+  value: string | undefined,
+): void {
   if (value) searchParams.set(`filter.${key}`, value);
 }
 

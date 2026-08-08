@@ -13,7 +13,8 @@ vi.mock("../../app/InstallationContext", () => ({
 
 vi.mock("../../app/ClientContext", () => ({
   useClient: () => ({
-    startIntegrationReauthorization: (...args: unknown[]) => startIntegrationReauthorization(...args),
+    startIntegrationReauthorization: (...args: unknown[]) =>
+      startIntegrationReauthorization(...args),
   }),
 }));
 

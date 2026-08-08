@@ -1,5 +1,10 @@
 import type { ListingSummary } from "@marketplace-central/sdk-runtime";
-import { ErrorState, FreshnessIndicator, LoadingState, UnknownValue } from "@marketplace-central/ui";
+import {
+  ErrorState,
+  FreshnessIndicator,
+  LoadingState,
+  UnknownValue,
+} from "@marketplace-central/ui";
 
 export interface ListingsSummaryProps {
   isPending: boolean;

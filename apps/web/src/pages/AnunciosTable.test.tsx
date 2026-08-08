@@ -71,7 +71,13 @@ describe("AnunciosTable", () => {
   });
 
   it("captions freshness in pt-BR, never the raw API timestamp", () => {
-    renderTable(<AnunciosTable items={[listing]} asOf="2026-07-25T02:06:53.030122091Z" {...tableSelectionProps} />);
+    renderTable(
+      <AnunciosTable
+        items={[listing]}
+        asOf="2026-07-25T02:06:53.030122091Z"
+        {...tableSelectionProps}
+      />,
+    );
 
     const caption = screen.getByText(/^Anúncios,/);
     expect(caption.textContent).not.toContain("2026-07-25T02:06:53.030122091Z");
@@ -93,7 +99,9 @@ describe("AnunciosTable", () => {
   });
 
   it("renders the listing facts", () => {
-    renderTable(<AnunciosTable items={[listing]} asOf="2026-07-16T12:00:00Z" {...tableSelectionProps} />);
+    renderTable(
+      <AnunciosTable items={[listing]} asOf="2026-07-16T12:00:00Z" {...tableSelectionProps} />,
+    );
 
     expect(screen.getByText("Camiseta azul")).toBeInTheDocument();
     expect(screen.getByText("MLB123456789")).toBeInTheDocument();
@@ -167,7 +175,10 @@ describe("AnunciosTable", () => {
   describe("PREÇO cell (value + %chip vs mercado, folded per RULING D-56)", () => {
     it("OK: renders the price value plus a sign-colored %chip, no fabricated fallback", () => {
       renderTable(
-        <AnunciosTable items={[{ ...listing, signal_status: "OK", market_signal: okSignal }]} {...tableSelectionProps} />,
+        <AnunciosTable
+          items={[{ ...listing, signal_status: "OK", market_signal: okSignal }]}
+          {...tableSelectionProps}
+        />,
       );
 
       expect(screen.getByText("R$ 129,90")).toBeInTheDocument();
@@ -188,7 +199,9 @@ describe("AnunciosTable", () => {
     it("STALE: shows the value, an âmbar %chip, and a freshness age marker — never a double underline", () => {
       renderTable(
         <AnunciosTable
-          items={[{ ...listing, signal_status: "STALE", market_signal: { ...okSignal, status: "STALE" } }]}
+          items={[
+            { ...listing, signal_status: "STALE", market_signal: { ...okSignal, status: "STALE" } },
+          ]}
           {...tableSelectionProps}
         />,
       );
@@ -229,7 +242,10 @@ describe("AnunciosTable", () => {
     it("a missing signal_status is treated as the honest absent state (defensive, never throws)", () => {
       expect(() =>
         renderTable(
-          <AnunciosTable items={[{ ...listing, signal_status: undefined, market_signal: undefined }]} {...tableSelectionProps} />,
+          <AnunciosTable
+            items={[{ ...listing, signal_status: undefined, market_signal: undefined }]}
+            {...tableSelectionProps}
+          />,
         ),
       ).not.toThrow();
 
@@ -240,12 +256,29 @@ describe("AnunciosTable", () => {
     it("renders all 4 signal states in one table without throwing", () => {
       const items = [
         { ...listing, listing_id: "l_ok", signal_status: "OK" as const, market_signal: okSignal },
-        { ...listing, listing_id: "l_sem_vinculo", signal_status: "SEM_VINCULO" as const, market_signal: null },
-        { ...listing, listing_id: "l_no_evidence", signal_status: "NO_PRICE_EVIDENCE" as const, market_signal: null },
-        { ...listing, listing_id: "l_stale", signal_status: "STALE" as const, market_signal: { ...okSignal, status: "STALE" as const } },
+        {
+          ...listing,
+          listing_id: "l_sem_vinculo",
+          signal_status: "SEM_VINCULO" as const,
+          market_signal: null,
+        },
+        {
+          ...listing,
+          listing_id: "l_no_evidence",
+          signal_status: "NO_PRICE_EVIDENCE" as const,
+          market_signal: null,
+        },
+        {
+          ...listing,
+          listing_id: "l_stale",
+          signal_status: "STALE" as const,
+          market_signal: { ...okSignal, status: "STALE" as const },
+        },
       ];
 
-      expect(() => renderTable(<AnunciosTable items={items} {...tableSelectionProps} />)).not.toThrow();
+      expect(() =>
+        renderTable(<AnunciosTable items={items} {...tableSelectionProps} />),
+      ).not.toThrow();
 
       expect(screen.getAllByText("+8,34%")).toHaveLength(2);
       expect(screen.getByRole("link", { name: "sem vínculo" })).toBeInTheDocument();
@@ -318,7 +351,9 @@ describe("AnunciosTable", () => {
     // dash, not absent data rendered honestly — ListingGroup has no ERP
     // stock field and no producer, so the column doesn't exist at all.
     describe("enriched group header (chevron + meta + error pill)", () => {
-      const grp = (overrides: Partial<import("@marketplace-central/sdk-runtime").ListingGroup> = {}) => ({
+      const grp = (
+        overrides: Partial<import("@marketplace-central/sdk-runtime").ListingGroup> = {},
+      ) => ({
         product_id: "product_1",
         product_title: "Produto X",
         listing_count: 3,
@@ -334,11 +369,15 @@ describe("AnunciosTable", () => {
       it("GOLDEN: 3 listings, 1 sync error → no ERP est. literal, '3 anúncios', '1 erro'", () => {
         renderTable(
           <AnunciosTable
-            groups={[grp({ listings: [
-              { ...listing, listing_id: "g1", sync_state: "error" },
-              { ...listing, listing_id: "g2", sync_state: "synced" },
-              { ...listing, listing_id: "g3", sync_state: "synced" },
-            ] })]}
+            groups={[
+              grp({
+                listings: [
+                  { ...listing, listing_id: "g1", sync_state: "error" },
+                  { ...listing, listing_id: "g2", sync_state: "synced" },
+                  { ...listing, listing_id: "g3", sync_state: "synced" },
+                ],
+              }),
+            ]}
             {...tableSelectionProps}
           />,
         );
@@ -362,13 +401,15 @@ describe("AnunciosTable", () => {
       it("pluralizes honestly: 1 listing → 'anúncio', 2 errors → 'erros'", () => {
         renderTable(
           <AnunciosTable
-            groups={[grp({
-              listing_count: 2,
-              listings: [
-                { ...listing, listing_id: "g1", sync_state: "error" },
-                { ...listing, listing_id: "g2", sync_state: "error" },
-              ],
-            })]}
+            groups={[
+              grp({
+                listing_count: 2,
+                listings: [
+                  { ...listing, listing_id: "g1", sync_state: "error" },
+                  { ...listing, listing_id: "g2", sync_state: "error" },
+                ],
+              }),
+            ]}
             {...tableSelectionProps}
           />,
         );

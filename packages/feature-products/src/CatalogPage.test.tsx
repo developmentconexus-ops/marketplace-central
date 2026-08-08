@@ -11,16 +11,22 @@ import { CatalogPage } from "./CatalogPage";
 
 function page(id: number, next_cursor: string | null, as_of: string) {
   return {
-    items: [{
-      internal_product_id: id,
-      reference: `REF-${id}`,
-      description: `Product ${id}`,
-      ean: null,
-      active: true,
-      sellable_stock: { quantity: id, quality: [] },
-      current_price: { amount: "12.90", currency: "BRL", quality: [] },
-      cost: { amount: id === 1 ? null : "4.50", currency: "BRL", quality: id === 1 ? ["missing_cost"] : [] },
-    }],
+    items: [
+      {
+        internal_product_id: id,
+        reference: `REF-${id}`,
+        description: `Product ${id}`,
+        ean: null,
+        active: true,
+        sellable_stock: { quantity: id, quality: [] },
+        current_price: { amount: "12.90", currency: "BRL", quality: [] },
+        cost: {
+          amount: id === 1 ? null : "4.50",
+          currency: "BRL",
+          quality: id === 1 ? ["missing_cost"] : [],
+        },
+      },
+    ],
     next_cursor,
     page_size: 1,
     as_of,
@@ -72,8 +78,11 @@ function requestUrl(call: unknown[]): string {
 
 describe("CatalogPage", () => {
   it("appends infinite pages and stops when next_cursor is null", async () => {
-    const fetch = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify(page(1, "cursor-2", "2026-07-14T10:11:12Z"))))
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(page(1, "cursor-2", "2026-07-14T10:11:12Z"))),
+      )
       .mockResolvedValueOnce(new Response(JSON.stringify(page(2, null, "2026-07-14T10:12:13Z"))));
     const transport = createRefreshableFetch(fetch as unknown as typeof globalThis.fetch);
     const sdk = createMarketplaceCentralClient({ baseUrl: "", fetchImpl: transport.fetchImpl });
@@ -91,10 +100,13 @@ describe("CatalogPage", () => {
   // was shown — every match past the 50th was unreachable. It now walks the
   // cursor like the list read, and the cursor must reach the search endpoint.
   it("pages search results past the first page", async () => {
-    const fetch = vi.fn()
+    const fetch = vi
+      .fn()
       // Call 0 is the list read the mount fires before the search debounce lands.
       .mockResolvedValueOnce(new Response(JSON.stringify(page(1, null, "2026-07-14T10:10:11Z"))))
-      .mockResolvedValueOnce(new Response(JSON.stringify(page(11, "cursor-s2", "2026-07-14T10:11:12Z"))))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(page(11, "cursor-s2", "2026-07-14T10:11:12Z"))),
+      )
       .mockResolvedValueOnce(new Response(JSON.stringify(page(12, null, "2026-07-14T10:12:13Z"))));
     const transport = createRefreshableFetch(fetch as unknown as typeof globalThis.fetch);
     const sdk = createMarketplaceCentralClient({ baseUrl: "", fetchImpl: transport.fetchImpl });
@@ -111,7 +123,9 @@ describe("CatalogPage", () => {
   });
 
   it("uses catalog staleTime across remounts and refetches after it expires", async () => {
-    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(page(1, null, "2026-07-14T10:11:12Z"))));
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify(page(1, null, "2026-07-14T10:11:12Z"))));
     const transport = createRefreshableFetch(fetch as unknown as typeof globalThis.fetch);
     const sdk = createMarketplaceCentralClient({ baseUrl: "", fetchImpl: transport.fetchImpl });
     const queryClient = createWebQueryClient();
@@ -133,10 +147,16 @@ describe("CatalogPage", () => {
     // the request context, overwriting anything the client sends. A request
     // parameter here would be a no-op that makes the screen look source-aware
     // while reading whatever the database says.
-    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(page(1, null, "2026-07-14T10:11:12Z"))));
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify(page(1, null, "2026-07-14T10:11:12Z"))));
     const transport = createRefreshableFetch(fetch as unknown as typeof globalThis.fetch);
     const sdk = createMarketplaceCentralClient({ baseUrl: "", fetchImpl: transport.fetchImpl });
-    renderPage({ ...sdk, withNoCache: transport.withNoCache }, createWebQueryClient(), "catalogo_cliente");
+    renderPage(
+      { ...sdk, withNoCache: transport.withNoCache },
+      createWebQueryClient(),
+      "catalogo_cliente",
+    );
     await screen.findByText("Product 1");
     expect(requestUrl(fetch.mock.calls[0])).not.toContain("erp_source");
   });
@@ -148,7 +168,10 @@ describe("CatalogPage", () => {
     // mount; branching by URL keeps the counts read from stealing a slot
     // meant for the facts page, so the facts-call assertion below still
     // isolates the thing this test is actually about (cache partitioning).
-    const factsPages = [page(1, null, "2026-07-14T10:11:12Z"), page(2, null, "2026-07-14T10:12:13Z")];
+    const factsPages = [
+      page(1, null, "2026-07-14T10:11:12Z"),
+      page(2, null, "2026-07-14T10:12:13Z"),
+    ];
     const fetch = vi.fn((input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : String((input as Request).url);
       if (url.includes("/catalog/products/counts")) {
@@ -169,11 +192,14 @@ describe("CatalogPage", () => {
     // served Product 1 (the other source's row) with no request at all.
     renderPage(client, queryClient, "catalogo_cliente");
     await screen.findByText("Product 2");
-    expect(fetch.mock.calls.filter((call) => !requestUrl(call).includes("/counts"))).toHaveLength(2);
+    expect(fetch.mock.calls.filter((call) => !requestUrl(call).includes("/counts"))).toHaveLength(
+      2,
+    );
   });
 
   it("renders local as_of and sends no-cache on refresh", async () => {
-    const fetch = vi.fn()
+    const fetch = vi
+      .fn()
       .mockResolvedValueOnce(new Response(JSON.stringify(page(1, null, "2026-07-14T10:11:12Z"))))
       .mockResolvedValueOnce(new Response(JSON.stringify(page(1, null, "2026-07-14T11:12:13Z"))));
     const transport = createRefreshableFetch(fetch as unknown as typeof globalThis.fetch);
@@ -190,7 +216,9 @@ describe("CatalogPage", () => {
   });
 
   it("opens with Vendáveis 2 de 4 and ver todos never mutates tenant config", async () => {
-    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(page(1, null, "2026-07-14T10:11:12Z"))));
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify(page(1, null, "2026-07-14T10:11:12Z"))));
     const transport = createRefreshableFetch(fetch as unknown as typeof globalThis.fetch);
     const sdk = createMarketplaceCentralClient({ baseUrl: "", fetchImpl: transport.fetchImpl });
     // Overriding these two (not going through `fetch`) is what gives the
@@ -198,8 +226,15 @@ describe("CatalogPage", () => {
     // setSellableAssortment cannot be called, so the assertion below would
     // pass even if the button wired the mutation in by mistake.
     const setSellableAssortment = vi.fn();
-    const getCatalogAssortmentCounts = vi.fn().mockResolvedValue({ sellable_count: 2, total_count: 4 });
-    const client = { ...sdk, withNoCache: transport.withNoCache, setSellableAssortment, getCatalogAssortmentCounts };
+    const getCatalogAssortmentCounts = vi
+      .fn()
+      .mockResolvedValue({ sellable_count: 2, total_count: 4 });
+    const client = {
+      ...sdk,
+      withNoCache: transport.withNoCache,
+      setSellableAssortment,
+      getCatalogAssortmentCounts,
+    };
 
     renderPage(client, createWebQueryClient(), "xlsx");
 
@@ -210,7 +245,8 @@ describe("CatalogPage", () => {
   });
 
   it("does not send include_all in filtered mode (list and search)", async () => {
-    const fetch = vi.fn()
+    const fetch = vi
+      .fn()
       .mockResolvedValueOnce(new Response(JSON.stringify(page(1, null, "2026-07-14T10:10:11Z"))))
       .mockResolvedValueOnce(new Response(JSON.stringify(page(11, null, "2026-07-14T10:11:12Z"))));
     const transport = createRefreshableFetch(fetch as unknown as typeof globalThis.fetch);
@@ -227,7 +263,8 @@ describe("CatalogPage", () => {
   });
 
   it("ver todos refetches the list with include_all=true", async () => {
-    const fetch = vi.fn()
+    const fetch = vi
+      .fn()
       .mockResolvedValueOnce(new Response(JSON.stringify(page(1, null, "2026-07-14T10:10:11Z"))))
       .mockResolvedValueOnce(new Response(JSON.stringify(page(2, null, "2026-07-14T10:11:12Z"))));
     const transport = createRefreshableFetch(fetch as unknown as typeof globalThis.fetch);
@@ -241,7 +278,8 @@ describe("CatalogPage", () => {
   });
 
   it("returns to the filtered key without serving the ver-todos page or firing a new fetch", async () => {
-    const fetch = vi.fn()
+    const fetch = vi
+      .fn()
       .mockResolvedValueOnce(new Response(JSON.stringify(page(1, null, "2026-07-14T10:10:11Z")))) // filtered
       .mockResolvedValueOnce(new Response(JSON.stringify(page(2, null, "2026-07-14T10:11:12Z")))); // ver todos
     const transport = createRefreshableFetch(fetch as unknown as typeof globalThis.fetch);
@@ -262,7 +300,8 @@ describe("CatalogPage", () => {
   });
 
   it("shows Sem estoque for quantity 0 in ver-todos mode, and the honest-unknown dash (not the badge) for quantity null", async () => {
-    const fetch = vi.fn()
+    const fetch = vi
+      .fn()
       .mockResolvedValueOnce(new Response(JSON.stringify(page(1, null, "2026-07-14T10:10:11Z")))) // filtered mount
       .mockResolvedValueOnce(
         new Response(
@@ -293,10 +332,14 @@ describe("CatalogPage", () => {
   });
 
   it("hides the counts chip and never calls getCatalogAssortmentCounts when erpSource is absent", async () => {
-    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(page(1, null, "2026-07-14T10:11:12Z"))));
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify(page(1, null, "2026-07-14T10:11:12Z"))));
     const transport = createRefreshableFetch(fetch as unknown as typeof globalThis.fetch);
     const sdk = createMarketplaceCentralClient({ baseUrl: "", fetchImpl: transport.fetchImpl });
-    const getCatalogAssortmentCounts = vi.fn().mockResolvedValue({ sellable_count: 2, total_count: 4 });
+    const getCatalogAssortmentCounts = vi
+      .fn()
+      .mockResolvedValue({ sellable_count: 2, total_count: 4 });
     renderPage(
       { ...sdk, withNoCache: transport.withNoCache, getCatalogAssortmentCounts },
       createWebQueryClient(),
@@ -309,7 +352,8 @@ describe("CatalogPage", () => {
   });
 
   it("atualizar in ver-todos mode refetches the live include_all key", async () => {
-    const fetch = vi.fn()
+    const fetch = vi
+      .fn()
       .mockResolvedValueOnce(new Response(JSON.stringify(page(1, null, "2026-07-14T10:10:11Z")))) // filtered
       .mockResolvedValueOnce(new Response(JSON.stringify(page(2, null, "2026-07-14T10:11:12Z")))) // ver todos
       .mockResolvedValueOnce(new Response(JSON.stringify(page(3, null, "2026-07-14T10:12:13Z")))); // atualizar

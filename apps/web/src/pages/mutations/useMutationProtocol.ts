@@ -9,7 +9,12 @@ import {
 import { useEffect } from "react";
 import { useClient } from "../../app/ClientContext";
 
-const terminalStates = new Set<MutationState>(["applied", "partially_failed", "failed_preserved", "cancelled"]);
+const terminalStates = new Set<MutationState>([
+  "applied",
+  "partially_failed",
+  "failed_preserved",
+  "cancelled",
+]);
 const invalidatedProtocols = new WeakMap<QueryClient, Set<string>>();
 
 export function isMutationTerminal(state: MutationState): boolean {

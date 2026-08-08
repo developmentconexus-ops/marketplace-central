@@ -36,7 +36,16 @@ function ProtocolHeader({ protocol }: { protocol: MutationProtocol }) {
         <Fact label="Aprovado">{formatTime(protocol.approved_at)}</Fact>
         <Fact label="Finalizado">{formatTime(protocol.finished_at)}</Fact>
         <Fact label="Estado do servidor">{protocol.state}</Fact>
-        {protocol.retried_from ? <Fact label="Repetido a partir de"><Link className="text-blue-700 hover:underline" to={`/protocolos/${protocol.retried_from}`}>{protocol.retried_from}</Link></Fact> : null}
+        {protocol.retried_from ? (
+          <Fact label="Repetido a partir de">
+            <Link
+              className="text-blue-700 hover:underline"
+              to={`/protocolos/${protocol.retried_from}`}
+            >
+              {protocol.retried_from}
+            </Link>
+          </Fact>
+        ) : null}
       </dl>
     </header>
   );
@@ -57,25 +66,58 @@ function ItemsTable({ items }: { items: MutationItem[] }) {
     <div className="overflow-x-auto">
       <table className="w-full min-w-[760px] border-collapse text-left text-sm">
         <caption className="sr-only">Itens do protocolo</caption>
-        <thead className="border-b border-slate-200 text-xs font-medium text-slate-500"><tr>
-          <th className="px-3 py-3">Anúncio</th><th className="px-3 py-3">Antes</th><th className="px-3 py-3">Depois</th><th className="px-3 py-3">Resultado</th>
-        </tr></thead>
+        <thead className="border-b border-slate-200 text-xs font-medium text-slate-500">
+          <tr>
+            <th className="px-3 py-3">Anúncio</th>
+            <th className="px-3 py-3">Antes</th>
+            <th className="px-3 py-3">Depois</th>
+            <th className="px-3 py-3">Resultado</th>
+          </tr>
+        </thead>
         <tbody className="divide-y divide-slate-100">
           {items.map((item) => {
             const message = providerMessage(item);
             const code = failureCode(item);
             const open = openItems.has(item.item_id);
-            return <tr key={item.item_id} className="align-top">
-              <td className="px-3 py-3 font-medium text-slate-900">{item.listing_id}</td>
-              <td className="px-3 py-3 font-mono text-xs">{item.before === null ? <UnknownValue /> : presentMutationValue(item.before)}</td>
-              <td className="px-3 py-3 font-mono text-xs">{presentMutationValue(item.after)}</td>
-              <td className="px-3 py-3">
-                {item.failure ? <p className="text-red-700"><span className="font-mono text-xs">{code}</span>{" "}{failureCopy(code)}</p> : item.state}
-                {message ? <div className="mt-2"><button className="text-sm text-slate-700" type="button" aria-expanded={open} onClick={() => setOpenItems((current) => {
-                  const next = new Set(current); open ? next.delete(item.item_id) : next.add(item.item_id); return next;
-                })}>▸ técnico</button>{open ? <p className="mt-2 break-words font-mono text-xs">{message}</p> : null}</div> : null}
-              </td>
-            </tr>;
+            return (
+              <tr key={item.item_id} className="align-top">
+                <td className="px-3 py-3 font-medium text-slate-900">{item.listing_id}</td>
+                <td className="px-3 py-3 font-mono text-xs">
+                  {item.before === null ? <UnknownValue /> : presentMutationValue(item.before)}
+                </td>
+                <td className="px-3 py-3 font-mono text-xs">{presentMutationValue(item.after)}</td>
+                <td className="px-3 py-3">
+                  {item.failure ? (
+                    <p className="text-red-700">
+                      <span className="font-mono text-xs">{code}</span> {failureCopy(code)}
+                    </p>
+                  ) : (
+                    item.state
+                  )}
+                  {message ? (
+                    <div className="mt-2">
+                      <button
+                        className="text-sm text-slate-700"
+                        type="button"
+                        aria-expanded={open}
+                        onClick={() =>
+                          setOpenItems((current) => {
+                            const next = new Set(current);
+                            open ? next.delete(item.item_id) : next.add(item.item_id);
+                            return next;
+                          })
+                        }
+                      >
+                        ▸ técnico
+                      </button>
+                      {open ? (
+                        <p className="mt-2 break-words font-mono text-xs">{message}</p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </td>
+              </tr>
+            );
           })}
         </tbody>
       </table>
@@ -83,7 +125,13 @@ function ItemsTable({ items }: { items: MutationItem[] }) {
   );
 }
 
-function ProtocolItems({ protocolId, protocol }: { protocolId: string; protocol: MutationProtocol }) {
+function ProtocolItems({
+  protocolId,
+  protocol,
+}: {
+  protocolId: string;
+  protocol: MutationProtocol;
+}) {
   const client = useClient();
   const location = useLocation();
   const navigate = useNavigate();
@@ -105,32 +153,84 @@ function ProtocolItems({ protocolId, protocol }: { protocolId: string; protocol:
     staleTime: QUERY_STALE_TIME.mutations,
   });
   if (query.isPending) return <LoadingState />;
-  if (query.isError) return <ErrorState detail="Não foi possível carregar os itens." onRetry={() => void query.refetch()} />;
-  const failedTotal = typeof protocol.totals?.failed === "number" && Number.isFinite(protocol.totals.failed)
-    ? protocol.totals.failed
-    : null;
+  if (query.isError)
+    return (
+      <ErrorState
+        detail="Não foi possível carregar os itens."
+        onRetry={() => void query.refetch()}
+      />
+    );
+  const failedTotal =
+    typeof protocol.totals?.failed === "number" && Number.isFinite(protocol.totals.failed)
+      ? protocol.totals.failed
+      : null;
   const canRetry = isMutationTerminal(protocol.state) && failedTotal !== null && failedTotal > 0;
   const retry = () => {
     if (retryStarted.current || retryOperation.isPending) return;
     retryStarted.current = true;
     retryOperation.mutate();
   };
-  return <section className="rounded-lg border border-slate-200 bg-white p-5" aria-labelledby="protocol-items-title">
-    <h2 id="protocol-items-title" className="mb-4 text-base font-semibold text-slate-950">Itens</h2>
-    <ItemsTable items={query.data.items} />
-    <nav className="mt-4 flex justify-end gap-2" aria-label="Paginação dos itens">
-      <button type="button" disabled={history.length === 0} onClick={() => { const next = [...history]; setCursor(next.pop()); setHistory(next); }}>Página anterior</button>
-      <button type="button" disabled={!query.data.next_cursor} onClick={() => { setHistory((value) => [...value, cursor]); setCursor(query.data.next_cursor ?? undefined); }}>Próxima página</button>
-    </nav>
-    {canRetry ? <button type="button" onClick={retry} disabled={retryOperation.isPending || retryStarted.current}>Repetir itens com falha</button> : null}
-  </section>;
+  return (
+    <section
+      className="rounded-lg border border-slate-200 bg-white p-5"
+      aria-labelledby="protocol-items-title"
+    >
+      <h2 id="protocol-items-title" className="mb-4 text-base font-semibold text-slate-950">
+        Itens
+      </h2>
+      <ItemsTable items={query.data.items} />
+      <nav className="mt-4 flex justify-end gap-2" aria-label="Paginação dos itens">
+        <button
+          type="button"
+          disabled={history.length === 0}
+          onClick={() => {
+            const next = [...history];
+            setCursor(next.pop());
+            setHistory(next);
+          }}
+        >
+          Página anterior
+        </button>
+        <button
+          type="button"
+          disabled={!query.data.next_cursor}
+          onClick={() => {
+            setHistory((value) => [...value, cursor]);
+            setCursor(query.data.next_cursor ?? undefined);
+          }}
+        >
+          Próxima página
+        </button>
+      </nav>
+      {canRetry ? (
+        <button
+          type="button"
+          onClick={retry}
+          disabled={retryOperation.isPending || retryStarted.current}
+        >
+          Repetir itens com falha
+        </button>
+      ) : null}
+    </section>
+  );
 }
 
 export function ProtocoloPage() {
   const { protocolId = "" } = useParams();
   const protocol = useMutationProtocol(protocolId);
   if (protocol.isPending) return <LoadingState />;
-  if (protocol.isError) return <ErrorState detail="Não foi possível carregar o protocolo." onRetry={() => void protocol.refetch()} />;
+  if (protocol.isError)
+    return (
+      <ErrorState
+        detail="Não foi possível carregar o protocolo."
+        onRetry={() => void protocol.refetch()}
+      />
+    );
   if (!protocol.data) return null;
-  return <main className="space-y-5 p-6"><ProtocolHeader protocol={protocol.data} /><ProtocolItems protocolId={protocolId} protocol={protocol.data} /></main>;
+  return (
+    <main className="space-y-5 p-6">
+      <ProtocolHeader protocol={protocol.data} />
+      <ProtocolItems protocolId={protocolId} protocol={protocol.data} />
+    </main>
+  );
 }

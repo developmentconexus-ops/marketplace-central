@@ -1,11 +1,6 @@
 import { useCallback, useState } from "react";
 
-import {
-  applyTheme,
-  getInitialTheme,
-  persistTheme,
-  type Theme,
-} from "./theme";
+import { applyTheme, getInitialTheme, persistTheme, type Theme } from "./theme";
 
 type ThemeController = {
   theme: Theme;

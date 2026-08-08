@@ -17,12 +17,49 @@
 *.tsx  text eol=lf
 *.js    text eol=lf
 *.jsx   text eol=lf
+*.mjs   text eol=lf
+*.cjs   text eol=lf
+
+# JSON is global, and unlike the markdown rule below it is NOT pinned by path.
+# Raised on PR #21: `.mnfs/`, the provider `testdata/` trees and
+# `docs/research/evidence/` hold recorded output, and `.prettierignore` argues at
+# length that a tool rewriting recorded bytes destroys the record -- a line
+# ending is still a byte. The two rules say opposite things about the same files.
+#
+# Measured 2026-08-08 before deciding: of the 68 JSON files across those three
+# trees, 0 are CRLF in the index. This attribute rewrites nothing today; the
+# exposure is a future capture that arrives with CRLF and is normalised on the
+# way in, silently.
+#
+# Left global on purpose. The only attribute that would actually guarantee
+# verbatim bytes is `-text`, and that also marks all 68 binary in `git diff` --
+# for `.mnfs/` that is cheap, for a recorded provider payload under `testdata/`
+# it is not, because the diff of what the API returned is the point of keeping
+# it. Paid when a capture is measured to have been altered, not before.
 *.json  text eol=lf
 
 *.yml  text eol=lf
 *.yaml text eol=lf
 
 *.sh text eol=lf
+
+# Markdown, pinned by path rather than globally.
+#
+# Prettier checks markdown, and with `endOfLine: lf` a CRLF checkout fails every
+# file. Measured 2026-08-08: 30 of the 251 markdown files in Prettier's scope are
+# CRLF in the working tree.
+#
+# Pinned per directory rather than as `*.md`, so `.mnfs/` is never touched. That
+# tree holds 1000 markdown files of mission evidence, and renormalising them
+# rewrites their stored bytes -- a line-ending change is still a change to a
+# record that is supposed to be verbatim. Exempting it with `-text` would work
+# and would also mark every one of them binary in `git diff`, which costs more
+# than it buys. Absence is the exemption.
+/*.md           text eol=lf
+docs/**/*.md    text eol=lf
+wiki/**/*.md    text eol=lf
+contracts/**/*.md      text eol=lf
+design-system/**/*.md  text eol=lf
 
 # Consumed by Caddy inside a Linux container, and copied to the production host
 # from a checkout. A CRLF checkout on Windows would be the config the operator

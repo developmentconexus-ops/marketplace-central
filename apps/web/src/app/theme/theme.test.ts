@@ -1,13 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  applyTheme,
-  getInitialTheme,
-  persistTheme,
-  readStoredTheme,
-  STORAGE_KEY,
-} from "./theme";
+import { applyTheme, getInitialTheme, persistTheme, readStoredTheme, STORAGE_KEY } from "./theme";
 import { useTheme } from "./useTheme";
 
 // jsdom under this repo's vitest env (jsdom 26 / vitest 3.2.4) does not instantiate Web Storage:

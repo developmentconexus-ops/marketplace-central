@@ -76,9 +76,7 @@ export function ProductPicker({
     }
 
     if (classificationFilter) {
-      const cls = classifications.find(
-        (c) => c.classification_id === classificationFilter,
-      );
+      const cls = classifications.find((c) => c.classification_id === classificationFilter);
       if (cls) {
         const idSet = new Set(cls.product_ids);
         result = result.filter((p) => idSet.has(p.product_id));
@@ -91,8 +89,7 @@ export function ProductPicker({
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   const allFilteredSelected =
-    filteredProducts.length > 0 &&
-    filteredProducts.every((p) => selectedSet.has(p.product_id));
+    filteredProducts.length > 0 && filteredProducts.every((p) => selectedSet.has(p.product_id));
 
   function handleToggle(productId: string) {
     if (selectedSet.has(productId)) {
@@ -238,8 +235,12 @@ export function ProductPicker({
                   <td className="px-4 py-3 font-medium text-ink">{product.name}</td>
                   <td className="px-4 py-3 text-muted">{product.sku}</td>
                   <td className="px-4 py-3 text-muted">{product.ean}</td>
-                  <td className="px-4 py-3 text-right text-muted">{formatCurrency(product.cost_amount)}</td>
-                  <td className="px-4 py-3 text-right text-muted">{formatCurrency(product.price_amount)}</td>
+                  <td className="px-4 py-3 text-right text-muted">
+                    {formatCurrency(product.cost_amount)}
+                  </td>
+                  <td className="px-4 py-3 text-right text-muted">
+                    {formatCurrency(product.price_amount)}
+                  </td>
                   <td className="px-4 py-3 text-right text-muted">{product.stock_quantity}</td>
                 </tr>
               ))

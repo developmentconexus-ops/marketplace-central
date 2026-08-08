@@ -257,8 +257,22 @@ describe("SolverPanel — margem-alvo → preço", () => {
       blocking_state: null,
       frete_desconhecido: false,
       tarifa: {
-        comissao: { valor: "13.00", fonte: "PADRAO", degrau: 4, data: null, estimativa: true, sem_dados: false },
-        frete: { valor: "", fonte: "PADRAO", degrau: 4, data: null, estimativa: false, sem_dados: false },
+        comissao: {
+          valor: "13.00",
+          fonte: "PADRAO",
+          degrau: 4,
+          data: null,
+          estimativa: true,
+          sem_dados: false,
+        },
+        frete: {
+          valor: "",
+          fonte: "PADRAO",
+          degrau: 4,
+          data: null,
+          estimativa: false,
+          sem_dados: false,
+        },
       },
     } as PricingSolveResponse);
     renderPanel();
@@ -329,7 +343,9 @@ describe("SolverPanel — margem-alvo → preço", () => {
     expect(await screen.findByTestId("solver-price")).toHaveTextContent("104,50");
 
     rerender(
-      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
         <SolverPanel productId={90002} modalidade="premium" />
       </QueryClientProvider>,
     );

@@ -15,7 +15,10 @@ function makeClient(overrides: Partial<ProdutoMarketClient> = {}): ProdutoMarket
   } as unknown as ProdutoMarketClient;
 }
 
-function renderBox(client: ProdutoMarketClient, queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
+function renderBox(
+  client: ProdutoMarketClient,
+  queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) {
   return {
     queryClient,
     ...render(
@@ -108,7 +111,9 @@ describe("VeredictoBox", () => {
 
     renderBox(client);
 
-    expect(await screen.findByText(/ainda não tem evidência de preço coletada/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/ainda não tem evidência de preço coletada/i),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/R\$\s*0/)).not.toBeInTheDocument();
     expect(screen.queryByText(/R\$ 0,00/)).not.toBeInTheDocument();
   });
@@ -150,7 +155,9 @@ describe("VeredictoBox", () => {
     });
 
     expect(collectMarketPriceIntel).toHaveBeenCalledTimes(1);
-    const invalidatedKeys = invalidateSpy.mock.calls.map((call) => (call[0] as { queryKey: unknown[] }).queryKey);
+    const invalidatedKeys = invalidateSpy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
     expect(invalidatedKeys).toContainEqual(["market", "verdict", "90008"]);
     expect(invalidatedKeys).toContainEqual(["listings", "by-product"]);
   });
@@ -164,7 +171,9 @@ describe("VeredictoBox", () => {
       inputs_used: {},
       market_range: null,
     };
-    const collectMarketPriceIntel = vi.fn().mockRejectedValue({ status: 504, error: { code: "timeout", message: "boom" } });
+    const collectMarketPriceIntel = vi
+      .fn()
+      .mockRejectedValue({ status: 504, error: { code: "timeout", message: "boom" } });
     const client = makeClient({
       listMarketVerdicts: vi.fn().mockResolvedValue([verdict]),
       collectMarketPriceIntel,

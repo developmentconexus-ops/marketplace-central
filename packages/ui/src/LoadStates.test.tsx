@@ -39,9 +39,7 @@ describe("load state components", () => {
     expect(screen.getByText("Nenhum registro encontrado.")).toBeInTheDocument();
     expect(screen.getByText("Ajuste os filtros.")).toBeInTheDocument();
     expect(container.querySelectorAll("p")).toHaveLength(2);
-    expect(screen.getByText("Nenhum registro encontrado.").parentElement).toHaveClass(
-      "text-muted",
-    );
+    expect(screen.getByText("Nenhum registro encontrado.").parentElement).toHaveClass("text-muted");
     expect(screen.getByText("Ajuste os filtros.")).toHaveClass("text-faint");
 
     rerender(<EmptyState />);

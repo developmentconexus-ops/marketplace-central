@@ -1,6 +1,7 @@
 import type { OrderBucket, OrderRead } from "@marketplace-central/sdk-runtime";
 
-export type PedidosTab = "novo" | "faturar" | "enviar" | "enviado" | "concluido" | "cancelado" | "devolucao";
+export type PedidosTab =
+  "novo" | "faturar" | "enviar" | "enviado" | "concluido" | "cancelado" | "devolucao";
 
 export interface PedidosTabDefinition {
   value: PedidosTab;

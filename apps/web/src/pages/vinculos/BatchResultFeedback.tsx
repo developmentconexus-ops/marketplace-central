@@ -11,7 +11,11 @@ export interface BatchResultFeedbackProps {
  * Partial failure is normal: applied[] and failed[]{candidate_id,cause} are
  * both rendered itemized; a single failure never hides the applied results.
  */
-export function BatchResultFeedback({ result, onDismiss, onViewResolved }: BatchResultFeedbackProps) {
+export function BatchResultFeedback({
+  result,
+  onDismiss,
+  onViewResolved,
+}: BatchResultFeedbackProps) {
   return (
     <div role="status" className="rounded-card border border-border bg-surface-2 px-4 py-3 text-sm">
       <div className="flex items-center justify-between gap-2">

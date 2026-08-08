@@ -18,7 +18,10 @@ const atalhos: Atalho[] = [
 
 export function Atalhos() {
   return (
-    <section aria-labelledby="atalhos-title" className="rounded-card border border-border bg-surface p-4">
+    <section
+      aria-labelledby="atalhos-title"
+      className="rounded-card border border-border bg-surface p-4"
+    >
       <h2 id="atalhos-title" className="text-sm font-semibold text-ink">
         Atalhos
       </h2>

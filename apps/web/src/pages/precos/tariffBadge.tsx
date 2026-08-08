@@ -1,5 +1,10 @@
 import type { JSX } from "react";
-import { UnknownValue, FreshnessIndicator, formatMoney, formatPercent } from "@marketplace-central/ui";
+import {
+  UnknownValue,
+  FreshnessIndicator,
+  formatMoney,
+  formatPercent,
+} from "@marketplace-central/ui";
 
 /**
  * Tarifa carimbo carried per component in the /pricing/solve and /pricing/decompose
@@ -61,7 +66,9 @@ export function TariffCarimbo({ comp, testId }: TariffCarimboProps): JSX.Element
       {fonte ? <span className="rounded bg-surface px-1.5 py-0.5 text-muted">{fonte}</span> : null}
       {comp.degrau != null ? <span className="text-faint">degrau {comp.degrau}</span> : null}
       {isEstimativa ? (
-        <span className="rounded bg-amber-soft px-1.5 py-0.5 font-medium text-amber">ESTIMATIVA</span>
+        <span className="rounded bg-amber-soft px-1.5 py-0.5 font-medium text-amber">
+          ESTIMATIVA
+        </span>
       ) : null}
       {comp.data ? <FreshnessIndicator asOf={comp.data} /> : null}
     </span>
@@ -80,7 +87,12 @@ interface TariffBadgeProps {
  * Full labeled badge (SolverPanel result panel): label + value + carimbo cluster.
  * NO-DATA renders UnknownValue ("—") with the carimbos suppressed.
  */
-export function TariffBadge({ testId, label, comp, percent }: TariffBadgeProps): JSX.Element | null {
+export function TariffBadge({
+  testId,
+  label,
+  comp,
+  percent,
+}: TariffBadgeProps): JSX.Element | null {
   if (!comp) return null;
   const noData = isNoData(comp);
   return (

@@ -32,10 +32,7 @@ function auditEntry(overrides: Partial<ProductLinkAuditEntry>): ProductLinkAudit
   } as ProductLinkAuditEntry;
 }
 
-function workflow(
-  providerItemId: string,
-  audit: ProductLinkAuditEntry[],
-): ProductLinkWorkflowItem {
+function workflow(providerItemId: string, audit: ProductLinkAuditEntry[]): ProductLinkWorkflowItem {
   return {
     identity: { installation_id: "inst_1", provider_item_id: providerItemId },
     current_link: {

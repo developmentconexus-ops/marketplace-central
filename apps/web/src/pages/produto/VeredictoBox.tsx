@@ -1,7 +1,16 @@
 import type { JSX } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CanonicalNumericSourceFact, MarketPriceIntelVerdict } from "@marketplace-central/sdk-runtime";
-import { Button, ErrorState, LoadingState, UnknownValue, formatMoney } from "@marketplace-central/ui";
+import type {
+  CanonicalNumericSourceFact,
+  MarketPriceIntelVerdict,
+} from "@marketplace-central/sdk-runtime";
+import {
+  Button,
+  ErrorState,
+  LoadingState,
+  UnknownValue,
+  formatMoney,
+} from "@marketplace-central/ui";
 import { useProdutoMarketClient, type ProdutoMarketClient } from "./marketClient";
 
 const BLOCKING_STATE_COPY: Record<string, string> = {
@@ -27,11 +36,7 @@ function Money({ value }: { value: { amount: string; currency: string } | null }
 function Headline({ verdict }: { verdict: MarketPriceIntelVerdict }): JSX.Element {
   if (verdict.price_evidence_status === "INSUFFICIENT_MARKET") {
     if (verdict.market_range === null) {
-      return (
-        <p className="text-sm font-semibold text-warn">
-          vendedores insuficientes — mínimo 5
-        </p>
-      );
+      return <p className="text-sm font-semibold text-warn">vendedores insuficientes — mínimo 5</p>;
     }
     return (
       <p className="text-sm font-semibold text-warn">
@@ -40,7 +45,11 @@ function Headline({ verdict }: { verdict: MarketPriceIntelVerdict }): JSX.Elemen
     );
   }
   if (verdict.price_evidence_status === "NO_PRICE_EVIDENCE") {
-    return <p className="text-sm font-semibold text-muted">Este produto ainda não tem evidência de preço coletada.</p>;
+    return (
+      <p className="text-sm font-semibold text-muted">
+        Este produto ainda não tem evidência de preço coletada.
+      </p>
+    );
   }
   return <p className="text-sm font-semibold text-accent-ink">Mercado com evidência de preço.</p>;
 }
@@ -52,7 +61,11 @@ function Headline({ verdict }: { verdict: MarketPriceIntelVerdict }): JSX.Elemen
  * verdict_label is always null pre-M-07: the margin row always renders the
  * honest UnknownValue, never a fabricated saudável/apertado label (ADR-17).
  */
-export function VeredictoBox({ productId, costFact, client: injected }: VeredictoBoxProps): JSX.Element {
+export function VeredictoBox({
+  productId,
+  costFact,
+  client: injected,
+}: VeredictoBoxProps): JSX.Element {
   const marketClient = useProdutoMarketClient(injected);
   const queryClient = useQueryClient();
 
@@ -74,7 +87,12 @@ export function VeredictoBox({ productId, costFact, client: injected }: Veredict
 
   if (verdictQuery.isLoading) return <LoadingState />;
   if (verdictQuery.isError) {
-    return <ErrorState detail="Não foi possível carregar o veredicto de mercado." onRetry={() => void verdictQuery.refetch()} />;
+    return (
+      <ErrorState
+        detail="Não foi possível carregar o veredicto de mercado."
+        onRetry={() => void verdictQuery.refetch()}
+      />
+    );
   }
 
   const verdict = verdictQuery.data;
@@ -112,9 +130,13 @@ export function VeredictoBox({ productId, costFact, client: injected }: Veredict
 
       <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
         <dt className="text-muted">Mínimo válido</dt>
-        <dd className="text-right"><Money value={marketRange?.min_valid ?? null} /></dd>
+        <dd className="text-right">
+          <Money value={marketRange?.min_valid ?? null} />
+        </dd>
         <dt className="text-muted">Mediana</dt>
-        <dd className="text-right"><Money value={marketRange?.median ?? null} /></dd>
+        <dd className="text-right">
+          <Money value={marketRange?.median ?? null} />
+        </dd>
         <dt className="text-muted">Vendedores</dt>
         <dd className="text-right font-mono text-ink">
           {marketRange ? marketRange.n_sellers : <UnknownValue />}
