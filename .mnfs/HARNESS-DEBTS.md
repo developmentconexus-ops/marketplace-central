@@ -1851,13 +1851,13 @@ HARNESS-PROFILE §2 proibiu em 2026-07-28, depois de ter produzido um verde vazi
 
 `AGENTS.md` diz, em forma copiável e sem qualificação:
 
-```
+```text
 Use `GOCACHE=.gocache` for Go tests.
 ```
 
 `docs/HARNESS-PROFILE.md:36-39` obriga ao contrário:
 
-```
+```text
 GOCACHE must resolve to an ABSOLUTE path on Windows/pwsh (D-14, M-01): relative
   export GOCACHE="$(pwd)/.gocache"   (bash)
   $env:GOCACHE = (Join-Path (Get-Location) '.gocache')   (pwsh)

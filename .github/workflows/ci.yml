@@ -15,6 +15,10 @@
 #     from .node-version. A hand-copied version is one more enumeration to rot.
 #   - Cheap work gates expensive work through `needs:`, so a 20-second format
 #     error does not first burn several minutes of compilation.
+#   - `persist-credentials: false` on every checkout. The default is true, which
+#     leaves GITHUB_TOKEN in the job's git configuration for every later step --
+#     including `npm ci`, which runs third-party lifecycle scripts. No step here
+#     runs an authenticated git command, and this repository is public.
 #
 # NOTHING HERE IS A REQUIRED CHECK YET. Promotion happens in issue #4, per check,
 # only after it has been observed red once and then green on several real PRs,
@@ -57,6 +61,8 @@ jobs:
       GOMODCACHE: ${{ github.workspace }}/apps/server_core/.gomodcache
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false   # see header
       - uses: actions/setup-go@v7
         with:
           go-version-file: apps/server_core/go.mod
@@ -86,6 +92,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false   # see header
       - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
@@ -104,6 +112,8 @@ jobs:
       GOMODCACHE: ${{ github.workspace }}/apps/server_core/.gomodcache
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false   # see header
       - uses: actions/setup-go@v7
         with:
           go-version-file: apps/server_core/go.mod
@@ -135,6 +145,8 @@ jobs:
       GOMODCACHE: ${{ github.workspace }}/apps/server_core/.gomodcache
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false   # see header
       - uses: actions/setup-go@v7
         with:
           go-version-file: apps/server_core/go.mod
@@ -187,6 +199,8 @@ jobs:
     needs: [lint-frontend]
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false   # see header
       - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
@@ -224,6 +238,8 @@ jobs:
       EXPECTED: '["lint-go","lint-frontend","build-go","test-go-unit","test-frontend"]'
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false   # see header
 
       # The runtime guard below compares needs against EXPECTED, which does not
       # catch the case that matters most: a job added to this file and wired into

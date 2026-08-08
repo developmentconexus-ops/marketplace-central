@@ -55,6 +55,9 @@ jobs:
           # The governance lane diffs against the merge target's tip, so it needs
           # real history rather than a depth-1 cone.
           fetch-depth: 0
+          # `git rev-parse origin/main` below needs no credentials on a public
+          # repo, and nothing here pushes. See the note in ci.yml.
+          persist-credentials: false
       - uses: actions/setup-go@v7
         with:
           go-version-file: apps/server_core/go.mod
