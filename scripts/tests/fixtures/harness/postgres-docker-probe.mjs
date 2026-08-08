@@ -120,8 +120,13 @@ if (operation === "tests") {
   // the lifecycle now refuses to call a pass. Zero is reachable on purpose via
   // HARNESS_POSTGRES_PROBE_TEST_COUNT=0, which is the vacuity fixture.
   const count = Number.parseInt(process.env.HARNESS_POSTGRES_PROBE_TEST_COUNT ?? "2", 10);
+  // Skips are their own shape: `=== RUN` is printed, then `--- SKIP` instead of
+  // `--- PASS`. A suite where every test skipped still exits 0, which is the
+  // vacuous green HARNESS-PROFILE.md records as RUN 27 / PASS 1 / SKIP 26.
+  const skipped = Number.parseInt(process.env.HARNESS_POSTGRES_PROBE_TEST_SKIPPED ?? "0", 10);
   for (let index = 1; index <= count; index += 1) {
-    process.stdout.write(`=== RUN   TestProbe${index}\n--- PASS: TestProbe${index} (0.00s)\n`);
+    const verdict = index <= skipped ? "SKIP" : "PASS";
+    process.stdout.write(`=== RUN   TestProbe${index}\n--- ${verdict}: TestProbe${index} (0.00s)\n`);
   }
   process.stdout.write(count > 0 ? "PASS\nok  \tprobe\t0.01s\n" : "testing: warning: no tests to run\nPASS\nok  \tprobe\t0.01s [no tests to run]\n");
 }

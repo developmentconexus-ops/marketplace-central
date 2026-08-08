@@ -84,7 +84,7 @@ function Invoke-Integration {
   Write-Output "migrations_first=$($result.MigrationsAppliedFirst)"; Write-Output "migrations_second=$($result.MigrationsAppliedSecond)"; Write-Output "resource_count=$(@($result.ResourceInventory).Count)"; Write-Output "port=$($result.HostPort)"
   # -1 means the test step was never reached (the lane died in setup), which is a
   # different fact from 0 and must not print as one.
-  Write-Output "tests_run=$($result.TestsRun) tests_passed=$($result.TestsPassed) tests_failed=$($result.TestsFailed)"
+  Write-Output "tests_run=$($result.TestsRun) tests_passed=$($result.TestsPassed) tests_skipped=$($result.TestsSkipped) tests_failed=$($result.TestsFailed)"
   foreach ($token in @($result.FailureDiagnosticTokens)) { Write-Output "failure_token=$token" }
   if ($result.ExitCode -ne 0) { throw "postgres lifecycle failed reasons=$((@($result.PrimaryReasonCode) + @($result.CleanupReasonCodes) | Where-Object { $_ } ) -join ',') exit_code=$($result.ExitCode)" }
   Write-Summary -TargetType 'ephemeral-postgres' -Status 'passed'

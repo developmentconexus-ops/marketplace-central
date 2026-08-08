@@ -25,7 +25,8 @@ function Invoke-ProbeLifecycle(
   [hashtable]$ProbeOptions = @{},
   [int]$ReadyMaxAttempts = 3,
   [int]$ReadyTimeoutMilliseconds = 10000,
-  [bool]$HoldConnection = $false
+  [bool]$HoldConnection = $false,
+  [string[]]$TestArguments = @()
 ) {
   $runId = [guid]::NewGuid().ToString('N')
   $password = 'fixture-' + [guid]::NewGuid().ToString('N')
@@ -35,7 +36,7 @@ function Invoke-ProbeLifecycle(
   if (-not [string]::IsNullOrWhiteSpace($FailureOperations)) { $environment['HARNESS_POSTGRES_PROBE_FAIL_OPERATIONS'] = $FailureOperations }
   foreach ($key in $ProbeOptions.Keys) { $environment[$key] = [string]$ProbeOptions[$key] }
   $spec = New-HarnessPostgresRunSpec -RepositoryRoot $repoRoot -RunId $runId -Password $password -DockerFilePath $node -DockerArgumentPrefix @($probe, 'docker')
-  $result = Invoke-HarnessPostgresLifecycle -RunSpec $spec -BaseEnvironment $environment -GoFilePath $node -GoArgumentPrefix @($probe, 'go') -TimeoutSeconds 10 -ReadyMaxAttempts $ReadyMaxAttempts -ReadyRetryDelayMilliseconds 0 -ReadyTimeoutMilliseconds $ReadyTimeoutMilliseconds -CreateMaxAttempts 3 -CreateRetryDelayMilliseconds 0 -HoldConnectionDuringCleanupTest:$HoldConnection
+  $result = Invoke-HarnessPostgresLifecycle -RunSpec $spec -BaseEnvironment $environment -GoFilePath $node -GoArgumentPrefix @($probe, 'go') -TimeoutSeconds 10 -ReadyMaxAttempts $ReadyMaxAttempts -ReadyRetryDelayMilliseconds 0 -ReadyTimeoutMilliseconds $ReadyTimeoutMilliseconds -CreateMaxAttempts 3 -CreateRetryDelayMilliseconds 0 -HoldConnectionDuringCleanupTest:$HoldConnection -TestArguments $TestArguments
   $calls = if (Test-Path -LiteralPath $log) { @(Get-Content -LiteralPath $log | ForEach-Object { $_ | ConvertFrom-Json }) } else { @() }
   [pscustomobject]@{ Result = $result; Calls = $calls; Log = $log; Password = $password; ExpectedMigrationCount = $spec.ExpectedMigrationCount }
 }
@@ -74,7 +75,7 @@ try {
   Assert-True ($happy.Result.MigrationsAppliedFirst -eq $happy.ExpectedMigrationCount) 'first migration count is not exact canonical inventory'
   Assert-True ($happy.Result.MigrationsAppliedSecond -eq 0) 'second migration run is not idempotent'
   Assert-True (@($happy.Result.ResourceInventory).Count -eq 0) 'happy lifecycle reported leaked resources'
-  Assert-True ($happy.Result.TestsRun -eq 2 -and $happy.Result.TestsPassed -eq 2 -and $happy.Result.TestsFailed -eq 0) "happy lifecycle did not count the tests it ran: run=$($happy.Result.TestsRun) passed=$($happy.Result.TestsPassed) failed=$($happy.Result.TestsFailed)"
+  Assert-True ($happy.Result.TestsRun -eq 2 -and $happy.Result.TestsPassed -eq 2 -and $happy.Result.TestsSkipped -eq 0 -and $happy.Result.TestsFailed -eq 0) "happy lifecycle did not count the tests it ran: run=$($happy.Result.TestsRun) passed=$($happy.Result.TestsPassed) skipped=$($happy.Result.TestsSkipped) failed=$($happy.Result.TestsFailed)"
   $drop = @($happy.Calls | Where-Object operation -eq 'drop')[0]
   Assert-True (($drop.args -join ' ') -match 'DROP DATABASE' -and ($drop.args -join ' ') -match 'WITH \(FORCE\)') 'cleanup does not force-drop active connections'
 
@@ -146,6 +147,30 @@ try {
   Assert-True ($vacuous.Result.PrimaryReasonCode -eq 'HPG_TEST_VACUOUS') "zero-test run lacks stable reason: $($vacuous.Result.PrimaryReasonCode)"
   Assert-True (@($vacuous.Result.FailureDiagnosticTokens) -contains 'tests_run=0') 'zero-test run is not attributable from its tokens'
   Assert-True (@($vacuous.Calls.operation) -contains 'drop' -and @($vacuous.Calls.operation) -contains 'remove') 'vacuous run skipped cleanup'
+
+  # The profile's own signature: every test ran and every test skipped, package
+  # exits 0. Counting `=== RUN` alone accepts this, which is why the guard reads
+  # `passed -eq 0` as well.
+  $allSkipped = Invoke-ProbeLifecycle '' @{ HARNESS_POSTGRES_PROBE_TEST_COUNT = '3'; HARNESS_POSTGRES_PROBE_TEST_SKIPPED = '3' }
+  $runs += $allSkipped
+  Assert-True ($allSkipped.Result.TestsRun -eq 3 -and $allSkipped.Result.TestsSkipped -eq 3 -and $allSkipped.Result.TestsPassed -eq 0) "skips were not counted: run=$($allSkipped.Result.TestsRun) passed=$($allSkipped.Result.TestsPassed) skipped=$($allSkipped.Result.TestsSkipped)"
+  Assert-True ($allSkipped.Result.ExitCode -ne 0) 'a fully skipped suite reported success'
+  Assert-True ($allSkipped.Result.PrimaryReasonCode -eq 'HPG_TEST_VACUOUS') "fully skipped run lacks stable reason: $($allSkipped.Result.PrimaryReasonCode)"
+
+  # A partially skipped suite is not vacuous -- something asserted.
+  $partiallySkipped = Invoke-ProbeLifecycle '' @{ HARNESS_POSTGRES_PROBE_TEST_COUNT = '3'; HARNESS_POSTGRES_PROBE_TEST_SKIPPED = '2' }
+  $runs += $partiallySkipped
+  Assert-True ($partiallySkipped.Result.ExitCode -eq 0) 'a suite with one real pass was rejected as vacuous'
+  Assert-True ($partiallySkipped.Result.TestsSkipped -eq 2 -and $partiallySkipped.Result.TestsPassed -eq 1) "partial skip counts wrong: passed=$($partiallySkipped.Result.TestsPassed) skipped=$($partiallySkipped.Result.TestsSkipped)"
+
+  # Caller-supplied arguments take the same -v, or every custom-argument run
+  # would report zero tests and be rejected as vacuous.
+  $customArguments = Invoke-ProbeLifecycle '' @{} 3 10000 $false @('test', '-tags=integration', './tests/integration', '-count=1')
+  $runs += $customArguments
+  Assert-True ($customArguments.Result.ExitCode -eq 0) 'custom test arguments were rejected as vacuous'
+  Assert-True ($customArguments.Result.TestsRun -eq 2) "custom test arguments produced no countable output: run=$($customArguments.Result.TestsRun)"
+  $customCall = @($customArguments.Calls | Where-Object operation -eq 'tests')[0]
+  Assert-True (@($customCall.args) -contains '-v') 'custom test arguments were not forced verbose'
 
   $testsFail = Invoke-ProbeLifecycle 'tests'
   $runs += $testsFail

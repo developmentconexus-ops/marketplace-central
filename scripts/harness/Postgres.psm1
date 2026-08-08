@@ -273,14 +273,17 @@ function Invoke-HarnessPostgresLifecycle {
   }
   $expectedMigrationCount = [int]$RunSpec.ExpectedMigrationCount
   if (@($TestArguments).Count -eq 0) {
-    # -v is not decoration. Without it `go test` prints one `ok <pkg>` line per
-    # package and nothing else, and this function used to discard even that: on
-    # success `$tests.Stdout` was never read, never returned, never written to
-    # the run directory. A lane that compiled zero test packages and one that ran
-    # every integration test produced byte-identical output -- `status=passed`.
-    # The per-test lines are what make the count below a measurement.
-    $TestArguments = @('test', '-tags=integration', '-v') + @(Get-HarnessIntegrationTestPackages -RepositoryRoot $RunSpec.RepositoryRoot) + @('-count=1')
+    $TestArguments = @('test', '-tags=integration') + @(Get-HarnessIntegrationTestPackages -RepositoryRoot $RunSpec.RepositoryRoot) + @('-count=1')
   }
+  # -v is not decoration, and it is applied to CALLER-SUPPLIED arguments too.
+  # Without it `go test` prints one `ok <pkg>` line per package and nothing else,
+  # and this function used to discard even that: on success `$tests.Stdout` was
+  # never read, never returned, never written to the run directory. A lane that
+  # compiled zero test packages and one that ran every integration test produced
+  # byte-identical output -- `status=passed`. The per-test lines are what make
+  # the counts below a measurement, so a caller that passed its own arguments
+  # without -v would otherwise trip the vacuity guard on a run that did work.
+  if (-not (@($TestArguments) -contains '-v')) { $TestArguments = @($TestArguments) + @('-v') }
   $dockerEnvironment = Copy-HarnessEnvironment $BaseEnvironment
   $dockerEnvironment['POSTGRES_PASSWORD'] = [string]$RunSpec.Password
   $goEnvironment = Copy-HarnessEnvironment $BaseEnvironment
@@ -299,6 +302,7 @@ function Invoke-HarnessPostgresLifecycle {
   $heldConnectionConfirmed = $false
   $testsRun = -1
   $testsPassed = -1
+  $testsSkipped = -1
   $testsFailed = -1
 
   function Invoke-Docker {
@@ -431,18 +435,26 @@ function Invoke-HarnessPostgresLifecycle {
     # executed one parent and forty children did forty-one things.
     $testsRun = @([regex]::Matches($testOutput, '(?m)^\s*=== RUN\s')).Count
     $testsPassed = @([regex]::Matches($testOutput, '(?m)^\s*--- PASS:')).Count
+    $testsSkipped = @([regex]::Matches($testOutput, '(?m)^\s*--- SKIP:')).Count
     $testsFailed = @([regex]::Matches($testOutput, '(?m)^\s*--- FAIL:')).Count
     if ($tests.ExitCode -ne 0) {
       $failureDiagnosticTokens = @(Get-HarnessPostgresFailureTokens $testOutput)
       Set-Primary 'HPG_TEST_FAILED' $tests.ExitCode
       break
     }
-    # `go test` exits 0 over a package set that contains no tests, and over a set
-    # that is empty. Both are the same green as a full run. This is the only
-    # place that can tell them apart, because it is the only place that holds the
-    # output.
-    if ($testsRun -eq 0) {
-      $failureDiagnosticTokens = @('tests_run=0')
+    # `go test` exits 0 over a package set that contains no tests, over a set
+    # that is empty, and over a set where every test called t.Skip. All three are
+    # the same green as a full run. This is the only place that can tell them
+    # apart, because it is the only place that holds the output.
+    #
+    # The skipped case is the one the profile already names: HARNESS-PROFILE.md
+    # records `RUN 27 / PASS 1 / SKIP 26` from a lane whose environment was never
+    # loaded, so every DB test hit SkipWithoutTarget and the package printed `ok`
+    # with exit 0 -- with the slice's whole reason to exist among the skips. That
+    # is why the guard is `passed -eq 0` and not only `run -eq 0`: a suite that
+    # ran and asserted nothing has proved exactly as much as one that did not run.
+    if ($testsRun -eq 0 -or $testsPassed -eq 0) {
+      $failureDiagnosticTokens = @("tests_run=$testsRun", "tests_passed=$testsPassed", "tests_skipped=$testsSkipped")
       Set-Primary 'HPG_TEST_VACUOUS' 1
       break
     }
@@ -488,6 +500,7 @@ function Invoke-HarnessPostgresLifecycle {
     HeldConnectionConfirmed = $heldConnectionConfirmed
     TestsRun = $testsRun
     TestsPassed = $testsPassed
+    TestsSkipped = $testsSkipped
     TestsFailed = $testsFailed
   }
 }
