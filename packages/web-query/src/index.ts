@@ -1,6 +1,18 @@
 import { QueryClient } from "@tanstack/react-query";
 import type { ActiveSourceName } from "@marketplace-central/sdk-runtime";
 
+/**
+ * The filter bag embedded in a query key.
+ *
+ * Deliberately `object` and not `Record<string, unknown>`: the SDK's option types
+ * are declared as interfaces, and an interface has no implicit index signature, so
+ * it is not assignable to `Record<string, unknown>` however plain its shape.
+ * Callers were therefore forced to cast the very value whose identity determines
+ * cache correctness. A key builder does not read these fields — it only needs the
+ * value to be structurally comparable — so `object` states the real requirement.
+ */
+export type QueryFilters = object;
+
 export const QUERY_STALE_TIME = {
   catalog: 300_000,
   stock: 45_000,
@@ -26,19 +38,19 @@ export const queryKeyNamespaces = {
 } as const;
 
 export const catalogQueryKeys = {
-  facts: (params: Record<string, unknown> = {}) => ["catalog", "facts", { params }] as const,
+  facts: (params: QueryFilters = {}) => ["catalog", "facts", { params }] as const,
   counts: (erpSource: ActiveSourceName | undefined) =>
     ["catalog", "counts", { erp_source: erpSource ?? null }] as const,
   // The trailing params object is appended only when a caller supplies params,
   // so the pre-toggle two-arg key shape (["catalog","search",q]) stays byte-stable.
-  search: (q: string, params?: Record<string, unknown>) =>
+  search: (q: string, params?: QueryFilters) =>
     (params && Object.keys(params).length > 0 ? ["catalog", "search", q, { params }] : ["catalog", "search", q]) as
       | readonly ["catalog", "search", string]
-      | readonly ["catalog", "search", string, { params: Record<string, unknown> }],
+      | readonly ["catalog", "search", string, { params: QueryFilters }],
 };
 
 export const inventoryQueryKeys = {
-  risks: (installation_id: string, filters: Record<string, unknown>) =>
+  risks: (installation_id: string, filters: QueryFilters) =>
     ["inventory", { installation_id, filters }] as const,
 };
 
@@ -51,9 +63,9 @@ export const profitabilityQueryKeys = {
 };
 
 export const listingsQueryKeys = {
-  page: (installationId: string, filters: Record<string, unknown>) =>
+  page: (installationId: string, filters: QueryFilters) =>
     ["listings", "page", { installation_id: installationId, filters }] as const,
-  byProduct: (installationId: string, filters: Record<string, unknown>) =>
+  byProduct: (installationId: string, filters: QueryFilters) =>
     ["listings", "by-product", { installation_id: installationId, filters }] as const,
   detail: (listingId: string) => ["listings", "detail", listingId] as const,
   summary: (installationId: string) =>
@@ -61,19 +73,19 @@ export const listingsQueryKeys = {
 };
 
 export const mutationsQueryKeys = {
-  list: (installationId: string, filters: Record<string, unknown>) =>
+  list: (installationId: string, filters: QueryFilters) =>
     ["mutations", "list", { installation_id: installationId, filters }] as const,
   detail: (protocolId: string) => ["mutations", "detail", protocolId] as const,
   items: (protocolId: string) => ["mutations", "items", protocolId] as const,
 };
 
 export const ordersQueryKeys = {
-  list: (installationId: string, filters: Record<string, unknown>) =>
+  list: (installationId: string, filters: QueryFilters) =>
     ["orders", "list", { installation_id: installationId, filters }] as const,
 };
 
 export const syncQueryKeys = {
-  runs: (installationId: string, filters: Record<string, unknown>) =>
+  runs: (installationId: string, filters: QueryFilters) =>
     ["sync", "runs", { installation_id: installationId, filters }] as const,
 };
 
