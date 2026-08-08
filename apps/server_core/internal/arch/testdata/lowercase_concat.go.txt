@@ -1,0 +1,10 @@
+package pricing
+
+// Vendor identity concatenated into conventional lowercase identifiers.
+// One segment each, longer than the token: run-equality walks past these.
+var mercadolivreclient = ""
+var shopeeclient = ""
+
+// And the false positive the fix must not reintroduce: a short token as the
+// prefix of an unrelated word. meli is 4 letters; melissa is not a vendor.
+var melissaHandler = ""

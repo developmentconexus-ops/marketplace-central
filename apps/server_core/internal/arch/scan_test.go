@@ -173,6 +173,44 @@ func TestVendorTokenMatchesCamelSegments(t *testing.T) {
 	}
 }
 
+// TestVendorTokenMatchesLowercaseConcatenation pins the evasion found in review
+// of PR #22: a vendor name concatenated into a conventional all-lowercase
+// identifier (shopeeclient, mercadolivreconnector) is one segment longer than
+// the token, and run-equality walks past it -- reproduced at findings=0 over
+// two such vars. Prefix/suffix within a segment closes it; the melissa half
+// pins the boundary, because a 4-letter token claiming the front of an
+// unrelated word is the Timeline false positive wearing a new spelling.
+func TestVendorTokenMatchesLowercaseConcatenation(t *testing.T) {
+	got, err := arch.ScanVendorTokensSuffix("testdata", arch.VendorTokens, fixtureSuffix)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	var mercado, shopee, melissa bool
+	for _, f := range got {
+		if !strings.HasSuffix(f.File, "lowercase_concat.go.txt") {
+			continue
+		}
+		if strings.Contains(f.Detail, "mercado") {
+			mercado = true
+		}
+		if strings.Contains(f.Detail, "shopee") {
+			shopee = true
+		}
+		if strings.Contains(f.Detail, "meli in") {
+			melissa = true
+		}
+	}
+	if !mercado {
+		t.Fatalf("test=TestVendorTokenMatchesLowercaseConcatenation: mercadolivreclient not caught; got %+v", got)
+	}
+	if !shopee {
+		t.Fatalf("test=TestVendorTokenMatchesLowercaseConcatenation: shopeeclient not caught; got %+v", got)
+	}
+	if melissa {
+		t.Fatalf("test=TestVendorTokenMatchesLowercaseConcatenation: melissaHandler flagged; meli must stay exact-match")
+	}
+}
+
 // TestVendorTokensExemptDeclaredLayers pins the declared exemption list against
 // the guessed one it replaced. Composition roots and the plugin registry name
 // concrete vendors because that is their job; until 2026-08-08 the only

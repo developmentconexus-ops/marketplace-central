@@ -334,7 +334,19 @@ func matchVendorToken(tokens []string, text string) (string, bool) {
 	segs := wordSegments(text)
 	for _, t := range tokens {
 		want := strings.Join(wordSegments(t), "")
-		for i := range segs {
+		for i, seg := range segs {
+			// A vendor name concatenated into one conventional lowercase
+			// identifier -- shopeeclient, mercadolivreconnector -- is a single
+			// segment longer than the token, and run-equality below walks past
+			// it (found in review of PR #22, reproduced: two such vars scanned
+			// as findings=0). Prefix or suffix of the segment, never interior,
+			// so "timeline" stays silent; and only for tokens of 6+ letters,
+			// so "meli" cannot claim "melissa" -- a short token inside a longer
+			// word is the Timeline false positive wearing a new spelling.
+			if len(want) >= 6 && len(seg) > len(want) &&
+				(strings.HasPrefix(seg, want) || strings.HasSuffix(seg, want)) {
+				return t, true
+			}
 			acc := ""
 			for j := i; j < len(segs); j++ {
 				acc += segs[j]
