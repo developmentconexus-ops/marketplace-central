@@ -10,15 +10,15 @@ import (
 )
 
 type UpsertAuthSessionInput struct {
-	AuthSessionID       string
-	InstallationID      string
-	ProviderAccountID   string
-	State               domain.AuthState
+	AuthSessionID        string
+	InstallationID       string
+	ProviderAccountID    string
+	State                domain.AuthState
 	AccessTokenExpiresAt *time.Time
-	LastVerifiedAt      *time.Time
-	RefreshFailureCode  string
-	ConsecutiveFailures int
-	NextRetryAt         *time.Time
+	LastVerifiedAt       *time.Time
+	RefreshFailureCode   string
+	ConsecutiveFailures  int
+	NextRetryAt          *time.Time
 }
 
 type AuthService struct {
@@ -48,18 +48,18 @@ func (s *AuthService) Upsert(ctx context.Context, input UpsertAuthSessionInput) 
 
 	now := time.Now().UTC()
 	session := domain.AuthSession{
-		AuthSessionID:       input.AuthSessionID,
-		TenantID:            s.tenantID,
-		InstallationID:      input.InstallationID,
-		State:               state,
-		ProviderAccountID:   input.ProviderAccountID,
+		AuthSessionID:        input.AuthSessionID,
+		TenantID:             s.tenantID,
+		InstallationID:       input.InstallationID,
+		State:                state,
+		ProviderAccountID:    input.ProviderAccountID,
 		AccessTokenExpiresAt: cloneTimePtr(input.AccessTokenExpiresAt),
-		LastVerifiedAt:      cloneTimePtr(input.LastVerifiedAt),
-		RefreshFailureCode:  input.RefreshFailureCode,
-		ConsecutiveFailures: input.ConsecutiveFailures,
-		NextRetryAt:         cloneTimePtr(input.NextRetryAt),
-		CreatedAt:           now,
-		UpdatedAt:           now,
+		LastVerifiedAt:       cloneTimePtr(input.LastVerifiedAt),
+		RefreshFailureCode:   input.RefreshFailureCode,
+		ConsecutiveFailures:  input.ConsecutiveFailures,
+		NextRetryAt:          cloneTimePtr(input.NextRetryAt),
+		CreatedAt:            now,
+		UpdatedAt:            now,
 	}
 
 	if session.RefreshFailureCode == "" {

@@ -44,24 +44,24 @@ type ProductLink struct {
 }
 
 type ProductLinkAuditEntry struct {
-	AuditID                string            `json:"audit_id"`
-	InstallationID         string            `json:"installation_id"`
-	ProviderCode           string            `json:"provider_code"`
-	ProviderItemID         string            `json:"provider_item_id"`
-	ProviderVariationID    string            `json:"provider_variation_id,omitempty"`
-	Action                 ProductLinkAction `json:"action"`
-	Reason                 string            `json:"reason,omitempty"`
-	SourceCandidateID      string            `json:"source_candidate_id,omitempty"`
-	Actor                  ActorMetadata     `json:"actor"`
-	PreviousState          ProductLinkState  `json:"previous_state"`
-	NextState              ProductLinkState  `json:"next_state"`
-	PreviousInternalProductID *int           `json:"previous_internal_product_id,omitempty"`
-	NextInternalProductID  *int              `json:"next_internal_product_id,omitempty"`
+	AuditID                   string            `json:"audit_id"`
+	InstallationID            string            `json:"installation_id"`
+	ProviderCode              string            `json:"provider_code"`
+	ProviderItemID            string            `json:"provider_item_id"`
+	ProviderVariationID       string            `json:"provider_variation_id,omitempty"`
+	Action                    ProductLinkAction `json:"action"`
+	Reason                    string            `json:"reason,omitempty"`
+	SourceCandidateID         string            `json:"source_candidate_id,omitempty"`
+	Actor                     ActorMetadata     `json:"actor"`
+	PreviousState             ProductLinkState  `json:"previous_state"`
+	NextState                 ProductLinkState  `json:"next_state"`
+	PreviousInternalProductID *int              `json:"previous_internal_product_id,omitempty"`
+	NextInternalProductID     *int              `json:"next_internal_product_id,omitempty"`
 	// BatchID links this per-item audit row to the product_link_batches
 	// aggregate row it was written under (S3). Empty for non-batch
 	// resolutions (approve/reject/manual outside a batch).
-	BatchID                string            `json:"batch_id,omitempty"`
-	CreatedAt              time.Time         `json:"created_at"`
+	BatchID   string    `json:"batch_id,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type ProductLinkTransition struct {
@@ -99,9 +99,9 @@ type ProductLinkBatch struct {
 }
 
 type ProductLinkWorkflowItem struct {
-	Identity    ListingIdentity        `json:"identity"`
-	CurrentLink *ProductLink           `json:"current_link,omitempty"`
-	Candidates  []LinkCandidate        `json:"candidates"`
+	Identity    ListingIdentity         `json:"identity"`
+	CurrentLink *ProductLink            `json:"current_link,omitempty"`
+	Candidates  []LinkCandidate         `json:"candidates"`
 	Audit       []ProductLinkAuditEntry `json:"audit"`
 }
 

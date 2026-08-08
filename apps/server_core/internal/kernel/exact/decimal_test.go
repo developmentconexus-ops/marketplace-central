@@ -61,10 +61,10 @@ func TestDivByZeroIsAnError(t *testing.T) {
 
 func TestStringFixedRoundsHalfToEven(t *testing.T) {
 	cases := map[string]string{
-		"2.345": "2.34", // half, down to even
-		"2.355": "2.36", // half, up to even
-		"2.344": "2.34",
-		"2.346": "2.35",
+		"2.345":  "2.34", // half, down to even
+		"2.355":  "2.36", // half, up to even
+		"2.344":  "2.34",
+		"2.346":  "2.35",
 		"-2.345": "-2.34",
 	}
 	for in, want := range cases {

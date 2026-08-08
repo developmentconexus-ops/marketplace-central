@@ -8,7 +8,8 @@ import (
 const ordersStatusDetailsNullableMigration = "0093_orders_status_details_nullable.sql"
 
 // TestOrdersStatusDetailsBecomeNullable proves 0093 relaxes provider_status_detail
-// and cancellation_detail off their 0027 `NOT NULL DEFAULT ''` declaration —
+// and cancellation_detail off their 0027 declaration of NOT NULL defaulting to
+// the empty string —
 // the DB-level half of making NULL reachable (domain.MarketplaceOrder's
 // ProviderStatusDetail/CancellationDetail are *string; without dropping the
 // constraint here, writing nil would still fail at the database).

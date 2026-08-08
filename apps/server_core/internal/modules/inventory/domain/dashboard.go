@@ -63,9 +63,9 @@ type StockRiskListItem struct {
 	// two, so both the screen and the manual-apply path need it to reach the same
 	// verdict the list did.
 	InternalSourceKind sourcekind.SourceKind `json:"internal_source_kind,omitempty"`
-	ProviderObservedAt    *time.Time             `json:"provider_observed_at,omitempty"`
-	BlockingReason        BlockingReason         `json:"blocking_reason,omitempty"`
-	QualityFlags          []string               `json:"quality,omitempty"`
+	ProviderObservedAt *time.Time            `json:"provider_observed_at,omitempty"`
+	BlockingReason     BlockingReason        `json:"blocking_reason,omitempty"`
+	QualityFlags       []string              `json:"quality,omitempty"`
 }
 
 func (r StockRiskRow) IsActionable() bool {

@@ -36,13 +36,13 @@ const product: CanonicalCatalogProduct = {
   product_group_name: null,
   ncm: "12345678",
   quality_flags: ["complete"],
-  cost_amount: { source: "erp", value: 10, quality: "complete", observed_at: "2026-07-01T00:00:00Z", quality_reason: null },
-  price_amount: { source: "erp", value: 20, quality: "complete", observed_at: "2026-07-01T00:00:00Z", quality_reason: null },
-  stock_quantity: { source: "erp", value: 5, quality: "complete", observed_at: "2026-07-01T00:00:00Z", quality_reason: null },
+  cost_amount: { source: "erp", value: 10, quality: "current", observed_at: "2026-07-01T00:00:00Z", quality_reason: null },
+  price_amount: { source: "erp", value: 20, quality: "current", observed_at: "2026-07-01T00:00:00Z", quality_reason: null },
+  stock_quantity: { source: "erp", value: 5, quality: "current", observed_at: "2026-07-01T00:00:00Z", quality_reason: null },
 };
 
 const verdict: MarketPriceIntelVerdict = {
-  match_status: "MATCHED",
+  match_status: "ACCEPT",
   price_evidence_status: "OK",
   verdict_label: null,
   blocking_state: null,

@@ -105,13 +105,16 @@ describe("ListingsRefreshControl", () => {
   it("invalidates the listings namespace exactly once for a succeeded run", async () => {
     refreshListings.mockResolvedValue({ operation_run_id: "run_1" });
     listIntegrationOperationRuns.mockResolvedValue({ items: [run("run_1", "succeeded")] });
-    const { invalidateSpy, rerender } = renderControl();
+    const { invalidateSpy, rerender, queryClient } = renderControl();
     fireEvent.click(screen.getByRole("button", { name: "Atualizar" }));
 
     expect(await screen.findByText("concluído")).toBeInTheDocument();
     await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeyNamespaces.listings }));
+    // The same client renderControl created and spied on. Reaching for it through
+    // mock.instances[0] needed a cast through an unrelated type, which would have
+    // gone on compiling had the spy ever moved.
     rerender(
-      <QueryClientProvider client={invalidateSpy.mock.instances[0] as QueryClient}>
+      <QueryClientProvider client={queryClient}>
         <ListingsRefreshControl installationId="inst_1" />
       </QueryClientProvider>,
     );

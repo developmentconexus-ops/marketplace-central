@@ -6,7 +6,7 @@ import "context"
 type BatchProduct struct {
 	ProductID      string
 	SKU            string
-	CategoryID     string   // taxonomy node ID used as fee schedule category proxy; empty = use "default"
+	CategoryID     string // taxonomy node ID used as fee schedule category proxy; empty = use "default"
 	CostAmount     float64
 	PriceAmount    float64
 	SuggestedPrice *float64
@@ -20,7 +20,7 @@ type BatchProduct struct {
 type BatchPolicy struct {
 	PolicyID           string
 	AccountID          string
-	MarketplaceCode    string   // used to look up fee schedules; empty means no lookup
+	MarketplaceCode    string // used to look up fee schedules; empty means no lookup
 	CommissionPercent  float64
 	CommissionOverride *float64 // explicit override; takes priority over fee schedule lookup
 	FixedFeeAmount     float64

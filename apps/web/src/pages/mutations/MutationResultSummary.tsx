@@ -19,7 +19,9 @@ export function MutationResultSummary({ protocol }: { protocol: MutationProtocol
         <p className="mt-1 text-sm text-slate-600">Estado do protocolo: {protocol.state}</p>
       </div>
       {items.isLoading ? <LoadingState /> : null}
-      {items.isError ? <ErrorState detail="Não foi possível carregar os resultados." /> : null}
+      {items.isError ? (
+        <ErrorState onRetry={() => void items.refetch()} detail="Não foi possível carregar os resultados." />
+      ) : null}
       {items.data?.items.length === 0 ? <EmptyState /> : null}
       {items.data?.items.length ? (
         <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">

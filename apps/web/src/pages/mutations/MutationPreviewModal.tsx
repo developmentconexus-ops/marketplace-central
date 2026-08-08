@@ -207,7 +207,8 @@ function ApplicationResult({ protocolId, onTerminal }: { protocolId: string; onT
     if (terminal) onTerminal();
   }, [onTerminal, terminal]);
 
-  if (protocol.isError) return <ErrorState detail="Não foi possível acompanhar a aplicação." />;
+  if (protocol.isError)
+    return <ErrorState onRetry={() => void protocol.refetch()} detail="Não foi possível acompanhar a aplicação." />;
   if (!protocol.data) return <LoadingState />;
   if (terminal) return <MutationResultSummary protocol={protocol.data} />;
   return <LoadingState />;

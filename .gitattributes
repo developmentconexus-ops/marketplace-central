@@ -1,1 +1,25 @@
+# Line endings.
+#
+# core.autocrlf=true on Windows checks these out with CRLF, which makes every
+# formatter that reads the working tree report a violation on every file. Measured
+# 2026-08-07: `gofmt -l` over the tracked Go files reported 678 of 925; against the
+# LF content in the index the real number was 26. A gate the operator cannot
+# reproduce on their own machine is its own defect class, so the tools that CI runs
+# must see the same bytes locally.
+#
+# Anything a formatter, linter or diff-based gate reads is pinned to LF here.
+
+*.go   text eol=lf
+*.mod  text eol=lf
+*.sum  text eol=lf
+
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.js    text eol=lf
+*.jsx   text eol=lf
+*.json  text eol=lf
+
+*.yml  text eol=lf
+*.yaml text eol=lf
+
 *.sh text eol=lf

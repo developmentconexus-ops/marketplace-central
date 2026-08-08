@@ -7,8 +7,12 @@ export type AnunciosClient = Pick<
   "listListings" | "getListingsSummary" | "refreshListings" | "listIntegrationOperationRuns"
 >;
 
+// Each factory asks for exactly the methods it calls, not for the whole
+// AnunciosClient. A wider parameter forces every caller -- tests included -- to
+// supply capabilities the function must never reach for, which makes the type
+// unable to say what the function actually does.
 export function anunciosPageQuery(
-  client: AnunciosClient,
+  client: Pick<AnunciosClient, "listListings">,
   installationId: string,
   state: AnunciosQueryState,
 ) {
@@ -20,7 +24,7 @@ export function anunciosPageQuery(
   };
 }
 
-export function anunciosSummaryQuery(client: AnunciosClient, installationId: string) {
+export function anunciosSummaryQuery(client: Pick<AnunciosClient, "getListingsSummary">, installationId: string) {
   return {
     queryKey: listingsQueryKeys.summary(installationId),
     queryFn: () => client.getListingsSummary(installationId),
