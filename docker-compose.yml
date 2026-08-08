@@ -68,6 +68,20 @@ services:
       - backend
     command: ["bash", "./docker/dev/frontend-entrypoint.sh"]
 
+  # Whitelist edge in front of the tunnel. See docker/dev/oauth-edge.Caddyfile:
+  # ngrok used to publish frontend:5174 directly, and the Vite proxy relays
+  # /orders — buyer name, CPF/CNPJ, address, no identity check — to the backend.
+  # The tunnel now reaches only the OAuth callback (issue #1).
+  oauth-edge:
+    image: caddy:2-alpine
+    profiles:
+      - oauth
+    volumes:
+      - ./docker/dev/oauth-edge.Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      backend:
+        condition: service_started
+
   ngrok:
     image: ngrok/ngrok:latest
     profiles:
@@ -85,7 +99,7 @@ services:
     ports:
       - "4040:4040"
     depends_on:
-      frontend:
+      oauth-edge:
         condition: service_started
 
 volumes:

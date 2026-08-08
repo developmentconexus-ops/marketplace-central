@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [ValidateSet('unit', 'integration', 'live', 'browser', 'provider-write', 'governance-validate', 'governance-drift', 'governance', 'pg-session-up', 'pg-session-down')]
+  [ValidateSet('unit', 'integration', 'live', 'browser', 'edge', 'provider-write', 'governance-validate', 'governance-drift', 'governance', 'pg-session-up', 'pg-session-down')]
   [string]$Command = 'unit',
   [switch]$PreflightOnly,
   [string]$EnvFile,
@@ -97,6 +97,23 @@ function Invoke-Live {
   Write-Output "target=live-$Target"; if ($missing.Count -gt 0) { throw "live preflight missing_keys=$($missing -join ',')" }; Write-Output 'provider_write=disabled'; Write-Summary -TargetType "live-$Target" -Status 'ready'
 }
 
+function Invoke-Edge {
+  # Issue #1 negative fixture. Drives deploy/Caddyfile and
+  # docker/dev/oauth-edge.Caddyfile through real Caddy against stub upstreams.
+  # Docker only — no ERP, no dev stack, no provider credentials, no secrets,
+  # which is why this lane is CI-able (GATE-TOPOLOGY.md §5).
+  Write-Output 'target=edge-caddy'; Write-Output 'postgres=disabled'; Write-Output 'oracle=disabled'; Write-Output 'provider_network=disabled'
+  if ($PreflightOnly) { Write-Summary -TargetType 'edge-caddy' -Status 'ready'; return }
+  $pwshPath = Resolve-HarnessApplication -Name 'pwsh'
+  $script = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'tests/edge-pii-deny.integration.tests.ps1'))
+  if (-not (Test-Path -LiteralPath $script -PathType Leaf)) { throw "HEXEC_FILE_NOT_FOUND script=$script" }
+  $environment = New-HarnessChildEnvironment -RepositoryRoot $repoRoot -LaneId 'integration'
+  $result = Invoke-HarnessProcess -Request (New-HarnessProcessRequest -FilePath $pwshPath -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $script) -WorkingDirectory $repoRoot -Environment $environment -TimeoutSeconds 900)
+  Write-HarnessProcessResult $result
+  if ($result.ExitCode -ne 0) { throw "edge fixture failed reason=$($result.ReasonCode) exit_code=$($result.ExitCode)" }
+  Write-Summary -TargetType 'edge-caddy' -Status 'passed'
+}
+
 function Invoke-Browser { Write-Output 'target=browser'; Write-Output 'provider_network=disabled'; if (-not $PreflightOnly) { throw 'browser runner is not configured; use browser automation as an explicit lane' }; Write-Summary -TargetType 'browser' -Status 'ready' }
 function Invoke-ProviderWrite { Write-Output 'target=live-provider'; if ([string]::IsNullOrWhiteSpace($Provider)) { throw 'provider is required' }; if ([string]::IsNullOrWhiteSpace($Actor) -or [string]::IsNullOrWhiteSpace($IdempotencyKey)) { throw 'provider write requires actor and idempotency_key' }; if (-not $Execute) { throw 'explicit -Execute is required before network' }; throw 'provider write adapter is intentionally outside F-02; no network was invoked' }
 
@@ -132,7 +149,7 @@ function Invoke-PgSessionDown {
 
 try {
   switch ($Command) {
-    'unit' { Invoke-Unit }; 'integration' { Invoke-Integration }; 'live' { Invoke-Live }; 'browser' { Invoke-Browser }; 'provider-write' { Invoke-ProviderWrite }
+    'unit' { Invoke-Unit }; 'integration' { Invoke-Integration }; 'live' { Invoke-Live }; 'browser' { Invoke-Browser }; 'edge' { Invoke-Edge }; 'provider-write' { Invoke-ProviderWrite }
     'governance-validate' { Invoke-Governance -Mode validate }; 'governance-drift' { Invoke-Governance -Mode drift }; 'governance' { Invoke-Governance -Mode all }
     'pg-session-up' { Invoke-PgSessionUp }; 'pg-session-down' { Invoke-PgSessionDown }
   }

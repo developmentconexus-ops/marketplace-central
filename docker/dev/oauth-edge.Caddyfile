@@ -1,0 +1,34 @@
+# Whitelist edge for the ngrok tunnel (compose profile `oauth`).
+#
+# The tunnel exists for exactly one thing: receiving the Mercado Livre OAuth
+# callback on a publicly reachable, provider-registered host. It used to point
+# straight at frontend:5174, which relays the whole proxy table in
+# apps/web/vite.config.ts to the backend — including /orders, which serialises
+# buyer name, CPF/CNPJ and address with no identity check anywhere in the Go
+# chain (issue #1). That published the PII surface to the internet for as long
+# as the tunnel was up.
+#
+# This is a whitelist, not a blacklist, and deliberately so: a blacklist would
+# be a fourth hand-maintained copy of the route table (deploy/Caddyfile,
+# apps/web/vite.config.ts and the Go router are the other three) and would go
+# stale the first time a route prefix is added. Deny-by-default cannot.
+:80 {
+	# The callback itself — the only path the provider ever requests.
+	@oauth_callback path /integrations/auth/callback
+	handle @oauth_callback {
+		reverse_proxy backend:8080
+	}
+
+	# The backend answers the callback with a 302 to <tunnel-host>/integrations,
+	# which is an SPA page. The SPA is not published here, so answer in place
+	# rather than leaving the operator on a bare 403 that reads like a failed
+	# authorisation. The token was already persisted before this redirect.
+	handle /integrations {
+		respond "OAuth callback processed. The installation was updated. Return to the local app at http://localhost:5174/integrations to see the result — this tunnel publishes only the OAuth callback." 200
+	}
+
+	# Everything else, including /orders, is not published.
+	handle {
+		respond "not published" 403
+	}
+}

@@ -72,6 +72,39 @@ curl -fsS https://<MPC_DOMAIN>/healthz
 Register the production OAuth callback in the Mercado Livre app:
 `https://<MPC_DOMAIN>/integrations/auth/callback` (replaces the ngrok URL for prod).
 
+### The `/orders` edge credential — read this before first boot
+
+`/orders` returns buyer name, CPF/CNPJ and billing address, and **the
+application does not check who is asking** — there is no identity middleware in
+the composed chain (`internal/composition/root.go:994`). The HTTP basic
+credential Caddy enforces on that route is the only control there is.
+
+It is not a placeholder. The boot-time assertion intended to replace it
+(`docs/engineering/repo-audit-2026-08-07/GATE-TOPOLOGY.md`, L2-c) is deferred
+along with authentication, so this credential is load-bearing indefinitely.
+
+Generate the hash on the host and put both values in `.env`:
+
+```bash
+docker run --rm caddy:2-alpine caddy hash-password --plaintext '<a long random password>'
+```
+
+`MPC_ORDERS_BASIC_AUTH_USER` and `MPC_ORDERS_BASIC_AUTH_HASH` are both declared
+`:?` in `docker-compose.prod.yml` — **the stack refuses to start if either is
+missing**, rather than starting with an open door.
+
+What you will see in the browser: opening `/orders` loads the page normally (a
+hard nav sends `Accept: text/html` and gets the SPA), then the first data
+request prompts once for the credential. The browser caches it for the origin.
+`/healthz` and the rest of the API are unaffected — the rule is scoped to the
+`/orders` JSON surface.
+
+Verify the rule after any change to `deploy/Caddyfile`:
+
+```bash
+npm run harness:edge
+```
+
 ## 3. Recurring: deploy an update
 
 CI publishes `sha-<commit>` tags on every push to main. To ship one:

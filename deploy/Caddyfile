@@ -18,6 +18,27 @@
 		path /classifications* /connectors* /healthz /integrations/auth* /integrations/installations* /integrations/providers* /inventory/stock-actions* /inventory/stock-risks* /marketplaces/accounts* /marketplaces/definitions* /marketplaces/fee-schedules* /marketplaces/policies* /pricing* /product-links/link-candidates* /product-links/link-resolutions* /product-links/link-workflows* /product-links/listing-snapshots* /listings* /mutations* /market /market/* /profitability* /dashboard* /sync*
 	}
 
+	# Issue #1 (I1-edge). /orders serialises buyer name, tax ID (CPF/CNPJ) and
+	# billing address — internal/modules/orders/transport/http_handler.go:608-618
+	# — and the composed middleware chain contains no identity check at all
+	# (internal/composition/root.go:994 is CORSMiddleware(apierror.Recover(mux))).
+	#
+	# This credential is therefore the ONLY control on the route, and it is not a
+	# temporary one: GATE-TOPOLOGY.md L2-c — the boot assertion that would have
+	# retired it — is deferred along with authentication (operator decision
+	# 2026-08-07). Treat it as load-bearing, not as a placeholder.
+	#
+	# Only the JSON surface is guarded. A hard-nav to /orders sends
+	# Accept: text/html, does not match @orders_api, and still gets the SPA from
+	# the catch-all below — so the page loads and the data behind it does not.
+	#
+	# Negative fixture (mandatory, per issue #1): scripts/tests/edge-pii-deny.integration.tests.ps1,
+	# invoked by `npm run harness:edge`. It asserts non-200 here without
+	# credentials, and 200 with them, through this exact file.
+	basic_auth @orders_api {
+		{$MPC_ORDERS_BASIC_AUTH_USER} {$MPC_ORDERS_BASIC_AUTH_HASH}
+	}
+
 	reverse_proxy @catalog_api backend:8080
 	reverse_proxy @orders_api backend:8080
 	reverse_proxy @api backend:8080

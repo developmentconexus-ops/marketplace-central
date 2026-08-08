@@ -21,4 +21,9 @@ if [ -z "$callback_host" ] || [ "$callback_host" = "$redirect_uri" ]; then
   exit 2
 fi
 
-exec ngrok http --url="$callback_host" frontend:5174
+# Target is oauth-edge, NOT frontend:5174. The Vite dev server proxies the whole
+# route table to the backend, so pointing the tunnel at it published /orders —
+# buyer name, CPF/CNPJ and address, with no identity check anywhere in the Go
+# middleware chain — to the public internet for as long as the tunnel was up
+# (issue #1). oauth-edge whitelists the OAuth callback and denies the rest.
+exec ngrok http --url="$callback_host" oauth-edge:80

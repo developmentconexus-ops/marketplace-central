@@ -50,6 +50,11 @@ services:
       - "443:443/udp"
     environment:
       MPC_DOMAIN: ${MPC_DOMAIN:?set in .env}
+      # Issue #1: the only control on the PII-bearing /orders JSON surface.
+      # `:?` is deliberate — an unset value must stop the stack, not start an
+      # edge with an empty credential in front of buyer CPF/CNPJ.
+      MPC_ORDERS_BASIC_AUTH_USER: ${MPC_ORDERS_BASIC_AUTH_USER:?set in .env}
+      MPC_ORDERS_BASIC_AUTH_HASH: ${MPC_ORDERS_BASIC_AUTH_HASH:?set in .env}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
