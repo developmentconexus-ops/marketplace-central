@@ -11,6 +11,14 @@
 #     never wired into the aggregator fails the gate instead of vanishing from it.
 #   - Every lane prints discovered/run counts, and a lane that ran zero units
 #     exits non-zero. Skipped and green are otherwise byte-identical.
+#   - No lane logic lives in this file. Every step below invokes
+#     `scripts/gate.ps1 -Lane <name>`, which is the same file `npm run gate`
+#     runs on a developer machine. This is issue #2's actual deliverable: the
+#     checks existed and were good, but which ones ran on a given change was a
+#     function of what someone remembered. A copy of the logic here and another
+#     one locally would reproduce that defect in a form that looks like a fix.
+#     `pwsh` is preinstalled on `ubuntu-latest`; the npm aliases are a
+#     convenience over the same script, never a second implementation.
 #   - Toolchain versions are derived, never transcribed: Go from go.mod, Node
 #     from .node-version. A hand-copied version is one more enumeration to rot.
 #   - Cheap work gates expensive work through `needs:`, so a 20-second format
@@ -67,24 +75,19 @@ jobs:
         with:
           go-version-file: apps/server_core/go.mod
           cache-dependency-path: apps/server_core/go.sum
+      # The gate counts, and the counters are what decide PASS. Running their
+      # fixtures before the first lane means a weakened guard fails here rather
+      # than silently passing everything downstream of it. Placed as a step in
+      # the cheapest job for the same reason `go vet` is a step in build-go: a
+      # new job would move the `needs`/EXPECTED enumerations the aggregator's
+      # topology check exists to keep equal, and this costs about a second.
+      - name: gate self-test
+        shell: pwsh
+        run: ./scripts/tests/gate-measure.tests.ps1
+
       - name: gofmt
-        shell: bash
-        run: |
-          set -euo pipefail
-          discovered=$(git ls-files -z '*.go' | tr -dc '\0' | wc -c)
-          echo "discovered=$discovered"
-          if [ "$discovered" -eq 0 ]; then
-            echo "run=0 -- no Go files reached the formatter; the filter is broken, not the tree"
-            exit 1
-          fi
-          unformatted=$(git ls-files -z '*.go' | xargs -0 -n 200 gofmt -l)
-          count=$(printf '%s' "$unformatted" | grep -c . || true)
-          echo "run=$discovered unformatted=$count"
-          if [ "$count" -ne 0 ]; then
-            printf '%s\n' "$unformatted"
-            echo "gofmt -l is non-empty. Run: git ls-files -z '*.go' | xargs -0 -n 200 gofmt -w"
-            exit 1
-          fi
+        shell: pwsh
+        run: ./scripts/gate.ps1 -Lane gofmt
 
   lint-frontend:
     name: lint-frontend
@@ -99,8 +102,12 @@ jobs:
           node-version-file: .node-version
           cache: npm
       - run: npm ci
+      # --listFiles, not a bare --noEmit: on success tsc prints nothing, so a
+      # project whose `include` resolved zero source files exits 0 with the same
+      # silence as a clean compile. The lane counts what was loaded.
       - name: tsc --noEmit
-        run: npm run typecheck
+        shell: pwsh
+        run: ./scripts/gate.ps1 -Lane typecheck
 
   build-go:
     name: build-go
@@ -118,22 +125,18 @@ jobs:
         with:
           go-version-file: apps/server_core/go.mod
           cache-dependency-path: apps/server_core/go.sum
-      - name: go build ./...
-        working-directory: apps/server_core
-        run: go build ./...
-
       # HARNESS-PROFILE §11 defines the deterministic L0 lane as `go build ./...`
-      # AND `go vet ./...`. Only the build was here. The test lane is not a
+      # AND `go vet ./...`, so the gate lane runs both. The test lane is not a
       # substitute: `go test` with no -vet flag runs a curated subset of the vet
       # checks (`go help testflag`), so a defect outside that subset -- and vet's
       # own checks over non-test code -- would leave the aggregator green.
       #
-      # Same job rather than a new one: L0 is one lane in the profile, and adding a
-      # job would move the `needs`/EXPECTED enumerations that the aggregator's
-      # topology step exists to keep equal. A step is the cheaper true statement.
-      - name: go vet ./...
-        working-directory: apps/server_core
-        run: go vet ./...
+      # One job rather than two: L0 is one lane in the profile, and adding a job
+      # would move the `needs`/EXPECTED enumerations that the aggregator's
+      # topology step exists to keep equal.
+      - name: go build + go vet
+        shell: pwsh
+        run: ./scripts/gate.ps1 -Lane build
 
   test-go-unit:
     name: test-go-unit
@@ -151,46 +154,15 @@ jobs:
         with:
           go-version-file: apps/server_core/go.mod
           cache-dependency-path: apps/server_core/go.sum
+      # The package set, the -skip of the deliberately red ADR-023 detector, the
+      # -count=1 that defeats the test cache, and the run/pass/skip/fail counting
+      # all live in the lane -- see `Invoke-GateGoTest` in scripts/gate.ps1, and
+      # `Measure-GateGoTest` in scripts/harness/Gate.psm1 for what the counts are
+      # taken from. scripts/tests/gate-measure.tests.ps1 holds the fixtures,
+      # including the all-skipped suite that exits 0.
       - name: go test ./...
-        working-directory: apps/server_core
-        shell: bash
-        run: |
-          set -euo pipefail
-          # ./... and not ./tests/unit/...: the latter is 14 test files, while
-          # internal/ holds 353. A lane scoped to the smaller tree would report
-          # green over almost none of the code it is asked to defend. The
-          # integration lane is invisible here regardless -- it is behind
-          # `//go:build integration`, so ./... does not compile it.
-          #
-          # -skip TestModuleBoundaryADR023: that test is RED on main today
-          # (234 cross-module import violations, measured 2026-08-08 at
-          # main d0a96216, identical count on this branch, which touches no
-          # imports). It is red BY DESIGN and already has an owner -- its own
-          # header says so: "This test is the RED that opens Wave 1 ... the
-          # wave's acceptance is a measurement and not a green test."
-          #
-          # Owner: Onda 1 of docs/superpowers/plans/2026-08-05-arquitetura-\
-          # protocolo-de-modulo-plan.md, tasks 1.1 through 1.6, which drive the
-          # count to zero target by target. ADR-023 §2 is the rule itself.
-          #
-          # A required check that can never be green gets switched off, taking
-          # the rest of the lane with it, so the one deliberate red is skipped
-          # by name rather than the whole lane staying narrow. DELETE THIS SKIP
-          # when Onda 1 task 1.5 lands -- that is the task that either reaches
-          # zero or converts the residue into a baseline with a stated reason.
-          #
-          # -count=1 defeats the test cache: a cached PASS is not evidence that
-          # this commit's tests ran.
-          go test ./... -skip 'TestModuleBoundaryADR023' -count=1 -v 2>&1 | tee /tmp/go-unit.log
-          run=$(grep -c '^=== RUN' /tmp/go-unit.log || true)
-          pass=$(grep -c '^--- PASS' /tmp/go-unit.log || true)
-          fail=$(grep -c '^--- FAIL' /tmp/go-unit.log || true)
-          skip=$(grep -c '^--- SKIP' /tmp/go-unit.log || true)
-          echo "run=$run pass=$pass skip=$skip fail=$fail"
-          if [ "$run" -eq 0 ]; then
-            echo "run=0 -- the lane exited 0 having executed nothing. That is the defect this line exists to catch."
-            exit 1
-          fi
+        shell: pwsh
+        run: ./scripts/gate.ps1 -Lane test-go
 
   test-frontend:
     name: test-frontend
@@ -206,23 +178,13 @@ jobs:
           node-version-file: .node-version
           cache: npm
       - run: npm ci
+      # vitest colours its summary, so the counts are read after stripping the
+      # ANSI escapes -- a bare `^ *Tests` match never fires against the real
+      # stream. A run that crashed before printing a summary measures as -1
+      # rather than 0: never stated is not the same fact as ran and found none.
       - name: vitest
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm run test --workspace @marketplace-central/web -- --run 2>&1 | tee /tmp/vitest.raw.log
-          # vitest colours the summary, so the line is
-          # ESC[2m      Tests ESC[22m ESC[1mESC[32m605 passed...  -- a bare
-          # ^ *Tests match never fires. Strip the escapes before measuring.
-          sed 's/\x1b\[[0-9;]*m//g' /tmp/vitest.raw.log > /tmp/vitest.log
-          grep -E '^ *(Test Files|Tests) ' /tmp/vitest.log || true
-          # Positive assertion, not a search for the string "0". A run that
-          # reports "no tests", crashes before the summary, or whose format
-          # drifted all look like success to a check that only looks for a zero.
-          if ! grep -qE '^ *Tests +[1-9][0-9]* +passed' /tmp/vitest.log; then
-            echo "run=0 -- no line of the form 'Tests <n> passed' with n>0. The suite did not execute."
-            exit 1
-          fi
+        shell: pwsh
+        run: ./scripts/gate.ps1 -Lane test-web
 
   # ---------------------------------------------------------------------------
   # The only job that issue #4 will make required.
