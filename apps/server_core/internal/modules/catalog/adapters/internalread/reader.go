@@ -48,7 +48,6 @@ var _ catalogports.CanonicalProductReader = UnavailableReader{}
 var _ catalogports.ProductReader = UnavailableReader{}
 var _ readports.CatalogPageReader = UnavailableReader{}
 
-
 func (r *Reader) ListCatalogProductFacts(ctx context.Context, cursor readports.Cursor, limit int, policy *readports.SellableAssortmentPolicy) (readports.CatalogFactPage, error) {
 	return r.reader.ListCatalogProductFacts(ctx, cursor, limit, policy)
 }
@@ -151,6 +150,7 @@ func (r *Reader) products(ctx context.Context, input readports.FindProductsInput
 	}
 	return out, nil
 }
+
 // isDegradableReadError reports whether a fact-read error means the fact is
 // honestly unavailable in the active source mode (unsupported query, e.g. the
 // xlsx snapshot has no current price; or source unavailable) rather than an

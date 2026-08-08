@@ -6,7 +6,11 @@
     "apps/web",
     "packages/*"
   ],
+  "engines": {
+    "node": ">=26.3.0 <27"
+  },
   "scripts": {
+    "typecheck": "tsc -p apps/web/tsconfig.json --noEmit",
     "dev": "npm run dev --workspace @marketplace-central/web",
     "build": "npm run build --workspace @marketplace-central/web",
     "start": "npm run start --workspace @marketplace-central/web",

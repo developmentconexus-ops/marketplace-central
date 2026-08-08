@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
+	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 	"marketplace-central/apps/server_core/internal/modules/orders/domain"
 	"marketplace-central/apps/server_core/internal/modules/orders/ports"
-	internalreadports "marketplace-central/apps/server_core/internal/modules/internal_read/ports"
 )
 
 type ListAssistedSankhyaCandidatesInput struct {
@@ -49,20 +49,20 @@ type ConfirmAssistedSankhyaLinkageInput struct {
 type AssistedSankhyaEventIDGenerator func() (string, error)
 
 type AssistedSankhyaLinkageService struct {
-	orders     ports.OrderLookup
-	reader     ports.SankhyaLinkageReader
-	linkages   ports.SankhyaLinkageRepository
-	now        func() time.Time
-	newEventID AssistedSankhyaEventIDGenerator
+	orders      ports.OrderLookup
+	reader      ports.SankhyaLinkageReader
+	linkages    ports.SankhyaLinkageRepository
+	now         func() time.Time
+	newEventID  AssistedSankhyaEventIDGenerator
 	invalidator internalreadports.CacheInvalidator
 }
 
 type AssistedSankhyaLinkageServiceConfig struct {
-	Orders     ports.OrderLookup
-	Reader     ports.SankhyaLinkageReader
-	Linkages   ports.SankhyaLinkageRepository
-	Now        func() time.Time
-	NewEventID AssistedSankhyaEventIDGenerator
+	Orders      ports.OrderLookup
+	Reader      ports.SankhyaLinkageReader
+	Linkages    ports.SankhyaLinkageRepository
+	Now         func() time.Time
+	NewEventID  AssistedSankhyaEventIDGenerator
 	Invalidator internalreadports.CacheInvalidator
 }
 

@@ -49,14 +49,14 @@ func TestFeeSyncSeedProviderReseedsAndEnablesCapability(t *testing.T) {
 }
 
 type integrationFeeSyncHarness struct {
-	service         *integrationsapp.FeeSyncService
-	installations   map[string]domain.Installation
-	providers       map[string]domain.ProviderDefinition
-	operationRecords []domain.OperationRun
-	operationByInst map[string][]domain.OperationRun
-	capabilityStates []domain.CapabilityState
+	service           *integrationsapp.FeeSyncService
+	installations     map[string]domain.Installation
+	providers         map[string]domain.ProviderDefinition
+	operationRecords  []domain.OperationRun
+	operationByInst   map[string][]domain.OperationRun
+	capabilityStates  []domain.CapabilityState
 	upsertedSchedules []marketplacesdomain.FeeSchedule
-	clock           fixedIntegrationClock
+	clock             fixedIntegrationClock
 }
 
 func newIntegrationFeeSyncHarness(t *testing.T) *integrationFeeSyncHarness {

@@ -56,7 +56,7 @@ func TestOpenPeriodHasNoUntil(t *testing.T) {
 	if _, ok := p.Until(); ok {
 		t.Fatal("Until() reported a bound for an open period")
 	}
-	if !p.Contains(d(9999 % 28)) && !p.Contains(d(28)) {
+	if !p.Contains(d(9999%28)) && !p.Contains(d(28)) {
 		t.Fatal("open period does not contain a later instant")
 	}
 }

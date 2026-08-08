@@ -213,4 +213,3 @@ func TestMarketplacesPoliciesHandlerRejectsOtherMethods(t *testing.T) {
 		t.Fatalf("expected Allow: GET, POST, got %q", allow)
 	}
 }
-

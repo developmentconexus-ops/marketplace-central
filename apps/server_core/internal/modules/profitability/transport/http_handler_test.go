@@ -14,6 +14,7 @@ import (
 )
 
 type stubService struct{}
+
 func (stubService) ImportMarginInputs(context.Context, profitabilityapp.ImportMarginInputsInput) (profitabilitydomain.ImportInputsResult, error) {
 	return profitabilitydomain.ImportInputsResult{InstallationID: "inst-1", ImportedCount: 1}, nil
 }
@@ -38,7 +39,9 @@ func TestHandleImportReturnsJSON(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/profitability/margin-inputs/import", bytes.NewBufferString(`{"installation_id":"inst-1","limit":1}`))
 	rr := httptest.NewRecorder()
 	h.handleImport(rr, req)
-	if rr.Code != http.StatusOK { t.Fatalf("status=%d", rr.Code) }
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d", rr.Code)
+	}
 }
 
 func TestHandleListInputsReturnsItems(t *testing.T) {
@@ -46,9 +49,13 @@ func TestHandleListInputsReturnsItems(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/profitability/margin-inputs?installation_id=inst-1", nil)
 	rr := httptest.NewRecorder()
 	h.handleListInputs(rr, req)
-	var payload struct{ Items []profitabilitydomain.MarginInput `json:"items"` }
+	var payload struct {
+		Items []profitabilitydomain.MarginInput `json:"items"`
+	}
 	_ = json.NewDecoder(rr.Body).Decode(&payload)
-	if len(payload.Items) != 1 { t.Fatalf("items=%d", len(payload.Items)) }
+	if len(payload.Items) != 1 {
+		t.Fatalf("items=%d", len(payload.Items))
+	}
 }
 
 func TestHandleCreateAdjustmentReturnsAudit(t *testing.T) {
@@ -56,7 +63,9 @@ func TestHandleCreateAdjustmentReturnsAudit(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/profitability/manual-adjustments", bytes.NewBufferString(`{"installation_id":"inst-1","provider_order_id":"o1","amount":12.5,"reason":"manual freight"}`))
 	rr := httptest.NewRecorder()
 	h.handleAdjustments(rr, req)
-	if rr.Code != http.StatusOK { t.Fatalf("status=%d", rr.Code) }
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d", rr.Code)
+	}
 }
 
 func TestHandleCalculateSnapshotsReturnsResult(t *testing.T) {
@@ -64,7 +73,9 @@ func TestHandleCalculateSnapshotsReturnsResult(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/profitability/profit-snapshots/calculate", bytes.NewBufferString(`{"installation_id":"inst-1","limit":1}`))
 	rr := httptest.NewRecorder()
 	h.handleCalculateSnapshots(rr, req)
-	if rr.Code != http.StatusOK { t.Fatalf("status=%d", rr.Code) }
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d", rr.Code)
+	}
 }
 
 func TestHandleListSnapshotsReturnsItems(t *testing.T) {
@@ -72,9 +83,13 @@ func TestHandleListSnapshotsReturnsItems(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/profitability/profit-snapshots?installation_id=inst-1", nil)
 	rr := httptest.NewRecorder()
 	h.handleListSnapshots(rr, req)
-	var payload struct{ Items []profitabilitydomain.ProfitSnapshot `json:"items"` }
+	var payload struct {
+		Items []profitabilitydomain.ProfitSnapshot `json:"items"`
+	}
 	_ = json.NewDecoder(rr.Body).Decode(&payload)
-	if len(payload.Items) != 1 { t.Fatalf("items=%d", len(payload.Items)) }
+	if len(payload.Items) != 1 {
+		t.Fatalf("items=%d", len(payload.Items))
+	}
 }
 
 // trimJSON canonicalises JSON for whole-body comparisons (key order is

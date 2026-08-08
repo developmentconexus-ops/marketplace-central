@@ -724,6 +724,7 @@ func maximumCeiling(values map[int64]*ports.ICMSCeiling) *float64 {
 	}
 	return max
 }
+
 // needsExceptionScan generalizes the former needsBelowMarginScan (F01-S4):
 // below_margin, abaixo_custo and sem_evidencia are all computed (not
 // SQL-filterable) exceptions, so any of them — like has_exception — must
