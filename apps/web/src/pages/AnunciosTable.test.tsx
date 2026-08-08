@@ -43,6 +43,12 @@ const okSignal: ListingMarketSignal = {
   match_status: "ACCEPT",
   n_offers: 6,
   n_sellers: 5,
+  // Competitor range. AnunciosTable does not render it (ListingDetailPanel does),
+  // but an OK signal reporting six offers and no range at all is not a state the
+  // producer can emit, and a fixture that cannot occur proves nothing.
+  median: { amount: "135.50", currency: "BRL" },
+  min_valid: { amount: "110.00", currency: "BRL" },
+  max_valid: { amount: "149.90", currency: "BRL" },
   evidence: { source: "ml_price_to_win", fetched_at: "2026-07-16T11:00:00Z", freshness: "fresh" },
 };
 

@@ -398,7 +398,10 @@ func TestUnpinnedReadsFailClosed(t *testing.T) {
 		},
 		"cost": func() error { _, err := r.GetCostAsOf(ctx, readports.CostAsOfInput{ProductID: 1}); return err },
 		"tax":  func() error { _, err := r.GetTaxInputs(ctx, readports.TaxInput{ProductID: 1}); return err },
-		"list": func() error { _, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 10, noCutPolicy()); return err },
+		"list": func() error {
+			_, err := r.ListCatalogProductFacts(ctx, readports.Cursor{}, 10, noCutPolicy())
+			return err
+		},
 		"search": func() error {
 			_, err := r.SearchCatalogProductFacts(ctx, "blue", readports.Cursor{}, 10, noCutPolicy())
 			return err

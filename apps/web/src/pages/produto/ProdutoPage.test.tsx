@@ -88,7 +88,7 @@ describe("ProdutoPage", () => {
   it("wires the shared catalog product query's cost_amount into the Veredicto box's Custo ERP row", async () => {
     getCatalogProduct.mockResolvedValueOnce(catalogProductFixture);
     const verdict: MarketPriceIntelVerdict = {
-      match_status: "MATCHED",
+      match_status: "ACCEPT",
       price_evidence_status: "OK",
       verdict_label: null,
       blocking_state: null,
