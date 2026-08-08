@@ -1,0 +1,248 @@
+# The fast lane. Design and reasoning: docs/engineering/repo-audit-2026-08-07/GATE-DESIGN.md
+#
+# Rules this file exists to obey, each one paid for somewhere:
+#
+#   - No `paths:` at trigger level. A workflow that does not dispatch reports
+#     nothing, and a PR waiting on a required context that will never arrive is
+#     stuck forever. Job-level `if:` is the supported way to skip work.
+#   - `required` is the single aggregator, and its guard is an allowlist. The
+#     obvious `contains(needs.*.result, 'failure')` lets `cancelled` through as
+#     green. It also asserts the key set of `needs`, so a job added below but
+#     never wired into the aggregator fails the gate instead of vanishing from it.
+#   - Every lane prints discovered/run counts, and a lane that ran zero units
+#     exits non-zero. Skipped and green are otherwise byte-identical.
+#   - Toolchain versions are derived, never transcribed: Go from go.mod, Node
+#     from .node-version. A hand-copied version is one more enumeration to rot.
+#   - Cheap work gates expensive work through `needs:`, so a 20-second format
+#     error does not first burn several minutes of compilation.
+#
+# NOTHING HERE IS A REQUIRED CHECK YET. Promotion happens in issue #4, per check,
+# only after it has been observed red once and then green on several real PRs,
+# and only by reading the context string off `gh pr checks` -- never by predicting
+# what the string will be.
+
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint-go:
+    name: lint-go
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/server_core/go.mod
+          cache-dependency-path: apps/server_core/go.sum
+      - name: gofmt
+        shell: bash
+        run: |
+          set -euo pipefail
+          discovered=$(git ls-files -z '*.go' | tr -dc '\0' | wc -c)
+          echo "discovered=$discovered"
+          if [ "$discovered" -eq 0 ]; then
+            echo "run=0 -- no Go files reached the formatter; the filter is broken, not the tree"
+            exit 1
+          fi
+          unformatted=$(git ls-files -z '*.go' | xargs -0 -n 200 gofmt -l)
+          count=$(printf '%s' "$unformatted" | grep -c . || true)
+          echo "run=$discovered unformatted=$count"
+          if [ "$count" -ne 0 ]; then
+            printf '%s\n' "$unformatted"
+            echo "gofmt -l is non-empty. Run: git ls-files -z '*.go' | xargs -0 -n 200 gofmt -w"
+            exit 1
+          fi
+
+  lint-frontend:
+    name: lint-frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - name: tsc --noEmit
+        run: npm run typecheck
+
+  build-go:
+    name: build-go
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [lint-go]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/server_core/go.mod
+          cache-dependency-path: apps/server_core/go.sum
+      - name: go build ./...
+        working-directory: apps/server_core
+        run: go build ./...
+
+  test-go-unit:
+    name: test-go-unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [build-go]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/server_core/go.mod
+          cache-dependency-path: apps/server_core/go.sum
+      - name: go test ./tests/unit/...
+        working-directory: apps/server_core
+        shell: bash
+        run: |
+          set -euo pipefail
+          # -count=1 defeats the test cache: a cached PASS is not evidence that
+          # this commit's tests ran.
+          go test ./tests/unit/... -count=1 -v 2>&1 | tee /tmp/go-unit.log
+          run=$(grep -c '^=== RUN' /tmp/go-unit.log || true)
+          pass=$(grep -c '^--- PASS' /tmp/go-unit.log || true)
+          fail=$(grep -c '^--- FAIL' /tmp/go-unit.log || true)
+          skip=$(grep -c '^--- SKIP' /tmp/go-unit.log || true)
+          echo "run=$run pass=$pass skip=$skip fail=$fail"
+          if [ "$run" -eq 0 ]; then
+            echo "run=0 -- the lane exited 0 having executed nothing. That is the defect this line exists to catch."
+            exit 1
+          fi
+
+  test-frontend:
+    name: test-frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [lint-frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - name: vitest
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run test --workspace @marketplace-central/web -- --run 2>&1 | tee /tmp/vitest.raw.log
+          # vitest colours the summary, so the line is
+          # ESC[2m      Tests ESC[22m ESC[1mESC[32m605 passed...  -- a bare
+          # ^ *Tests match never fires. Strip the escapes before measuring.
+          sed 's/\x1b\[[0-9;]*m//g' /tmp/vitest.raw.log > /tmp/vitest.log
+          grep -E '^ *(Test Files|Tests) ' /tmp/vitest.log || true
+          # Positive assertion, not a search for the string "0". A run that
+          # reports "no tests", crashes before the summary, or whose format
+          # drifted all look like success to a check that only looks for a zero.
+          if ! grep -qE '^ *Tests +[1-9][0-9]* +passed' /tmp/vitest.log; then
+            echo "run=0 -- no line of the form 'Tests <n> passed' with n>0. The suite did not execute."
+            exit 1
+          fi
+
+  # ---------------------------------------------------------------------------
+  # The only job that issue #4 will make required.
+  # ---------------------------------------------------------------------------
+  required:
+    name: required
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [lint-go, lint-frontend, build-go, test-go-unit, test-frontend]
+    env:
+      NEEDS_JSON: ${{ toJSON(needs) }}
+      EXPECTED: '["lint-go","lint-frontend","build-go","test-go-unit","test-frontend"]'
+    steps:
+      - uses: actions/checkout@v4
+
+      # The runtime guard below compares needs against EXPECTED, which does not
+      # catch the case that matters most: a job added to this file and wired into
+      # neither. Both lists stay equal to each other and the new job silently
+      # leaves the gate. This step reads the workflow itself and asserts that the
+      # three enumerations -- the job list, `needs`, and EXPECTED -- are the same
+      # set. It is the one line in the gate that resists a hand-synchronised list
+      # rotting.
+      - name: workflow topology
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, sys
+          try:
+              import yaml
+          except ImportError:
+              sys.exit("PyYAML is not present on this runner; this check cannot be skipped -- install it explicitly.")
+          d = yaml.safe_load(open('.github/workflows/ci.yml', encoding='utf-8'))
+          jobs = d['jobs']
+          others   = sorted(k for k in jobs if k != 'required')
+          needs    = sorted(jobs['required']['needs'])
+          expected = sorted(json.loads(jobs['required']['env']['EXPECTED']))
+          print('jobs    :', others)
+          print('needs   :', needs)
+          print('EXPECTED:', expected)
+          if not (others == needs == expected):
+              sys.exit('topology drift: every job other than `required` must appear in both `needs` and EXPECTED.')
+          print('topology: PASS')
+          PY
+
+      # The guard is the whole control, so its correctness cannot rest on the
+      # author having reasoned about jq correctly. These fixtures make it a
+      # measured fact, and they run before the real evaluation on every PR.
+      - name: guard self-test
+        shell: bash
+        run: |
+          set -euo pipefail
+          guard() {
+            jq -e --argjson expected "$EXPECTED" '
+              (keys | sort) == ($expected | sort)
+              and all(to_entries[]; .value.result == "success" or .value.result == "skipped")
+            ' <<<"$1" >/dev/null
+          }
+          expect() { # expect <want-pass:0|1> <label> <json>
+            if guard "$3"; then got=0; else got=1; fi
+            if [ "$got" != "$1" ]; then
+              echo "guard self-test FAILED: $2 (wanted rc=$1, got rc=$got)"
+              exit 1
+            fi
+            echo "ok: $2"
+          }
+          all_ok='{"lint-go":{"result":"success"},"lint-frontend":{"result":"success"},"build-go":{"result":"success"},"test-go-unit":{"result":"skipped"},"test-frontend":{"result":"success"}}'
+          cancelled='{"lint-go":{"result":"success"},"lint-frontend":{"result":"cancelled"},"build-go":{"result":"success"},"test-go-unit":{"result":"success"},"test-frontend":{"result":"success"}}'
+          failed='{"lint-go":{"result":"failure"},"lint-frontend":{"result":"success"},"build-go":{"result":"success"},"test-go-unit":{"result":"success"},"test-frontend":{"result":"success"}}'
+          dropped='{"lint-go":{"result":"success"},"lint-frontend":{"result":"success"},"build-go":{"result":"success"},"test-go-unit":{"result":"success"}}'
+          added='{"lint-go":{"result":"success"},"lint-frontend":{"result":"success"},"build-go":{"result":"success"},"test-go-unit":{"result":"success"},"test-frontend":{"result":"success"},"unwired-job":{"result":"success"}}'
+          expect 0 "all success or skipped passes"            "$all_ok"
+          expect 1 "a cancelled job blocks"                   "$cancelled"
+          expect 1 "a failed job blocks"                      "$failed"
+          expect 1 "a job missing from needs blocks"          "$dropped"
+          expect 1 "a job not listed in EXPECTED blocks"      "$added"
+
+      - name: every dependency succeeded or was skipped, and none went missing
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "$NEEDS_JSON" | jq -r 'to_entries[] | "\(.key)=\(.value.result // "null")"'
+          # An allowlist, not a denylist. `needs.<job>.result` has exactly four
+          # values -- success, failure, cancelled, skipped -- and a denylist on
+          # 'failure' passes a cancelled job as green.
+          if ! jq -e --argjson expected "$EXPECTED" '
+                (keys | sort) == ($expected | sort)
+                and all(to_entries[]; .value.result == "success" or .value.result == "skipped")
+              ' <<<"$NEEDS_JSON" >/dev/null; then
+            echo "required: FAIL -- a dependency did not succeed, or the needs key set drifted from EXPECTED."
+            exit 1
+          fi
+          echo "required: PASS"
