@@ -317,6 +317,50 @@ Assert-True (@($dirtyMeasured.Paths) -contains 'apps/web/src/App.tsx') 'prettier
 $prettierSilent = Measure-GatePrettier -Text ''
 Assert-True (-not $prettierSilent.Clean) 'an empty prettier stream was read as a clean tree'
 
+# The clean marker over the empty set, which is the case the marker cannot rule
+# out on its own. Reported by CodeRabbit on PR #21 and reproduced 2026-08-08:
+# with every extension in .prettierignore the lane read zero files and still
+# passed. `Checked` comes from the debug stream and is the only number that moves.
+Assert-True ($prettierMeasured.Checked -eq 0) `
+  'a run without --log-level debug reported files as checked; the caller must be able to see that number is unavailable'
+
+$prettierDebug = @'
+[debug] resolve config from 'C:\repo\apps\web\src\App.tsx'
+[debug] loaded cached config
+[debug] applied config
+[debug] resolve config from 'C:\repo\apps\web\src\App.tsx'
+[debug] resolve config from 'C:\repo\packages\ui\src\Badge.tsx'
+Checking formatting...
+All matched files use Prettier code style!
+'@
+$debugMeasured = Measure-GatePrettier -Text $prettierDebug
+Assert-True ($debugMeasured.Checked -eq 2) `
+  "prettier checked-file count wrong: $($debugMeasured.Checked); the same path resolving twice is one file"
+Assert-True ($debugMeasured.Clean) 'the debug stream lost the clean marker'
+
+# --- the eslint rule set ---------------------------------------------------
+#
+# A rule that is off produces zero findings and is indistinguishable from a rule
+# that found nothing. Reproduced 2026-08-08: two rules set to "off" dropped the
+# lane's total from 26 to 13 and the ratchet printed the drop as a shrink worth
+# committing. Severity arrives as a number, a string, or the head of an array.
+$printConfig = @'
+{"rules":{
+  "@typescript-eslint/no-floating-promises":[2],
+  "@typescript-eslint/no-misused-promises":"off",
+  "@typescript-eslint/no-unused-vars":[0,{"argsIgnorePattern":"^_"}],
+  "react-hooks/exhaustive-deps":"warn",
+  "react-hooks/rules-of-hooks":2
+}}
+'@
+$rulesMeasured = @(Measure-GateEslintRules -Json $printConfig)
+Assert-True ($rulesMeasured -contains '@typescript-eslint/no-floating-promises') 'an enabled rule was dropped from the effective set'
+Assert-True ($rulesMeasured -contains 'react-hooks/exhaustive-deps') 'a rule at "warn" was read as off'
+Assert-True ($rulesMeasured -contains 'react-hooks/rules-of-hooks') 'a bare numeric severity was read as off'
+Assert-True (-not ($rulesMeasured -contains '@typescript-eslint/no-misused-promises')) 'a rule set to "off" was reported as enabled'
+Assert-True (-not ($rulesMeasured -contains '@typescript-eslint/no-unused-vars')) 'a rule with severity 0 in an options array was reported as enabled'
+Assert-True (@(Measure-GateEslintRules -Json '').Count -eq 0) 'an empty --print-config stream was read as a rule set'
+
 # --- the eslint baseline, and the two lanes' guards -----------------------
 
 $eslintCommitted = ConvertTo-GateCountMap -Object $baselineDocument.eslint.by_rule
@@ -349,5 +393,33 @@ Assert-True ($gateSourceForLint -match '\$candidates -eq 0') `
   'the format lane no longer fails when the formatted-file set is empty'
 Assert-True ($gateSourceForLint -match '-not \$measurement\.Clean') `
   'the format lane once again reads silence as a clean tree'
+
+# The two guards CodeRabbit's review bought, pinned so they cannot be dropped
+# quietly. Each names a lane that passed over nothing before it existed.
+Assert-True ($gateSourceForLint -match '\$measurement\.Checked -eq 0') `
+  'the format lane no longer fails when prettier read no file at all'
+Assert-True ($gateSourceForLint -match "--log-level', 'debug'") `
+  'the format lane dropped --log-level debug; without it prettier names no file and Checked is always 0'
+#
+# Anchored on the reason text, not on `$enabledDrift`: the lint-go lane uses that
+# same variable name, so a pattern naming it matches whether or not the lint-web
+# guard still exists. The first draft of this assertion did exactly that.
+Assert-True ($gateSourceForLint -match 'the ratchet would take the drop for a shrink') `
+  'the lint-web lane no longer asserts its enabled rule set; a rule turned off would read as a shrink'
+Assert-True ($gateSourceForLint -match 'Measure-GateEslintRules') `
+  'the lint-web lane no longer measures the effective rule set at all'
+Assert-True ($gateSourceForLint -match '--print-config') `
+  'the lint-web lane no longer resolves the effective config; the text of eslint.config.mjs is not what ESLint runs'
+
+# The configured rule set and the baseline's keys are one declaration in two
+# files. A rule added to the config without a baseline entry, or the reverse,
+# means every count below is over a set nobody declared.
+$expectedRules = @([regex]::Matches($gateSourceForLint, "(?m)^\s*'(?<rule>[@a-z-]+/[a-z-]+)',?\s*$") |
+  ForEach-Object { $_.Groups['rule'].Value } | Sort-Object -Unique)
+Assert-True ($expectedRules.Count -eq @($eslintCommitted.Keys).Count) `
+  "gate.ps1 declares $($expectedRules.Count) eslint rules and the baseline names $(@($eslintCommitted.Keys).Count)"
+foreach ($rule in @($eslintCommitted.Keys)) {
+  Assert-True ($expectedRules -contains $rule) "the baseline names $rule and gate.ps1's expected rule set does not"
+}
 
 Write-Output 'PASS gate measurement tests'

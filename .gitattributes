@@ -19,6 +19,23 @@
 *.jsx   text eol=lf
 *.mjs   text eol=lf
 *.cjs   text eol=lf
+
+# JSON is global, and unlike the markdown rule below it is NOT pinned by path.
+# Raised on PR #21: `.mnfs/`, the provider `testdata/` trees and
+# `docs/research/evidence/` hold recorded output, and `.prettierignore` argues at
+# length that a tool rewriting recorded bytes destroys the record -- a line
+# ending is still a byte. The two rules say opposite things about the same files.
+#
+# Measured 2026-08-08 before deciding: of the 68 JSON files across those three
+# trees, 0 are CRLF in the index. This attribute rewrites nothing today; the
+# exposure is a future capture that arrives with CRLF and is normalised on the
+# way in, silently.
+#
+# Left global on purpose. The only attribute that would actually guarantee
+# verbatim bytes is `-text`, and that also marks all 68 binary in `git diff` --
+# for `.mnfs/` that is cheap, for a recorded provider payload under `testdata/`
+# it is not, because the diff of what the API returned is the point of keeping
+# it. Paid when a capture is measured to have been altered, not before.
 *.json  text eol=lf
 
 *.yml  text eol=lf
