@@ -12,6 +12,7 @@ apps/server_core/.gomodcache/
 *.exe
 .env*
 scripts/.runs/
+.gate/
 .next/
 next-env.d.ts
 *.tsbuildinfo
