@@ -79,6 +79,31 @@ jobs:
           echo "pull_seconds=$((SECONDS - start))"
           docker image inspect postgres:16-bookworm --format '{{.Id}}'
 
+      # HARNESS-PROFILE.md:106 names this exact false alarm: `HPG_MIGRATION_FAILED`
+      # with `migrations_first=-1` is the build dying before migrate ever ran,
+      # against an empty `.gomodcache` under `GOPROXY=off`, and not a SQL defect.
+      # The first CI dispatch (run 31260806782, 2026-08-08) produced precisely that
+      # signature in 7 seconds -- `migrations_first=-1 migrations_second=-1
+      # resource_count=0` -- so it measured the cold-cache path and not the lane.
+      #
+      # `Environment.psm1:182-184` pins the lane's GOMODCACHE to this directory and
+      # sets GOPROXY=off, so the cache has to be populated from outside the lane or
+      # the lane cannot resolve a single module. Downloading here is not part of the
+      # measurement: the step is timed separately and reported on its own line.
+      - name: warm the module cache the hermetic lane cannot fill itself
+        working-directory: apps/server_core
+        shell: bash
+        run: |
+          set -euo pipefail
+          start=$SECONDS
+          go mod download
+          echo "warm_seconds=$((SECONDS - start)) modcache=$(go env GOMODCACHE)"
+          # An empty cache is the whole failure mode, so assert it is not empty
+          # rather than trusting that `go mod download` did something.
+          modules=$(find "$(go env GOMODCACHE)/cache/download" -name '*.zip' 2>/dev/null | wc -l)
+          echo "modcache_zips=$modules"
+          test "$modules" -gt 0
+
       - name: integration lane
         shell: bash
         run: |
