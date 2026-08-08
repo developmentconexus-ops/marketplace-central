@@ -276,6 +276,35 @@ function Measure-GateEslintRules {
   return @($enabled | Sort-Object)
 }
 
+function Measure-GateArchscan {
+  <#
+    Reads archscan's output: one `file:line: rule: detail` per finding and a
+    final `archscan: scanned=N findings=M` line.
+
+    `Scanned` is the anti-vacuity number and it defaults to -1, not 0: a stream
+    with no summary line means the tool died before finishing, and the caller
+    must not read that as "scanned nothing" -- it is "nothing is known". The
+    tool itself exits 2 when scanned is 0; the count is re-read here so the
+    lane's verdict does not rest on an exit code alone.
+  #>
+  [CmdletBinding()]
+  param([Parameter(Mandatory)][AllowEmptyString()][string]$Text)
+
+  $plain = Remove-GateAnsi -Text $Text
+  $summary = [regex]::Match($plain, '(?m)^archscan: scanned=(?<scanned>\d+) findings=(?<findings>\d+)\s*$')
+  $byRule = @{}
+  foreach ($match in [regex]::Matches($plain, '(?m)^\S+?:\d+: (?<rule>[a-z]+/[a-z-]+): ')) {
+    $rule = $match.Groups['rule'].Value
+    if (-not $byRule.ContainsKey($rule)) { $byRule[$rule] = 0 }
+    $byRule[$rule] = $byRule[$rule] + 1
+  }
+  return [pscustomobject]@{
+    Scanned  = if ($summary.Success) { [int]$summary.Groups['scanned'].Value } else { -1 }
+    Total    = if ($summary.Success) { [int]$summary.Groups['findings'].Value } else { -1 }
+    ByRule   = $byRule
+  }
+}
+
 function Compare-GateRatchet {
   <#
     Shrink-only comparison of measured counts against a committed baseline.
@@ -341,5 +370,5 @@ function ConvertTo-GateCountMap {
 }
 
 Export-ModuleMember -Function Measure-GateGoTest, Measure-GateVitest, Measure-GateTsc, Measure-GateGofmt, `
-  Remove-GateAnsi, Measure-GateGolangciLint, Measure-GateEslint, Measure-GateEslintRules, Measure-GatePrettier, `
+  Remove-GateAnsi, Measure-GateGolangciLint, Measure-GateEslint, Measure-GateEslintRules, Measure-GatePrettier, Measure-GateArchscan, `
   Compare-GateRatchet, ConvertTo-GateCountMap

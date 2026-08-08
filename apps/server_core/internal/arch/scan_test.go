@@ -127,6 +127,104 @@ func TestVendorTokensIgnoresAdaptersAndOwnList(t *testing.T) {
 	}
 }
 
+// TestVendorTokenIgnoresSubstringInsideWord pins the segment matcher against
+// the measured false positive: on 2026-08-08 substring matching reported 64
+// findings for "meli", and 64 of 64 were the letters inside "Timeline". The
+// fixture carries the identifier and the literal form of that word; both must
+// be silent.
+func TestVendorTokenIgnoresSubstringInsideWord(t *testing.T) {
+	got, err := arch.ScanVendorTokensSuffix("testdata", arch.VendorTokens, fixtureSuffix)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	for _, f := range got {
+		if strings.HasSuffix(f.File, "timeline_ok.go.txt") {
+			t.Fatalf("test=TestVendorTokenIgnoresSubstringInsideWord: Timeline flagged as a vendor token at %s:%d (%s)", f.File, f.Line, f.Detail)
+		}
+	}
+}
+
+// TestVendorTokenMatchesCamelSegments is the positive control for the same
+// matcher: tightening substring to segments must not walk past vendor identity
+// spelled as camel case. MercadoLivrePlugin joins two segments; meliSiteID is a
+// single segment.
+func TestVendorTokenMatchesCamelSegments(t *testing.T) {
+	got, err := arch.ScanVendorTokensSuffix("testdata", arch.VendorTokens, fixtureSuffix)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	var joined, single bool
+	for _, f := range got {
+		if !strings.HasSuffix(f.File, "segment_idents.go.txt") {
+			continue
+		}
+		if strings.Contains(f.Detail, "mercado") {
+			joined = true
+		}
+		if strings.Contains(f.Detail, "meli ") || strings.HasSuffix(f.Detail, "meli in identifier") {
+			single = true
+		}
+	}
+	if !joined {
+		t.Fatalf("test=TestVendorTokenMatchesCamelSegments: MercadoLivrePlugin not caught; got %+v", got)
+	}
+	if !single {
+		t.Fatalf("test=TestVendorTokenMatchesCamelSegments: meliSiteID not caught; got %+v", got)
+	}
+}
+
+// TestVendorTokensExemptDeclaredLayers pins the declared exemption list against
+// the guessed one it replaced. Composition roots and the plugin registry name
+// concrete vendors because that is their job; until 2026-08-08 the only
+// exemption was adapters/, and the gap produced 46 findings in production code
+// that were all the design working as intended. A test file fabricating a
+// vendor fixture is exempt for the same reason: identity as a value.
+func TestVendorTokensExemptDeclaredLayers(t *testing.T) {
+	got, err := arch.ScanVendorTokensSuffix("testdata", arch.VendorTokens, fixtureSuffix)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	for _, f := range got {
+		for _, exempt := range []string{"/composition/", "/marketplaces/registry/", "_test.go.txt"} {
+			if strings.Contains(f.File, exempt) || strings.HasSuffix(f.File, exempt) {
+				t.Fatalf("test=TestVendorTokensExemptDeclaredLayers: exempt layer flagged at %s:%d (%s)", f.File, f.Line, f.Detail)
+			}
+		}
+	}
+	// Positive control, so an exemption typo that swallows everything cannot
+	// pass: the fixture outside every exempt layer must still be caught.
+	var caught bool
+	for _, f := range got {
+		if strings.HasSuffix(f.File, "vendor_in_context.go.txt") {
+			caught = true
+		}
+	}
+	if !caught {
+		t.Fatalf("test=TestVendorTokensExemptDeclaredLayers: positive control not caught; got %+v", got)
+	}
+}
+
+// TestCountFilesSeesTheFixtureTree pins the scanned-file count: a caller that
+// prints findings alone cannot tell an empty root from a clean one, and the
+// count is what breaks the tie.
+func TestCountFilesSeesTheFixtureTree(t *testing.T) {
+	n, err := arch.CountFilesSuffix("testdata", fixtureSuffix)
+	if err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n < 10 {
+		t.Fatalf("test=TestCountFilesSeesTheFixtureTree: counted %d fixture files, want at least the 10 committed ones", n)
+	}
+	empty := t.TempDir()
+	zero, err := arch.CountFilesSuffix(empty, fixtureSuffix)
+	if err != nil {
+		t.Fatalf("count empty: %v", err)
+	}
+	if zero != 0 {
+		t.Fatalf("counted %d in an empty directory", zero)
+	}
+}
+
 // TestCrossContextInternalSeesOutsideContexts is the positive control for the
 // blindness that shipped: the composition root imported catalog/internal/postgres
 // and the detector reported zero findings, because it skipped every file that was

@@ -18,6 +18,7 @@
     "gate:typecheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane typecheck",
     "gate:lint-go": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane lint-go",
     "gate:lint-web": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane lint-web",
+    "gate:arch": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane arch",
     "gate:test-go": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane test-go",
     "gate:test-web": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane test-web",
     "dev": "npm run dev --workspace @marketplace-central/web",
