@@ -31,7 +31,7 @@ func TestFeeSyncSchedulerSkipsIneligibleInstallations(t *testing.T) {
 	}}
 	providers := schedulerProviderLookup{items: map[string]domain.ProviderDefinition{
 		"mercado_livre": {ProviderCode: "mercado_livre", DeclaredCapabilities: []string{"pricing_fee_sync"}},
-		"shopee":       {ProviderCode: "shopee", DeclaredCapabilities: []string{"inventory_sync"}},
+		"shopee":        {ProviderCode: "shopee", DeclaredCapabilities: []string{"inventory_sync"}},
 	}}
 	service := &schedulerFeeSyncStarter{}
 	job := NewFeeSyncScheduler(installations, providers, service, time.Minute)

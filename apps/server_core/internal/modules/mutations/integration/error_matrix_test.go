@@ -32,7 +32,9 @@ func TestMutationTransportErrorMatrix(t *testing.T) {
 	assert("type_not_enabled", http.MethodPost, "/mutations", `{"installation_id":"i","type":"disabled","selection":{},"intent":{},"actor":"a"}`, 422, "type_not_enabled")
 	t.Run("method_not_allowed", func(t *testing.T) {
 		status, payload := x.commandRequest(x.commands.HandleCreate, http.MethodPut, "/mutations", "")
-		if status != 405 || payload["error"].(map[string]any)["code"] != "method_not_allowed" { t.Fatalf("status=%d payload=%v", status, payload) }
+		if status != 405 || payload["error"].(map[string]any)["code"] != "method_not_allowed" {
+			t.Fatalf("status=%d payload=%v", status, payload)
+		}
 	})
 	assert("invalid_filter", http.MethodGet, "/mutations?installation_id=i&bogus=x", "", 400, "invalid_filter")
 	assert("invalid_filter_disabled_type", http.MethodGet, "/mutations?installation_id=i&type=listing_create", "", 400, "invalid_filter")

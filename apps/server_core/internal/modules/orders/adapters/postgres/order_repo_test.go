@@ -218,7 +218,7 @@ func TestOrderRepositoryRefreshKeepsMigratedLegacyIdentityUnresolved(t *testing.
 }
 
 // TestOrderRepositoryUpsertOrderDistinguishesAbsentDetailFromEmptyDetail proves
-// cancellation_detail (0027: text NOT NULL DEFAULT '') genuinely reaches NULL
+// cancellation_detail (0027: text NOT NULL DEFAULT ”) genuinely reaches NULL
 // for an absent value now that domain.MarketplaceOrder.CancellationDetail is
 // *string. Before this fix, "provider didn't send this field" and "provider
 // sent an empty string" collapsed into the same stored value — this test

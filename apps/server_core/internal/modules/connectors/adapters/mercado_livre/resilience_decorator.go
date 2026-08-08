@@ -18,10 +18,10 @@ import (
 // This file wraps the adapter's single HTTP choke point (doRawOnce, the former
 // body of doRawWithHeaders) with two independent concerns:
 //
-//   1. A per-installation token-bucket rate limiter (resilienceDecorator.bucketFor)
-//      that every outbound call funnels through, regardless of retry policy.
-//   2. An opt-in retry-with-backoff loop for HTTP 429 (resilienceDecorator.doRetryable),
-//      bounded by a max-attempts / max-total-wait budget.
+//  1. A per-installation token-bucket rate limiter (resilienceDecorator.bucketFor)
+//     that every outbound call funnels through, regardless of retry policy.
+//  2. An opt-in retry-with-backoff loop for HTTP 429 (resilienceDecorator.doRetryable),
+//     bounded by a max-attempts / max-total-wait budget.
 //
 // Scope note (read before extending): doRawWithHeaders — the shared choke point
 // consumed by doJSON/doJSONWithHeaders and, transitively, by every reader and

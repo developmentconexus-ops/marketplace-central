@@ -153,10 +153,10 @@ func TestPriceToWinRateLimitedRetriesThenExhausts(t *testing.T) {
 		AccessTokenResolver: func(context.Context, connectorsdomain.ProviderAccountRef) (string, error) {
 			return "test-token", nil
 		},
-		Now:                func() time.Time { return time.Now().UTC() },
-		MaxRetryAttempts:   2,
-		RetryBaseDelay:     1 * time.Millisecond,
-		MaxTotalRetryWait:  50 * time.Millisecond,
+		Now:               func() time.Time { return time.Now().UTC() },
+		MaxRetryAttempts:  2,
+		RetryBaseDelay:    1 * time.Millisecond,
+		MaxTotalRetryWait: 50 * time.Millisecond,
 	})
 
 	_, err := adapter.GetPriceToWin(context.Background(), pricingAccountRef(), "MLB-PRICE")

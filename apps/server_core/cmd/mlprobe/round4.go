@@ -38,10 +38,10 @@ func (p *probe) liveStatusCheck(ctx context.Context, pool *pgxpool.Pool) (active
 	activeCatalog = map[string]string{}
 
 	type liveRow struct {
-		ID                string `json:"id"`
-		Status            string `json:"status"`
-		SubStatus         []any  `json:"sub_status"`
-		CatalogProductID  any    `json:"catalog_product_id"`
+		ID               string `json:"id"`
+		Status           string `json:"status"`
+		SubStatus        []any  `json:"sub_status"`
+		CatalogProductID any    `json:"catalog_product_id"`
 	}
 	var allRows []liveRow
 

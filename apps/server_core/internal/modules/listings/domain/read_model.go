@@ -120,23 +120,23 @@ type ICMWorstCaseByUF struct {
 }
 
 type ListingReadModel struct {
-	ListingID            string              `json:"listing_id"`
-	InstallationID       string              `json:"installation_id"`
-	Provider             string              `json:"provider"`
-	ProviderListingID    string              `json:"provider_listing_id"`
+	ListingID         string `json:"listing_id"`
+	InstallationID    string `json:"installation_id"`
+	Provider          string `json:"provider"`
+	ProviderListingID string `json:"provider_listing_id"`
 	// A provider listing with variations produces one row per variation, all
 	// carrying the same provider_listing_id. Without the variation the screen
 	// shows N identical-looking rows the operator cannot tell apart. Absent
 	// (NoVariationID) stays null instead of a fabricated "-".
-	VariationID          *string             `json:"variation_id"`
-	Title                string              `json:"title"`
-	ListingType          *ListingType        `json:"listing_type"`
-	Status               ListingStatus       `json:"status"`
-	Link                 ListingLink         `json:"link"`
-	Price                *Money              `json:"price"`
-	PublishedQuantity    *int                `json:"published_quantity"`
-	SyncState            ListingSyncState    `json:"sync_state"`
-	SyncError            *ReadSyncError      `json:"sync_error"`
+	VariationID       *string          `json:"variation_id"`
+	Title             string           `json:"title"`
+	ListingType       *ListingType     `json:"listing_type"`
+	Status            ListingStatus    `json:"status"`
+	Link              ListingLink      `json:"link"`
+	Price             *Money           `json:"price"`
+	PublishedQuantity *int             `json:"published_quantity"`
+	SyncState         ListingSyncState `json:"sync_state"`
+	SyncError         *ReadSyncError   `json:"sync_error"`
 	// quality_score e sales_30d saíram do read model exposto na API (ADR-C3,
 	// Task 8): sem produtor hoje. quality_score continua escrito na tabela
 	// listings pelo leitor de saúde do anúncio (P4, dono via ON CONFLICT) e

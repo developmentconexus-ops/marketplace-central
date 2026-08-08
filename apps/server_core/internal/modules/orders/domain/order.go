@@ -41,10 +41,10 @@ type ListingIdentity struct {
 }
 
 type MarketplaceOrder struct {
-	InstallationID       string                    `json:"installation_id"`
-	ProviderCode         string                    `json:"provider_code"`
-	ProviderOrderID      string                    `json:"provider_order_id"`
-	ProviderStatus       string                    `json:"provider_status,omitempty"`
+	InstallationID  string `json:"installation_id"`
+	ProviderCode    string `json:"provider_code"`
+	ProviderOrderID string `json:"provider_order_id"`
+	ProviderStatus  string `json:"provider_status,omitempty"`
 	// ProviderStatusDetail e CancellationDetail são *string, não string: o
 	// provider distingue "não mandou o campo" de "mandou vazio", e string
 	// colapsa os dois em "". Foi esse colapso que fez cancellation_detail
