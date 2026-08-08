@@ -836,13 +836,18 @@ zero hand-written exceptions, and the sentence becomes true.
   order fixed: pack → role/repo bindings → slice card (variable, always last); mid-milestone
   changes = dated addenda appended after the card, folded at milestone boundary. The ledger
   records `pack_version` + body hash per dispatch.
-- **Deterministic lane tooling:** vendored at `scripts/harness/dispatch/`
-  (`New-DispatchPrompt.ps1` assembler · `Invoke-CodexDispatch.ps1` dispatcher ·
-  `Test-HarnessPreflight.ps1` · `HarnessDispatch.psm1` · `roles.psd1` · Pester tests),
-  hash-locked by `scripts.lock.json` — every entrypoint fail-closes on hash mismatch
-  (LOCK-MISMATCH = re-vendor from the harness plugin, NEVER re-lock locally;
-  `Update-ScriptLock.ps1` refuses to run outside plugin source). Scripts validate FORM only
-  (max verdict `FORM-COMPLETE`); merit stays with the review ladder.
+- **Deterministic lane tooling: RETIRED 2026-08-08.** It was vendored at
+  `scripts/harness/dispatch/` (899 lines: `New-DispatchPrompt.ps1` assembler ·
+  `Invoke-CodexDispatch.ps1` dispatcher · `Test-HarnessPreflight.ps1` ·
+  `HarnessDispatch.psm1` · `roles.psd1` · Pester tests), hash-locked by
+  `scripts.lock.json`. It assembled and dispatched Codex prompt-packs, and the crew
+  stopped being Codex: one commit touched the tree in the 90 days before its deletion,
+  the last on 2026-07-16. Nothing outside the tree imported it — not `harness.ps1`, not
+  `package.json`, not a workflow. Dispatch now goes through the `codex-dispatch` skill
+  (§ above) and, in practice, through Claude. The prompt-pack rules it enforced
+  mechanically survive as prose in CORE §4 and here; nothing enforces them
+  mechanically today, which is the honest state and not a hidden one. Its ledgers stay
+  in `.mnfs/` as history.
 - **Dispatch registry:** append-only JSONL, lifecycle `assembled → started →
   completed/failed/cancelled`; assembly alone never yields a complete row — only the
   dispatcher promotes to `started`. Location: `output/harness/dispatch-registry.jsonl`
@@ -972,6 +977,7 @@ contradicted the same mission's ratified three-parallel-lane plan. Narrowed to �
 ## Amendment log
 
 ```
+2026-08-08 · §12 (deterministic lane tooling) · ratified · `scripts/harness/dispatch/` (899 lines) DELETED, clause rewritten as a retirement notice. Measured, not assumed: 1 commit in 90 days (last 2026-07-16), and nothing outside the tree imported it — not `harness.ps1`, not `package.json`, not a workflow. The crew stopped being Codex; the tooling assembled Codex prompt-packs. The prompt-pack rules survive as prose only, which is now stated instead of implied. First of a measured retirement sequence: the verification lanes migrate to the native toolchain (`ci.yml`, Go arch tests, eslint) family by family, and `Policy.psm1` dies when the last one lands — the DECLARATION that keeps its value is `contracts/governance/*.json`, never the PowerShell that reads it.
 2026-08-05 · §13 · ratified · five process decisions extracted from the ADR series (were ADR-09/10/11/12/14 across MIS-001/003/007); the architecture series is renumbered globally and no longer carries harness-process rules — docs/architecture/decisions/_citations/RENUMBERING-REGISTRY.md
 2026-07-15 · all sections · ratified · profile extracted from combined docs/HARNESS.md (operator-ratified doctrine) at A′ restructure; swap to CORE+profile binding scheduled for M-01 close
 2026-07-15 · §2 · ratified · governance lane: run from clean detached worktree + full 40-hex BaseSha (field finding: main-checkout sweep of .claude/worktrees false-fails; short sha = GOV_SEMANTIC_DRIFT base-sha-invalid) — memory/governance-lane-clean-worktree.md
