@@ -125,9 +125,17 @@ function Invoke-GateGofmt {
 
   # Batched because the argument list is a few hundred paths and Windows caps the
   # command line at 32 KB.
+  #
+  # Resolved against the repository root, not left relative: `git ls-files` prints
+  # paths relative to that root, while `gofmt` resolves them against the process's
+  # working directory. Those agree only when the gate is launched from the root,
+  # which is what `npm run gate` and the CI step both happen to do -- so the
+  # disagreement would surface as a pile of "file does not exist" lines counted as
+  # violations the first time someone ran it from anywhere else.
   $output = New-Object System.Text.StringBuilder
   for ($index = 0; $index -lt $discovered.Count; $index += 200) {
-    $batch = @($discovered[$index..([Math]::Min($index + 199, $discovered.Count - 1))])
+    $batch = @($discovered[$index..([Math]::Min($index + 199, $discovered.Count - 1))] |
+      ForEach-Object { Join-Path $repositoryRoot $_ })
     $result = & gofmt -l @batch 2>&1
     foreach ($line in @($result)) { [void]$output.AppendLine([string]$line) }
   }
