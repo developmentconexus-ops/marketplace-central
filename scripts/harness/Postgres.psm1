@@ -273,7 +273,13 @@ function Invoke-HarnessPostgresLifecycle {
   }
   $expectedMigrationCount = [int]$RunSpec.ExpectedMigrationCount
   if (@($TestArguments).Count -eq 0) {
-    $TestArguments = @('test', '-tags=integration') + @(Get-HarnessIntegrationTestPackages -RepositoryRoot $RunSpec.RepositoryRoot) + @('-count=1')
+    # -v is not decoration. Without it `go test` prints one `ok <pkg>` line per
+    # package and nothing else, and this function used to discard even that: on
+    # success `$tests.Stdout` was never read, never returned, never written to
+    # the run directory. A lane that compiled zero test packages and one that ran
+    # every integration test produced byte-identical output -- `status=passed`.
+    # The per-test lines are what make the count below a measurement.
+    $TestArguments = @('test', '-tags=integration', '-v') + @(Get-HarnessIntegrationTestPackages -RepositoryRoot $RunSpec.RepositoryRoot) + @('-count=1')
   }
   $dockerEnvironment = Copy-HarnessEnvironment $BaseEnvironment
   $dockerEnvironment['POSTGRES_PASSWORD'] = [string]$RunSpec.Password
@@ -291,6 +297,9 @@ function Invoke-HarnessPostgresLifecycle {
   $targetURL = ''
   $failureDiagnosticTokens = @()
   $heldConnectionConfirmed = $false
+  $testsRun = -1
+  $testsPassed = -1
+  $testsFailed = -1
 
   function Invoke-Docker {
     param(
@@ -416,9 +425,25 @@ function Invoke-HarnessPostgresLifecycle {
       if (-not $heldConnectionConfirmed) { Set-Primary 'HPG_TEST_FAILED' 1; break }
     }
     $tests = Invoke-Go @($TestArguments)
+    $testOutput = @($tests.Stdout, $tests.Stderr) -join "`n"
+    # Subtest lines are indented, top-level ones are not, so both anchors allow
+    # leading whitespace. Subtests are counted as units of their own: a run that
+    # executed one parent and forty children did forty-one things.
+    $testsRun = @([regex]::Matches($testOutput, '(?m)^\s*=== RUN\s')).Count
+    $testsPassed = @([regex]::Matches($testOutput, '(?m)^\s*--- PASS:')).Count
+    $testsFailed = @([regex]::Matches($testOutput, '(?m)^\s*--- FAIL:')).Count
     if ($tests.ExitCode -ne 0) {
-      $failureDiagnosticTokens = @(Get-HarnessPostgresFailureTokens (@($tests.Stdout, $tests.Stderr) -join "`n"))
+      $failureDiagnosticTokens = @(Get-HarnessPostgresFailureTokens $testOutput)
       Set-Primary 'HPG_TEST_FAILED' $tests.ExitCode
+      break
+    }
+    # `go test` exits 0 over a package set that contains no tests, and over a set
+    # that is empty. Both are the same green as a full run. This is the only
+    # place that can tell them apart, because it is the only place that holds the
+    # output.
+    if ($testsRun -eq 0) {
+      $failureDiagnosticTokens = @('tests_run=0')
+      Set-Primary 'HPG_TEST_VACUOUS' 1
       break
     }
     } while ($false)
@@ -461,6 +486,9 @@ function Invoke-HarnessPostgresLifecycle {
     HostPort = $hostPort
     FailureDiagnosticTokens = @($failureDiagnosticTokens)
     HeldConnectionConfirmed = $heldConnectionConfirmed
+    TestsRun = $testsRun
+    TestsPassed = $testsPassed
+    TestsFailed = $testsFailed
   }
 }
 

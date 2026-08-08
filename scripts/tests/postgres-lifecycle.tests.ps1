@@ -74,6 +74,7 @@ try {
   Assert-True ($happy.Result.MigrationsAppliedFirst -eq $happy.ExpectedMigrationCount) 'first migration count is not exact canonical inventory'
   Assert-True ($happy.Result.MigrationsAppliedSecond -eq 0) 'second migration run is not idempotent'
   Assert-True (@($happy.Result.ResourceInventory).Count -eq 0) 'happy lifecycle reported leaked resources'
+  Assert-True ($happy.Result.TestsRun -eq 2 -and $happy.Result.TestsPassed -eq 2 -and $happy.Result.TestsFailed -eq 0) "happy lifecycle did not count the tests it ran: run=$($happy.Result.TestsRun) passed=$($happy.Result.TestsPassed) failed=$($happy.Result.TestsFailed)"
   $drop = @($happy.Calls | Where-Object operation -eq 'drop')[0]
   Assert-True (($drop.args -join ' ') -match 'DROP DATABASE' -and ($drop.args -join ' ') -match 'WITH \(FORCE\)') 'cleanup does not force-drop active connections'
 
@@ -135,6 +136,16 @@ try {
   $runs += $dropRemains
   Assert-True (@($dropRemains.Result.CleanupReasonCodes) -contains 'HPG_DATABASE_DROP_FAILED') 'remaining database after successful DROP was not detected'
   Assert-True (@($dropRemains.Calls.operation) -contains 'drop-verify') 'database absence was not verified through maintenance database'
+
+  # `go test` exits 0 over a package set with no tests in it. Every other step of
+  # this lifecycle succeeds here -- container, migrations, cleanup -- so before
+  # the count existed this run was indistinguishable from the happy one above.
+  $vacuous = Invoke-ProbeLifecycle '' @{ HARNESS_POSTGRES_PROBE_TEST_COUNT = '0' }
+  $runs += $vacuous
+  Assert-True ($vacuous.Result.ExitCode -ne 0) 'a run that executed zero tests reported success'
+  Assert-True ($vacuous.Result.PrimaryReasonCode -eq 'HPG_TEST_VACUOUS') "zero-test run lacks stable reason: $($vacuous.Result.PrimaryReasonCode)"
+  Assert-True (@($vacuous.Result.FailureDiagnosticTokens) -contains 'tests_run=0') 'zero-test run is not attributable from its tokens'
+  Assert-True (@($vacuous.Calls.operation) -contains 'drop' -and @($vacuous.Calls.operation) -contains 'remove') 'vacuous run skipped cleanup'
 
   $testsFail = Invoke-ProbeLifecycle 'tests'
   $runs += $testsFail

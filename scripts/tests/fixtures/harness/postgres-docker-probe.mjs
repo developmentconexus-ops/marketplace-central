@@ -113,6 +113,19 @@ if (failures.includes(operation)) {
   process.exit(operation === "tests" ? 17 : 29);
 }
 
+if (operation === "tests") {
+  // `go test -v` prints one `=== RUN` per test and one `--- PASS` per result, and
+  // the lifecycle counts those lines. A fixture that printed nothing modelled a
+  // run that executed no tests -- which is what this probe did before, and what
+  // the lifecycle now refuses to call a pass. Zero is reachable on purpose via
+  // HARNESS_POSTGRES_PROBE_TEST_COUNT=0, which is the vacuity fixture.
+  const count = Number.parseInt(process.env.HARNESS_POSTGRES_PROBE_TEST_COUNT ?? "2", 10);
+  for (let index = 1; index <= count; index += 1) {
+    process.stdout.write(`=== RUN   TestProbe${index}\n--- PASS: TestProbe${index} (0.00s)\n`);
+  }
+  process.stdout.write(count > 0 ? "PASS\nok  \tprobe\t0.01s\n" : "testing: warning: no tests to run\nPASS\nok  \tprobe\t0.01s [no tests to run]\n");
+}
+
 if (operation === "preflight-name" && process.env.HARNESS_POSTGRES_PROBE_NAME_CONFLICT === "1") {
   process.stdout.write("conflicting-name\n");
 }
