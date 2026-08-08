@@ -212,6 +212,24 @@ function Invoke-GateLintGo {
   $baselineDocument = Get-Content -LiteralPath $baselinePath -Raw | ConvertFrom-Json
   $baseline = ConvertTo-GateCountMap -Object $baselineDocument.'golangci-lint'.by_linter
 
+  # The analysed file set is a function of the build tags in force, so the count
+  # is a function of the platform. Measured 2026-08-08: the Linux runner reports
+  # errcheck=30 and this Windows host reports 28, because gcc is present there
+  # and absent here, so `//go:build cgo` selects `oracle_cgo.go` and
+  # `open_cgo.go` on one and their `!cgo` twins on the other.
+  #
+  # The baseline is therefore pinned to the enforcing platform. A run elsewhere
+  # still blocks on an increase -- an increase is real everywhere -- but its
+  # shrinks are not evidence of anything, and must not be printed as though they
+  # were. Fewer findings because fewer files compiled is the same lie as a green
+  # suite that ran nothing, one level up.
+  $goos = (& go env GOOS 2>$null)
+  $cgo = (& go env CGO_ENABLED 2>$null)
+  $platform = "goos=$goos cgo=$cgo"
+  $baselinePlatform = "goos=$($baselineDocument.'golangci-lint'.measured_on_goos) cgo=$($baselineDocument.'golangci-lint'.measured_on_cgo)"
+  $platformMatches = ($platform -eq $baselinePlatform)
+  Write-Host "$platform baseline_platform=$baselinePlatform comparable=$platformMatches"
+
   $reportPath = Join-Path $logDirectory 'golangci.json'
   if (Test-Path -LiteralPath $reportPath) { Remove-Item -LiteralPath $reportPath -Force }
   # `go run <module>@<version>` rather than an installed binary or a CI-only
@@ -254,7 +272,13 @@ function Invoke-GateLintGo {
   foreach ($line in @($measurement.ByLinter.Keys | Sort-Object)) {
     Write-Host ("  {0,-14} {1,4}  baseline {2,4}" -f $line, $measurement.ByLinter[$line], $(if ($baseline.ContainsKey($line)) { $baseline[$line] } else { 'n/a' }))
   }
-  foreach ($line in @($comparison.Decreased)) { Write-Host "shrink: $line -- commit the lower baseline in this PR" }
+  foreach ($line in @($comparison.Decreased)) {
+    if ($platformMatches) {
+      Write-Host "shrink: $line -- commit the lower baseline in this PR"
+    } else {
+      Write-Host "lower here, NOT a shrink: $line -- measured on $platform, baseline on $baselinePlatform. Different build tags select different files; do not commit this number."
+    }
+  }
   if (-not $comparison.Passed) {
     foreach ($line in @($comparison.Increased)) { Write-Host "increase: $line" }
     foreach ($line in @($comparison.Unknown)) { Write-Host "unknown linter, absent from the baseline: $line" }

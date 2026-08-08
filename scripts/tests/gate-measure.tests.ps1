@@ -159,6 +159,13 @@ Assert-True ($gateSource -match '\$measurement\.Passed -le 0') `
   'the vitest lane no longer fails on a run with no stated result'
 Assert-True ($gateSource -match '\$discovered\.Count -eq 0') `
   'the gofmt lane no longer fails when the file filter reaches nothing'
+# Measured 2026-08-08: linux/cgo=1 reports errcheck=30, windows/cgo=0 reports 28.
+# Without this, a Windows run reports a shrink it did not earn and someone
+# commits a baseline the enforcing platform cannot meet.
+Assert-True ($gateSource -match '\$platformMatches') `
+  'the lint lane no longer distinguishes a real shrink from a smaller analysed file set'
+Assert-True ($gateSource -match 'NOT a shrink') `
+  'the lint lane once again prints a cross-platform decrease as though it were progress'
 Assert-True ($gateSource -match '\$gofmtExitFailures -gt 0') `
   'the gofmt lane no longer fails when gofmt itself exits non-zero'
 Assert-True ($gateSource -match 'Test-Path -LiteralPath \(Join-Path \$repositoryRoot \$_\) -PathType Leaf') `
