@@ -36,10 +36,25 @@ permissions:
   contents: read
 
 jobs:
+  # HARNESS-PROFILE §2 binds GOCACHE/GOMODCACHE to an ABSOLUTE path for every Go
+  # command. The profile's own §2 correction of 2026-07-28 is the reason the literal
+  # below is not the `GOCACHE=.gocache` that AGENTS.md still prints: a chip copied
+  # that relative form and got an 83-byte EXIT 1 with zero `=== RUN` -- vacuous green
+  # handed over by the doctrine itself. The relative literal was struck from the
+  # profile; only the absolute binding survives.
+  #
+  # Declared at JOB level, which puts it in the environment before setup-go runs.
+  # setup-go resolves its cache paths from `go env GOCACHE`/`GOMODCACHE`, so
+  # declaring it here means the action saves and restores the same directory the
+  # lane compiles into. Setting it after setup-go would leave the action caching a
+  # path nothing writes to -- honouring the rule while quietly disabling the cache.
   lint-go:
     name: lint-go
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      GOCACHE: ${{ github.workspace }}/apps/server_core/.gocache
+      GOMODCACHE: ${{ github.workspace }}/apps/server_core/.gomodcache
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -84,6 +99,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [lint-go]
+    env:
+      GOCACHE: ${{ github.workspace }}/apps/server_core/.gocache
+      GOMODCACHE: ${{ github.workspace }}/apps/server_core/.gomodcache
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -94,11 +112,27 @@ jobs:
         working-directory: apps/server_core
         run: go build ./...
 
+      # HARNESS-PROFILE §11 defines the deterministic L0 lane as `go build ./...`
+      # AND `go vet ./...`. Only the build was here. The test lane is not a
+      # substitute: `go test` with no -vet flag runs a curated subset of the vet
+      # checks (`go help testflag`), so a defect outside that subset -- and vet's
+      # own checks over non-test code -- would leave the aggregator green.
+      #
+      # Same job rather than a new one: L0 is one lane in the profile, and adding a
+      # job would move the `needs`/EXPECTED enumerations that the aggregator's
+      # topology step exists to keep equal. A step is the cheaper true statement.
+      - name: go vet ./...
+        working-directory: apps/server_core
+        run: go vet ./...
+
   test-go-unit:
     name: test-go-unit
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: [build-go]
+    env:
+      GOCACHE: ${{ github.workspace }}/apps/server_core/.gocache
+      GOMODCACHE: ${{ github.workspace }}/apps/server_core/.gomodcache
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7

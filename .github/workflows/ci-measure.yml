@@ -44,6 +44,11 @@ jobs:
     name: integration-lane (measurement only)
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # HARNESS-PROFILE §2: absolute, and declared before setup-go so the action
+    # caches the same directory the lane uses. See the note in ci.yml.
+    env:
+      GOCACHE: ${{ github.workspace }}/apps/server_core/.gocache
+      GOMODCACHE: ${{ github.workspace }}/apps/server_core/.gomodcache
     steps:
       - uses: actions/checkout@v7
         with:
@@ -96,6 +101,12 @@ jobs:
           code=${PIPESTATUS[0]}
           set -e
           echo "governance_exit=$code governance_seconds=$((SECONDS - start))"
+          # The integration step above ends in `exit "$code"` and this one did not,
+          # so a red governance lane exited with the status of `echo` and the whole
+          # measurement reported green -- in the single run whose entire purpose is
+          # to establish whether that lane is red. The evidence step is `always()`,
+          # so propagating costs no artifact.
+          exit "$code"
 
       - name: evidence
         if: ${{ always() }}
