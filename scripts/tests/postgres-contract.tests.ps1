@@ -23,7 +23,7 @@ foreach ($writePattern in @(('CRE' + 'ATE\s'), ('INS' + 'ERT\s'), ('UPD' + 'ATE\
 }
 Assert-True ($moduleSource -match 'HeldConnectionConfirmed') 'held connection confirmation is absent from lifecycle result'
 
-$node = [IO.Path]::GetFullPath((Get-Command node -CommandType Application -ErrorAction Stop).Source)
+$node = [IO.Path]::GetFullPath((Get-Command node -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source)
 $runId = '0123456789abcdef0123456789abcdef'
 $password = 'fixture-' + [guid]::NewGuid().ToString('N')
 $log = Join-Path ([IO.Path]::GetTempPath()) ('postgres-contract-' + [guid]::NewGuid().ToString('N') + '.jsonl')

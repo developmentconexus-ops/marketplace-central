@@ -2,7 +2,7 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $serverRoot = Join-Path $repoRoot 'apps/server_core'
-$go = (Get-Command go -CommandType Application -ErrorAction Stop).Source
+$go = (Get-Command go -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
 $environment = @{
   GOCACHE = Join-Path $serverRoot '.gocache'
   GOMODCACHE = Join-Path $serverRoot '.gomodcache'

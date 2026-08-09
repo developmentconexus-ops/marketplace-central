@@ -13,7 +13,7 @@ if (-not (Test-Path -LiteralPath $module -PathType Leaf)) {
 }
 Import-Module $module -Force
 
-$node = (Get-Command node -CommandType Application -ErrorAction Stop).Source
+$node = (Get-Command node -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
 $originalLocation = (Get-Location).Path
 $originalCache = [Environment]::GetEnvironmentVariable('GOCACHE', 'Process')
 $baseEnvironment = [System.Collections.Generic.Dictionary[string,string]]::new([StringComparer]::OrdinalIgnoreCase)

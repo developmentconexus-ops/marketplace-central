@@ -10,6 +10,9 @@ Assert-Equal (ConvertTo-DevLocalEnvironmentValue '"quoted value"') 'quoted value
 Assert-Equal (ConvertTo-DevLocalEnvironmentValue "'quoted value'") 'quoted value' 'single quotes removed'
 Assert-Equal (ConvertTo-DevLocalEnvironmentValue 'abc=def') 'abc=def' 'equals preserved'
 
+# Ensure-DevLocalDockerPath is a no-op off Windows (guarded by $IsWindows in the product);
+# the Docker Desktop PATH-repair scenario only has observable behavior there.
+if ($IsWindows) {
 $dockerPathTestRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('mpc-dev-local-docker-path-test-' + [guid]::NewGuid())
 $originalProcessPath = $env:PATH
 $originalProgramFiles = $env:ProgramFiles
@@ -42,6 +45,9 @@ try {
   $env:PATH = $originalProcessPath
   $env:ProgramFiles = $originalProgramFiles
   Remove-Item -LiteralPath $dockerPathTestRoot -Recurse -Force -ErrorAction SilentlyContinue
+}
+} else {
+  Write-Host 'SKIP docker-desktop PATH-repair scenario (Windows-only product behavior)'
 }
 
 $state = Join-Path ([System.IO.Path]::GetTempPath()) ('mpc-dev-local-test-' + [guid]::NewGuid())
