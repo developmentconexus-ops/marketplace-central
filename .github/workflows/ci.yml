@@ -102,12 +102,15 @@ jobs:
       #
       # GATE_BASE_SHA feeds exactly one check, API<->SDK atomicity, which is a
       # statement about a change and needs a base to diff against. On a PR that
-      # is the PR base; on a push to main it falls back to the pushed SHA, an
-      # empty diff, and the lane's counts line says so.
+      # is the PR base; on a push it is the pre-push tip (event.before), so a
+      # direct push to main that splits the API from the SDK still fails.
+      # event.before is the all-zeros SHA on a newly created ref -- there the
+      # expression falls through to the pushed SHA, an empty diff, and the
+      # lane's counts line says so.
       - name: governance
         shell: pwsh
         env:
-          GATE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+          GATE_BASE_SHA: ${{ github.event.pull_request.base.sha || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || github.sha }}
         run: ./scripts/gate.ps1 -Lane governance
 
   lint-frontend:

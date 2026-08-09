@@ -336,6 +336,24 @@ $boundaryGreenMeasured = Measure-GateBoundary -Text $boundaryGreen
 Assert-True ($boundaryGreenMeasured.Files -eq 782) 'a passing boundary run lost its file count'
 Assert-True ($boundaryGreenMeasured.Total -eq 0) "a passing boundary run measured $($boundaryGreenMeasured.Total) violations, not zero"
 
+# A red run whose origin block went missing (or half-parsed) still reports a
+# violation total. The measurer returns what it saw -- an empty origin map next
+# to a nonzero total -- and the LANE must refuse the mismatch, because the
+# ratchet compares origins and an all-zero map would sail under any baseline.
+$boundaryNoOrigins = @"
+=== RUN   TestModuleBoundaryADR023
+    module_boundary_arch_test.go:153: boundary_files=782
+    module_boundary_arch_test.go:228: 234 violation(s)
+        ADR-023 §2 module boundary violated
+--- FAIL: TestModuleBoundaryADR023 (0.10s)
+FAIL
+"@
+$boundaryNoOriginsMeasured = Measure-GateBoundary -Text $boundaryNoOrigins
+Assert-True ($boundaryNoOriginsMeasured.Total -eq 234) 'the originless fixture lost its violation total'
+Assert-True (@($boundaryNoOriginsMeasured.ByOrigin.Keys).Count -eq 0) 'the originless fixture grew origins from nowhere'
+Assert-True ($gateSourceForLint -match '\$originTotal -ne \$measurement\.Total') `
+  'the boundary lane no longer rejects a violation total that the by-origin counts do not account for'
+
 # A compile error prints neither the log line nor a verdict. Both facts default
 # to -1: "nothing is known" must not read as "walked nothing" or "found nothing".
 $boundaryDead = Measure-GateBoundary -Text "FAIL	marketplace-central/apps/server_core/internal/composition [build failed]"

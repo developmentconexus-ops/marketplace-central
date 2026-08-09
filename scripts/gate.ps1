@@ -363,6 +363,15 @@ function Invoke-GateBoundary {
       -Reason "go test exited $($result.ExitCode), which is neither a pass nor a red test."
   }
 
+  # The ratchet compares ByOrigin, not Total. If the origin block goes missing
+  # or half-parses while violations still exist, the measured map degrades to
+  # zeros and the ratchet would pass on a measurement it never actually took.
+  $originTotal = [int](@($measurement.ByOrigin.Values | Measure-Object -Sum).Sum)
+  if ($originTotal -ne $measurement.Total) {
+    return New-GateVerdict -Lane 'boundary' -Passed $false -Counts $counts `
+      -Reason "the by-origin counts sum to $originTotal but the detector reported $($measurement.Total) violation(s); the origin block was missing or only partially parsed, so there is no measurement to ratchet."
+  }
+
   $measuredMap = @{}
   foreach ($key in @($baseline.Keys)) { $measuredMap[$key] = 0 }
   foreach ($key in @($measurement.ByOrigin.Keys)) { $measuredMap[$key] = $measurement.ByOrigin[$key] }
