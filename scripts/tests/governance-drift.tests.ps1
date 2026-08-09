@@ -282,6 +282,26 @@ func bad() {
   Assert-True ('GOV_CONTEXT_UNREGISTERED' -in @($orphanResult.Violations.ErrorCode)) "missing GOV_CONTEXT_UNREGISTERED; actual=$(@($orphanResult.Violations.ErrorCode) -join ',')"
   Assert-True ('orphan' -in @($orphanResult.Violations.Id)) "GOV_CONTEXT_UNREGISTERED did not name the directory; actual=$(@($orphanResult.Violations.Id) -join ',')"
 
+  # GOV_MODULE_LAYER: a cross-module import that lands on adapters/ is coupling
+  # with an extra step, not translation (ADR-023 §2). Policy.psm1:378-382. The file
+  # sits in domain/, not application/, so GOV_APPLICATION_IMPORT stays out of the
+  # blast radius and the assertion isolates the code under test. The source module
+  # must be DECLARED (Policy.psm1:370 skips undeclared sources); orders is, at
+  # contracts/governance/modules.json:125.
+  $layerFixture = New-PositiveFixture; $fixtures.Add($layerFixture)
+  Write-FixtureFile $layerFixture 'apps/server_core/internal/modules/orders/domain/uses_catalog_adapters.go' "package domain`n`nimport _ `"marketplace-central/apps/server_core/internal/modules/catalog/adapters/postgres`"`n"
+  $layerResult = Test-GovernanceDrift -RepositoryRoot $layerFixture
+  Assert-True (-not $layerResult.Passed) 'cross-module adapters import produced no finding'
+  Assert-True ('GOV_MODULE_LAYER' -in @($layerResult.Violations.ErrorCode)) "expected GOV_MODULE_LAYER, got: $(@($layerResult.Violations.ErrorCode) -join ',')"
+
+  # GOV_POSTGRES_DRIVER: database/sql under adapters/postgres bypasses pgdb.
+  # Policy.psm1:412-417.
+  $driverFixture = New-PositiveFixture; $fixtures.Add($driverFixture)
+  Write-FixtureFile $driverFixture 'apps/server_core/internal/modules/orders/adapters/postgres/uses_database_sql.go' "package postgres`n`nimport _ `"database/sql`"`n"
+  $driverResult = Test-GovernanceDrift -RepositoryRoot $driverFixture
+  Assert-True (-not $driverResult.Passed) 'database/sql under adapters/postgres produced no finding'
+  Assert-True ('GOV_POSTGRES_DRIVER' -in @($driverResult.Violations.ErrorCode)) "expected GOV_POSTGRES_DRIVER, got: $(@($driverResult.Violations.ErrorCode) -join ',')"
+
   Assert-True ($reviewFailures.Count -eq 0) ($reviewFailures -join '; ')
 
   $invariants = Get-Content -Raw (Join-Path $positive 'contracts/governance/invariants.json') | ConvertFrom-Json
