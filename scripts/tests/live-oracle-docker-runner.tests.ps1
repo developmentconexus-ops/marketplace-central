@@ -1,37 +1,46 @@
 $ErrorActionPreference = 'Stop'
 
-if (-not (Get-Module -ListAvailable -Name Pester)) { throw 'Pester is required for live Oracle Docker runner tests' }
-Import-Module Pester -ErrorAction Stop
+# -MinimumVersion matters: Windows ships Pester 3.4.0 under Program Files, and
+# an unqualified import can bind Mock/Assert-MockCalled to it even while the
+# run itself executes under v5+ -- two Pester versions in one session.
+if (-not (Get-Module -ListAvailable -Name Pester | Where-Object { $_.Version.Major -ge 5 })) { throw 'Pester v5+ is required for live Oracle Docker runner tests' }
+Get-Module Pester | Where-Object { $_.Version.Major -lt 5 } | Remove-Module -Force
+Import-Module Pester -MinimumVersion 5.0 -ErrorAction Stop
 
-$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-. (Join-Path $repoRoot 'scripts/run-live-oracle-docker.ps1')
+# Pester v5+ separates discovery from run: a top-level dot-source happens at
+# discovery and its functions are gone by the time an It block runs. Everything
+# the tests call must therefore load inside BeforeAll.
+BeforeAll {
+  $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+  . (Join-Path $repoRoot 'scripts/run-live-oracle-docker.ps1')
 
-function Assert-RunnerCondition {
-  param([bool]$Condition, [string]$Message)
-  if (-not $Condition) { throw $Message }
-}
+  function Assert-RunnerCondition {
+    param([bool]$Condition, [string]$Message)
+    if (-not $Condition) { throw $Message }
+  }
 
-function New-CredentialFixtureFile {
-  param([string[]]$Lines)
+  function New-CredentialFixtureFile {
+    param([string[]]$Lines)
 
-  $path = [IO.Path]::GetTempFileName()
-  Set-Content -LiteralPath $path -Value $Lines -Encoding utf8
-  $path
-}
+    $path = [IO.Path]::GetTempFileName()
+    Set-Content -LiteralPath $path -Value $Lines -Encoding utf8
+    $path
+  }
 
-function Invoke-WithoutSankhyaCallerConnectionValues {
-  param([Parameter(Mandatory)][scriptblock]$Action)
+  function Invoke-WithoutSankhyaCallerConnectionValues {
+    param([Parameter(Mandatory)][scriptblock]$Action)
 
-  $original = [ordered]@{}
-  try {
-    foreach ($key in $script:CallerConnectionKeys) {
-      $original[$key] = [Environment]::GetEnvironmentVariable($key, 'Process')
-      [Environment]::SetEnvironmentVariable($key, $null, 'Process')
-    }
-    & $Action
-  } finally {
-    foreach ($key in $script:CallerConnectionKeys) {
-      [Environment]::SetEnvironmentVariable($key, $original[$key], 'Process')
+    $original = [ordered]@{}
+    try {
+      foreach ($key in $script:CallerConnectionKeys) {
+        $original[$key] = [Environment]::GetEnvironmentVariable($key, 'Process')
+        [Environment]::SetEnvironmentVariable($key, $null, 'Process')
+      }
+      & $Action
+    } finally {
+      foreach ($key in $script:CallerConnectionKeys) {
+        [Environment]::SetEnvironmentVariable($key, $original[$key], 'Process')
+      }
     }
   }
 }
@@ -112,7 +121,7 @@ Describe 'Docker live Oracle runner' {
       try { Invoke-WithoutSankhyaCallerConnectionValues { Invoke-LiveOracleDockerRunner -EnvFilePath $fixture } | Out-Null } catch { $errorMessage = $_.Exception.Message }
 
       Assert-RunnerCondition ($errorMessage -eq 'live Oracle .env unsupported_key=MPC_SANKHYA_ORACLE_TNS_ADMIN') 'runner did not reject the unknown reserved local key first'
-      Assert-MockCalled -CommandName Test-LiveOracleDockerAvailable -Times 0 -Exactly
+      Should -Invoke -CommandName Test-LiveOracleDockerAvailable -Times 0 -Exactly
     } finally { Remove-Item -LiteralPath $fixture -Force }
   }
 
@@ -124,7 +133,7 @@ Describe 'Docker live Oracle runner' {
       try { Invoke-WithoutSankhyaCallerConnectionValues { Invoke-LiveOracleDockerRunner -EnvFilePath $fixture } | Out-Null } catch { $errorMessage = $_.Exception.Message }
 
       Assert-RunnerCondition ($errorMessage -eq 'live Oracle .env unsupported_key=MPC_ORACLE_USERNAME') 'runner did not reject the generic local alias first'
-      Assert-MockCalled -CommandName Test-LiveOracleDockerAvailable -Times 0 -Exactly
+      Should -Invoke -CommandName Test-LiveOracleDockerAvailable -Times 0 -Exactly
     } finally { Remove-Item -LiteralPath $fixture -Force }
   }
 

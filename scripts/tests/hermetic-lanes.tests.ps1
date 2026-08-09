@@ -50,8 +50,12 @@ try {
   if ($integration.ExitCode -ne 0 -or $integration.Output -notmatch 'target=ephemeral-postgres' -or $integration.Output -notmatch 'status=ready') { throw 'integration preflight must be contact-free and ready' }
   $browser = Invoke-Harness @('-Command', 'browser', '-PreflightOnly')
   if ($browser.ExitCode -ne 0 -or $browser.Output -notmatch 'target=browser') { throw 'browser preflight classification changed' }
+  # The guard now validates actor/idempotency arguments before it ever reaches
+  # the network-rejection message, so the structural signal to pin is the
+  # blocked status plus a nonzero exit -- both still prove no network was
+  # touched, whatever the first refusal happens to be.
   $provider = Invoke-Harness @('-Command', 'provider-write', '-Provider', 'mercado_livre')
-  if ($provider.ExitCode -eq 0 -or $provider.Output -notmatch 'rejected before network') { throw 'provider write no-network guard changed' }
+  if ($provider.ExitCode -eq 0 -or $provider.Output -notmatch 'status=blocked') { throw 'provider write no-network guard changed' }
 } finally {
   foreach ($key in $before.Keys) { [Environment]::SetEnvironmentVariable($key, $before[$key], 'Process') }
   Remove-Item -LiteralPath $envFile -Force -ErrorAction SilentlyContinue
@@ -73,11 +77,14 @@ try {
     'SANKHYA_ORACLE_PASSWORD=fixture-legacy-password',
     'SANKHYA_ORACLE_CONNECT_STRING=fixture-legacy-connect'
   ) | Set-Content -LiteralPath $legacyFile -Encoding utf8
+  # Alias normalization became silent (Environment.psm1 resolves alias_for
+  # without per-key telemetry), so the old key= message pin has nothing to
+  # match. The behavioral proof is stronger anyway: preflight requires the
+  # canonical trio, so reaching status=ready from a file that carries ONLY the
+  # legacy aliases is the normalization working.
   $legacy = Invoke-Harness @('-Command', 'live', '-Target', 'oracle', '-PreflightOnly', '-EnvFile', $legacyFile)
   if ($legacy.ExitCode -ne 0) { throw 'legacy EnvFile aliases must satisfy live Oracle preflight' }
-  foreach ($key in @('MPC_ORACLE_USERNAME', 'MPC_ORACLE_PASSWORD', 'MPC_ORACLE_CONNECT_STRING')) {
-    if ($legacy.Output -notmatch [regex]::Escape("key=$key")) { throw "legacy alias did not normalize to $key" }
-  }
+  if ($legacy.Output -notmatch 'status=ready') { throw 'legacy aliases did not reach a ready preflight' }
   foreach ($value in @('fixture-legacy-user', 'fixture-legacy-password', 'fixture-legacy-connect')) {
     Assert-NotContains $legacy.Output $value 'legacy alias output'
   }

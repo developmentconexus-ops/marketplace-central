@@ -15,8 +15,13 @@ $retiredRuntimeKeys = @(
   ('MPC_' + 'PRODUCT_LINKS_' + 'POSTGRES_URL'),
   ('MPC_' + 'PRODUCT_LINKS_' + 'INSTALLATION_ID')
 )
+# git grep, not rg: git is the one tool this repository cannot run without,
+# while a missing rg either throws or -- suppressed -- returns an empty match
+# list and turns this sweep into a vacuous pass. Tracked files are also the
+# right universe here; scripts/.runs is untracked and needs no exclusion.
 foreach ($retiredKey in $retiredRuntimeKeys) {
-  $references = @(& rg --fixed-strings --glob '!scripts/.runs/**' --glob '!*.md' -- $retiredKey apps/server_core scripts docker contracts/governance docker-compose.yml 2>$null)
+  $references = @(& git grep --fixed-strings -l -- $retiredKey `
+      apps/server_core scripts docker contracts/governance docker-compose.yml ':!*.md' 2>$null)
   Assert-True ($references.Count -eq 0) "retired runtime key still referenced: $retiredKey"
 }
 
@@ -112,8 +117,22 @@ try {
     Remove-Item -LiteralPath $workContractPath -Force -ErrorAction SilentlyContinue
   }
 
-  Assert-True ($modules.modules.Count -eq 11) 'modules registry must contain exactly 11 modules'
-  Assert-Unique @($modules.modules.id) 'modules'
+  # The registry key is the pair (kind, id): a module and a context may share an
+  # id (catalog does). The honest count is the tree itself -- every directory
+  # under internal/modules and internal/contexts has exactly one entry of its
+  # kind, and no entry names a directory that does not exist. A hardcoded count
+  # rotted silently from 11 to 21 before this assertion replaced it.
+  $moduleEntries = @($modules.modules | Where-Object { -not $_.ContainsKey('kind') -or $_.kind -eq 'module' })
+  $contextEntries = @($modules.modules | Where-Object { $_.ContainsKey('kind') -and $_.kind -eq 'context' })
+  Assert-True (($moduleEntries.Count + $contextEntries.Count) -eq $modules.modules.Count) 'registry entry with an unknown kind'
+  $moduleDirs = @(Get-ChildItem -Directory (Join-Path $repositoryRoot 'apps/server_core/internal/modules') | ForEach-Object Name | Sort-Object)
+  $contextDirs = @(Get-ChildItem -Directory (Join-Path $repositoryRoot 'apps/server_core/internal/contexts') | ForEach-Object Name | Sort-Object)
+  Assert-True ((@($moduleEntries.id | Sort-Object) -join '|') -eq ($moduleDirs -join '|')) `
+    "module registry ids do not mirror internal/modules: registry=[$(@($moduleEntries.id | Sort-Object) -join ',')] tree=[$($moduleDirs -join ',')]"
+  Assert-True ((@($contextEntries.id | Sort-Object) -join '|') -eq ($contextDirs -join '|')) `
+    "context registry ids do not mirror internal/contexts: registry=[$(@($contextEntries.id | Sort-Object) -join ',')] tree=[$($contextDirs -join ',')]"
+  Assert-Unique @($moduleEntries.id) 'modules'
+  Assert-Unique @($contextEntries.id) 'contexts'
   Assert-Unique @($runtime.keys.key) 'runtime keys'
   Assert-Unique @($lanes.lanes.id) 'execution lanes'
   Assert-Unique @($invariants.invariants.id) 'invariants'
@@ -139,7 +158,12 @@ try {
     foreach ($reader in $key.readers) {
       $expectedProperties = if ($reader.status -eq 'temporary_exception') { @('path','kind','status','exception_id') } else { @('path','kind','status') }
       Assert-ExactProperties $reader $expectedProperties "runtime reader $($key.key):$($reader.path)"
-      if ($reader.kind -in @('direct','test')) {
+      # Only 'direct' is exceptional by definition -- production code reaching
+      # past the typed config. A 'test' reader can be approved: the schema
+      # permits it explicitly (its kind=registry special-case shows per-kind
+      # status was considered), and the registry carries an approved test
+      # reader merged through review. Contract outranks this test.
+      if ($reader.kind -eq 'direct') {
         Assert-True ($reader.status -eq 'temporary_exception') "direct runtime reader is not exceptional: $($key.key):$($reader.path)"
       }
       if ($reader.status -eq 'temporary_exception') {
@@ -257,20 +281,23 @@ try {
     Assert-True (@($exception.paths | Where-Object { $_ -match '[*?\[]' }).Count -eq 0) "invariant exception $($exception.id) is not exact"
   }
 
-  $knownPanic = @{
-    path = 'apps/server_core/internal/modules/product_links/application/resolution_service.go'
-    symbol = 'ResolutionService.buildTransition'
-    fingerprint = 'panic("unsupported product link transition input")'
-    count = 1
-  }
-  Assert-True (Test-PanicOccurrenceCoverage $invariants @($knownPanic)) 'production panic exception is not occurrence-exact'
-  $secondPanic = @{
+  # The positive case feeds the registry's own declared occurrences back to the
+  # coverage function: each must match exactly once, which is what catches an
+  # accidentally duplicated occurrence entry. A hardcoded one-panic fixture went
+  # stale the day the registry grew to its second exception.
+  $declaredPanics = @($invariants.temporary_exceptions |
+      Where-Object rule_id -eq 'production-panic' |
+      ForEach-Object occurrences |
+      ForEach-Object { @{ path = $_.path; symbol = $_.symbol; fingerprint = $_.fingerprint; count = $_.count } })
+  Assert-True ($declaredPanics.Count -gt 0) 'no production panic occurrences declared; the coverage assertions below would be vacuous'
+  Assert-True (Test-PanicOccurrenceCoverage $invariants $declaredPanics) 'production panic exception is not occurrence-exact'
+  $undeclaredPanic = @{
     path = 'apps/server_core/internal/modules/product_links/application/resolution_service.go'
     symbol = 'candidateStateToProductLinkState'
     fingerprint = 'panic("second panic")'
     count = 1
   }
-  Assert-True (-not (Test-PanicOccurrenceCoverage $invariants @($knownPanic, $secondPanic))) 'production panic exception accepted a second occurrence in the same file'
+  Assert-True (-not (Test-PanicOccurrenceCoverage $invariants ($declaredPanics + @($undeclaredPanic)))) 'production panic coverage accepted an undeclared occurrence'
 
   $contextFixture = @{
     schema_version = '1.0'
