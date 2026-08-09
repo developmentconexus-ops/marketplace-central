@@ -426,6 +426,31 @@ function Compare-GateRatchet {
   }
 }
 
+function Measure-GateGuards {
+  <#
+    Holds a targeted `go test -run -v` output against the inventory's expected
+    test names. `\b` after the escaped name: `--- PASS: TestA` must not satisfy
+    an expectation of `TestAB`, and vice-versa Go suffixes the line with the
+    duration so a bare $ anchor would never match.
+  #>
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory)][AllowEmptyString()][string]$Text,
+    [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Expected
+  )
+  $passed = [Collections.Generic.List[string]]::new()
+  $missing = [Collections.Generic.List[string]]::new()
+  foreach ($name in $Expected) {
+    if ([regex]::IsMatch($Text, "(?m)^\s*--- PASS: $([regex]::Escape($name))\b")) { [void]$passed.Add($name) } else { [void]$missing.Add($name) }
+  }
+  return [pscustomobject]@{
+    Ran     = @([regex]::Matches($Text, '(?m)^\s*=== RUN\s')).Count
+    Passed  = @($passed)
+    Missing = @($missing)
+    Failed  = @([regex]::Matches($Text, '(?m)^\s*--- FAIL:')).Count
+  }
+}
+
 function ConvertTo-GateCountMap {
   <#
     PSCustomObject to hashtable. ConvertFrom-Json yields the former and
@@ -443,4 +468,4 @@ function ConvertTo-GateCountMap {
 
 Export-ModuleMember -Function Measure-GateGoTest, Measure-GateVitest, Measure-GateTsc, Measure-GateGofmt, `
   Remove-GateAnsi, Measure-GateGolangciLint, Measure-GateEslint, Measure-GateEslintRules, Measure-GatePrettier, Measure-GateArchscan, `
-  Measure-GateBoundary, Measure-GateGovernance, Compare-GateRatchet, ConvertTo-GateCountMap
+  Measure-GateBoundary, Measure-GateGovernance, Compare-GateRatchet, ConvertTo-GateCountMap, Measure-GateGuards

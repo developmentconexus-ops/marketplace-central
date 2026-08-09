@@ -35,7 +35,7 @@
 #>
 [CmdletBinding()]
 param(
-  [ValidateSet('all', 'full', 'gofmt', 'format', 'build', 'typecheck', 'governance', 'arch', 'boundary', 'lint-go', 'lint-web', 'test-go', 'test-web', 'census', 'ci-hygiene', 'selftest', 'integration', 'edge')]
+  [ValidateSet('all', 'full', 'gofmt', 'format', 'build', 'typecheck', 'governance', 'arch', 'boundary', 'lint-go', 'lint-web', 'test-go', 'test-web', 'census', 'ci-hygiene', 'selftest', 'guards', 'integration', 'edge')]
   [string]$Lane = 'all',
   [switch]$ContinueOnFailure
 )
@@ -903,6 +903,67 @@ function Invoke-GateSelftest {
   return New-GateVerdict -Lane 'selftest' -Passed $true -Counts $counts
 }
 
+function Invoke-GateGuards {
+  # Issue #3 mechanism (a): the inventory of guards, each held to the fixture
+  # that proves it can fail -- and the fixture must EXECUTE, not merely exist.
+  $inventoryPath = Join-Path $repositoryRoot 'contracts/gate/guards.json'
+  if (-not (Test-Path -LiteralPath $inventoryPath -PathType Leaf)) {
+    return New-GateVerdict -Lane 'guards' -Passed $false -Counts 'inventory=missing' `
+      -Reason 'contracts/gate/guards.json does not exist; an unlisted guard population is unmeasurable'
+  }
+  $inventory = Get-Content -LiteralPath $inventoryPath -Raw | ConvertFrom-Json
+  $goEntries = @($inventory.go_tests); $pwshEntries = @($inventory.pwsh_files); $presenceEntries = @($inventory.presence_only)
+  $total = $goEntries.Count + $pwshEntries.Count + $presenceEntries.Count
+  if ($total -eq 0) {
+    return New-GateVerdict -Lane 'guards' -Passed $false -Counts 'entries=0' `
+      -Reason 'an empty inventory is not a green inventory'
+  }
+
+  $failures = [Collections.Generic.List[string]]::new()
+  $goExecuted = 0
+  foreach ($group in @($goEntries | Group-Object -Property package)) {
+    $names = @($group.Group | ForEach-Object { [string]$_.test })
+    $pattern = '^(' + (@($names | ForEach-Object { [regex]::Escape($_) }) -join '|') + ')$'
+    $toolName = 'guards-' + (($group.Name -replace '[^A-Za-z0-9]+', '-').Trim('-'))
+    $result = Invoke-GateTool -Name $toolName -FilePath 'go' `
+      -ArgumentList @('test', $group.Name, '-run', $pattern, '-count=1', '-v') -WorkingDirectory $serverCore
+    $measurement = Measure-GateGuards -Text $result.Text -Expected $names
+    if ($result.ExitCode -ne 0) { [void]$failures.Add("package $($group.Name) exited $($result.ExitCode)") }
+    if ($measurement.Ran -eq 0) { [void]$failures.Add("package $($group.Name): zero tests ran; the inventory names tests that do not execute") }
+    foreach ($name in $measurement.Missing) { [void]$failures.Add("no '--- PASS: $name' in $($group.Name)") }
+    $goExecuted += @($measurement.Passed).Count
+  }
+
+  foreach ($entry in $pwshEntries) {
+    $file = Join-Path $repositoryRoot ([string]$entry.file)
+    if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { [void]$failures.Add("$($entry.file) is missing"); continue }
+    $leaf = [IO.Path]::GetFileName($file)
+    $inSelftestGlob = ($leaf -like '*.tests.ps1') -and ($leaf -notlike '*.integration.tests.ps1') -and
+      ([IO.Path]::GetFullPath([IO.Path]::GetDirectoryName($file)) -eq [IO.Path]::GetFullPath((Join-Path $repositoryRoot 'scripts/tests')))
+    if (-not $inSelftestGlob) { [void]$failures.Add("$($entry.file) sits outside the selftest lane's discovery glob; its execution is delegated to nothing") }
+    if (-not (Select-String -LiteralPath $file -Pattern ([regex]::Escape([string]$entry.anchor)) -Quiet)) {
+      [void]$failures.Add("$($entry.file): anchor '$($entry.anchor)' not found")
+    }
+  }
+
+  foreach ($entry in $presenceEntries) {
+    $file = Join-Path $repositoryRoot ([string]$entry.file)
+    if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { [void]$failures.Add("$($entry.file) is missing"); continue }
+    if (-not (Select-String -LiteralPath $file -Pattern ([regex]::Escape([string]$entry.anchor)) -Quiet)) {
+      [void]$failures.Add("$($entry.file): anchor '$($entry.anchor)' not found")
+    }
+  }
+
+  $counts = "entries=$total go_executed=$goExecuted pwsh=$($pwshEntries.Count) presence=$($presenceEntries.Count) failures=$($failures.Count)"
+  Write-Host $counts
+  if ($failures.Count -gt 0) {
+    foreach ($line in $failures) { Write-Host "  guard: $line" }
+    return New-GateVerdict -Lane 'guards' -Passed $false -Counts $counts `
+      -Reason 'a registered guard has no executing fixture. A guard that cannot demonstrate a catch is indistinguishable from an absent one.'
+  }
+  return New-GateVerdict -Lane 'guards' -Passed $true -Counts $counts
+}
+
 function Invoke-GateCensus {
   <#
     Every test file in the tree, held against the union of what the gate's lanes
@@ -1078,6 +1139,7 @@ $lanes = [ordered]@{
   'census'     = ${function:Invoke-GateCensus}
   'ci-hygiene' = ${function:Invoke-GateCiHygiene}
   'selftest'   = ${function:Invoke-GateSelftest}
+  'guards'     = ${function:Invoke-GateGuards}
   'integration' = ${function:Invoke-GateIntegration}
   'edge'       = ${function:Invoke-GateEdge}
 }
@@ -1085,7 +1147,7 @@ $lanes = [ordered]@{
 # 'all' is the everyday set; 'full' adds the lanes whose cost is minutes rather
 # than seconds (GATE-TOPOLOGY §2.3 verify-full). Both are the same product --
 # CI's verify-full job and a pre-merge local run say `full`, a push says `all`.
-$fullOnly = @('selftest', 'integration', 'edge')
+$fullOnly = @('selftest', 'guards', 'integration', 'edge')
 $selected = switch ($Lane) {
   'all' { @($lanes.Keys | Where-Object { $_ -notin $fullOnly }) }
   'full' { @($lanes.Keys) }

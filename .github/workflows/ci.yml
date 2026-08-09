@@ -318,6 +318,13 @@ jobs:
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane selftest
 
+      # Issue #3: the guard inventory, each entry held to a fixture that must
+      # EXECUTE (go_tests run here; pwsh_files delegate to the selftest step
+      # above, verified by precondition + anchor).
+      - name: guards
+        shell: pwsh
+        run: ./scripts/gate.ps1 -Lane guards
+
       # The hermetic harness fails closed on a missing image (HPG_IMAGE_MISSING)
       # rather than pulling mid-test -- provisioning belongs to the environment,
       # not the measurement. Pull both pinned images up front; the edge lane's
