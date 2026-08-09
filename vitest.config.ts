@@ -24,15 +24,8 @@ export default defineConfig({
           setupFiles: [
             path.resolve(__dirname, "node_modules/@testing-library/jest-dom/dist/vitest.mjs"),
           ],
-          include: [
-            "apps/web/src/**/*.test.{ts,tsx}",
-            "packages/*/src/**/*.test.{ts,tsx}",
-          ],
-          exclude: [
-            "**/node_modules/**",
-            "**/.worktrees/**",
-            "packages/sdk-runtime/**",
-          ],
+          include: ["apps/web/src/**/*.test.{ts,tsx}", "packages/*/src/**/*.test.{ts,tsx}"],
+          exclude: ["**/node_modules/**", "**/.worktrees/**", "packages/sdk-runtime/**"],
         },
       },
       {

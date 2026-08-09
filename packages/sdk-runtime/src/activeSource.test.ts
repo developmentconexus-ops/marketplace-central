@@ -47,7 +47,10 @@ describe("active-source SDK contract", () => {
 
   it("keeps the OpenAPI active-source schemas in parity with the SDK", () => {
     const openapi = readFileSync(
-      resolve(fileURLToPath(new URL(".", import.meta.url)), "../../../contracts/api/marketplace-central.openapi.yaml"),
+      resolve(
+        fileURLToPath(new URL(".", import.meta.url)),
+        "../../../contracts/api/marketplace-central.openapi.yaml",
+      ),
       "utf8",
     );
     const region = openapi.slice(openapi.indexOf("    ActiveSourceConfig:"));
@@ -73,7 +76,10 @@ describe("active-source SDK contract", () => {
 
   it("declares /config/active-source GET and PUT with flat ActiveSourceError responses", () => {
     const openapi = readFileSync(
-      resolve(fileURLToPath(new URL(".", import.meta.url)), "../../../contracts/api/marketplace-central.openapi.yaml"),
+      resolve(
+        fileURLToPath(new URL(".", import.meta.url)),
+        "../../../contracts/api/marketplace-central.openapi.yaml",
+      ),
       "utf8",
     );
     // Window RE-POINTED BY VALUE (hub ruling A-19), assertions unchanged — still exactly
@@ -100,7 +106,10 @@ describe("active-source SDK contract", () => {
 
   it("exposes the sellable-assortment paths, schemas, options, and exact client URLs", async () => {
     const openapi = readFileSync(
-      resolve(fileURLToPath(new URL(".", import.meta.url)), "../../../contracts/api/marketplace-central.openapi.yaml"),
+      resolve(
+        fileURLToPath(new URL(".", import.meta.url)),
+        "../../../contracts/api/marketplace-central.openapi.yaml",
+      ),
       "utf8",
     );
     const config: SellableAssortmentConfig = {

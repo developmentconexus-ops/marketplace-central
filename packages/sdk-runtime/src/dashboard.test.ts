@@ -31,7 +31,10 @@ describe("Dashboard SDK contract", () => {
 
   it("keeps the OpenAPI DashboardSummary schema in parity with the SDK (additive, old fields preserved)", () => {
     const openapi = readFileSync(
-      resolve(fileURLToPath(new URL(".", import.meta.url)), "../../../contracts/api/marketplace-central.openapi.yaml"),
+      resolve(
+        fileURLToPath(new URL(".", import.meta.url)),
+        "../../../contracts/api/marketplace-central.openapi.yaml",
+      ),
       "utf8",
     );
     const schema = openapi.slice(

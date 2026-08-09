@@ -93,10 +93,16 @@ describe("sdk runtime", () => {
 
   it("keeps canonical nullable fields required across OpenAPI and SDK", () => {
     const openapi = readFileSync(
-      resolve(fileURLToPath(new URL(".", import.meta.url)), "../../../contracts/api/marketplace-central.openapi.yaml"),
+      resolve(
+        fileURLToPath(new URL(".", import.meta.url)),
+        "../../../contracts/api/marketplace-central.openapi.yaml",
+      ),
       "utf8",
     );
-    const sdk = readFileSync(resolve(fileURLToPath(new URL(".", import.meta.url)), "index.ts"), "utf8");
+    const sdk = readFileSync(
+      resolve(fileURLToPath(new URL(".", import.meta.url)), "index.ts"),
+      "utf8",
+    );
     const factSchema = openapi.slice(
       openapi.indexOf("    CanonicalNumericSourceFact:"),
       openapi.indexOf("    CanonicalCatalogProduct:"),

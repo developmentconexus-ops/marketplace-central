@@ -72,7 +72,10 @@ describe("ERP import SDK contract", () => {
 
   it("keeps the OpenAPI ERP import schemas in parity with the SDK", () => {
     const openapi = readFileSync(
-      resolve(fileURLToPath(new URL(".", import.meta.url)), "../../../contracts/api/marketplace-central.openapi.yaml"),
+      resolve(
+        fileURLToPath(new URL(".", import.meta.url)),
+        "../../../contracts/api/marketplace-central.openapi.yaml",
+      ),
       "utf8",
     );
     const region = openapi.slice(openapi.indexOf("    ErpImportStatus:"));
@@ -118,7 +121,10 @@ describe("ERP import SDK contract", () => {
 
   it("declares a flat 500 ErpImportError on every erp import operation", () => {
     const openapi = readFileSync(
-      resolve(fileURLToPath(new URL(".", import.meta.url)), "../../../contracts/api/marketplace-central.openapi.yaml"),
+      resolve(
+        fileURLToPath(new URL(".", import.meta.url)),
+        "../../../contracts/api/marketplace-central.openapi.yaml",
+      ),
       "utf8",
     );
     // Window RE-POINTED BY VALUE (hub ruling A-19), assertions unchanged. It used to
@@ -146,7 +152,10 @@ describe("ERP import SDK contract", () => {
 
   it("declares the malformed-id 400 on BOTH {id} routes", () => {
     const openapi = readFileSync(
-      resolve(fileURLToPath(new URL(".", import.meta.url)), "../../../contracts/api/marketplace-central.openapi.yaml"),
+      resolve(
+        fileURLToPath(new URL(".", import.meta.url)),
+        "../../../contracts/api/marketplace-central.openapi.yaml",
+      ),
       "utf8",
     );
     // handler validates {id} before the query and emits {"error":"invalid_import_id"} (400)
