@@ -86,10 +86,12 @@ func importedModuleAndLayer(importPath string) (module, layer string, ok bool) {
 	return module, layer, true
 }
 
-func TestModuleBoundaryADR023(t *testing.T) {
-	modulesDir := filepath.Join("..", "modules")
+// scanModuleBoundary walks a modules-shaped tree and returns every cross-module
+// import that lands on a layer other than ports, plus the number of Go files
+// parsed. Extracted so a fixture tree can prove the detector fires (issue #3);
+// TestModuleBoundaryADR023 keeps identical output over ../modules.
+func scanModuleBoundary(modulesDir string) ([]boundaryViolation, int, error) {
 	fset := token.NewFileSet()
-
 	var violations []boundaryViolation
 	filesParsed := 0
 
@@ -141,6 +143,12 @@ func TestModuleBoundaryADR023(t *testing.T) {
 		}
 		return nil
 	})
+	return violations, filesParsed, err
+}
+
+func TestModuleBoundaryADR023(t *testing.T) {
+	modulesDir := filepath.Join("..", "modules")
+	violations, filesParsed, err := scanModuleBoundary(modulesDir)
 	if err != nil {
 		t.Fatalf("walking %s: %v", modulesDir, err)
 	}
@@ -225,4 +233,27 @@ func TestModuleBoundaryADR023(t *testing.T) {
 	}
 
 	t.Errorf("%d violation(s)\n%s", len(violations), b.String())
+}
+
+// The detector's red must not depend on the legacy tree still being dirty.
+// When the migration empties internal/modules, this fixture is what keeps the
+// instrument demonstrably alive (issue #3, mechanism (a)).
+func TestModuleBoundaryDetectorFiresOnFixture(t *testing.T) {
+	violations, filesParsed, err := scanModuleBoundary(filepath.Join("testdata", "adr023"))
+	if err != nil {
+		t.Fatalf("scanning fixture tree: %v", err)
+	}
+	if filesParsed != 3 {
+		t.Fatalf("filesParsed = %d, want 3; the fixture tree is not what this test believes", filesParsed)
+	}
+	if len(violations) != 1 {
+		t.Fatalf("violations = %d, want exactly 1 (alpha/domain -> beta/domain)", len(violations))
+	}
+	v := violations[0]
+	if v.fromModule != "alpha" || v.fromLayer != "domain" || v.toModule != "beta" || v.toLayer != "domain" {
+		t.Fatalf("violation = %+v, want alpha/domain -> beta/domain", v)
+	}
+	if v.line <= 0 {
+		t.Fatalf("violation line = %d, want > 0", v.line)
+	}
 }
