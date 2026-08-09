@@ -759,8 +759,11 @@ function Invoke-GateTypecheck {
 }
 
 function Invoke-GateTestWeb {
-  $result = Invoke-GateTool -Name 'vitest' -FilePath 'npm' `
-    -ArgumentList @('run', 'test', '--workspace', '@marketplace-central/web', '--', '--run')
+  # The root config is the single vitest entry point: glob discovery over every
+  # workspace (GATE-TOPOLOGY §2.3), so a test file in a package no lane names
+  # still runs. The census lane holds the count against the tree.
+  $result = Invoke-GateTool -Name 'vitest' -FilePath 'npx' `
+    -ArgumentList @('--no-install', 'vitest', 'run', '--config', 'vitest.config.ts')
   $measurement = Measure-GateVitest -Text $result.Text
   $counts = "files=$($measurement.Files) tests=$($measurement.Tests) pass=$($measurement.Passed) fail=$($measurement.Failed)"
   Write-Host $counts

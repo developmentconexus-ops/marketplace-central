@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "start": "vite preview --port 3002",
-    "test": "vitest run --config vitest.config.ts"
+    "test": "vitest run --project web --config ../../vitest.config.ts"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.7",

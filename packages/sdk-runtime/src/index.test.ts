@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createMarketplaceCentralClient } from "./index";
 import type {
   CatalogProductFact,
@@ -92,10 +93,10 @@ describe("sdk runtime", () => {
 
   it("keeps canonical nullable fields required across OpenAPI and SDK", () => {
     const openapi = readFileSync(
-      resolve(process.cwd(), "../../contracts/api/marketplace-central.openapi.yaml"),
+      resolve(fileURLToPath(new URL(".", import.meta.url)), "../../../contracts/api/marketplace-central.openapi.yaml"),
       "utf8",
     );
-    const sdk = readFileSync(resolve(process.cwd(), "src/index.ts"), "utf8");
+    const sdk = readFileSync(resolve(fileURLToPath(new URL(".", import.meta.url)), "index.ts"), "utf8");
     const factSchema = openapi.slice(
       openapi.indexOf("    CanonicalNumericSourceFact:"),
       openapi.indexOf("    CanonicalCatalogProduct:"),

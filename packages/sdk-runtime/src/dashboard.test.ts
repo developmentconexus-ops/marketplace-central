@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { DashboardLastImport, DashboardOverview } from "./dashboard";
 
 describe("Dashboard SDK contract", () => {
@@ -30,7 +31,7 @@ describe("Dashboard SDK contract", () => {
 
   it("keeps the OpenAPI DashboardSummary schema in parity with the SDK (additive, old fields preserved)", () => {
     const openapi = readFileSync(
-      resolve(process.cwd(), "../../contracts/api/marketplace-central.openapi.yaml"),
+      resolve(fileURLToPath(new URL(".", import.meta.url)), "../../../contracts/api/marketplace-central.openapi.yaml"),
       "utf8",
     );
     const schema = openapi.slice(
