@@ -304,7 +304,9 @@ jobs:
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane census
 
-      - name: ci hygiene (pull_request_target)
+      # The lane greps .github/ for the privilege-escalating trigger; naming
+      # that trigger here would be this workflow's own hit.
+      - name: ci hygiene
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane ci-hygiene
 
