@@ -1,31 +1,121 @@
 {
   "$comment": "Issue #3: every guard the delivery path relies on, keyed to the fixture that proves it can fail. go_tests are EXECUTED by the guards lane (proof = '--- PASS: <test>' from a targeted -run). pwsh_files delegate execution to the selftest lane, which runs every scripts/tests/*.tests.ps1 (minus *.integration.*) and requires a pass token per file; the guards lane verifies that delegation precondition plus the anchor. presence_only entries state why execution cannot be asserted here.",
   "go_tests": [
-    { "id": "arch-cross-context-internal", "package": "./internal/arch", "test": "TestCrossContextInternalFiresOnFixture" },
-    { "id": "arch-float-in-contracts", "package": "./internal/arch", "test": "TestFloatInContractsFiresOnFixture" },
-    { "id": "arch-vendor-token", "package": "./internal/arch", "test": "TestVendorTokenFiresOnStringLiteral" },
-    { "id": "arch-fact-discard", "package": "./internal/arch", "test": "TestFactValueDiscardIsCaught" },
-    { "id": "arch-file-census", "package": "./internal/arch", "test": "TestCountFilesSeesTheFixtureTree" },
-    { "id": "adr023-boundary-detector", "package": "./internal/composition", "test": "TestModuleBoundaryDetectorFiresOnFixture" }
+    {
+      "id": "arch-cross-context-internal",
+      "package": "./internal/arch",
+      "test": "TestCrossContextInternalFiresOnFixture"
+    },
+    {
+      "id": "arch-float-in-contracts",
+      "package": "./internal/arch",
+      "test": "TestFloatInContractsFiresOnFixture"
+    },
+    {
+      "id": "arch-vendor-token",
+      "package": "./internal/arch",
+      "test": "TestVendorTokenFiresOnStringLiteral"
+    },
+    {
+      "id": "arch-fact-discard",
+      "package": "./internal/arch",
+      "test": "TestFactValueDiscardIsCaught"
+    },
+    {
+      "id": "arch-file-census",
+      "package": "./internal/arch",
+      "test": "TestCountFilesSeesTheFixtureTree"
+    },
+    {
+      "id": "adr023-boundary-detector",
+      "package": "./internal/composition",
+      "test": "TestModuleBoundaryDetectorFiresOnFixture"
+    }
   ],
   "pwsh_files": [
-    { "id": "gov-module-coverage", "file": "scripts/tests/governance-drift.tests.ps1", "anchor": "GOV_MODULE_COVERAGE" },
-    { "id": "gov-module-dependency", "file": "scripts/tests/governance-drift.tests.ps1", "anchor": "GOV_MODULE_DEPENDENCY" },
-    { "id": "gov-module-layer", "file": "scripts/tests/governance-drift.tests.ps1", "anchor": "GOV_MODULE_LAYER" },
-    { "id": "gov-composition-missing", "file": "scripts/tests/governance-drift.tests.ps1", "anchor": "GOV_COMPOSITION_MISSING" },
-    { "id": "gov-application-import", "file": "scripts/tests/governance-drift.tests.ps1", "anchor": "GOV_APPLICATION_IMPORT" },
-    { "id": "gov-postgres-driver", "file": "scripts/tests/governance-drift.tests.ps1", "anchor": "GOV_POSTGRES_DRIVER" },
-    { "id": "gov-production-panic", "file": "scripts/tests/governance-drift.tests.ps1", "anchor": "GOV_PRODUCTION_PANIC" },
-    { "id": "gov-api-sdk-split", "file": "scripts/tests/governance-drift.tests.ps1", "anchor": "GOV_API_SDK_SPLIT" },
-    { "id": "gov-frontend-fetch", "file": "scripts/tests/governance-drift.tests.ps1", "anchor": "GOV_FRONTEND_FETCH" },
-    { "id": "gov-migration-prefix", "file": "scripts/tests/governance-drift.tests.ps1", "anchor": "GOV_MIGRATION_PREFIX" },
-    { "id": "gov-context-unregistered", "file": "scripts/tests/governance-drift.tests.ps1", "anchor": "GOV_CONTEXT_UNREGISTERED" },
-    { "id": "integration-vacuous-run", "file": "scripts/tests/postgres-lifecycle.tests.ps1", "anchor": "HPG_TEST_VACUOUS" },
-    { "id": "gate-counters", "file": "scripts/tests/gate-measure.tests.ps1", "anchor": "Measure-GateGoTest" },
-    { "id": "guards-lane-counters", "file": "scripts/tests/guards-lane.tests.ps1", "anchor": "Measure-GateGuards" }
+    {
+      "id": "gov-module-coverage",
+      "file": "scripts/tests/governance-drift.tests.ps1",
+      "anchor": "GOV_MODULE_COVERAGE"
+    },
+    {
+      "id": "gov-module-dependency",
+      "file": "scripts/tests/governance-drift.tests.ps1",
+      "anchor": "GOV_MODULE_DEPENDENCY"
+    },
+    {
+      "id": "gov-module-layer",
+      "file": "scripts/tests/governance-drift.tests.ps1",
+      "anchor": "GOV_MODULE_LAYER"
+    },
+    {
+      "id": "gov-composition-missing",
+      "file": "scripts/tests/governance-drift.tests.ps1",
+      "anchor": "GOV_COMPOSITION_MISSING"
+    },
+    {
+      "id": "gov-application-import",
+      "file": "scripts/tests/governance-drift.tests.ps1",
+      "anchor": "GOV_APPLICATION_IMPORT"
+    },
+    {
+      "id": "gov-postgres-driver",
+      "file": "scripts/tests/governance-drift.tests.ps1",
+      "anchor": "GOV_POSTGRES_DRIVER"
+    },
+    {
+      "id": "gov-production-panic",
+      "file": "scripts/tests/governance-drift.tests.ps1",
+      "anchor": "GOV_PRODUCTION_PANIC"
+    },
+    {
+      "id": "gov-api-sdk-split",
+      "file": "scripts/tests/governance-drift.tests.ps1",
+      "anchor": "GOV_API_SDK_SPLIT"
+    },
+    {
+      "id": "gov-frontend-fetch",
+      "file": "scripts/tests/governance-drift.tests.ps1",
+      "anchor": "GOV_FRONTEND_FETCH"
+    },
+    {
+      "id": "gov-migration-prefix",
+      "file": "scripts/tests/governance-drift.tests.ps1",
+      "anchor": "GOV_MIGRATION_PREFIX"
+    },
+    {
+      "id": "gov-context-unregistered",
+      "file": "scripts/tests/governance-drift.tests.ps1",
+      "anchor": "GOV_CONTEXT_UNREGISTERED"
+    },
+    {
+      "id": "integration-vacuous-run",
+      "file": "scripts/tests/postgres-lifecycle.tests.ps1",
+      "anchor": "HPG_TEST_VACUOUS"
+    },
+    {
+      "id": "gate-counters",
+      "file": "scripts/tests/gate-measure.tests.ps1",
+      "anchor": "Measure-GateGoTest"
+    },
+    {
+      "id": "guards-lane-counters",
+      "file": "scripts/tests/guards-lane.tests.ps1",
+      "anchor": "Measure-GateGuards"
+    }
   ],
   "presence_only": [
-    { "id": "required-job-aggregator", "file": ".github/workflows/ci.yml", "anchor": "guard self-test", "why": "executes inside the required job itself on every PR; its five jq scenarios are the execution evidence" },
-    { "id": "main-ruleset", "file": "docs/HARNESS-PROFILE.md", "anchor": "landing path", "why": "GitHub-side control; must-fail run 2026-08-09 (GH013), recorded in issue #4's closing comment" }
+    {
+      "id": "required-job-aggregator",
+      "file": ".github/workflows/ci.yml",
+      "anchor": "guard self-test",
+      "why": "executes inside the required job itself on every PR; its five jq scenarios are the execution evidence"
+    },
+    {
+      "id": "main-ruleset",
+      "file": "docs/HARNESS-PROFILE.md",
+      "anchor": "landing path",
+      "why": "GitHub-side control; must-fail run 2026-08-09 (GH013), recorded in issue #4's closing comment"
+    }
   ]
 }
