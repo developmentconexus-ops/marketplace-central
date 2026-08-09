@@ -96,6 +96,14 @@ provar". Wedge é POR SESSÃO (shell do hub vivo no mesmo minuto); conserto = re
 Candidato: probe de shell (`true`) no bootstrap de toda sessão despachada — wedge aparece no
 minuto 0, não depois de 6 fatias; converge com a intervenção 2 da análise global (atestação
 no boot) e com o BOOT-ACK do MNOS.
+Reincidência 2026-08-09 (sessão issue #2, PR #24): variante nova — exit code 107 em toda
+invocação, sem mensagem alguma (a de 2026-07-31 tinha syntax error visível), `true` incluso,
+sandbox on e off. Wedge apareceu MID-SESSÃO depois de horas de shell saudável (watchers de
+background em loop `git fetch` + sleep rodando antes da morte). Trabalho não-shell (Read/
+Edit/Write/Grep/WebFetch/gh via API pública) continuou; lanes locais e git ficaram
+inexecutáveis enquanto durou. DIFERENÇA da ocorrência original: esta LIMPOU SOZINHA sem
+restart da sessão (`true` voltou a passar turnos depois) — wedge 107 é transitório, o de
+syntax-error 2026-07-31 era permanente. Re-probar antes de declarar a sessão perdida.
 
 **B-9. Lane de governança VERMELHA no main — verde absoluto inalcançável para qualquer chip.**
 Medido 2026-07-31 em worktree LIMPO destacado no main tip `4ad36272`: status=failed, 51
