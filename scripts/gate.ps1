@@ -35,7 +35,7 @@
 #>
 [CmdletBinding()]
 param(
-  [ValidateSet('all', 'full', 'gofmt', 'format', 'build', 'typecheck', 'governance', 'arch', 'boundary', 'lint-go', 'lint-web', 'test-go', 'test-web', 'selftest')]
+  [ValidateSet('all', 'full', 'gofmt', 'format', 'build', 'typecheck', 'governance', 'arch', 'boundary', 'lint-go', 'lint-web', 'test-go', 'test-web', 'selftest', 'integration', 'edge')]
   [string]$Lane = 'all',
   [switch]$ContinueOnFailure
 )
@@ -868,6 +868,55 @@ function Invoke-GateSelftest {
   return New-GateVerdict -Lane 'selftest' -Passed $true -Counts $counts
 }
 
+function Invoke-GateIntegration {
+  # Wraps `harness.ps1 -Command integration`: ephemeral Postgres in Docker,
+  # embedded migrations, no ERP and no dev stack (GATE-TOPOLOGY §2.3). The
+  # harness prints tests_run= with -1 for "the test step was never reached",
+  # which is a different fact from 0 -- both fail here, for different reasons
+  # the count makes attributable.
+  $result = Invoke-GateTool -Name 'integration' -FilePath 'pwsh' `
+    -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $repositoryRoot 'scripts/harness.ps1'), '-Command', 'integration')
+  $match = [regex]::Match($result.Text, 'tests_run=(-?\d+) tests_passed=(-?\d+) tests_skipped=(-?\d+) tests_failed=(-?\d+)')
+  $run = if ($match.Success) { [int]$match.Groups[1].Value } else { -1 }
+  $passed = if ($match.Success) { [int]$match.Groups[2].Value } else { -1 }
+  $skipped = if ($match.Success) { [int]$match.Groups[3].Value } else { -1 }
+  $failed = if ($match.Success) { [int]$match.Groups[4].Value } else { -1 }
+  $counts = "run=$run pass=$passed skip=$skipped fail=$failed"
+  Write-Host $counts
+  if ($result.ExitCode -ne 0) {
+    return New-GateVerdict -Lane 'integration' -Passed $false -Counts $counts -Reason "the integration harness exited $($result.ExitCode)"
+  }
+  if ($run -le 0 -or $passed -le 0) {
+    return New-GateVerdict -Lane 'integration' -Passed $false -Counts $counts `
+      -Reason 'the lane exited 0 having run nothing or passed nothing. Pulled-vs-green is byte-identical without this line.'
+  }
+  if ($failed -ne 0) {
+    return New-GateVerdict -Lane 'integration' -Passed $false -Counts $counts -Reason 'integration tests failed.'
+  }
+  return New-GateVerdict -Lane 'integration' -Passed $true -Counts $counts
+}
+
+function Invoke-GateEdge {
+  # Wraps `harness.ps1 -Command edge`: the issue #1 PII fixture driving the real
+  # Caddyfiles through real Caddy against stub upstreams, Docker only. The
+  # fixture refuses to pass under 17 assertions; the lane re-asserts the floor
+  # so weakening the fixture's own guard is visible here too.
+  $result = Invoke-GateTool -Name 'edge' -FilePath 'pwsh' `
+    -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $repositoryRoot 'scripts/harness.ps1'), '-Command', 'edge')
+  $match = [regex]::Match($result.Text, '(?m)^assertions=(\d+)')
+  $assertions = if ($match.Success) { [int]$match.Groups[1].Value } else { -1 }
+  $counts = "assertions=$assertions"
+  Write-Host $counts
+  if ($result.ExitCode -ne 0) {
+    return New-GateVerdict -Lane 'edge' -Passed $false -Counts $counts -Reason "the edge harness exited $($result.ExitCode)"
+  }
+  if ($assertions -lt 17) {
+    return New-GateVerdict -Lane 'edge' -Passed $false -Counts $counts `
+      -Reason 'fewer than 17 edge PII assertions ran (-1: no assertions= line at all). The deny surface was not exercised.'
+  }
+  return New-GateVerdict -Lane 'edge' -Passed $true -Counts $counts
+}
+
 # Cost order. `needs:` in ci.yml expresses the same ordering across jobs; here it
 # is the order of this array.
 $lanes = [ordered]@{
@@ -883,12 +932,14 @@ $lanes = [ordered]@{
   'test-go'    = ${function:Invoke-GateGoTest}
   'test-web'   = ${function:Invoke-GateTestWeb}
   'selftest'   = ${function:Invoke-GateSelftest}
+  'integration' = ${function:Invoke-GateIntegration}
+  'edge'       = ${function:Invoke-GateEdge}
 }
 
 # 'all' is the everyday set; 'full' adds the lanes whose cost is minutes rather
 # than seconds (GATE-TOPOLOGY §2.3 verify-full). Both are the same product --
 # CI's verify-full job and a pre-merge local run say `full`, a push says `all`.
-$fullOnly = @('selftest')
+$fullOnly = @('selftest', 'integration', 'edge')
 $selected = switch ($Lane) {
   'all' { @($lanes.Keys | Where-Object { $_ -notin $fullOnly }) }
   'full' { @($lanes.Keys) }

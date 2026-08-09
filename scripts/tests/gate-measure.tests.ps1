@@ -175,6 +175,12 @@ Assert-True ($gateSource -match '\$baselineDocument\.tsc\.by_file') `
   'the typecheck lane no longer ratchets type errors against the committed per-file baseline'
 Assert-True ($gateSource -match 'tsc did not load every tracked') `
   'the typecheck lane no longer holds the loaded set against the tracked-source census'
+Assert-True ($gateSource -match '\$run -le 0 -or \$passed -le 0') `
+  'the integration lane no longer fails a run that reached nothing (-1) or ran nothing (0)'
+Assert-True ($gateSource -match '\$assertions -lt 17') `
+  'the edge lane no longer enforces the 17-assertion floor on the PII deny fixture'
+Assert-True ($gateSource -match '\(\$scriptToken -or \$pesterPassed -gt 0\)') `
+  'the selftest lane no longer demands a positive pass token from every file'
 Assert-True ($gateSource -match '\$measurement\.Passed -le 0') `
   'the vitest lane no longer fails on a run with no stated result'
 Assert-True ($gateSource -match '\$discovered\.Count -eq 0') `
