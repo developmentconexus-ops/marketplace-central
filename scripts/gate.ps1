@@ -35,7 +35,7 @@
 #>
 [CmdletBinding()]
 param(
-  [ValidateSet('all', 'full', 'gofmt', 'format', 'build', 'typecheck', 'governance', 'arch', 'boundary', 'lint-go', 'lint-web', 'test-go', 'test-web', 'selftest', 'integration', 'edge')]
+  [ValidateSet('all', 'full', 'gofmt', 'format', 'build', 'typecheck', 'governance', 'arch', 'boundary', 'lint-go', 'lint-web', 'test-go', 'test-web', 'census', 'ci-hygiene', 'selftest', 'integration', 'edge')]
   [string]$Lane = 'all',
   [switch]$ContinueOnFailure
 )
@@ -46,6 +46,9 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $serverCore = Join-Path $repositoryRoot 'apps/server_core'
 Import-Module (Join-Path $PSScriptRoot 'harness/Gate.psm1') -Force
+# For Get-HarnessIntegrationTestPackages: the census lane reuses the harness's
+# own integration-package discovery instead of keeping a second copy of the rule.
+Import-Module (Join-Path $PSScriptRoot 'harness/Postgres.psm1') -Force
 
 # HARNESS-PROFILE §2 binds the Go caches to an ABSOLUTE path. The relative
 # `GOCACHE=.gocache` that AGENTS.md still prints was struck from the profile on
@@ -868,6 +871,113 @@ function Invoke-GateSelftest {
   return New-GateVerdict -Lane 'selftest' -Passed $true -Counts $counts
 }
 
+function Invoke-GateCensus {
+  <#
+    Every test file in the tree, held against the union of what the gate's lanes
+    actually execute (GATE-TOPOLOGY §2.3: kills the dark-test-file class rather
+    than one instance at a time). Static -- nothing runs; discovery is compared,
+    not execution. Exemptions live in contracts/gate/census-exempt.json with a
+    reason each, and a stale exemption (file gone, or file now reachable) fails
+    the lane the same way an uncovered file does.
+  #>
+  # TypeScript: the tree census against vitest's own discovery over the root
+  # config. `vitest list` resolves the same globs `vitest run` executes, so a
+  # test file the run cannot see is named here before it goes dark.
+  $tsCensus = @(& git -C $repositoryRoot ls-files --cached --others --exclude-standard '*.test.ts' '*.test.tsx' '*.spec.ts' '*.spec.tsx' |
+      Where-Object { Test-Path -LiteralPath (Join-Path $repositoryRoot $_) -PathType Leaf } | Sort-Object)
+  $listResult = Invoke-GateTool -Name 'census-vitest-list' -FilePath 'npx' -Quiet `
+    -ArgumentList @('--no-install', 'vitest', 'list', '--config', 'vitest.config.ts', '--filesOnly')
+  $discovered = @{}
+  foreach ($line in @($listResult.Text -split "`r?`n")) {
+    $clean = ($line -replace '^\[[^\]]+\]\s+', '').Trim() -replace '\\', '/'
+    if ($clean) { $discovered[$clean] = $true }
+  }
+  $uncoveredTs = @($tsCensus | Where-Object { -not $discovered.ContainsKey($_) })
+
+  # Go: the census against what `go test` can compile -- the unit set (./...)
+  # plus the hermetic integration set, both with CGO_ENABLED=0 exactly as the
+  # lanes run them, so the census measures the lanes and not a hypothetical
+  # toolchain. The integration package list comes from the harness's own
+  # discovery function; two copies of that rule is how they come to disagree.
+  $goCensus = @(& git -C $repositoryRoot ls-files --cached --others --exclude-standard '*_test.go' |
+      Where-Object { Test-Path -LiteralPath (Join-Path $repositoryRoot $_) -PathType Leaf } | Sort-Object)
+  $goListFormat = '{{range .TestGoFiles}}{{$.Dir}}/{{.}}{{"\n"}}{{end}}{{range .XTestGoFiles}}{{$.Dir}}/{{.}}{{"\n"}}{{end}}'
+  $previousCgo = $env:CGO_ENABLED
+  try {
+    $env:CGO_ENABLED = '0'
+    $unitList = Invoke-GateTool -Name 'census-go-list' -FilePath 'go' -Quiet `
+      -ArgumentList @('list', '-f', $goListFormat, './...') -WorkingDirectory $serverCore
+    $integrationPackages = @(Get-HarnessIntegrationTestPackages -RepositoryRoot $repositoryRoot)
+    $integrationList = Invoke-GateTool -Name 'census-go-list-integration' -FilePath 'go' -Quiet `
+      -ArgumentList (@('list', '-tags=integration', '-f', $goListFormat) + $integrationPackages) -WorkingDirectory $serverCore
+  } finally {
+    $env:CGO_ENABLED = $previousCgo
+  }
+  $reachable = @{}
+  $serverPrefix = (($serverCore -replace '\\', '/').TrimEnd('/')) + '/'
+  foreach ($line in @(($unitList.Text + "`n" + $integrationList.Text) -split "`r?`n")) {
+    $clean = ($line.Trim() -replace '\\', '/')
+    if (-not $clean) { continue }
+    $relative = 'apps/server_core/' + ($clean -replace [regex]::Escape($serverPrefix), '')
+    $reachable[$relative] = $true
+  }
+
+  $exemptDocument = Get-Content -LiteralPath (Join-Path $repositoryRoot 'contracts/gate/census-exempt.json') -Raw | ConvertFrom-Json
+  $exempt = @{}
+  $staleExemptions = @()
+  foreach ($entry in @($exemptDocument.exempt)) {
+    if (-not (Test-Path -LiteralPath (Join-Path $repositoryRoot $entry.path) -PathType Leaf)) {
+      $staleExemptions += "$($entry.path) (file no longer exists)"
+    } elseif ($reachable.ContainsKey([string]$entry.path)) {
+      $staleExemptions += "$($entry.path) (now reachable by the gate; the exemption is stale)"
+    } else {
+      $exempt[[string]$entry.path] = $true
+    }
+  }
+  $uncoveredGo = @($goCensus | Where-Object { -not $reachable.ContainsKey($_) -and -not $exempt.ContainsKey($_) })
+
+  $counts = "ts_census=$($tsCensus.Count) ts_discovered=$($discovered.Count) go_census=$($goCensus.Count) go_reachable=$($reachable.Count) exempt=$($exempt.Count) uncovered=$($uncoveredTs.Count + $uncoveredGo.Count) stale_exemptions=$($staleExemptions.Count)"
+  Write-Host $counts
+  if ($tsCensus.Count -eq 0 -or $discovered.Count -eq 0 -or $goCensus.Count -eq 0 -or $reachable.Count -eq 0) {
+    return New-GateVerdict -Lane 'census' -Passed $false -Counts $counts `
+      -Reason 'a census or discovery side came back empty. A comparison over an empty set proves nothing.'
+  }
+  if ($uncoveredTs.Count -gt 0 -or $uncoveredGo.Count -gt 0 -or $staleExemptions.Count -gt 0) {
+    foreach ($path in @($uncoveredTs)) { Write-Host "  dark ts: $path" }
+    foreach ($path in @($uncoveredGo)) { Write-Host "  dark go: $path" }
+    foreach ($line in @($staleExemptions)) { Write-Host "  stale exemption: $line" }
+    return New-GateVerdict -Lane 'census' -Passed $false -Counts $counts `
+      -Reason 'a test file exists that no gate lane executes, or an exemption no longer describes reality. Name it in a lane or in census-exempt.json with a reason.'
+  }
+  return New-GateVerdict -Lane 'census' -Passed $true -Counts $counts
+}
+
+function Invoke-GateCiHygiene {
+  # GATE-TOPOLOGY §2.3/§3: `pull_request_target` runs workflow code with write
+  # credentials against a PR's HEAD, which is the textbook CI privilege
+  # escalation. No workflow here needs it, so the string itself is the finding.
+  $files = @(& git -C $repositoryRoot ls-files --cached --others --exclude-standard '.github/**' |
+      Where-Object { Test-Path -LiteralPath (Join-Path $repositoryRoot $_) -PathType Leaf })
+  if ($files.Count -eq 0) {
+    return New-GateVerdict -Lane 'ci-hygiene' -Passed $false -Counts 'scanned=0' `
+      -Reason 'no file under .github/ was scanned. Zero scanned is not zero findings.'
+  }
+  $hits = @()
+  foreach ($file in $files) {
+    foreach ($match in @(Select-String -LiteralPath (Join-Path $repositoryRoot $file) -Pattern 'pull_request_target' -SimpleMatch)) {
+      $hits += "$($file):$($match.LineNumber)"
+    }
+  }
+  $counts = "scanned=$($files.Count) hits=$($hits.Count)"
+  Write-Host $counts
+  if ($hits.Count -gt 0) {
+    foreach ($hit in $hits) { Write-Host "  pull_request_target at $hit" }
+    return New-GateVerdict -Lane 'ci-hygiene' -Passed $false -Counts $counts `
+      -Reason 'a workflow uses pull_request_target, which runs PR code with write credentials.'
+  }
+  return New-GateVerdict -Lane 'ci-hygiene' -Passed $true -Counts $counts
+}
+
 function Invoke-GateIntegration {
   # Wraps `harness.ps1 -Command integration`: ephemeral Postgres in Docker,
   # embedded migrations, no ERP and no dev stack (GATE-TOPOLOGY §2.3). The
@@ -931,6 +1041,8 @@ $lanes = [ordered]@{
   'lint-web'   = ${function:Invoke-GateLintWeb}
   'test-go'    = ${function:Invoke-GateGoTest}
   'test-web'   = ${function:Invoke-GateTestWeb}
+  'census'     = ${function:Invoke-GateCensus}
+  'ci-hygiene' = ${function:Invoke-GateCiHygiene}
   'selftest'   = ${function:Invoke-GateSelftest}
   'integration' = ${function:Invoke-GateIntegration}
   'edge'       = ${function:Invoke-GateEdge}

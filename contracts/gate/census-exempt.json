@@ -1,0 +1,26 @@
+{
+  "$comment": [
+    "Test files the census lane accepts as unreachable by the hermetic gate, each with the reason",
+    "recorded so the exemption is a decision rather than an oversight. Liveness rule, enforced by",
+    "the lane: an entry whose file no longer exists, or whose file the gate can now reach, is a",
+    "stale exemption and fails the lane -- the same rule GATE-TOPOLOGY.md applies to",
+    "temporary_exceptions in modules.json."
+  ],
+  "exempt": [
+    {
+      "path": "apps/server_core/internal/modules/internal_read/adapters/oracle/reader_live_test.go",
+      "reason": "//go:build cgo -- live Oracle tests. Compiled into the live-oracle Docker lane's test binary (docker/dev/backend.Dockerfile builds go test -c over this package); the hermetic lanes run with CGO_ENABLED=0 and must never reach it.",
+      "lane": "live-oracle"
+    },
+    {
+      "path": "apps/server_core/internal/modules/internal_read/adapters/oracle/sync_integration_test.go",
+      "reason": "DEBT, measured 2026-08-08: //go:build integration && cgo is compiled NOWHERE. The hermetic integration lane excludes cgo; the live-oracle binary build (docker/dev/backend.Dockerfile:39) passes no -tags=integration, so this file is not in the compiled test binary either. Wiring it into the live lane is live-lane work outside issue #2; until then the census names it here instead of letting it hide.",
+      "lane": "none"
+    },
+    {
+      "path": "docs/research/probes/ml_official_durable_price_probe_test.go",
+      "reason": "Research probe kept as documentation under docs/, outside the Go module -- no lane can compile it and none should. It exists to be read.",
+      "lane": "none"
+    }
+  ]
+}

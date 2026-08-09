@@ -181,6 +181,12 @@ Assert-True ($gateSource -match '\$assertions -lt 17') `
   'the edge lane no longer enforces the 17-assertion floor on the PII deny fixture'
 Assert-True ($gateSource -match '\(\$scriptToken -or \$pesterPassed -gt 0\)') `
   'the selftest lane no longer demands a positive pass token from every file'
+Assert-True ($gateSource -match 'now reachable by the gate; the exemption is stale') `
+  'the census lane no longer fails stale exemptions -- a paid-down debt would stay excused forever'
+Assert-True ($gateSource -match '\$uncoveredTs\.Count -gt 0 -or \$uncoveredGo\.Count -gt 0') `
+  'the census lane no longer fails on a dark test file'
+Assert-True ($gateSource -match 'Get-HarnessIntegrationTestPackages') `
+  'the census lane grew its own copy of the integration-package discovery rule'
 Assert-True ($gateSource -match '\$measurement\.Passed -le 0') `
   'the vitest lane no longer fails on a run with no stated result'
 Assert-True ($gateSource -match '\$discovered\.Count -eq 0') `
