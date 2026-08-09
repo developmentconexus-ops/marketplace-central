@@ -743,17 +743,58 @@ function Invoke-GateTypecheck {
   # on success, so a project that resolved zero source files -- a broken
   # `include`, a renamed directory -- exits 0 with the same silence as a clean
   # compile.
+  #
+  # tsconfig.eslint.json and not apps/web/tsconfig.json: the web project covers
+  # 194 of the tracked sources and leaves the package test files dark, which is
+  # how 12 type errors sat green in files vitest executes every run. The lint
+  # project already exists as the one project declared over everything, so the
+  # typecheck lane checks the same set, and the census below holds it there.
   $result = Invoke-GateTool -Name 'tsc' -FilePath 'npx' `
-    -ArgumentList @('--no-install', 'tsc', '-p', 'apps/web/tsconfig.json', '--noEmit', '--listFiles')
+    -ArgumentList @('--no-install', 'tsc', '-p', 'tsconfig.eslint.json', '--noEmit', '--listFiles')
   $measurement = Measure-GateTsc -Text $result.Text
-  $counts = "checked=$($measurement.Checked) errors=$($measurement.Errors)"
-  Write-Host $counts
-  if ($result.ExitCode -ne 0) {
-    return New-GateVerdict -Lane 'typecheck' -Passed $false -Counts $counts -Reason "tsc exited $($result.ExitCode)"
+
+  # Coverage before errors, same order and same reason as lint-web: a tracked
+  # source the project does not load is reported clean by a compiler that never
+  # saw it. The tracked list is the reference and every entry must be loaded.
+  $sources = Get-GateWebSources
+  $loaded = @{}
+  $prefix = ($repositoryRoot -replace '\\', '/').TrimEnd('/') + '/'
+  foreach ($path in @($measurement.Paths)) {
+    $loaded[(($path -replace '\\', '/') -replace [regex]::Escape($prefix), '')] = $true
   }
+  $uncovered = @($sources | Where-Object { -not $loaded.ContainsKey($_) })
+
+  $counts = "checked=$($measurement.Checked) sources=$($sources.Count) uncovered=$($uncovered.Count) errors=$($measurement.Errors)"
+  Write-Host $counts
   if ($measurement.Checked -eq 0) {
     return New-GateVerdict -Lane 'typecheck' -Passed $false -Counts $counts `
       -Reason 'tsc loaded no project files. The project resolved nothing, which is not the same as compiling cleanly.'
+  }
+  if ($uncovered.Count -gt 0) {
+    foreach ($path in @($uncovered | Select-Object -First 20)) { Write-Host "  uncovered: $path" }
+    return New-GateVerdict -Lane 'typecheck' -Passed $false -Counts $counts `
+      -Reason 'tsc did not load every tracked .ts/.tsx source. A file outside the project is reported clean by a compiler that never saw it.'
+  }
+  # Exit 2 is type errors, the normal state under a ratchet; anything else above
+  # 0 is the tool failing to run.
+  if ($result.ExitCode -notin @(0, 2)) {
+    return New-GateVerdict -Lane 'typecheck' -Passed $false -Counts $counts -Reason "tsc exited $($result.ExitCode), which is neither clean nor type errors."
+  }
+
+  $baselinePath = Join-Path $repositoryRoot 'contracts/gate/baselines.json'
+  if (-not (Test-Path -LiteralPath $baselinePath -PathType Leaf)) {
+    return New-GateVerdict -Lane 'typecheck' -Passed $false -Counts 'baseline=missing' `
+      -Reason "no ratchet baseline at $baselinePath."
+  }
+  $baselineDocument = Get-Content -LiteralPath $baselinePath -Raw | ConvertFrom-Json
+  $baseline = ConvertTo-GateCountMap -Object $baselineDocument.tsc.by_file
+  $comparison = Compare-GateRatchet -Measured $measurement.ByFile -Baseline $baseline
+  foreach ($line in @($comparison.Decreased)) { Write-Host "shrink: $line -- commit the lower baseline in this PR" }
+  if (-not $comparison.Passed) {
+    foreach ($line in @($comparison.Increased)) { Write-Host "increase: $line" }
+    foreach ($line in @($comparison.Unknown)) { Write-Host "unknown file, absent from the baseline: $line" }
+    return New-GateVerdict -Lane 'typecheck' -Passed $false -Counts $counts `
+      -Reason 'type errors increased over the committed baseline, or appeared in a file the baseline does not name.'
   }
   return New-GateVerdict -Lane 'typecheck' -Passed $true -Counts $counts
 }

@@ -93,9 +93,18 @@ function Measure-GateTsc {
       $_ -notmatch '[/\\]node_modules[/\\]' -and
       $_ -notmatch ':\s+error\s+TS\d+'
     })
+  # Errors attributed to their file so the lane can ratchet per file: a new
+  # error in a clean file is an unknown key, whatever another file shrank by.
+  $byFile = @{}
+  foreach ($match in @([regex]::Matches($Text, '(?m)^(.+?)\(\d+,\d+\):\s+error\s+TS\d+'))) {
+    $errorPath = $match.Groups[1].Value.Trim()
+    if ($byFile.ContainsKey($errorPath)) { $byFile[$errorPath] = $byFile[$errorPath] + 1 } else { $byFile[$errorPath] = 1 }
+  }
   return [pscustomobject]@{
     Checked = $project.Count
+    Paths   = $project
     Errors  = @([regex]::Matches($Text, '(?m):\s+error\s+TS\d+')).Count
+    ByFile  = $byFile
   }
 }
 

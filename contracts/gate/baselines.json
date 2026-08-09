@@ -155,5 +155,32 @@
       "react-hooks/exhaustive-deps": 4,
       "react-hooks/rules-of-hooks": 3
     }
+  },
+  "tsc": {
+    "measured_at": "2026-08-08",
+    "measured_on": "956bd52f",
+    "tool_version": "tsc 5.9.3",
+    "command": "npm run gate:typecheck",
+    "measured_note": [
+      "12 type errors over 218 tracked .ts/.tsx sources, all in package test files that were dark to",
+      "the old apps/web-only typecheck and that vitest executes green every run -- runtime does not",
+      "check types, so fixtures drifted from the SDK contract types without anything going red. The",
+      "lane now checks tsconfig.eslint.json, the one project declared over everything, with the same",
+      "census guard as lint-web.",
+      "",
+      "Keyed by file, not by error code: a new error in a clean file is an unknown key and fails",
+      "outright, whatever another file shrank by. A file that goes clean disappears from the",
+      "measurement and reads as a shrink to zero."
+    ],
+    "total": 12,
+    "by_file": {
+      "packages/feature-inventory/src/StockSeguroPage.test.tsx": 1,
+      "packages/feature-products/src/CatalogPage.test.tsx": 1,
+      "packages/sdk-runtime/src/activeSource.test.ts": 2,
+      "packages/sdk-runtime/src/index.test.ts": 3,
+      "packages/sdk-runtime/src/listings-signals.test.ts": 2,
+      "packages/ui/src/DataTable.test.tsx": 1,
+      "packages/web-query/src/invalidation.test.ts": 2
+    }
   }
 }
