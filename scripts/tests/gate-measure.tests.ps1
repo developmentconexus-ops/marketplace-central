@@ -286,6 +286,126 @@ Assert-True ($gateSourceForLint -match '\$measurement\.Scanned -eq 0') `
 Assert-True ($gateSourceForLint -match '\$measurement\.Scanned -lt 0') `
   'the arch lane no longer fails when archscan died before printing its count'
 
+# --- boundary (ADR-023) ---------------------------------------------------
+#
+# The literal shape `go test -v` prints for the red-by-design detector. The
+# `by target:` block deliberately repeats the count-tab-name shape of the
+# `by origin layer:` block, because that is the trap: a regex over the whole
+# stream reads every violation twice under a second key set.
+
+$boundaryRed = @"
+=== RUN   TestModuleBoundaryADR023
+    module_boundary_arch_test.go:153: boundary_files=782
+    module_boundary_arch_test.go:230: 5 violation(s)
+        ADR-023 §2 module boundary violated
+
+        by origin layer:
+          3`tadapters
+          1`tapplication
+          1`t(module root, no layer)
+
+        by target:
+          4`tconnectors/domain
+          1`tinternal_read/domain
+
+        sites:
+          internal/modules/catalog/adapters/x.go:10`tcatalog/adapters -> connectors/domain
+--- FAIL: TestModuleBoundaryADR023 (0.10s)
+FAIL
+FAIL	marketplace-central/apps/server_core/internal/composition	0.427s
+FAIL
+"@
+$boundaryMeasured = Measure-GateBoundary -Text $boundaryRed
+Assert-True ($boundaryMeasured.Files -eq 782) "boundary files count wrong: $($boundaryMeasured.Files)"
+Assert-True ($boundaryMeasured.Total -eq 5) "boundary violation count wrong: $($boundaryMeasured.Total)"
+Assert-True ($boundaryMeasured.ByOrigin['adapters'] -eq 3) 'boundary by-origin count wrong'
+Assert-True ($boundaryMeasured.ByOrigin['(module root, no layer)'] -eq 1) 'the unsanctioned module-root origin was dropped'
+Assert-True (@($boundaryMeasured.ByOrigin.Keys).Count -eq 3) `
+  "boundary read $(@($boundaryMeasured.ByOrigin.Keys).Count) origins; the by-target block leaked into the origin map"
+
+# A passing run still names its file count -- that is why the test logs it on
+# every outcome -- and measures as zero violations, not as unknown.
+$boundaryGreen = @"
+=== RUN   TestModuleBoundaryADR023
+    module_boundary_arch_test.go:153: boundary_files=782
+--- PASS: TestModuleBoundaryADR023 (0.09s)
+PASS
+ok  	marketplace-central/apps/server_core/internal/composition	0.412s
+"@
+$boundaryGreenMeasured = Measure-GateBoundary -Text $boundaryGreen
+Assert-True ($boundaryGreenMeasured.Files -eq 782) 'a passing boundary run lost its file count'
+Assert-True ($boundaryGreenMeasured.Total -eq 0) "a passing boundary run measured $($boundaryGreenMeasured.Total) violations, not zero"
+
+# A red run whose origin block went missing (or half-parsed) still reports a
+# violation total. The measurer returns what it saw -- an empty origin map next
+# to a nonzero total -- and the LANE must refuse the mismatch, because the
+# ratchet compares origins and an all-zero map would sail under any baseline.
+$boundaryNoOrigins = @"
+=== RUN   TestModuleBoundaryADR023
+    module_boundary_arch_test.go:153: boundary_files=782
+    module_boundary_arch_test.go:228: 234 violation(s)
+        ADR-023 §2 module boundary violated
+--- FAIL: TestModuleBoundaryADR023 (0.10s)
+FAIL
+"@
+$boundaryNoOriginsMeasured = Measure-GateBoundary -Text $boundaryNoOrigins
+Assert-True ($boundaryNoOriginsMeasured.Total -eq 234) 'the originless fixture lost its violation total'
+Assert-True (@($boundaryNoOriginsMeasured.ByOrigin.Keys).Count -eq 0) 'the originless fixture grew origins from nowhere'
+Assert-True ($gateSourceForLint -match '\$originTotal -ne \$measurement\.Total') `
+  'the boundary lane no longer rejects a violation total that the by-origin counts do not account for'
+
+# A compile error prints neither the log line nor a verdict. Both facts default
+# to -1: "nothing is known" must not read as "walked nothing" or "found nothing".
+$boundaryDead = Measure-GateBoundary -Text "FAIL	marketplace-central/apps/server_core/internal/composition [build failed]"
+Assert-True ($boundaryDead.Files -eq -1) 'a build-failed boundary run reported a file count'
+Assert-True ($boundaryDead.Total -eq -1) 'a build-failed boundary run reported a violation count'
+
+$boundaryCommitted = ConvertTo-GateCountMap -Object $baselineDocument.boundary.by_origin
+$boundarySum = 0
+foreach ($value in $boundaryCommitted.Values) { $boundarySum += [int]$value }
+Assert-True ($boundarySum -eq [int]$baselineDocument.boundary.total) `
+  "the boundary baseline's per-origin counts sum to $boundarySum but it states a total of $($baselineDocument.boundary.total)"
+
+Assert-True ($gateSourceForLint -match '\$measurement\.Files -eq 0') `
+  'the boundary lane no longer fails when the walk parsed zero Go files'
+Assert-True ($gateSourceForLint -match '\$measurement\.Files -lt 0') `
+  'the boundary lane no longer fails when the run died before the walk finished'
+Assert-True ($gateSourceForLint -match 'boundary_files') `
+  'the boundary lane no longer reads the boundary_files count at all'
+$boundaryTestSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'apps/server_core/internal/composition/module_boundary_arch_test.go')
+Assert-True ($boundaryTestSource -match [regex]::Escape('t.Logf("boundary_files=%d", filesParsed)')) `
+  'the detector no longer logs its file count on every outcome; the lane cannot tell an empty walk from a clean tree'
+
+# --- governance ------------------------------------------------------------
+#
+# No text fixture: the lane calls Test-GovernanceDrift directly and groups its
+# structured violations. What is tested is the grouping and the lane's guards.
+
+$governanceMeasured = Measure-GateGovernance -Violations @(
+  [pscustomobject]@{ ErrorCode = 'RCFG_UNAPPROVED_READER'; Id = 'MC_X'; Path = 'a.go' },
+  [pscustomobject]@{ ErrorCode = 'RCFG_UNAPPROVED_READER'; Id = 'MC_Y'; Path = 'b.go' },
+  [pscustomobject]@{ ErrorCode = 'GOV_MODULE_LAYER'; Id = 'catalog-sync-adapters'; Path = 'c.go' }
+)
+Assert-True ($governanceMeasured.Total -eq 3) "governance total wrong: $($governanceMeasured.Total)"
+Assert-True ($governanceMeasured.ByCode['RCFG_UNAPPROVED_READER'] -eq 2) 'governance by-code count wrong'
+Assert-True ((Measure-GateGovernance -Violations @()).Total -eq 0) 'an empty violation list did not measure as zero'
+
+$governanceCommitted = ConvertTo-GateCountMap -Object $baselineDocument.'governance-drift'.by_code
+$governanceSum = 0
+foreach ($value in $governanceCommitted.Values) { $governanceSum += [int]$value }
+Assert-True ($governanceSum -eq [int]$baselineDocument.'governance-drift'.total) `
+  "the governance baseline's per-code counts sum to $governanceSum but it states a total of $($baselineDocument.'governance-drift'.total)"
+
+Assert-True ($gateSourceForLint -match '\$drift\.FilesScanned -le 0') `
+  'the governance lane no longer fails when the drift walk scanned no files'
+Assert-True ($gateSourceForLint -match '-not \$validate\.Passed') `
+  'the governance lane no longer blocks at zero on a validate failure'
+Assert-True ($gateSourceForLint -match '\$registries -lt 6') `
+  'the governance lane no longer asserts that all six registries loaded'
+$policySource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'scripts/harness/Policy.psm1')
+Assert-True ($policySource -match '-FilesScanned \(@\(\$files\)\.Count\)') `
+  'Test-GovernanceDrift no longer reports how many files its walk covered; the lane cannot tell an empty walk from a clean tree'
+
 # --- eslint --------------------------------------------------------------
 
 $eslintReport = @'
