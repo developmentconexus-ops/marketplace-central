@@ -197,7 +197,10 @@ function Invoke-GateBuild {
   if ($list.ExitCode -ne 0) {
     return New-GateVerdict -Lane 'build' -Passed $false -Counts 'packages=unknown' -Reason "go list ./... exited $($list.ExitCode)"
   }
-  $packages = @($list.Text -split "`r?`n" | Where-Object { $_ -match '\S' }).Count
+  # Count only lines shaped like an import path: Invoke-GateTool folds stderr in
+  # (see its header), and `go list` announces an empty match with a warning on
+  # stderr -- counting that line would make the zero-package floor unreachable.
+  $packages = @($list.Text -split "`r?`n" | Where-Object { $_ -match '^\S+$' -and $_ -notmatch '^go:' }).Count
   if ($packages -eq 0) {
     return New-GateVerdict -Lane 'build' -Passed $false -Counts 'packages=0' `
       -Reason 'go list ./... resolved zero packages; the universe is empty, not clean'
