@@ -91,6 +91,7 @@ func TestModuleBoundaryADR023(t *testing.T) {
 	fset := token.NewFileSet()
 
 	var violations []boundaryViolation
+	filesParsed := 0
 
 	err := filepath.WalkDir(modulesDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -99,6 +100,7 @@ func TestModuleBoundaryADR023(t *testing.T) {
 		if d.IsDir() || !strings.HasSuffix(path, ".go") {
 			return nil
 		}
+		filesParsed++
 
 		rel, err := filepath.Rel(modulesDir, path)
 		if err != nil {
@@ -141,6 +143,15 @@ func TestModuleBoundaryADR023(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("walking %s: %v", modulesDir, err)
+	}
+
+	// Logged on every outcome, not only on failure: the gate's boundary lane
+	// reads this count, and a run that parsed zero files must be distinguishable
+	// from a tree with zero violations. WalkDir over a missing root fails loudly
+	// above, but an empty or hollowed-out root does not.
+	t.Logf("boundary_files=%d", filesParsed)
+	if filesParsed == 0 {
+		t.Fatalf("parsed zero Go files under %s; a verdict over the empty set is not a verdict", modulesDir)
 	}
 
 	if len(violations) == 0 {

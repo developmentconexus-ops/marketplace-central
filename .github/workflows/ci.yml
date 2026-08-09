@@ -71,6 +71,11 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false # see header
+          # Full history, for one consumer: the governance lane's API<->SDK
+          # atomicity check diffs against the PR base SHA, and with the default
+          # depth of 1 that commit is not in the local object store -- the diff
+          # fails and the lane reports base-sha-unavailable instead of a verdict.
+          fetch-depth: 0
       - uses: actions/setup-go@v7
         with:
           go-version-file: apps/server_core/go.mod
@@ -88,6 +93,22 @@ jobs:
       - name: gofmt
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane gofmt
+
+      # Both halves of scripts/harness/Policy.psm1: the six registries against
+      # their schemas (blocks at zero -- a governance contract that stops
+      # parsing has no transitional state) and the semantic drift walk of the
+      # tree against them, ratcheted at 58. In this job because it needs only
+      # pwsh and git, no toolchain.
+      #
+      # GATE_BASE_SHA feeds exactly one check, API<->SDK atomicity, which is a
+      # statement about a change and needs a base to diff against. On a PR that
+      # is the PR base; on a push to main it falls back to the pushed SHA, an
+      # empty diff, and the lane's counts line says so.
+      - name: governance
+        shell: pwsh
+        env:
+          GATE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+        run: ./scripts/gate.ps1 -Lane governance
 
   lint-frontend:
     name: lint-frontend
@@ -171,6 +192,16 @@ jobs:
       - name: archscan
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane arch
+
+      # TestModuleBoundaryADR023 as a ratchet at 234. The detector is red on
+      # main by design -- it is the RED that opens Onda 1 of the module-protocol
+      # plan -- so test-go-unit skips it and this step runs it, blocking on
+      # increase only: a new cross-module import past X/ports fails the PR that
+      # writes it, while the legacy 234 wait for their owner. In this job for
+      # the warm build cache; the test compiles the composition package.
+      - name: module boundary (ADR-023)
+        shell: pwsh
+        run: ./scripts/gate.ps1 -Lane boundary
 
       # golangci-lint, in this job rather than lint-go, because it type-checks
       # the module and so wants the same toolchain and the same warm build cache

@@ -11,7 +11,9 @@
   given change was a function of what someone remembered.
 
   This file is the set: gofmt, Prettier, `go build` + `go vet`, typecheck,
-  archscan, golangci-lint, ESLint, `go test ./...`, vitest. `npm run gate` runs it locally; `.github/workflows/ci.yml`
+  governance (contract validate + semantic drift), archscan, the ADR-023
+  module-boundary detector, golangci-lint, ESLint, `go test ./...`, vitest.
+  `npm run gate` runs it locally; `.github/workflows/ci.yml`
   invokes the same lanes by name. Neither owns a copy of the logic -- a gate the
   operator cannot reproduce on their own machine is its own defect class, and a
   gate whose CI form has drifted from its local form is that class wearing a
@@ -33,7 +35,7 @@
 #>
 [CmdletBinding()]
 param(
-  [ValidateSet('all', 'gofmt', 'format', 'build', 'typecheck', 'arch', 'lint-go', 'lint-web', 'test-go', 'test-web')]
+  [ValidateSet('all', 'gofmt', 'format', 'build', 'typecheck', 'governance', 'arch', 'boundary', 'lint-go', 'lint-web', 'test-go', 'test-web')]
   [string]$Lane = 'all',
   [switch]$ContinueOnFailure
 )
@@ -229,6 +231,151 @@ $script:EslintExpected = @(
   'react-hooks/exhaustive-deps',
   'react-hooks/rules-of-hooks'
 ) | Sort-Object
+
+function Invoke-GateGovernance {
+  # Two halves of scripts/harness/Policy.psm1, called directly rather than
+  # through scripts/harness.ps1 so the lane reads structured violations instead
+  # of re-parsing its own text output.
+  #
+  # Validate -- the six registries against their schemas plus every
+  # cross-reference -- blocks at zero: it passes clean today (measured
+  # 2026-08-08) and a governance contract that stops parsing has no legitimate
+  # transitional state. Drift -- the semantic walk of the tree against those
+  # contracts -- is a ratchet at 58, because its findings are the legacy tree's
+  # unregistered readers and undeclared dependencies, and paying them down is
+  # behavior-review work that an instrument PR must not do.
+  $baselinePath = Join-Path $repositoryRoot 'contracts/gate/baselines.json'
+  if (-not (Test-Path -LiteralPath $baselinePath -PathType Leaf)) {
+    return New-GateVerdict -Lane 'governance' -Passed $false -Counts 'baseline=missing' `
+      -Reason "no ratchet baseline at $baselinePath."
+  }
+  $baselineDocument = Get-Content -LiteralPath $baselinePath -Raw | ConvertFrom-Json
+  $baseline = ConvertTo-GateCountMap -Object $baselineDocument.'governance-drift'.by_code
+
+  Import-Module (Join-Path $PSScriptRoot 'harness/Policy.psm1') -Force
+
+  $validate = Test-GovernanceContracts -RepositoryRoot $repositoryRoot
+  $registries = @($validate.Documents.Keys).Count
+  if (-not $validate.Passed) {
+    foreach ($violation in @($validate.Violations)) { Write-Host "  $($violation.ErrorCode) $($violation.Id) $($violation.Path)" }
+    return New-GateVerdict -Lane 'governance' -Passed $false -Counts "registries=$registries validate=$(@($validate.Violations).Count)" `
+      -Reason 'the governance contracts do not validate. This half of the lane blocks at zero: a registry that stops parsing has no transitional state.'
+  }
+  if ($registries -lt 6) {
+    return New-GateVerdict -Lane 'governance' -Passed $false -Counts "registries=$registries" `
+      -Reason 'fewer than the six governance registries loaded. A validate pass over a partial set is not a pass.'
+  }
+
+  # The base SHA only feeds the API<->SDK atomicity check, which is a statement
+  # about a change and therefore needs a base to diff against. CI provides the
+  # PR base as GATE_BASE_SHA; locally the merge base against origin/main is the
+  # same fact. HEAD is the honest fallback -- an empty diff, so the atomicity
+  # check is silent -- and the counts line says which one was used, because a
+  # check that silently did not run is this gate's founding defect class.
+  $baseSha = $env:GATE_BASE_SHA
+  $baseSource = 'env'
+  if ([string]::IsNullOrWhiteSpace($baseSha)) {
+    $baseSha = (& git -C $repositoryRoot merge-base HEAD origin/main 2>$null)
+    $baseSource = 'merge-base'
+  }
+  if ([string]::IsNullOrWhiteSpace($baseSha) -or $baseSha -notmatch '^[0-9a-f]{40}$') {
+    $baseSha = (& git -C $repositoryRoot rev-parse HEAD)
+    $baseSource = 'head'
+  }
+
+  $drift = Test-GovernanceDrift -RepositoryRoot $repositoryRoot -BaseSha $baseSha
+  $measurement = Measure-GateGovernance -Violations @($drift.Violations)
+  $counts = "registries=$registries files=$($drift.FilesScanned) total=$($measurement.Total) baseline=$($baselineDocument.'governance-drift'.total) baselined_exceptions=$(@($drift.BaselineExceptions).Count) base=$baseSource"
+  Write-Host $counts
+  foreach ($code in @($measurement.ByCode.Keys | Sort-Object)) {
+    Write-Host ("  {0,-32} {1,4}  baseline {2,4}" -f $code, $measurement.ByCode[$code], $(if ($baseline.ContainsKey($code)) { $baseline[$code] } else { 'n/a' }))
+  }
+
+  if ($drift.FilesScanned -le 0) {
+    return New-GateVerdict -Lane 'governance' -Passed $false -Counts $counts `
+      -Reason "the drift walk scanned $($drift.FilesScanned) file(s). A verdict over the empty set is not a verdict."
+  }
+
+  $measuredMap = @{}
+  foreach ($key in @($baseline.Keys)) { $measuredMap[$key] = 0 }
+  foreach ($key in @($measurement.ByCode.Keys)) { $measuredMap[$key] = $measurement.ByCode[$key] }
+  $comparison = Compare-GateRatchet -Measured $measuredMap -Baseline $baseline
+  foreach ($line in @($comparison.Decreased)) { Write-Host "shrink: $line -- commit the lower baseline in this PR" }
+  if (-not $comparison.Passed) {
+    foreach ($line in @($comparison.Increased)) { Write-Host "increase: $line" }
+    foreach ($line in @($comparison.Unknown)) { Write-Host "unknown error code, absent from the baseline: $line" }
+    foreach ($violation in @($drift.Violations)) { Write-Host "  $($violation.ErrorCode) $($violation.Id) $($violation.Path)" }
+    return New-GateVerdict -Lane 'governance' -Passed $false -Counts $counts `
+      -Reason 'governance drift findings increased over the committed baseline, or an error code appeared that the baseline does not name.'
+  }
+  return New-GateVerdict -Lane 'governance' -Passed $true -Counts $counts
+}
+
+function Invoke-GateBoundary {
+  # TestModuleBoundaryADR023, the detector for ADR-023 §2: a module is
+  # importable by another module only at X/ports. It is red on main by design --
+  # 234 cross-module imports in the legacy tree, owned by Onda 1 of
+  # docs/superpowers/plans/2026-08-05-arquitetura-protocolo-de-modulo-plan.md --
+  # so the test-go lane skips it and THIS lane runs it as a ratchet: the debt
+  # may shrink and may not grow. When Onda 1 task 1.5 lands and the count
+  # reaches zero, this lane keeps the test enforcing at zero; delete the skip in
+  # Invoke-GateGoTest then, not this lane.
+  $baselinePath = Join-Path $repositoryRoot 'contracts/gate/baselines.json'
+  if (-not (Test-Path -LiteralPath $baselinePath -PathType Leaf)) {
+    return New-GateVerdict -Lane 'boundary' -Passed $false -Counts 'baseline=missing' `
+      -Reason "no ratchet baseline at $baselinePath."
+  }
+  $baselineDocument = Get-Content -LiteralPath $baselinePath -Raw | ConvertFrom-Json
+  $baseline = ConvertTo-GateCountMap -Object $baselineDocument.boundary.by_origin
+
+  # -v so the boundary_files log line prints on a passing run too; -count=1
+  # because a cached verdict is not a verdict about this commit. -Quiet: the
+  # violation list is 234 lines of legacy sites; the lane prints the per-layer
+  # counts and the log file keeps the sites.
+  $result = Invoke-GateTool -Name 'boundary' -FilePath 'go' -Quiet `
+    -ArgumentList @('test', './internal/composition/', '-run', 'TestModuleBoundaryADR023', '-count=1', '-v') `
+    -WorkingDirectory $serverCore
+  $measurement = Measure-GateBoundary -Text $result.Text
+
+  $counts = "files=$($measurement.Files) total=$($measurement.Total) baseline=$($baselineDocument.boundary.total)"
+  Write-Host $counts
+  foreach ($origin in @($measurement.ByOrigin.Keys | Sort-Object)) {
+    Write-Host ("  {0,-28} {1,4}  baseline {2,4}" -f $origin, $measurement.ByOrigin[$origin], $(if ($baseline.ContainsKey($origin)) { $baseline[$origin] } else { 'n/a' }))
+  }
+
+  if ($measurement.Files -lt 0) {
+    return New-GateVerdict -Lane 'boundary' -Passed $false -Counts $counts `
+      -Reason "no boundary_files line in the test output (exit $($result.ExitCode)). The run died before the walk finished, or the count was deleted from the test; see $($result.LogPath)."
+  }
+  if ($measurement.Files -eq 0) {
+    return New-GateVerdict -Lane 'boundary' -Passed $false -Counts $counts `
+      -Reason 'the boundary walk parsed zero Go files. A verdict over the empty set is not a verdict.'
+  }
+  if ($measurement.Total -lt 0) {
+    return New-GateVerdict -Lane 'boundary' -Passed $false -Counts $counts `
+      -Reason "the test neither passed nor reported a violation count (exit $($result.ExitCode))."
+  }
+  # Exit 1 is a red test, the normal state under a ratchet over a
+  # red-by-design detector. Exit 0 is the debt paid off. Anything else is the
+  # toolchain failing, not a boundary verdict.
+  if ($result.ExitCode -notin @(0, 1)) {
+    return New-GateVerdict -Lane 'boundary' -Passed $false -Counts $counts `
+      -Reason "go test exited $($result.ExitCode), which is neither a pass nor a red test."
+  }
+
+  $measuredMap = @{}
+  foreach ($key in @($baseline.Keys)) { $measuredMap[$key] = 0 }
+  foreach ($key in @($measurement.ByOrigin.Keys)) { $measuredMap[$key] = $measurement.ByOrigin[$key] }
+  $comparison = Compare-GateRatchet -Measured $measuredMap -Baseline $baseline
+  foreach ($line in @($comparison.Decreased)) { Write-Host "shrink: $line -- commit the lower baseline in this PR" }
+  if (-not $comparison.Passed) {
+    foreach ($line in @($comparison.Increased)) { Write-Host "increase: $line" }
+    foreach ($line in @($comparison.Unknown)) { Write-Host "unknown origin layer, absent from the baseline: $line" }
+    return New-GateVerdict -Lane 'boundary' -Passed $false -Counts $counts `
+      -Reason "module-boundary violations increased over the committed baseline, or a new origin layer appeared. The sites are in $($result.LogPath)."
+  }
+  return New-GateVerdict -Lane 'boundary' -Passed $true -Counts $counts
+}
 
 function Invoke-GateArch {
   # The architecture detectors: rules the Go compiler cannot express. The
@@ -558,7 +705,9 @@ function Invoke-GateGoTest {
   # `//go:build integration`, which ./... does not compile.
   #
   # -skip TestModuleBoundaryADR023: that test is red on main by design (234
-  # cross-module import violations) and already has an owner -- Onda 1 of
+  # cross-module import violations) and the `boundary` lane runs it as a
+  # ratchet, so the debt blocks on increase without turning this lane red.
+  # Paying it down is Onda 1 of
   # docs/superpowers/plans/2026-08-05-arquitetura-protocolo-de-modulo-plan.md,
   # tasks 1.1 through 1.6. DELETE THIS SKIP when task 1.5 lands.
   #
@@ -622,15 +771,17 @@ function Invoke-GateTestWeb {
 # Cost order. `needs:` in ci.yml expresses the same ordering across jobs; here it
 # is the order of this array.
 $lanes = [ordered]@{
-  'gofmt'     = ${function:Invoke-GateGofmt}
-  'format'    = ${function:Invoke-GateFormat}
-  'build'     = ${function:Invoke-GateBuild}
-  'typecheck' = ${function:Invoke-GateTypecheck}
-  'arch'      = ${function:Invoke-GateArch}
-  'lint-go'   = ${function:Invoke-GateLintGo}
-  'lint-web'  = ${function:Invoke-GateLintWeb}
-  'test-go'   = ${function:Invoke-GateGoTest}
-  'test-web'  = ${function:Invoke-GateTestWeb}
+  'gofmt'      = ${function:Invoke-GateGofmt}
+  'format'     = ${function:Invoke-GateFormat}
+  'build'      = ${function:Invoke-GateBuild}
+  'typecheck'  = ${function:Invoke-GateTypecheck}
+  'governance' = ${function:Invoke-GateGovernance}
+  'arch'       = ${function:Invoke-GateArch}
+  'boundary'   = ${function:Invoke-GateBoundary}
+  'lint-go'    = ${function:Invoke-GateLintGo}
+  'lint-web'   = ${function:Invoke-GateLintWeb}
+  'test-go'    = ${function:Invoke-GateGoTest}
+  'test-web'   = ${function:Invoke-GateTestWeb}
 }
 
 $selected = if ($Lane -eq 'all') { @($lanes.Keys) } else { @($Lane) }

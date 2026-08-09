@@ -305,6 +305,69 @@ function Measure-GateArchscan {
   }
 }
 
+function Measure-GateBoundary {
+  <#
+    Reads `go test -v` output of TestModuleBoundaryADR023, the ADR-023 §2
+    module-boundary detector that is red on main by design.
+
+    Three facts, each with its own default when the stream does not state it:
+
+      - Files: the `boundary_files=N` line the test logs on every outcome.
+        Defaults to -1 -- a stream without it means the run died before the walk
+        finished, or the log line was deleted, and neither may read as "walked
+        an empty tree".
+      - Total: the `N violation(s)` failure line, or 0 when the test PASSed.
+        Defaults to -1 when neither appears: a compile error prints neither.
+      - ByOrigin: the `by origin layer:` block only. The `by target:` block has
+        the same count-tab-name shape, so the block is cut out before its lines
+        are read -- a regex over the whole stream would double-count every
+        violation under a second key set.
+  #>
+  [CmdletBinding()]
+  param([Parameter(Mandatory)][AllowEmptyString()][string]$Text)
+
+  $plain = Remove-GateAnsi -Text $Text
+  $files = [regex]::Match($plain, '(?m)boundary_files=(?<n>\d+)\s*$')
+  $violations = [regex]::Match($plain, '(?m)^\s*\S+_test\.go:\d+: (?<n>\d+) violation\(s\)')
+  $passed = $plain -match '(?m)^--- PASS: TestModuleBoundaryADR023'
+
+  $byOrigin = @{}
+  $block = [regex]::Match($plain, 'by origin layer:\r?\n(?<block>(?:\s*\d+\t[^\r\n]+\r?\n)+)')
+  if ($block.Success) {
+    foreach ($match in [regex]::Matches($block.Groups['block'].Value, '(?m)^\s*(?<count>\d+)\t(?<origin>[^\r\n]+?)\s*$')) {
+      $byOrigin[$match.Groups['origin'].Value] = [int]$match.Groups['count'].Value
+    }
+  }
+  return [pscustomobject]@{
+    Files    = if ($files.Success) { [int]$files.Groups['n'].Value } else { -1 }
+    Total    = if ($violations.Success) { [int]$violations.Groups['n'].Value } elseif ($passed) { 0 } else { -1 }
+    ByOrigin = $byOrigin
+  }
+}
+
+function Measure-GateGovernance {
+  <#
+    Groups a PolicyResult's violations by error code, for the ratchet. The lane
+    calls Test-GovernanceDrift directly and hands the structured Violations list
+    here, so unlike the other measurers there is no text to parse -- but the
+    grouping still lives in this module, because the tests that prove the lane
+    counts correctly have to be able to call it with fixtures.
+  #>
+  [CmdletBinding()]
+  param([AllowEmptyCollection()][object[]]$Violations = @())
+
+  $byCode = @{}
+  foreach ($violation in @($Violations)) {
+    $code = [string]$violation.ErrorCode
+    if (-not $byCode.ContainsKey($code)) { $byCode[$code] = 0 }
+    $byCode[$code] = $byCode[$code] + 1
+  }
+  return [pscustomobject]@{
+    Total  = @($Violations).Count
+    ByCode = $byCode
+  }
+}
+
 function Compare-GateRatchet {
   <#
     Shrink-only comparison of measured counts against a committed baseline.
@@ -371,4 +434,4 @@ function ConvertTo-GateCountMap {
 
 Export-ModuleMember -Function Measure-GateGoTest, Measure-GateVitest, Measure-GateTsc, Measure-GateGofmt, `
   Remove-GateAnsi, Measure-GateGolangciLint, Measure-GateEslint, Measure-GateEslintRules, Measure-GatePrettier, Measure-GateArchscan, `
-  Compare-GateRatchet, ConvertTo-GateCountMap
+  Measure-GateBoundary, Measure-GateGovernance, Compare-GateRatchet, ConvertTo-GateCountMap

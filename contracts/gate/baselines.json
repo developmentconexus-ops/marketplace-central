@@ -67,6 +67,68 @@
       "numbers/float-in-contracts": 0
     }
   },
+  "governance-drift": {
+    "measured_at": "2026-08-08",
+    "measured_on": "2608cf95",
+    "tool_version": "scripts/harness/Policy.psm1 @ this commit",
+    "command": "npm run gate:governance",
+    "measured_note": [
+      "58 semantic-drift findings over 1181 source files, measured with Test-GovernanceDrift against",
+      "HEAD. The other half of the lane -- Test-GovernanceContracts, the six registries against their",
+      "schemas and cross-references -- passes clean and blocks at zero, so it has no entry here.",
+      "",
+      "The 58 are the legacy tree measured against contracts it predates: environment reads that no",
+      "registry entry approves (RCFG_UNAPPROVED_READER 20, RCFG_READER_MISSING 10,",
+      "RCFG_UNDECLARED_READ 7), cross-module imports that modules.json does not declare",
+      "(GOV_MODULE_DEPENDENCY 12, GOV_MODULE_LAYER 8), and one duplicated migration prefix",
+      "(GOV_MIGRATION_PREFIX 1). Ratcheted rather than paid because each fix is either a registry",
+      "amendment (a governance decision) or a code change (behavior review), and an instrument PR",
+      "must not smuggle in either.",
+      "",
+      "The walk reads the working tree, not the git index, so a developer's untracked source files",
+      "are in scope locally and absent on a CI checkout. An increase is real on either; a lower local",
+      "number with untracked files present proves nothing."
+    ],
+    "total": 58,
+    "by_code": {
+      "GOV_MODULE_DEPENDENCY": 12,
+      "GOV_MODULE_LAYER": 8,
+      "GOV_MIGRATION_PREFIX": 1,
+      "RCFG_UNAPPROVED_READER": 20,
+      "RCFG_READER_MISSING": 10,
+      "RCFG_UNDECLARED_READ": 7
+    }
+  },
+  "boundary": {
+    "measured_at": "2026-08-08",
+    "measured_on": "2608cf95",
+    "tool_version": "TestModuleBoundaryADR023 @ this commit",
+    "command": "npm run gate:boundary",
+    "measured_note": [
+      "234 cross-module imports that reach past X/ports, the only public surface ADR-023 section 2",
+      "allows, broken down by the layer the import originates from. The detector is red on main by",
+      "design -- it is the RED that opens Onda 1 of the module-protocol plan",
+      "(docs/superpowers/plans/2026-08-05-arquitetura-protocolo-de-modulo-plan.md), whose tasks own",
+      "paying this down. Until then the test-go lane skips the test and the boundary lane ratchets",
+      "it: the debt may shrink and may not grow, and a new module reaching into a sibling's domain",
+      "blocks the PR that writes it.",
+      "",
+      "Keyed by origin layer rather than by target module, because the origin set is closed -- the",
+      "layers ADR-023 names plus the unsanctioned module-root shape -- while target modules come and",
+      "go with refactors, and a ratchet whose keys churn teaches people to edit the baseline."
+    ],
+    "total": 234,
+    "by_origin": {
+      "adapters": 146,
+      "application": 42,
+      "composition": 20,
+      "transport": 12,
+      "ports": 9,
+      "domain": 2,
+      "integration": 2,
+      "(module root, no layer)": 1
+    }
+  },
   "eslint": {
     "measured_at": "2026-08-08",
     "measured_on": "93492504",

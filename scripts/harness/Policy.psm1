@@ -28,7 +28,12 @@ function New-PolicyResult {
   param(
     [Collections.IEnumerable]$Violations = @(),
     [Collections.IEnumerable]$BaselineExceptions = @(),
-    [hashtable]$Documents = @{}
+    [hashtable]$Documents = @{},
+    # -1 means "this result is not from a tree walk" (validate) or "the walk
+    # never finished". Only Test-GovernanceDrift sets a real count; a caller
+    # ratcheting drift findings must refuse both -1 and 0, because a verdict
+    # from a walk that saw no files is a verdict about nothing.
+    [int]$FilesScanned = -1
   )
   $violationList = @($Violations)
   [pscustomobject]@{
@@ -39,6 +44,7 @@ function New-PolicyResult {
     Violations = $violationList
     BaselineExceptions = @($BaselineExceptions)
     Documents = $Documents
+    FilesScanned = $FilesScanned
   }
 }
 
@@ -509,7 +515,7 @@ function Test-GovernanceDrift {
       }
     }
   }
-  return New-PolicyResult -Violations $issues -BaselineExceptions ($baselines | Sort-Object Id) -Documents $documents
+  return New-PolicyResult -Violations $issues -BaselineExceptions ($baselines | Sort-Object Id) -Documents $documents -FilesScanned (@($files).Count)
 }
 
 function Test-PathIntersection {
