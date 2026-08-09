@@ -339,9 +339,10 @@ func TestResilienceDecoratorStockWriteDoesNotRetry(t *testing.T) {
 		AccessTokenResolver: func(context.Context, domain.ProviderAccountRef) (string, error) {
 			return "token-stock-noretry", nil
 		},
-		// Even a tiny base delay would show up in elapsed time if the write
-		// path incorrectly retried; keep it configured but expect it unused.
-		RetryBaseDelay: 500 * time.Millisecond,
+		// A base delay far above local-HTTP overhead: if the write path
+		// incorrectly retried, elapsed necessarily crosses 2s; if it did not,
+		// two local round trips stay well under it even on a loaded machine.
+		RetryBaseDelay: 2 * time.Second,
 	})
 
 	t0 := time.Now()
@@ -354,8 +355,8 @@ func TestResilienceDecoratorStockWriteDoesNotRetry(t *testing.T) {
 	if atomic.LoadInt32(&calls) != 1 {
 		t.Fatalf("provider PUT calls = %d, want exactly 1 (no retry on write)", calls)
 	}
-	if elapsed >= 500*time.Millisecond {
-		t.Fatalf("elapsed = %s, want fast/no-wait (write must not enter the retry/backoff loop)", elapsed)
+	if elapsed >= 2*time.Second {
+		t.Fatalf("elapsed = %s, want under the 2s base delay (write must not enter the retry/backoff loop)", elapsed)
 	}
 	t.Logf("stock write 429 propagated after %s with %d attempt(s)", elapsed, calls)
 }
@@ -431,7 +432,10 @@ func TestResilienceDecoratorRateLimitPerMinuteDefaultsWhenUnset(t *testing.T) {
 	if _, err := adapter.ProbeAccount(context.Background(), resilienceAccountRef("inst-default-rate")); err != nil {
 		t.Fatalf("ProbeAccount() error = %v", err)
 	}
-	if elapsed := time.Since(t0); elapsed > 200*time.Millisecond {
-		t.Fatalf("elapsed = %s, want near-instant first call under the default rate limit", elapsed)
+	// The bound refutes a blocking wait (a broken default would sleep for a
+	// rate-limit interval, seconds), not scheduler noise: a single local HTTP
+	// round trip has been measured past 200ms under whole-suite load.
+	if elapsed := time.Since(t0); elapsed > 2*time.Second {
+		t.Fatalf("elapsed = %s, want no blocking wait on the first call under the default rate limit", elapsed)
 	}
 }
