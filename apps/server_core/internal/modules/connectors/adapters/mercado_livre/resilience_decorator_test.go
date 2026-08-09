@@ -170,21 +170,22 @@ func TestResilienceDecoratorTokenBucketThrottlesConcurrentRequests(t *testing.T)
 	}
 	sortTimes(timestamps)
 
-	// The bucket allows the first call through immediately; the remaining
-	// n-1 calls must each be spaced by at least `interval` from the previous
-	// one (allow a small negative-jitter-free tolerance since our limiter
-	// only ever adds wait, never subtracts).
-	const tolerance = 15 * time.Millisecond
+	// What the bucket guarantees is release spacing, and therefore total
+	// throughput -- NOT the spacing of server-side receipt timestamps. A
+	// goroutine released at t=0 can be descheduled for 95ms and arrive 5ms
+	// before the one released at t=100ms, so a per-pair gap assertion on
+	// receipt times flakes under whole-suite load no matter the tolerance
+	// (observed: a 5.4ms receipt gap from a correctly-queued release).
+	// Total elapsed is robust against reordering: 5 queued requests take at
+	// least (n-1)*interval end to end, a burst finishes in milliseconds.
 	for i := 1; i < len(timestamps); i++ {
 		gap := timestamps[i].Sub(timestamps[i-1])
 		t.Logf("gap[%d] = %s (timestamps[%d]=%s timestamps[%d]=%s)", i, gap, i-1, timestamps[i-1].Format(time.RFC3339Nano), i, timestamps[i].Format(time.RFC3339Nano))
-		if gap < interval-tolerance {
-			t.Fatalf("gap between request %d and %d = %s, want >= ~%s (bucket allowed a burst)", i-1, i, gap, interval)
-		}
 	}
+	const tolerance = 15 * time.Millisecond
 	minTotal := time.Duration(n-1) * interval
 	if totalElapsed < minTotal-tolerance {
-		t.Fatalf("total elapsed = %s, want >= ~%s for %d requests at %d/min", totalElapsed, minTotal, n, ratePerMinute)
+		t.Fatalf("total elapsed = %s, want >= ~%s for %d requests at %d/min (bucket allowed a burst)", totalElapsed, minTotal, n, ratePerMinute)
 	}
 	t.Logf("total elapsed for %d concurrent requests at %d/min = %s (min expected ~%s)", n, ratePerMinute, totalElapsed, minTotal)
 }
@@ -338,9 +339,10 @@ func TestResilienceDecoratorStockWriteDoesNotRetry(t *testing.T) {
 		AccessTokenResolver: func(context.Context, domain.ProviderAccountRef) (string, error) {
 			return "token-stock-noretry", nil
 		},
-		// Even a tiny base delay would show up in elapsed time if the write
-		// path incorrectly retried; keep it configured but expect it unused.
-		RetryBaseDelay: 500 * time.Millisecond,
+		// A base delay far above local-HTTP overhead: if the write path
+		// incorrectly retried, elapsed necessarily crosses 2s; if it did not,
+		// two local round trips stay well under it even on a loaded machine.
+		RetryBaseDelay: 2 * time.Second,
 	})
 
 	t0 := time.Now()
@@ -353,8 +355,8 @@ func TestResilienceDecoratorStockWriteDoesNotRetry(t *testing.T) {
 	if atomic.LoadInt32(&calls) != 1 {
 		t.Fatalf("provider PUT calls = %d, want exactly 1 (no retry on write)", calls)
 	}
-	if elapsed >= 500*time.Millisecond {
-		t.Fatalf("elapsed = %s, want fast/no-wait (write must not enter the retry/backoff loop)", elapsed)
+	if elapsed >= 2*time.Second {
+		t.Fatalf("elapsed = %s, want under the 2s base delay (write must not enter the retry/backoff loop)", elapsed)
 	}
 	t.Logf("stock write 429 propagated after %s with %d attempt(s)", elapsed, calls)
 }
@@ -430,7 +432,10 @@ func TestResilienceDecoratorRateLimitPerMinuteDefaultsWhenUnset(t *testing.T) {
 	if _, err := adapter.ProbeAccount(context.Background(), resilienceAccountRef("inst-default-rate")); err != nil {
 		t.Fatalf("ProbeAccount() error = %v", err)
 	}
-	if elapsed := time.Since(t0); elapsed > 200*time.Millisecond {
-		t.Fatalf("elapsed = %s, want near-instant first call under the default rate limit", elapsed)
+	// The bound refutes a blocking wait (a broken default would sleep for a
+	// rate-limit interval, seconds), not scheduler noise: a single local HTTP
+	// round trip has been measured past 200ms under whole-suite load.
+	if elapsed := time.Since(t0); elapsed > 2*time.Second {
+		t.Fatalf("elapsed = %s, want no blocking wait on the first call under the default rate limit", elapsed)
 	}
 }

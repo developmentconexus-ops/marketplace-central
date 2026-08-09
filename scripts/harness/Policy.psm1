@@ -510,7 +510,15 @@ function Test-GovernanceDrift {
       if ($trackedStatus -ne 0 -or $untrackedStatus -ne 0) { $issues.Add((New-PolicyIssue 'GOV_SEMANTIC_DRIFT' 'base-sha-unavailable')) }
       else {
         $apiChanged = 'contracts/api/marketplace-central.openapi.yaml' -in $changed
-        $sdkChanged = @($changed | Where-Object { $_ -eq 'packages/sdk-runtime' -or $_ -like 'packages/sdk-runtime/*' }).Count -gt 0
+        # ADR-016 guards the SDK's *types* -- the contract shape the frontend
+        # consumes, which lives in the non-test sources under src/. Test files
+        # exercise that shape but do not declare it, and package.json or a
+        # vitest config is test plumbing; neither carries the drift the
+        # same-commit rule exists to prevent.
+        $sdkChanged = @($changed | Where-Object {
+            $_ -like 'packages/sdk-runtime/src/*' -and
+            $_ -notmatch '\.(test|spec)\.(ts|tsx|js|mjs)$'
+          }).Count -gt 0
         if ($apiChanged -xor $sdkChanged) { $issues.Add((New-PolicyIssue 'GOV_API_SDK_SPLIT' 'api-sdk-atomicity')) }
       }
     }

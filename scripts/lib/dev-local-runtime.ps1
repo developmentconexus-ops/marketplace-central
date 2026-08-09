@@ -121,7 +121,17 @@ function Start-DevLocalChild([string]$RepositoryRoot, [string]$Name, [string]$Fi
   $existing = Read-DevLocalPid $state $Name
   if ($existing -and (Test-DevLocalPidOwnedByRuntime $state $Name $existing)) { throw "$Name is already running with PID $existing" }
   Remove-DevLocalPid $state $Name
-  $process = Start-Process -FilePath $FilePath -ArgumentList $ArgumentList -WorkingDirectory $RepositoryRoot -WindowStyle Hidden -RedirectStandardOutput $stdoutLog -RedirectStandardError $stderrLog -PassThru
+  $startArgs = @{
+    FilePath               = $FilePath
+    ArgumentList           = $ArgumentList
+    WorkingDirectory       = $RepositoryRoot
+    RedirectStandardOutput = $stdoutLog
+    RedirectStandardError  = $stderrLog
+    PassThru               = $true
+  }
+  # -WindowStyle exists only on Windows PowerShell editions; linux pwsh rejects the parameter outright.
+  if ($IsWindows) { $startArgs.WindowStyle = 'Hidden' }
+  $process = Start-Process @startArgs
   Write-DevLocalPid $state $Name $process.Id
 }
 

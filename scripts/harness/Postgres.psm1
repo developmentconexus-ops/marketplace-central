@@ -46,9 +46,15 @@ function Get-HarnessIntegrationTestPackages {
   $serverRoot = Join-Path $RepositoryRoot 'apps/server_core'
   $packages = [System.Collections.Generic.SortedSet[string]]::new([StringComparer]::Ordinal)
   [void]$packages.Add('./tests/integration')
-  $modulesRoot = Join-Path $serverRoot 'internal/modules'
-  if (Test-Path -LiteralPath $modulesRoot -PathType Container) {
-    $testFiles = @(Get-ChildItem -LiteralPath $modulesRoot -Recurse -File -Filter '*_test.go' -ErrorAction SilentlyContinue)
+  # The whole module, not just internal/modules: migrations/icms_matrix_test.go
+  # carried the integration tag for a month while this walk could not see it --
+  # a test in the tree that no lane ran. Dot-directories are excluded because
+  # .gocache/.gomodcache live under the module root and recursing into them
+  # turns a directory walk into a cache walk.
+  $walkRoots = @(Get-ChildItem -LiteralPath $serverRoot -Directory -ErrorAction SilentlyContinue |
+      Where-Object { $_.Name -notlike '.*' })
+  foreach ($walkRoot in $walkRoots) {
+    $testFiles = @(Get-ChildItem -LiteralPath $walkRoot.FullName -Recurse -File -Filter '*_test.go' -ErrorAction SilentlyContinue)
     foreach ($file in $testFiles) {
       $head = @(Get-Content -LiteralPath $file.FullName -TotalCount 5 -ErrorAction SilentlyContinue)
       if (@($head | Where-Object { $_ -match '^//go:build\b.*\bintegration\b' }).Count -gt 0) {
@@ -287,6 +293,12 @@ function Invoke-HarnessPostgresLifecycle {
   $dockerEnvironment = Copy-HarnessEnvironment $BaseEnvironment
   $dockerEnvironment['POSTGRES_PASSWORD'] = [string]$RunSpec.Password
   $goEnvironment = Copy-HarnessEnvironment $BaseEnvironment
+  # The hermetic lane compiles the same file set on every platform. Without
+  # this, a linux runner with gcc has cgo on by default and `integration && cgo`
+  # files -- the live Oracle tests -- enter a lane that has no Oracle, while a
+  # bare Windows host silently excludes them. Live-cgo tests belong to the
+  # live-oracle lane alone.
+  $goEnvironment['CGO_ENABLED'] = '0'
   $cleanupCodes = [System.Collections.Generic.List[string]]::new()
   $inventory = @()
   $state = @{ PrimaryCode = ''; PrimaryExit = 0 }

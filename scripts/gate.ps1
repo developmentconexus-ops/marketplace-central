@@ -35,7 +35,7 @@
 #>
 [CmdletBinding()]
 param(
-  [ValidateSet('all', 'gofmt', 'format', 'build', 'typecheck', 'governance', 'arch', 'boundary', 'lint-go', 'lint-web', 'test-go', 'test-web')]
+  [ValidateSet('all', 'full', 'gofmt', 'format', 'build', 'typecheck', 'governance', 'arch', 'boundary', 'lint-go', 'lint-web', 'test-go', 'test-web', 'census', 'ci-hygiene', 'selftest', 'integration', 'edge')]
   [string]$Lane = 'all',
   [switch]$ContinueOnFailure
 )
@@ -46,6 +46,9 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $serverCore = Join-Path $repositoryRoot 'apps/server_core'
 Import-Module (Join-Path $PSScriptRoot 'harness/Gate.psm1') -Force
+# For Get-HarnessIntegrationTestPackages: the census lane reuses the harness's
+# own integration-package discovery instead of keeping a second copy of the rule.
+Import-Module (Join-Path $PSScriptRoot 'harness/Postgres.psm1') -Force
 
 # HARNESS-PROFILE §2 binds the Go caches to an ABSOLUTE path. The relative
 # `GOCACHE=.gocache` that AGENTS.md still prints was struck from the profile on
@@ -743,24 +746,68 @@ function Invoke-GateTypecheck {
   # on success, so a project that resolved zero source files -- a broken
   # `include`, a renamed directory -- exits 0 with the same silence as a clean
   # compile.
+  #
+  # tsconfig.eslint.json and not apps/web/tsconfig.json: the web project covers
+  # 194 of the tracked sources and leaves the package test files dark, which is
+  # how 12 type errors sat green in files vitest executes every run. The lint
+  # project already exists as the one project declared over everything, so the
+  # typecheck lane checks the same set, and the census below holds it there.
   $result = Invoke-GateTool -Name 'tsc' -FilePath 'npx' `
-    -ArgumentList @('--no-install', 'tsc', '-p', 'apps/web/tsconfig.json', '--noEmit', '--listFiles')
+    -ArgumentList @('--no-install', 'tsc', '-p', 'tsconfig.eslint.json', '--noEmit', '--listFiles')
   $measurement = Measure-GateTsc -Text $result.Text
-  $counts = "checked=$($measurement.Checked) errors=$($measurement.Errors)"
-  Write-Host $counts
-  if ($result.ExitCode -ne 0) {
-    return New-GateVerdict -Lane 'typecheck' -Passed $false -Counts $counts -Reason "tsc exited $($result.ExitCode)"
+
+  # Coverage before errors, same order and same reason as lint-web: a tracked
+  # source the project does not load is reported clean by a compiler that never
+  # saw it. The tracked list is the reference and every entry must be loaded.
+  $sources = Get-GateWebSources
+  $loaded = @{}
+  $prefix = ($repositoryRoot -replace '\\', '/').TrimEnd('/') + '/'
+  foreach ($path in @($measurement.Paths)) {
+    $loaded[(($path -replace '\\', '/') -replace [regex]::Escape($prefix), '')] = $true
   }
+  $uncovered = @($sources | Where-Object { -not $loaded.ContainsKey($_) })
+
+  $counts = "checked=$($measurement.Checked) sources=$($sources.Count) uncovered=$($uncovered.Count) errors=$($measurement.Errors)"
+  Write-Host $counts
   if ($measurement.Checked -eq 0) {
     return New-GateVerdict -Lane 'typecheck' -Passed $false -Counts $counts `
       -Reason 'tsc loaded no project files. The project resolved nothing, which is not the same as compiling cleanly.'
+  }
+  if ($uncovered.Count -gt 0) {
+    foreach ($path in @($uncovered | Select-Object -First 20)) { Write-Host "  uncovered: $path" }
+    return New-GateVerdict -Lane 'typecheck' -Passed $false -Counts $counts `
+      -Reason 'tsc did not load every tracked .ts/.tsx source. A file outside the project is reported clean by a compiler that never saw it.'
+  }
+  # Exit 2 is type errors, the normal state under a ratchet; anything else above
+  # 0 is the tool failing to run.
+  if ($result.ExitCode -notin @(0, 2)) {
+    return New-GateVerdict -Lane 'typecheck' -Passed $false -Counts $counts -Reason "tsc exited $($result.ExitCode), which is neither clean nor type errors."
+  }
+
+  $baselinePath = Join-Path $repositoryRoot 'contracts/gate/baselines.json'
+  if (-not (Test-Path -LiteralPath $baselinePath -PathType Leaf)) {
+    return New-GateVerdict -Lane 'typecheck' -Passed $false -Counts 'baseline=missing' `
+      -Reason "no ratchet baseline at $baselinePath."
+  }
+  $baselineDocument = Get-Content -LiteralPath $baselinePath -Raw | ConvertFrom-Json
+  $baseline = ConvertTo-GateCountMap -Object $baselineDocument.tsc.by_file
+  $comparison = Compare-GateRatchet -Measured $measurement.ByFile -Baseline $baseline
+  foreach ($line in @($comparison.Decreased)) { Write-Host "shrink: $line -- commit the lower baseline in this PR" }
+  if (-not $comparison.Passed) {
+    foreach ($line in @($comparison.Increased)) { Write-Host "increase: $line" }
+    foreach ($line in @($comparison.Unknown)) { Write-Host "unknown file, absent from the baseline: $line" }
+    return New-GateVerdict -Lane 'typecheck' -Passed $false -Counts $counts `
+      -Reason 'type errors increased over the committed baseline, or appeared in a file the baseline does not name.'
   }
   return New-GateVerdict -Lane 'typecheck' -Passed $true -Counts $counts
 }
 
 function Invoke-GateTestWeb {
-  $result = Invoke-GateTool -Name 'vitest' -FilePath 'npm' `
-    -ArgumentList @('run', 'test', '--workspace', '@marketplace-central/web', '--', '--run')
+  # The root config is the single vitest entry point: glob discovery over every
+  # workspace (GATE-TOPOLOGY §2.3), so a test file in a package no lane names
+  # still runs. The census lane holds the count against the tree.
+  $result = Invoke-GateTool -Name 'vitest' -FilePath 'npx' `
+    -ArgumentList @('--no-install', 'vitest', 'run', '--config', 'vitest.config.ts')
   $measurement = Measure-GateVitest -Text $result.Text
   $counts = "files=$($measurement.Files) tests=$($measurement.Tests) pass=$($measurement.Passed) fail=$($measurement.Failed)"
   Write-Host $counts
@@ -777,6 +824,211 @@ function Invoke-GateTestWeb {
   return New-GateVerdict -Lane 'test-web' -Passed $true -Counts $counts
 }
 
+function Invoke-GateSelftest {
+  # The gate's own instruments, proved on themselves. Discovery is the glob plus
+  # one naming convention: `*.integration.tests.ps1` needs Docker and belongs to
+  # the integration lane, everything else runs here. No file list to forget --
+  # a new self-test is in the lane the moment the file exists.
+  $files = @(Get-ChildItem -Path (Join-Path $repositoryRoot 'scripts/tests') -Filter '*.tests.ps1' |
+      Where-Object { $_.Name -notlike '*.integration.tests.ps1' } |
+      Sort-Object Name)
+  if ($files.Count -eq 0) {
+    return New-GateVerdict -Lane 'selftest' -Passed $false -Counts 'files=0' `
+      -Reason 'the glob reached no self-test file. An empty lane is not a green lane.'
+  }
+
+  $passedFiles = @()
+  $failedFiles = @()
+  foreach ($file in $files) {
+    $result = Invoke-GateTool -Name "selftest-$($file.BaseName -replace '\.tests$', '')" -FilePath 'pwsh' `
+      -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $file.FullName)
+    # Exit code alone is not evidence: a Pester file invoked directly runs its
+    # Describe blocks without setting the exit code, so a failed assertion can
+    # exit 0. Each file must therefore also present a positive pass token --
+    # either the script convention (`PASS ...` on its own line) or Pester
+    # summaries whose failure count is zero and whose pass count is not.
+    # Pester colors its summary, so the ANSI escapes sit between the numbers and
+    # the words. Match the plain text.
+    $plainText = $result.Text -replace "`e\[[0-9;]*m", ''
+    $pesterPassed = 0
+    $pesterFailed = 0
+    foreach ($match in @([regex]::Matches($plainText, 'Tests Passed:\s*(\d+),\s*Failed:\s*(\d+)'))) {
+      $pesterPassed += [int]$match.Groups[1].Value
+      $pesterFailed += [int]$match.Groups[2].Value
+    }
+    $scriptToken = $plainText -match '(?m)^PASS '
+    $ok = ($result.ExitCode -eq 0) -and ($pesterFailed -eq 0) -and ($scriptToken -or $pesterPassed -gt 0)
+    if ($ok) { $passedFiles += $file.Name } else { $failedFiles += "$($file.Name) exit=$($result.ExitCode) pester_failed=$pesterFailed token=$(if ($scriptToken) { 'script' } elseif ($pesterPassed -gt 0) { 'pester' } else { 'none' })" }
+  }
+
+  $counts = "files=$($files.Count) pass=$($passedFiles.Count) fail=$($failedFiles.Count)"
+  Write-Host $counts
+  if ($failedFiles.Count -gt 0) {
+    foreach ($line in $failedFiles) { Write-Host "  failed: $line" }
+    return New-GateVerdict -Lane 'selftest' -Passed $false -Counts $counts `
+      -Reason 'a self-test file failed, exited cleanly without a pass token, or reported Pester failures. The instruments are the thing under test here.'
+  }
+  return New-GateVerdict -Lane 'selftest' -Passed $true -Counts $counts
+}
+
+function Invoke-GateCensus {
+  <#
+    Every test file in the tree, held against the union of what the gate's lanes
+    actually execute (GATE-TOPOLOGY §2.3: kills the dark-test-file class rather
+    than one instance at a time). Static -- nothing runs; discovery is compared,
+    not execution. Exemptions live in contracts/gate/census-exempt.json with a
+    reason each, and a stale exemption (file gone, or file now reachable) fails
+    the lane the same way an uncovered file does.
+  #>
+  # TypeScript: the tree census against vitest's own discovery over the root
+  # config. `vitest list` resolves the same globs `vitest run` executes, so a
+  # test file the run cannot see is named here before it goes dark.
+  $tsCensus = @(& git -C $repositoryRoot ls-files --cached --others --exclude-standard '*.test.ts' '*.test.tsx' '*.spec.ts' '*.spec.tsx' |
+      Where-Object { Test-Path -LiteralPath (Join-Path $repositoryRoot $_) -PathType Leaf } | Sort-Object)
+  $listResult = Invoke-GateTool -Name 'census-vitest-list' -FilePath 'npx' -Quiet `
+    -ArgumentList @('--no-install', 'vitest', 'list', '--config', 'vitest.config.ts', '--filesOnly')
+  $discovered = @{}
+  foreach ($line in @($listResult.Text -split "`r?`n")) {
+    # ANSI first: a colored `[project]` prefix would defeat the bracket strip
+    # and every discovered path would read as uncovered.
+    $clean = ($line -replace "`e\[[0-9;]*m", '' -replace '^\[[^\]]+\]\s+', '').Trim() -replace '\\', '/'
+    if ($clean) { $discovered[$clean] = $true }
+  }
+  $uncoveredTs = @($tsCensus | Where-Object { -not $discovered.ContainsKey($_) })
+
+  # Go: the census against what `go test` can compile -- the unit set (./...)
+  # plus the hermetic integration set, both with CGO_ENABLED=0 exactly as the
+  # lanes run them, so the census measures the lanes and not a hypothetical
+  # toolchain. The integration package list comes from the harness's own
+  # discovery function; two copies of that rule is how they come to disagree.
+  $goCensus = @(& git -C $repositoryRoot ls-files --cached --others --exclude-standard '*_test.go' |
+      Where-Object { Test-Path -LiteralPath (Join-Path $repositoryRoot $_) -PathType Leaf } | Sort-Object)
+  $goListFormat = '{{range .TestGoFiles}}{{$.Dir}}/{{.}}{{"\n"}}{{end}}{{range .XTestGoFiles}}{{$.Dir}}/{{.}}{{"\n"}}{{end}}'
+  $previousCgo = $env:CGO_ENABLED
+  try {
+    $env:CGO_ENABLED = '0'
+    $unitList = Invoke-GateTool -Name 'census-go-list' -FilePath 'go' -Quiet `
+      -ArgumentList @('list', '-f', $goListFormat, './...') -WorkingDirectory $serverCore
+    $integrationPackages = @(Get-HarnessIntegrationTestPackages -RepositoryRoot $repositoryRoot)
+    $integrationList = Invoke-GateTool -Name 'census-go-list-integration' -FilePath 'go' -Quiet `
+      -ArgumentList (@('list', '-tags=integration', '-f', $goListFormat) + $integrationPackages) -WorkingDirectory $serverCore
+  } finally {
+    $env:CGO_ENABLED = $previousCgo
+  }
+  $reachable = @{}
+  $serverPrefix = (($serverCore -replace '\\', '/').TrimEnd('/')) + '/'
+  foreach ($line in @(($unitList.Text + "`n" + $integrationList.Text) -split "`r?`n")) {
+    $clean = ($line.Trim() -replace '\\', '/')
+    if (-not $clean) { continue }
+    $relative = 'apps/server_core/' + ($clean -replace [regex]::Escape($serverPrefix), '')
+    $reachable[$relative] = $true
+  }
+
+  $exemptDocument = Get-Content -LiteralPath (Join-Path $repositoryRoot 'contracts/gate/census-exempt.json') -Raw | ConvertFrom-Json
+  $exempt = @{}
+  $staleExemptions = @()
+  foreach ($entry in @($exemptDocument.exempt)) {
+    if (-not (Test-Path -LiteralPath (Join-Path $repositoryRoot $entry.path) -PathType Leaf)) {
+      $staleExemptions += "$($entry.path) (file no longer exists)"
+    } elseif ($reachable.ContainsKey([string]$entry.path)) {
+      $staleExemptions += "$($entry.path) (now reachable by the gate; the exemption is stale)"
+    } else {
+      $exempt[[string]$entry.path] = $true
+    }
+  }
+  $uncoveredGo = @($goCensus | Where-Object { -not $reachable.ContainsKey($_) -and -not $exempt.ContainsKey($_) })
+
+  $counts = "ts_census=$($tsCensus.Count) ts_discovered=$($discovered.Count) go_census=$($goCensus.Count) go_reachable=$($reachable.Count) exempt=$($exempt.Count) uncovered=$($uncoveredTs.Count + $uncoveredGo.Count) stale_exemptions=$($staleExemptions.Count)"
+  Write-Host $counts
+  if ($tsCensus.Count -eq 0 -or $discovered.Count -eq 0 -or $goCensus.Count -eq 0 -or $reachable.Count -eq 0) {
+    return New-GateVerdict -Lane 'census' -Passed $false -Counts $counts `
+      -Reason 'a census or discovery side came back empty. A comparison over an empty set proves nothing.'
+  }
+  if ($uncoveredTs.Count -gt 0 -or $uncoveredGo.Count -gt 0 -or $staleExemptions.Count -gt 0) {
+    foreach ($path in @($uncoveredTs)) { Write-Host "  dark ts: $path" }
+    foreach ($path in @($uncoveredGo)) { Write-Host "  dark go: $path" }
+    foreach ($line in @($staleExemptions)) { Write-Host "  stale exemption: $line" }
+    return New-GateVerdict -Lane 'census' -Passed $false -Counts $counts `
+      -Reason 'a test file exists that no gate lane executes, or an exemption no longer describes reality. Name it in a lane or in census-exempt.json with a reason.'
+  }
+  return New-GateVerdict -Lane 'census' -Passed $true -Counts $counts
+}
+
+function Invoke-GateCiHygiene {
+  # GATE-TOPOLOGY §2.3/§3: `pull_request_target` runs workflow code with write
+  # credentials against a PR's HEAD, which is the textbook CI privilege
+  # escalation. No workflow here needs it, so the string itself is the finding.
+  $files = @(& git -C $repositoryRoot ls-files --cached --others --exclude-standard '.github/**' |
+      Where-Object { Test-Path -LiteralPath (Join-Path $repositoryRoot $_) -PathType Leaf })
+  if ($files.Count -eq 0) {
+    return New-GateVerdict -Lane 'ci-hygiene' -Passed $false -Counts 'scanned=0' `
+      -Reason 'no file under .github/ was scanned. Zero scanned is not zero findings.'
+  }
+  $hits = @()
+  foreach ($file in $files) {
+    foreach ($match in @(Select-String -LiteralPath (Join-Path $repositoryRoot $file) -Pattern 'pull_request_target' -SimpleMatch)) {
+      $hits += "$($file):$($match.LineNumber)"
+    }
+  }
+  $counts = "scanned=$($files.Count) hits=$($hits.Count)"
+  Write-Host $counts
+  if ($hits.Count -gt 0) {
+    foreach ($hit in $hits) { Write-Host "  pull_request_target at $hit" }
+    return New-GateVerdict -Lane 'ci-hygiene' -Passed $false -Counts $counts `
+      -Reason 'a workflow uses pull_request_target, which runs PR code with write credentials.'
+  }
+  return New-GateVerdict -Lane 'ci-hygiene' -Passed $true -Counts $counts
+}
+
+function Invoke-GateIntegration {
+  # Wraps `harness.ps1 -Command integration`: ephemeral Postgres in Docker,
+  # embedded migrations, no ERP and no dev stack (GATE-TOPOLOGY §2.3). The
+  # harness prints tests_run= with -1 for "the test step was never reached",
+  # which is a different fact from 0 -- both fail here, for different reasons
+  # the count makes attributable.
+  $result = Invoke-GateTool -Name 'integration' -FilePath 'pwsh' `
+    -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $repositoryRoot 'scripts/harness.ps1'), '-Command', 'integration')
+  $match = [regex]::Match($result.Text, 'tests_run=(-?\d+) tests_passed=(-?\d+) tests_skipped=(-?\d+) tests_failed=(-?\d+)')
+  $run = if ($match.Success) { [int]$match.Groups[1].Value } else { -1 }
+  $passed = if ($match.Success) { [int]$match.Groups[2].Value } else { -1 }
+  $skipped = if ($match.Success) { [int]$match.Groups[3].Value } else { -1 }
+  $failed = if ($match.Success) { [int]$match.Groups[4].Value } else { -1 }
+  $counts = "run=$run pass=$passed skip=$skipped fail=$failed"
+  Write-Host $counts
+  if ($result.ExitCode -ne 0) {
+    return New-GateVerdict -Lane 'integration' -Passed $false -Counts $counts -Reason "the integration harness exited $($result.ExitCode)"
+  }
+  if ($run -le 0 -or $passed -le 0) {
+    return New-GateVerdict -Lane 'integration' -Passed $false -Counts $counts `
+      -Reason 'the lane exited 0 having run nothing or passed nothing. Pulled-vs-green is byte-identical without this line.'
+  }
+  if ($failed -ne 0) {
+    return New-GateVerdict -Lane 'integration' -Passed $false -Counts $counts -Reason 'integration tests failed.'
+  }
+  return New-GateVerdict -Lane 'integration' -Passed $true -Counts $counts
+}
+
+function Invoke-GateEdge {
+  # Wraps `harness.ps1 -Command edge`: the issue #1 PII fixture driving the real
+  # Caddyfiles through real Caddy against stub upstreams, Docker only. The
+  # fixture refuses to pass under 17 assertions; the lane re-asserts the floor
+  # so weakening the fixture's own guard is visible here too.
+  $result = Invoke-GateTool -Name 'edge' -FilePath 'pwsh' `
+    -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $repositoryRoot 'scripts/harness.ps1'), '-Command', 'edge')
+  $match = [regex]::Match($result.Text, '(?m)^assertions=(\d+)')
+  $assertions = if ($match.Success) { [int]$match.Groups[1].Value } else { -1 }
+  $counts = "assertions=$assertions"
+  Write-Host $counts
+  if ($result.ExitCode -ne 0) {
+    return New-GateVerdict -Lane 'edge' -Passed $false -Counts $counts -Reason "the edge harness exited $($result.ExitCode)"
+  }
+  if ($assertions -lt 17) {
+    return New-GateVerdict -Lane 'edge' -Passed $false -Counts $counts `
+      -Reason 'fewer than 17 edge PII assertions ran (-1: no assertions= line at all). The deny surface was not exercised.'
+  }
+  return New-GateVerdict -Lane 'edge' -Passed $true -Counts $counts
+}
+
 # Cost order. `needs:` in ci.yml expresses the same ordering across jobs; here it
 # is the order of this array.
 $lanes = [ordered]@{
@@ -791,9 +1043,22 @@ $lanes = [ordered]@{
   'lint-web'   = ${function:Invoke-GateLintWeb}
   'test-go'    = ${function:Invoke-GateGoTest}
   'test-web'   = ${function:Invoke-GateTestWeb}
+  'census'     = ${function:Invoke-GateCensus}
+  'ci-hygiene' = ${function:Invoke-GateCiHygiene}
+  'selftest'   = ${function:Invoke-GateSelftest}
+  'integration' = ${function:Invoke-GateIntegration}
+  'edge'       = ${function:Invoke-GateEdge}
 }
 
-$selected = if ($Lane -eq 'all') { @($lanes.Keys) } else { @($Lane) }
+# 'all' is the everyday set; 'full' adds the lanes whose cost is minutes rather
+# than seconds (GATE-TOPOLOGY §2.3 verify-full). Both are the same product --
+# CI's verify-full job and a pre-merge local run say `full`, a push says `all`.
+$fullOnly = @('selftest', 'integration', 'edge')
+$selected = switch ($Lane) {
+  'all' { @($lanes.Keys | Where-Object { $_ -notin $fullOnly }) }
+  'full' { @($lanes.Keys) }
+  default { @($Lane) }
+}
 $verdicts = @()
 foreach ($name in $selected) {
   Write-Host ''

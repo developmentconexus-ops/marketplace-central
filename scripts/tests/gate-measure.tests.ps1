@@ -133,6 +133,20 @@ apps/web/src/components/MutationPreviewModal.tsx(210,9): error TS2741: Property 
 $tscErrorMeasured = Measure-GateTsc -Text $tscErrors
 Assert-True ($tscErrorMeasured.Errors -eq 1) "tsc error count wrong: $($tscErrorMeasured.Errors)"
 Assert-True ($tscErrorMeasured.Checked -eq 1) 'a tsc error line was counted as a project file'
+Assert-True ($tscErrorMeasured.Paths -contains 'C:/repo/apps/web/src/main.tsx') 'tsc did not report the loaded path'
+
+# Per-file attribution feeds the typecheck ratchet: two errors in one file and
+# one in another must land on their own keys, or a new error in a clean file
+# hides behind a shrink elsewhere.
+$tscByFile = @"
+packages/a/src/x.test.ts(1,1): error TS2304: Cannot find name 'Foo'.
+packages/a/src/x.test.ts(9,3): error TS2741: Property 'bar' is missing.
+packages/b/src/y.test.ts(4,2): error TS2322: Type 'string' is not assignable.
+"@
+$tscByFileMeasured = Measure-GateTsc -Text $tscByFile
+Assert-True ($tscByFileMeasured.ByFile['packages/a/src/x.test.ts'] -eq 2) "tsc per-file count wrong: $($tscByFileMeasured.ByFile['packages/a/src/x.test.ts'])"
+Assert-True ($tscByFileMeasured.ByFile['packages/b/src/y.test.ts'] -eq 1) 'tsc did not attribute the second file'
+Assert-True ($tscByFileMeasured.ByFile.Count -eq 2) 'tsc invented or merged per-file keys'
 
 # --- gofmt ---------------------------------------------------------------
 
@@ -155,6 +169,24 @@ Assert-True ($gateSource -match '\$measurement\.Run -eq 0 -or \$measurement\.Pas
   'the go test lane no longer fails on a suite that ran nothing or passed nothing'
 Assert-True ($gateSource -match '\$measurement\.Checked -eq 0') `
   'the typecheck lane no longer fails on a project that resolved no sources'
+Assert-True ($gateSource -match "tsc', '-p', 'tsconfig\.eslint\.json'") `
+  'the typecheck lane no longer checks the full-coverage project -- package test files go dark again'
+Assert-True ($gateSource -match '\$baselineDocument\.tsc\.by_file') `
+  'the typecheck lane no longer ratchets type errors against the committed per-file baseline'
+Assert-True ($gateSource -match 'tsc did not load every tracked') `
+  'the typecheck lane no longer holds the loaded set against the tracked-source census'
+Assert-True ($gateSource -match '\$run -le 0 -or \$passed -le 0') `
+  'the integration lane no longer fails a run that reached nothing (-1) or ran nothing (0)'
+Assert-True ($gateSource -match '\$assertions -lt 17') `
+  'the edge lane no longer enforces the 17-assertion floor on the PII deny fixture'
+Assert-True ($gateSource -match '\(\$scriptToken -or \$pesterPassed -gt 0\)') `
+  'the selftest lane no longer demands a positive pass token from every file'
+Assert-True ($gateSource -match 'now reachable by the gate; the exemption is stale') `
+  'the census lane no longer fails stale exemptions -- a paid-down debt would stay excused forever'
+Assert-True ($gateSource -match '\$uncoveredTs\.Count -gt 0 -or \$uncoveredGo\.Count -gt 0') `
+  'the census lane no longer fails on a dark test file'
+Assert-True ($gateSource -match 'Get-HarnessIntegrationTestPackages') `
+  'the census lane grew its own copy of the integration-package discovery rule'
 Assert-True ($gateSource -match '\$measurement\.Passed -le 0') `
   'the vitest lane no longer fails on a run with no stated result'
 Assert-True ($gateSource -match '\$discovered\.Count -eq 0') `
