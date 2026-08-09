@@ -220,6 +220,24 @@ try {
   Write-FixtureFile $untrackedSdkFixture 'packages/sdk-runtime/src/review-bypass.ts' 'export const reviewBypass = true'
   Test-ReviewFailureCode $reviewFailures $untrackedSdkFixture 'GOV_API_SDK_SPLIT' 'untracked SDK-only change' $untrackedBaseSha
 
+  # ADR-016 guards the SDK's types, not its tests or its plumbing: a change
+  # that declares no contract shape must not demand an OpenAPI edit.
+  $sdkTestOnlyFixture = New-PositiveFixture; $fixtures.Add($sdkTestOnlyFixture)
+  & git -C $sdkTestOnlyFixture init --quiet
+  & git -C $sdkTestOnlyFixture config core.autocrlf false
+  & git -C $sdkTestOnlyFixture config user.email 'fixture@example.invalid'
+  & git -C $sdkTestOnlyFixture config user.name 'Fixture'
+  & git -C $sdkTestOnlyFixture add .
+  & git -C $sdkTestOnlyFixture commit --quiet -m baseline
+  $sdkTestOnlyBaseSha = (& git -C $sdkTestOnlyFixture rev-parse HEAD).Trim()
+  Write-FixtureFile $sdkTestOnlyFixture 'packages/sdk-runtime/src/index.test.ts' 'export {}'
+  Write-FixtureFile $sdkTestOnlyFixture 'packages/sdk-runtime/package.json' '{}'
+  $sdkTestOnlyResult = Test-GovernanceDrift -RepositoryRoot $sdkTestOnlyFixture -BaseSha $sdkTestOnlyBaseSha
+  Assert-True ('GOV_API_SDK_SPLIT' -notin @($sdkTestOnlyResult.Violations.ErrorCode)) 'test-only SDK change wrongly demanded an OpenAPI edit'
+  # And the exclusion must not widen: a src file alongside the test still fires.
+  Write-FixtureFile $sdkTestOnlyFixture 'packages/sdk-runtime/src/review-shape.ts' 'export const reviewShape = true'
+  Test-ReviewFailureCode $reviewFailures $sdkTestOnlyFixture 'GOV_API_SDK_SPLIT' 'SDK src change alongside test' $sdkTestOnlyBaseSha
+
   $multilinePanicFixture = New-PositiveFixture; $fixtures.Add($multilinePanicFixture)
   Write-FixtureFile $multilinePanicFixture 'apps/server_core/internal/modules/catalog/domain/review_panic.go' @'
 package domain
