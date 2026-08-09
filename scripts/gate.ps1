@@ -35,7 +35,7 @@
 #>
 [CmdletBinding()]
 param(
-  [ValidateSet('all', 'gofmt', 'format', 'build', 'typecheck', 'governance', 'arch', 'boundary', 'lint-go', 'lint-web', 'test-go', 'test-web')]
+  [ValidateSet('all', 'full', 'gofmt', 'format', 'build', 'typecheck', 'governance', 'arch', 'boundary', 'lint-go', 'lint-web', 'test-go', 'test-web', 'selftest')]
   [string]$Lane = 'all',
   [switch]$ContinueOnFailure
 )
@@ -821,6 +821,53 @@ function Invoke-GateTestWeb {
   return New-GateVerdict -Lane 'test-web' -Passed $true -Counts $counts
 }
 
+function Invoke-GateSelftest {
+  # The gate's own instruments, proved on themselves. Discovery is the glob plus
+  # one naming convention: `*.integration.tests.ps1` needs Docker and belongs to
+  # the integration lane, everything else runs here. No file list to forget --
+  # a new self-test is in the lane the moment the file exists.
+  $files = @(Get-ChildItem -Path (Join-Path $repositoryRoot 'scripts/tests') -Filter '*.tests.ps1' |
+      Where-Object { $_.Name -notlike '*.integration.tests.ps1' } |
+      Sort-Object Name)
+  if ($files.Count -eq 0) {
+    return New-GateVerdict -Lane 'selftest' -Passed $false -Counts 'files=0' `
+      -Reason 'the glob reached no self-test file. An empty lane is not a green lane.'
+  }
+
+  $passedFiles = @()
+  $failedFiles = @()
+  foreach ($file in $files) {
+    $result = Invoke-GateTool -Name "selftest-$($file.BaseName -replace '\.tests$', '')" -FilePath 'pwsh' `
+      -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $file.FullName)
+    # Exit code alone is not evidence: a Pester file invoked directly runs its
+    # Describe blocks without setting the exit code, so a failed assertion can
+    # exit 0. Each file must therefore also present a positive pass token --
+    # either the script convention (`PASS ...` on its own line) or Pester
+    # summaries whose failure count is zero and whose pass count is not.
+    # Pester colors its summary, so the ANSI escapes sit between the numbers and
+    # the words. Match the plain text.
+    $plainText = $result.Text -replace "`e\[[0-9;]*m", ''
+    $pesterPassed = 0
+    $pesterFailed = 0
+    foreach ($match in @([regex]::Matches($plainText, 'Tests Passed:\s*(\d+),\s*Failed:\s*(\d+)'))) {
+      $pesterPassed += [int]$match.Groups[1].Value
+      $pesterFailed += [int]$match.Groups[2].Value
+    }
+    $scriptToken = $plainText -match '(?m)^PASS '
+    $ok = ($result.ExitCode -eq 0) -and ($pesterFailed -eq 0) -and ($scriptToken -or $pesterPassed -gt 0)
+    if ($ok) { $passedFiles += $file.Name } else { $failedFiles += "$($file.Name) exit=$($result.ExitCode) pester_failed=$pesterFailed token=$(if ($scriptToken) { 'script' } elseif ($pesterPassed -gt 0) { 'pester' } else { 'none' })" }
+  }
+
+  $counts = "files=$($files.Count) pass=$($passedFiles.Count) fail=$($failedFiles.Count)"
+  Write-Host $counts
+  if ($failedFiles.Count -gt 0) {
+    foreach ($line in $failedFiles) { Write-Host "  failed: $line" }
+    return New-GateVerdict -Lane 'selftest' -Passed $false -Counts $counts `
+      -Reason 'a self-test file failed, exited cleanly without a pass token, or reported Pester failures. The instruments are the thing under test here.'
+  }
+  return New-GateVerdict -Lane 'selftest' -Passed $true -Counts $counts
+}
+
 # Cost order. `needs:` in ci.yml expresses the same ordering across jobs; here it
 # is the order of this array.
 $lanes = [ordered]@{
@@ -835,9 +882,18 @@ $lanes = [ordered]@{
   'lint-web'   = ${function:Invoke-GateLintWeb}
   'test-go'    = ${function:Invoke-GateGoTest}
   'test-web'   = ${function:Invoke-GateTestWeb}
+  'selftest'   = ${function:Invoke-GateSelftest}
 }
 
-$selected = if ($Lane -eq 'all') { @($lanes.Keys) } else { @($Lane) }
+# 'all' is the everyday set; 'full' adds the lanes whose cost is minutes rather
+# than seconds (GATE-TOPOLOGY §2.3 verify-full). Both are the same product --
+# CI's verify-full job and a pre-merge local run say `full`, a push says `all`.
+$fullOnly = @('selftest')
+$selected = switch ($Lane) {
+  'all' { @($lanes.Keys | Where-Object { $_ -notin $fullOnly }) }
+  'full' { @($lanes.Keys) }
+  default { @($Lane) }
+}
 $verdicts = @()
 foreach ($name in $selected) {
   Write-Host ''
