@@ -267,6 +267,68 @@ jobs:
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane test-web
 
+  # GATE-TOPOLOGY §2.3's verify-full: the lanes whose cost is minutes. One job,
+  # sequential, because they share a checkout and the two toolchains, and the
+  # dominant term (integration, ~4-5 min of Docker Postgres) cannot be usefully
+  # parallelised against the others on one runner. Everything here is
+  # `scripts/gate.ps1 -Lane <name>` -- `npm run gate:full` is the same set
+  # locally, with test-go/test-web already covered by their own jobs above.
+  verify-full:
+    name: verify-full
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [build-go, lint-frontend]
+    env:
+      GOCACHE: ${{ github.workspace }}/apps/server_core/.gocache
+      GOMODCACHE: ${{ github.workspace }}/apps/server_core/.gomodcache
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false # see header
+          # The selftest lane runs the governance self-tests, which walk
+          # history the same way the governance lane does.
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: apps/server_core/go.mod
+          cache-dependency-path: apps/server_core/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+
+      # Census before everything: it is seconds, and a dark test file makes the
+      # minutes that follow partially meaningless.
+      - name: test-file census
+        shell: pwsh
+        run: ./scripts/gate.ps1 -Lane census
+
+      - name: ci hygiene (pull_request_target)
+        shell: pwsh
+        run: ./scripts/gate.ps1 -Lane ci-hygiene
+
+      # The gate's own instruments: every non-integration
+      # scripts/tests/*.tests.ps1, each required to present a positive pass
+      # token. gate-measure runs twice per PR (lint-go runs it as a step);
+      # that costs a second and keeps this lane's discovery honest.
+      - name: gate self-tests
+        shell: pwsh
+        run: ./scripts/gate.ps1 -Lane selftest
+
+      # Ephemeral Docker Postgres, embedded migrations, no ERP, no dev stack.
+      # The lane fails on run<=0 or passed<=0: the harness prints -1 for a test
+      # step never reached, and neither -1 nor 0 may pass as green.
+      - name: integration (ephemeral postgres)
+        shell: pwsh
+        run: ./scripts/gate.ps1 -Lane integration
+
+      # Issue #1's PII deny fixture through real Caddy against stub upstreams,
+      # Docker only. The lane re-asserts the 17-assertion floor.
+      - name: edge PII deny
+        shell: pwsh
+        run: ./scripts/gate.ps1 -Lane edge
+
   # ---------------------------------------------------------------------------
   # The only job that issue #4 will make required.
   # ---------------------------------------------------------------------------
@@ -275,10 +337,10 @@ jobs:
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [lint-go, lint-frontend, build-go, test-go-unit, test-frontend]
+    needs: [lint-go, lint-frontend, build-go, test-go-unit, test-frontend, verify-full]
     env:
       NEEDS_JSON: ${{ toJSON(needs) }}
-      EXPECTED: '["lint-go","lint-frontend","build-go","test-go-unit","test-frontend"]'
+      EXPECTED: '["lint-go","lint-frontend","build-go","test-go-unit","test-frontend","verify-full"]'
     steps:
       - uses: actions/checkout@v7
         with:
@@ -335,11 +397,11 @@ jobs:
             fi
             echo "ok: $2"
           }
-          all_ok='{"lint-go":{"result":"success"},"lint-frontend":{"result":"success"},"build-go":{"result":"success"},"test-go-unit":{"result":"skipped"},"test-frontend":{"result":"success"}}'
-          cancelled='{"lint-go":{"result":"success"},"lint-frontend":{"result":"cancelled"},"build-go":{"result":"success"},"test-go-unit":{"result":"success"},"test-frontend":{"result":"success"}}'
-          failed='{"lint-go":{"result":"failure"},"lint-frontend":{"result":"success"},"build-go":{"result":"success"},"test-go-unit":{"result":"success"},"test-frontend":{"result":"success"}}'
-          dropped='{"lint-go":{"result":"success"},"lint-frontend":{"result":"success"},"build-go":{"result":"success"},"test-go-unit":{"result":"success"}}'
-          added='{"lint-go":{"result":"success"},"lint-frontend":{"result":"success"},"build-go":{"result":"success"},"test-go-unit":{"result":"success"},"test-frontend":{"result":"success"},"unwired-job":{"result":"success"}}'
+          all_ok='{"lint-go":{"result":"success"},"lint-frontend":{"result":"success"},"build-go":{"result":"success"},"test-go-unit":{"result":"skipped"},"test-frontend":{"result":"success"},"verify-full":{"result":"success"}}'
+          cancelled='{"lint-go":{"result":"success"},"lint-frontend":{"result":"cancelled"},"build-go":{"result":"success"},"test-go-unit":{"result":"success"},"test-frontend":{"result":"success"},"verify-full":{"result":"success"}}'
+          failed='{"lint-go":{"result":"failure"},"lint-frontend":{"result":"success"},"build-go":{"result":"success"},"test-go-unit":{"result":"success"},"test-frontend":{"result":"success"},"verify-full":{"result":"success"}}'
+          dropped='{"lint-go":{"result":"success"},"lint-frontend":{"result":"success"},"build-go":{"result":"success"},"test-go-unit":{"result":"success"},"test-frontend":{"result":"success"}}'
+          added='{"lint-go":{"result":"success"},"lint-frontend":{"result":"success"},"build-go":{"result":"success"},"test-go-unit":{"result":"success"},"test-frontend":{"result":"success"},"verify-full":{"result":"success"},"unwired-job":{"result":"success"}}'
           expect 0 "all success or skipped passes"            "$all_ok"
           expect 1 "a cancelled job blocks"                   "$cancelled"
           expect 1 "a failed job blocks"                      "$failed"
