@@ -889,7 +889,9 @@ function Invoke-GateCensus {
     -ArgumentList @('--no-install', 'vitest', 'list', '--config', 'vitest.config.ts', '--filesOnly')
   $discovered = @{}
   foreach ($line in @($listResult.Text -split "`r?`n")) {
-    $clean = ($line -replace '^\[[^\]]+\]\s+', '').Trim() -replace '\\', '/'
+    # ANSI first: a colored `[project]` prefix would defeat the bracket strip
+    # and every discovered path would read as uncovered.
+    $clean = ($line -replace "`e\[[0-9;]*m", '' -replace '^\[[^\]]+\]\s+', '').Trim() -replace '\\', '/'
     if ($clean) { $discovered[$clean] = $true }
   }
   $uncoveredTs = @($tsCensus | Where-Object { -not $discovered.ContainsKey($_) })
