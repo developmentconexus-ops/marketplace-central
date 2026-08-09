@@ -488,6 +488,22 @@ function Invoke-GateLintGo {
   $platformMatches = ($platform -eq $baselinePlatform)
   Write-Host "$platform baseline_platform=$baselinePlatform comparable=$platformMatches"
 
+  # Same universe guard as the build lane: the ratchet compares totals, and a
+  # total taken over zero analyzed packages would read as the ratchet's best day
+  # ever (issue #3, mechanism (b)).
+  $list = Invoke-GateTool -Name 'golangci-go-list' -FilePath 'go' -ArgumentList @('list', './...') -WorkingDirectory $serverCore -Quiet
+  if ($list.ExitCode -ne 0) {
+    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts 'packages=unknown' -Reason "go list ./... exited $($list.ExitCode)"
+  }
+  # Count only lines shaped like an import path: Invoke-GateTool folds stderr in
+  # (see its header), and `go list` announces an empty match with a warning on
+  # stderr -- counting that line would make the zero-package floor unreachable.
+  $packages = @($list.Text -split "`r?`n" | Where-Object { $_ -match '^\S+$' -and $_ -notmatch '^go:' }).Count
+  if ($packages -eq 0) {
+    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts 'packages=0' `
+      -Reason 'go list ./... resolved zero packages; a lint verdict over the empty set is not a verdict'
+  }
+
   $reportPath = Join-Path $logDirectory 'golangci.json'
   if (Test-Path -LiteralPath $reportPath) { Remove-Item -LiteralPath $reportPath -Force }
   # `go run <module>@<version>` rather than an installed binary or a CI-only
@@ -500,7 +516,7 @@ function Invoke-GateLintGo {
     -WorkingDirectory $serverCore
 
   if (-not (Test-Path -LiteralPath $reportPath -PathType Leaf)) {
-    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts 'report=missing' `
+    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts "packages=$packages report=missing" `
       -Reason "golangci-lint wrote no report (exit $($result.ExitCode)). The lane cannot report zero findings for a run that did not happen."
   }
   $measurement = Measure-GateGolangciLint -Json (Get-Content -LiteralPath $reportPath -Raw)
@@ -509,14 +525,14 @@ function Invoke-GateLintGo {
   # normal state under a ratchet. Anything else is the tool failing to run, and
   # that must not read as a clean lane.
   if ($result.ExitCode -notin @(0, 1)) {
-    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts "total=$($measurement.Total)" `
+    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts "packages=$packages total=$($measurement.Total)" `
       -Reason "golangci-lint exited $($result.ExitCode), which is neither clean nor findings."
   }
 
   $enabledDrift = @(Compare-Object -ReferenceObject $script:GolangciLintExpected -DifferenceObject $measurement.Enabled)
   if ($enabledDrift.Count -ne 0) {
     $detail = ($enabledDrift | ForEach-Object { "$($_.SideIndicator) $($_.InputObject)" }) -join ', '
-    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts "enabled=$($measurement.Enabled.Count)" `
+    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts "packages=$packages enabled=$($measurement.Enabled.Count)" `
       -Reason "the enabled linter set is not the configured one ($detail). A count over the wrong rules is not a smaller count."
   }
 
@@ -525,7 +541,7 @@ function Invoke-GateLintGo {
   foreach ($key in @($measurement.ByLinter.Keys)) { $measuredMap[$key] = $measurement.ByLinter[$key] }
   $comparison = Compare-GateRatchet -Measured $measuredMap -Baseline $baseline
 
-  $counts = "total=$($measurement.Total) baseline=$($baselineDocument.'golangci-lint'.total) enabled=$($measurement.Enabled.Count)"
+  $counts = "packages=$packages total=$($measurement.Total) baseline=$($baselineDocument.'golangci-lint'.total) enabled=$($measurement.Enabled.Count)"
   Write-Host $counts
   foreach ($line in @($measurement.ByLinter.Keys | Sort-Object)) {
     Write-Host ("  {0,-14} {1,4}  baseline {2,4}" -f $line, $measurement.ByLinter[$line], $(if ($baseline.ContainsKey($line)) { $baseline[$line] } else { 'n/a' }))
