@@ -1692,6 +1692,15 @@ Condição de remoção: `scripts/harness.ps1` ganhar um passo (ou lane nova) qu
 — ou `arch-gate.sh` passar a ser invocável via `npm run` e o seu passo 4 reportado separado do
 gofmt/vet/archscan para não ficar mascarado pela dívida ADR-023 herdada.
 
+**FECHADA (issue #3, Tarefa 6).** A segunda das duas condições de remoção acima aconteceu, mas
+não do jeito previsto: `scripts/arch-gate.sh` foi apagado no commit `0d1cc3f0` ("gate: retire
+arch-gate.sh -- zero executable references, superseded by gate lanes (#3)"), depois de uma
+remedição em `60f4d457` medir zero referências executáveis ao script em todo o repo (só docs,
+histórico `.mnfs` e planos superados o citavam). A dívida morre com o ficheiro que carregava o
+padrão — não foi refatorada nem ligada a `npm`; o passo 4 que este achado media deixou de existir.
+A primeira condição (lane nova em `harness.ps1` cobrindo `internal/...`) continua não implementada
+e é, portanto, fora do escopo desta baixa.
+
 **D-52. `scripts/arch-gate.sh` passo 1 (`gofmt`) nunca pode passar num checkout Windows deste
 repo — `core.autocrlf=true`, blobs git em LF, `.gitattributes` só fixa `*.sh`.** Isso produz ruído
 permanente de ~635 ficheiros marcados só por causa de CRLF, escondendo os poucos ficheiros
