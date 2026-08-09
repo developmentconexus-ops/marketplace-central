@@ -189,16 +189,29 @@ function Invoke-GateBuild {
   # test lane is not a substitute: `go test` without an explicit -vet flag runs a
   # curated subset of vet's checks (`go help testflag`), and vet's checks over
   # non-test code are outside it entirely.
+  #
+  # `go list ./...` first: build and vet report only exit codes, so without an
+  # independent package count this lane cannot tell "everything compiled" from
+  # "the pattern matched nothing" (issue #3, mechanism (b)).
+  $list = Invoke-GateTool -Name 'go-list' -FilePath 'go' -ArgumentList @('list', './...') -WorkingDirectory $serverCore -Quiet
+  if ($list.ExitCode -ne 0) {
+    return New-GateVerdict -Lane 'build' -Passed $false -Counts 'packages=unknown' -Reason "go list ./... exited $($list.ExitCode)"
+  }
+  $packages = @($list.Text -split "`r?`n" | Where-Object { $_ -match '\S' }).Count
+  if ($packages -eq 0) {
+    return New-GateVerdict -Lane 'build' -Passed $false -Counts 'packages=0' `
+      -Reason 'go list ./... resolved zero packages; the universe is empty, not clean'
+  }
   $build = Invoke-GateTool -Name 'go-build' -FilePath 'go' -ArgumentList @('build', './...') -WorkingDirectory $serverCore
   if ($build.ExitCode -ne 0) {
-    return New-GateVerdict -Lane 'build' -Passed $false -Counts 'build=fail' -Reason "go build ./... exited $($build.ExitCode)"
+    return New-GateVerdict -Lane 'build' -Passed $false -Counts "packages=$packages build=fail" -Reason "go build ./... exited $($build.ExitCode)"
   }
   $vet = Invoke-GateTool -Name 'go-vet' -FilePath 'go' -ArgumentList @('vet', './...') -WorkingDirectory $serverCore
   if ($vet.ExitCode -ne 0) {
-    return New-GateVerdict -Lane 'build' -Passed $false -Counts 'build=ok vet=fail' -Reason "go vet ./... exited $($vet.ExitCode)"
+    return New-GateVerdict -Lane 'build' -Passed $false -Counts "packages=$packages build=ok vet=fail" -Reason "go vet ./... exited $($vet.ExitCode)"
   }
-  Write-Host 'build=ok vet=ok'
-  return New-GateVerdict -Lane 'build' -Passed $true -Counts 'build=ok vet=ok'
+  Write-Host "packages=$packages build=ok vet=ok"
+  return New-GateVerdict -Lane 'build' -Passed $true -Counts "packages=$packages build=ok vet=ok"
 }
 
 # Pinned, not `@latest`. A gate whose tool version floats reports a different
