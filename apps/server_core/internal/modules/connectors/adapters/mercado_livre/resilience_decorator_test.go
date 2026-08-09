@@ -172,9 +172,12 @@ func TestResilienceDecoratorTokenBucketThrottlesConcurrentRequests(t *testing.T)
 
 	// The bucket allows the first call through immediately; the remaining
 	// n-1 calls must each be spaced by at least `interval` from the previous
-	// one (allow a small negative-jitter-free tolerance since our limiter
-	// only ever adds wait, never subtracts).
-	const tolerance = 15 * time.Millisecond
+	// one. The distinction this proves is queueing versus bursting: a burst
+	// puts consecutive receipt timestamps ~0ms apart, a queued caller ~100ms.
+	// Receipt times carry scheduler jitter from the whole parallel test run,
+	// so the tolerance is half the interval -- still an order of magnitude
+	// away from what a burst would measure.
+	tolerance := interval / 2
 	for i := 1; i < len(timestamps); i++ {
 		gap := timestamps[i].Sub(timestamps[i-1])
 		t.Logf("gap[%d] = %s (timestamps[%d]=%s timestamps[%d]=%s)", i, gap, i-1, timestamps[i-1].Format(time.RFC3339Nano), i, timestamps[i].Format(time.RFC3339Nano))
