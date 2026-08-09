@@ -170,24 +170,22 @@ func TestResilienceDecoratorTokenBucketThrottlesConcurrentRequests(t *testing.T)
 	}
 	sortTimes(timestamps)
 
-	// The bucket allows the first call through immediately; the remaining
-	// n-1 calls must each be spaced by at least `interval` from the previous
-	// one. The distinction this proves is queueing versus bursting: a burst
-	// puts consecutive receipt timestamps ~0ms apart, a queued caller ~100ms.
-	// Receipt times carry scheduler jitter from the whole parallel test run,
-	// so the tolerance is half the interval -- still an order of magnitude
-	// away from what a burst would measure.
-	tolerance := interval / 2
+	// What the bucket guarantees is release spacing, and therefore total
+	// throughput -- NOT the spacing of server-side receipt timestamps. A
+	// goroutine released at t=0 can be descheduled for 95ms and arrive 5ms
+	// before the one released at t=100ms, so a per-pair gap assertion on
+	// receipt times flakes under whole-suite load no matter the tolerance
+	// (observed: a 5.4ms receipt gap from a correctly-queued release).
+	// Total elapsed is robust against reordering: 5 queued requests take at
+	// least (n-1)*interval end to end, a burst finishes in milliseconds.
 	for i := 1; i < len(timestamps); i++ {
 		gap := timestamps[i].Sub(timestamps[i-1])
 		t.Logf("gap[%d] = %s (timestamps[%d]=%s timestamps[%d]=%s)", i, gap, i-1, timestamps[i-1].Format(time.RFC3339Nano), i, timestamps[i].Format(time.RFC3339Nano))
-		if gap < interval-tolerance {
-			t.Fatalf("gap between request %d and %d = %s, want >= ~%s (bucket allowed a burst)", i-1, i, gap, interval)
-		}
 	}
+	const tolerance = 15 * time.Millisecond
 	minTotal := time.Duration(n-1) * interval
 	if totalElapsed < minTotal-tolerance {
-		t.Fatalf("total elapsed = %s, want >= ~%s for %d requests at %d/min", totalElapsed, minTotal, n, ratePerMinute)
+		t.Fatalf("total elapsed = %s, want >= ~%s for %d requests at %d/min (bucket allowed a burst)", totalElapsed, minTotal, n, ratePerMinute)
 	}
 	t.Logf("total elapsed for %d concurrent requests at %d/min = %s (min expected ~%s)", n, ratePerMinute, totalElapsed, minTotal)
 }
