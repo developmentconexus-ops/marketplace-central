@@ -38,6 +38,15 @@ now-retired file as it stood at ratification time).
   logic in CI would reproduce that in a form that looks like a fix. Every lane prints an
   attributable count and fails on zero — a tool that executed nothing exits 0. The individual
   commands below remain valid and are what the lanes run.
+- **Landing path (2026-08-09, issue #4 / audit V1): `branch → push → PR → required checks →
+  merge`.** `main` accepts no direct push. A repository ruleset — **empty bypass list** —
+  requires a pull request, the `required` status check (the `ci.yml` aggregate job, which
+  carries its own topology guard so a job added to the workflow cannot silently leave the
+  gate), linear history, and blocks force-push and branch deletion. The post-merge ladder
+  below still runs on integrated `main` after a PR merges — it is the second gate, no longer
+  the only one. The audit finding this closes: no commit in this repository's history had
+  ever passed a check it could not skip, because work reached `main` by local merge and the
+  doctrine itself described a path with no gate position in it.
 - **L0** — `go build ./...` with `GOCACHE` bound ABSOLUTE (next bullet — never the bare
   relative literal) · web `tsc`/typecheck ·
   governance lanes: `npm run harness:governance -- -BaseSha <sha>` — run from a **clean
@@ -287,7 +296,12 @@ verification conflicts against this list.
 ## 9. Human gates
 `status: ratified` · `provenance: 2026-07-15 · AGENTS.md + docs/HARNESS.md §6`
 
-- Push: NEVER without explicit operator permission (commit after verified work = standing auth).
+- Push, amended 2026-08-09 (issue #4, P8): **work branches carry standing authorization to
+  push** — that is how a branch reaches the PR where the required checks can see it. `main`
+  is NEVER pushed directly by anyone, agent or operator: it moves only by PR merge through
+  the ruleset (empty bypass list). Merging a PR still requires explicit operator permission
+  per event (standing push auth ≠ merge auth — operator verbatim 2026-08-08). Commit after
+  verified work = standing auth, unchanged.
 - Dependency changes (dep change = `REQUEST` to hub; install-as-ritual forbidden).
 - Live ML (Mercado Livre) writes: explicit operator authorization per mission Validation Strategy.
 - Never read/print/commit `.env*` contents.
@@ -988,6 +1002,7 @@ contradicted the same mission's ratified three-parallel-lane plan. Narrowed to �
 ## Amendment log
 
 ```
+2026-08-09 · §2 + §9 · ratified · landing path flipped to `branch → push → PR → required checks → merge` (issue #4, audit V1, GATE-TOPOLOGY P7+P8): ruleset on `main` with empty bypass list — require PR, required status check `required` (ci.yml aggregate with topology guard), linear history, no force-push/deletion; work branches gain standing push authorization (the branch must reach the PR for a check to see it), `main` direct push dies for everyone, merge stays per-event operator permission. Post-merge ladder demoted from only gate to second gate.
 2026-08-08 · §12 (deterministic lane tooling) · ratified · `scripts/harness/dispatch/` (899 lines) DELETED, clause rewritten as a retirement notice. Measured, not assumed: 1 commit in 90 days (last 2026-07-16), and nothing outside the tree imported it — not `harness.ps1`, not `package.json`, not a workflow. The crew stopped being Codex; the tooling assembled Codex prompt-packs. The prompt-pack rules survive as prose only, which is now stated instead of implied. First of a measured retirement sequence: the verification lanes migrate to the native toolchain (`ci.yml`, Go arch tests, eslint) family by family, and `Policy.psm1` dies when the last one lands — the DECLARATION that keeps its value is `contracts/governance/*.json`, never the PowerShell that reads it.
 2026-08-05 · §13 · ratified · five process decisions extracted from the ADR series (were ADR-09/10/11/12/14 across MIS-001/003/007); the architecture series is renumbered globally and no longer carries harness-process rules — docs/architecture/decisions/_citations/RENUMBERING-REGISTRY.md
 2026-07-15 · all sections · ratified · profile extracted from combined docs/HARNESS.md (operator-ratified doctrine) at A′ restructure; swap to CORE+profile binding scheduled for M-01 close
