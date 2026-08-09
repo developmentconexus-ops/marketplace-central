@@ -318,6 +318,15 @@ jobs:
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane selftest
 
+      # The hermetic harness fails closed on a missing image (HPG_IMAGE_MISSING)
+      # rather than pulling mid-test -- provisioning belongs to the environment,
+      # not the measurement. Pull both pinned images up front; the edge lane's
+      # first docker run would otherwise mix pull progress into parsed output.
+      - name: pre-pull container images
+        run: |
+          docker pull postgres:16-bookworm
+          docker pull caddy:2-alpine
+
       # Ephemeral Docker Postgres, embedded migrations, no ERP, no dev stack.
       # The lane fails on run<=0 or passed<=0: the harness prints -1 for a test
       # step never reached, and neither -1 nor 0 may pass as green.
