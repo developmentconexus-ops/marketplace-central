@@ -2018,14 +2018,17 @@ package main
 //        comentário D-39 de catalogingest/main.go:118-123 — mesmo fail-closed)
 //     2. key := os.Getenv("MPC_ENCRYPTION_KEY"); vazio -> erro nomeando a var
 //     3. pool := pgdb.NewPool(ctx, dbCfg)
-//     4. token, accountID, credTenant := resolveMLCredential(ctx, pool, key)
+//     4. [SUPERSEDIDO — ver nota abaixo] token, accountID, credTenant :=
+//        resolveMLCredential(ctx, pool, key)
 //        (molde mlprobe/main.go:164-190; accountID = user id do seller,
 //        via payload ou GET /users/me)
-//     5. tenantID := tenant.Parse(dbCfg.DefaultTenantID); se credTenant !=
+//     5. [SUPERSEDIDO — ver nota abaixo] tenantID :=
+//        tenant.Parse(dbCfg.DefaultTenantID); se credTenant !=
 //        tenantID.String() -> erro: credencial de outro tenant NUNCA é usada
 //     6. wiring := composition.WireListings(pool, "https://api.mercadolibre.com",
 //        accountID, accountID, func(context.Context) (string, error) { return token, nil })
-//     7. report := composition.RunListingsIngest(ctx, wiring.Module,
+//     7. [SUPERSEDIDO — ver nota abaixo] report :=
+//        composition.RunListingsIngest(ctx, wiring.Module,
 //        wiring.Feed.ListingFeed, tenantID, pageSize)  // pageSize: env
 //        MPC_LISTINGS_INGEST_PAGE_SIZE, default 50, mesmo loadPageSize de
 //        catalogingest/main.go:129-139
