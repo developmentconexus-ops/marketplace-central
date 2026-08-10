@@ -128,15 +128,16 @@ func run(ctx context.Context, args []string) error {
 	// above, and re-reading it here could only ever agree with what it saw
 	// or never run — re-validating an already-validated value would be dead
 	// weight, not an extra safeguard.
-	token, accountID, credTenant, err := resolveMLCredential(ctx, pool, dbCfg.EncryptionKey)
+	token, accountID, credTenant, err := resolveMLCredential(ctx, pool, dbCfg.EncryptionKey, tenantID)
 	if err != nil {
 		return fmt.Errorf("listingsingest: resolve marketplace credential: %w", err)
 	}
-	// A credential from any tenant but the one this process is configured for
-	// must never drive a write: cross-tenant use is not a bug to log, it is a
-	// request this command refuses outright.
+	// The query is already scoped to this tenant, so this can only fire if
+	// someone loosens that predicate. It is kept for exactly that reason: the
+	// tenant of a credential that drives a write is not a thing to check in
+	// one place.
 	if credTenant != tenantID.String() {
-		return fmt.Errorf("listingsingest: connected marketplace credential belongs to tenant %q, refusing to run for configured tenant %q", credTenant, tenantID.String())
+		return fmt.Errorf("listingsingest: credential lookup returned tenant %q for requested tenant %q; the query predicate no longer scopes the tenant", credTenant, tenantID.String())
 	}
 
 	wiring, err := composition.WireListings(pool, composition.MLBaseURL, accountID, accountID, func(context.Context) (string, error) {
@@ -177,7 +178,15 @@ func run(ctx context.Context, args []string) error {
 // is the second-line fallback; only if both are empty does this command make
 // the one live GET /users/me call mlprobe makes, using the "id" field of its
 // response exactly as mlprobe does.
-func resolveMLCredential(ctx context.Context, pool *pgxpool.Pool, key string) (token, accountID, credTenant string, err error) {
+//
+// The tenant is a predicate of the query, not a check on its result. Selecting
+// the newest connected credential across all tenants and rejecting it
+// afterwards has two defects, both real once a second seller connects: the row
+// that wins the global ORDER BY gets decrypted before anyone asks whose it is,
+// and every tenant except the one owning that row becomes unable to ingest at
+// all — the command would refuse with "belongs to another tenant" while a
+// perfectly good credential of its own sat one row down.
+func resolveMLCredential(ctx context.Context, pool *pgxpool.Pool, key string, t tenant.ID) (token, accountID, credTenant string, err error) {
 	// provider_code is bound as a parameter, not inlined: the vendor name is
 	// composition.MLProviderCode, not a literal repeated here (RuleVendorToken,
 	// internal/arch/scan.go — see the doc comment on that constant).
@@ -187,8 +196,8 @@ func resolveMLCredential(ctx context.Context, pool *pgxpool.Pool, key string) (t
 		JOIN integration_credentials c
 		  ON c.tenant_id = i.tenant_id AND c.installation_id = i.installation_id
 		 AND c.is_active = true AND c.revoked_at IS NULL
-		WHERE i.provider_code = $1 AND i.status = 'connected'
-		ORDER BY c.version DESC LIMIT 1`, composition.MLProviderCode)
+		WHERE i.provider_code = $1 AND i.tenant_id = $2 AND i.status = 'connected'
+		ORDER BY c.version DESC LIMIT 1`, composition.MLProviderCode, t.String())
 	var installationID, externalAccountID string
 	var payload []byte
 	if err := row.Scan(&installationID, &credTenant, &externalAccountID, &payload); err != nil {

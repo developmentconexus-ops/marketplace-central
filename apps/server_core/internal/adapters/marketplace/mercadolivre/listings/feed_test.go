@@ -148,6 +148,29 @@ func TestFeedFailsLoudOnPerItemError(t *testing.T) {
 	}
 }
 
+func TestFeedRejectsNonemptyResultsWithEmptyScrollID(t *testing.T) {
+	// ML returning results with an empty scroll_id is malformed: port.NewCursor("")
+	// is the FEED START cursor, and handing that back for a nonempty page would let
+	// a future caller loop forever re-reading page 1. The adapter is the only code
+	// that knows what an empty scroll_id from ML means, so it must fail loud here
+	// rather than let the port contract carry an ambiguous cursor.
+	mux := http.NewServeMux()
+	mux.HandleFunc("/users/179571326/items/search", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{"scroll_id": "", "results": []string{"MLB1"}})
+	})
+	mux.HandleFunc("/items", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode([]map[string]any{{"code": 200, "body": map[string]any{"id": "MLB1"}}})
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	feed := newFeed(t, srv.URL)
+	tid, _ := tenant.Parse("tenant_default")
+	_, err := feed.NextPage(context.Background(), tid, port.Cursor{}, 50)
+	if err == nil || !strings.Contains(err.Error(), "scroll_id") {
+		t.Fatalf("nonempty results with empty scroll_id must fail naming scroll_id, got: %v", err)
+	}
+}
+
 func TestFeedMapsAbsentFieldsToUnknownNeverZero(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/users/179571326/items/search", func(w http.ResponseWriter, r *http.Request) {

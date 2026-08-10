@@ -8,6 +8,8 @@ import (
 	"marketplace-central/apps/server_core/internal/contexts/listings/contracts"
 	"marketplace-central/apps/server_core/internal/contexts/listings/internal/application"
 	"marketplace-central/apps/server_core/internal/kernel/channel"
+	"marketplace-central/apps/server_core/internal/kernel/exact"
+	"marketplace-central/apps/server_core/internal/kernel/fact"
 	"marketplace-central/apps/server_core/internal/kernel/provenance"
 	"marketplace-central/apps/server_core/internal/kernel/tenant"
 )
@@ -25,7 +27,43 @@ func obs(t *testing.T, listingID, payloadHash string) contracts.ListingObservati
 	if err != nil {
 		t.Fatalf("evidence: %v", err)
 	}
-	return contracts.ListingObservation{Key: key, Evidence: ev, RawPayload: []byte(`{"id":"` + listingID + `"}`)}
+	// This suite tests Ingest's disposition/version bookkeeping, not what the
+	// channel reported, so every fact is a deliberate Unknown-with-reason
+	// rather than a zero value — Validate now rejects a zero-value fact
+	// (contracts/observation.go), same as the database's CHECK constraints do.
+	unknown := func(reason string) fact.Fact[string] {
+		f, ferr := fact.NewUnknown[string](reason, ev)
+		if ferr != nil {
+			t.Fatalf("fact.NewUnknown: %v", ferr)
+		}
+		return f
+	}
+	unknownInt := func(reason string) fact.Fact[int] {
+		f, ferr := fact.NewUnknown[int](reason, ev)
+		if ferr != nil {
+			t.Fatalf("fact.NewUnknown: %v", ferr)
+		}
+		return f
+	}
+	unknownMoney := func(reason string) fact.Fact[exact.Money] {
+		f, ferr := fact.NewUnknown[exact.Money](reason, ev)
+		if ferr != nil {
+			t.Fatalf("fact.NewUnknown: %v", ferr)
+		}
+		return f
+	}
+	return contracts.ListingObservation{
+		Key:               key,
+		Evidence:          ev,
+		RawPayload:        []byte(`{"id":"` + listingID + `"}`),
+		Title:             unknown("test fixture omitted title"),
+		Status:            unknown("test fixture omitted status"),
+		ListingType:       unknown("test fixture omitted listing_type"),
+		Price:             unknownMoney("test fixture omitted price"),
+		AvailableQuantity: unknownInt("test fixture omitted available_quantity"),
+		SellerSKU:         unknown("test fixture omitted seller_sku"),
+		GTIN:              unknown("test fixture omitted gtin"),
+	}
 }
 
 func TestFirstObservationCreatesVersionOne(t *testing.T) {

@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"marketplace-central/apps/server_core/internal/adapters/marketplace/mercadolivre/internal/api"
@@ -42,6 +43,16 @@ func (f *Feed) NextPage(ctx context.Context, t tenant.ID, after port.Cursor, lim
 	}
 	if len(scan.Results) == 0 {
 		return port.Page{Done: true}, nil
+	}
+	// A nonempty page with a blank scroll_id is malformed: port.NewCursor("")
+	// IS the feed-start cursor (port/feed.go:20), so handing it back here would
+	// tell a future caller "go back to page 1" instead of "there is no next
+	// page." Today's only caller (composition/listings_ingest.go) happens to
+	// catch this one hop later via page.Next.IsStart(), but that is a property
+	// of that caller, not of this contract — the adapter is the one place that
+	// knows what an empty scroll_id from ML actually means, so it fails here.
+	if strings.TrimSpace(scan.ScrollID) == "" {
+		return port.Page{}, fmt.Errorf("mercadolivre listings: scan returned %d results with an empty scroll_id", len(scan.Results))
 	}
 	items, err := f.client.ItemsMultiget(ctx, scan.Results)
 	if err != nil {

@@ -53,7 +53,33 @@ CREATE TABLE IF NOT EXISTS listings.listings (
     CONSTRAINT listings_price_consistent CHECK (
         (price_state = 'known' AND price_amount IS NOT NULL AND price_currency IS NOT NULL)
      OR (price_state = 'estimated' AND price_amount IS NOT NULL AND price_currency IS NOT NULL AND price_reason IS NOT NULL)
-     OR (price_state IN ('unknown','not_applicable') AND price_amount IS NULL AND price_currency IS NULL AND price_reason IS NOT NULL))
+     OR (price_state IN ('unknown','not_applicable') AND price_amount IS NULL AND price_currency IS NULL AND price_reason IS NOT NULL)),
+    -- The remaining five carry the same rule. Constraining only title and
+    -- price would have made this schema say that a malformed status is
+    -- acceptable and a malformed title is not, which is not a distinction
+    -- anything in the context draws: a consumer reading status_state='known'
+    -- with a null status_value cannot tell an invalid row from a real
+    -- observation, and that is exactly what the triple exists to prevent.
+    CONSTRAINT listings_status_consistent CHECK (
+        (status_state = 'known' AND status_value IS NOT NULL)
+     OR (status_state = 'estimated' AND status_value IS NOT NULL AND status_reason IS NOT NULL)
+     OR (status_state IN ('unknown','not_applicable') AND status_value IS NULL AND status_reason IS NOT NULL)),
+    CONSTRAINT listings_listing_type_consistent CHECK (
+        (listing_type_state = 'known' AND listing_type_value IS NOT NULL)
+     OR (listing_type_state = 'estimated' AND listing_type_value IS NOT NULL AND listing_type_reason IS NOT NULL)
+     OR (listing_type_state IN ('unknown','not_applicable') AND listing_type_value IS NULL AND listing_type_reason IS NOT NULL)),
+    CONSTRAINT listings_available_qty_consistent CHECK (
+        (available_qty_state = 'known' AND available_qty_value IS NOT NULL)
+     OR (available_qty_state = 'estimated' AND available_qty_value IS NOT NULL AND available_qty_reason IS NOT NULL)
+     OR (available_qty_state IN ('unknown','not_applicable') AND available_qty_value IS NULL AND available_qty_reason IS NOT NULL)),
+    CONSTRAINT listings_seller_sku_consistent CHECK (
+        (seller_sku_state = 'known' AND seller_sku_value IS NOT NULL)
+     OR (seller_sku_state = 'estimated' AND seller_sku_value IS NOT NULL AND seller_sku_reason IS NOT NULL)
+     OR (seller_sku_state IN ('unknown','not_applicable') AND seller_sku_value IS NULL AND seller_sku_reason IS NOT NULL)),
+    CONSTRAINT listings_gtin_consistent CHECK (
+        (gtin_state = 'known' AND gtin_value IS NOT NULL)
+     OR (gtin_state = 'estimated' AND gtin_value IS NOT NULL AND gtin_reason IS NOT NULL)
+     OR (gtin_state IN ('unknown','not_applicable') AND gtin_value IS NULL AND gtin_reason IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS listings.listing_variations (
@@ -80,18 +106,52 @@ CREATE TABLE IF NOT EXISTS listings.listing_variations (
     CONSTRAINT listing_variations_listing_fkey
         FOREIGN KEY (tenant_id, channel, account_external_id, listing_id)
         REFERENCES listings.listings (tenant_id, channel, account_external_id, listing_id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+    -- A variation's facts are the same kind of fact as the parent listing's and
+    -- come from the same payload, so they carry the same constraints. Leaving
+    -- this table unconstrained would have meant the schema enforced the triple
+    -- exactly where ML happens to put a single price and stopped enforcing it
+    -- exactly where ML puts the per-variation prices that a multi-variation
+    -- seller actually sells at.
+    CONSTRAINT listing_variations_price_state CHECK (price_state IN ('known','estimated','unknown','not_applicable')),
+    CONSTRAINT listing_variations_available_qty_state CHECK (available_qty_state IN ('known','estimated','unknown','not_applicable')),
+    CONSTRAINT listing_variations_seller_sku_state CHECK (seller_sku_state IN ('known','estimated','unknown','not_applicable')),
+    CONSTRAINT listing_variations_gtin_state CHECK (gtin_state IN ('known','estimated','unknown','not_applicable')),
+    CONSTRAINT listing_variations_price_consistent CHECK (
+        (price_state = 'known' AND price_amount IS NOT NULL AND price_currency IS NOT NULL)
+     OR (price_state = 'estimated' AND price_amount IS NOT NULL AND price_currency IS NOT NULL AND price_reason IS NOT NULL)
+     OR (price_state IN ('unknown','not_applicable') AND price_amount IS NULL AND price_currency IS NULL AND price_reason IS NOT NULL)),
+    CONSTRAINT listing_variations_available_qty_consistent CHECK (
+        (available_qty_state = 'known' AND available_qty_value IS NOT NULL)
+     OR (available_qty_state = 'estimated' AND available_qty_value IS NOT NULL AND available_qty_reason IS NOT NULL)
+     OR (available_qty_state IN ('unknown','not_applicable') AND available_qty_value IS NULL AND available_qty_reason IS NOT NULL)),
+    CONSTRAINT listing_variations_seller_sku_consistent CHECK (
+        (seller_sku_state = 'known' AND seller_sku_value IS NOT NULL)
+     OR (seller_sku_state = 'estimated' AND seller_sku_value IS NOT NULL AND seller_sku_reason IS NOT NULL)
+     OR (seller_sku_state IN ('unknown','not_applicable') AND seller_sku_value IS NULL AND seller_sku_reason IS NOT NULL)),
+    CONSTRAINT listing_variations_gtin_consistent CHECK (
+        (gtin_state = 'known' AND gtin_value IS NOT NULL)
+     OR (gtin_state = 'estimated' AND gtin_value IS NOT NULL AND gtin_reason IS NOT NULL)
+     OR (gtin_state IN ('unknown','not_applicable') AND gtin_value IS NULL AND gtin_reason IS NOT NULL))
 );
 
 -- One row per distinct payload the channel ever showed us: the real bytes,
 -- kept for reconciliation and for the linking leg (§15.3).
+--
+-- payload is bytea, not jsonb, and the distinction is the whole point of the
+-- table. jsonb is a parsed value, not a document: it reorders object keys,
+-- normalises whitespace and number formatting, and drops duplicate keys. A
+-- payload stored as jsonb therefore cannot reproduce the payload_hash sitting
+-- next to it, which makes the pair useless for the one job it exists for —
+-- proving to a human reconciling against ML that these are the bytes ML sent.
+-- Nothing queries this column as JSON; the repository only ever inserts it.
 CREATE TABLE IF NOT EXISTS listings.source_observations (
     tenant_id           text        NOT NULL,
     channel             text        NOT NULL,
     account_external_id text        NOT NULL,
     listing_id          text        NOT NULL,
     payload_hash        text        NOT NULL,
-    payload             jsonb       NOT NULL,
+    payload             bytea       NOT NULL,
     observed_at         timestamptz NOT NULL,
     recorded_at         timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT source_observations_pkey

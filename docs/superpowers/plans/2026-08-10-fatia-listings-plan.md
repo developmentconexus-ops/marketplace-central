@@ -2032,6 +2032,17 @@ package main
 //     8. fmt.Printf("listings ingest report: pages=%d observed=%d created=%d changed=%d idempotent=%d\n", ...)
 ```
 
+> **Superseded na execução, pontos 4/5/7** (commits `b0c24e77`, e a correção de escopo
+> de tenant depois da revisão do PR #31). O esqueleto acima copiava o molde do
+> `catalogingest`, e o molde era ele próprio a dívida: `MC_DEFAULT_TENANT_ID` e
+> `MPC_LISTINGS_INGEST_PAGE_SIZE` viajavam como ambiente para coisas que quem invoca
+> decide por corrida. Passaram a flags — `-tenant` (obrigatória, sem default) e
+> `-page-size` (default 50) — e `loadPageSize`/`requireTenantConfigured` deixaram de
+> existir nos dois comandos. O ponto 4 ganhou também o `tenant_id` como **predicado** da
+> consulta de credencial, não como verificação do resultado: escolher a credencial mais
+> recente entre todos os tenants e recusá-la depois decifra a de outro antes de perguntar
+> de quem é, e deixa todos os tenants menos um sem conseguir ingerir.
+
 Escrever o arquivo completo (não o esqueleto acima — o esqueleto fixa a ordem e as
 decisões; o código segue os dois moldes citados linha a linha). O import do pacote
 `crypto` de `modules/integrations/adapters/crypto` em `cmd/` é o precedente medido do

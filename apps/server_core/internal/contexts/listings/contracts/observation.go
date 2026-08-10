@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"fmt"
+	"strings"
 
 	"marketplace-central/apps/server_core/internal/kernel/exact"
 	"marketplace-central/apps/server_core/internal/kernel/fact"
@@ -42,7 +43,14 @@ type ListingObservation struct {
 
 // Validate rejects an observation that cannot be recorded. It deliberately
 // accepts every fact as Unknown: a channel that said nothing is a fact about
-// the channel.
+// the channel. But that only holds for a DELIBERATE unknown — one built
+// through fact.NewUnknown/NewNotApplicable, which forces a reason. A
+// zero-value fact.Fact[T] is Unknown-shaped too, with no reason, and that is
+// not a fact about the channel: it is a value nobody built, and it fails at
+// the database instead of here (0099_listings_context.sql's CHECK
+// constraints reject a null reason on an unknown title/price). Validate
+// closes that gap by rejecting any fact whose state is Unknown or
+// NotApplicable and whose reason is blank.
 func (o ListingObservation) Validate() error {
 	if o.Key.IsZero() {
 		return fmt.Errorf("%w: key", ErrBlank)
@@ -51,9 +59,63 @@ func (o ListingObservation) Validate() error {
 		return fmt.Errorf("%w: evidence", ErrBlank)
 	}
 	for i, v := range o.Variations {
-		if v.VariationID == "" {
+		if strings.TrimSpace(v.VariationID) == "" {
 			return fmt.Errorf("%w: variation id at index %d", ErrBlank, i)
 		}
+	}
+	if err := requireFactReason(o.Title, "title"); err != nil {
+		return err
+	}
+	if err := requireFactReason(o.Status, "status"); err != nil {
+		return err
+	}
+	if err := requireFactReason(o.ListingType, "listing_type"); err != nil {
+		return err
+	}
+	if err := requireFactReason(o.Price, "price"); err != nil {
+		return err
+	}
+	if err := requireFactReason(o.AvailableQuantity, "available_quantity"); err != nil {
+		return err
+	}
+	if err := requireFactReason(o.SellerSKU, "seller_sku"); err != nil {
+		return err
+	}
+	if err := requireFactReason(o.GTIN, "gtin"); err != nil {
+		return err
+	}
+	for i, v := range o.Variations {
+		if err := requireFactReason(v.Price, fmt.Sprintf("variation[%d] price", i)); err != nil {
+			return err
+		}
+		if err := requireFactReason(v.AvailableQuantity, fmt.Sprintf("variation[%d] available_quantity", i)); err != nil {
+			return err
+		}
+		if err := requireFactReason(v.SellerSKU, fmt.Sprintf("variation[%d] seller_sku", i)); err != nil {
+			return err
+		}
+		if err := requireFactReason(v.GTIN, fmt.Sprintf("variation[%d] gtin", i)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// requireFactReason rejects a fact that is Unknown or NotApplicable with a
+// blank reason — the zero-value shape that fact.NewUnknown/NewNotApplicable
+// cannot produce (both require a non-blank reason) but a struct literal can.
+//
+// Written as a condition rather than a switch on purpose: a switch over a
+// state enum is a claim that every state has been considered, and this rule is
+// not about the state space — Known and Estimated are governed elsewhere (they
+// must carry a value, which their constructors enforce). A two-arm switch here
+// would read as an exhaustiveness bug to anyone adding a fifth state, and the
+// exhaustive linter reads it that way too.
+func requireFactReason[T any](f fact.Fact[T], field string) error {
+	state := f.State()
+	needsReason := state == fact.Unknown || state == fact.NotApplicable
+	if needsReason && strings.TrimSpace(f.Reason()) == "" {
+		return fmt.Errorf("%w: %s fact is %s with no reason", ErrBlank, field, state)
 	}
 	return nil
 }

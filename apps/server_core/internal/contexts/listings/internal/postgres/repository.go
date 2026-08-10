@@ -168,10 +168,11 @@ func (r *Repository) SaveVersion(ctx context.Context, o contracts.ListingObserva
 			 VALUES ($1,$2,$3,$4,$5,$6,$7)
 			 ON CONFLICT (tenant_id, channel, account_external_id, listing_id, payload_hash) DO NOTHING`,
 			k.Tenant().String(), k.Account().Channel().String(), k.Account().External(), k.ListingID(),
-			o.Evidence.PayloadHash(), string(o.RawPayload), o.Evidence.ObservedAt()); err != nil {
-			// string(o.RawPayload), not the raw []byte: pgx encodes a plain
-			// []byte as bytea, which Postgres refuses for a jsonb column.
-			// Passing it as text lets pgx pick the jsonb codec.
+			o.Evidence.PayloadHash(), o.RawPayload, o.Evidence.ObservedAt()); err != nil {
+			// o.RawPayload as []byte, not as a string: the column is bytea
+			// (0099) precisely so the channel's own bytes survive unchanged and
+			// still hash to the payload_hash stored beside them. pgx encodes a
+			// plain []byte as bytea, so this is a copy, not a parse.
 			return fmt.Errorf("listings postgres: record observation: %w", err)
 		}
 		return nil

@@ -7,6 +7,7 @@ import (
 
 	"marketplace-central/apps/server_core/internal/contexts/listings/contracts"
 	"marketplace-central/apps/server_core/internal/kernel/channel"
+	"marketplace-central/apps/server_core/internal/kernel/exact"
 	"marketplace-central/apps/server_core/internal/kernel/fact"
 	"marketplace-central/apps/server_core/internal/kernel/provenance"
 	"marketplace-central/apps/server_core/internal/kernel/tenant"
@@ -76,9 +77,67 @@ func TestValidateRejectsVariationWithBlankID(t *testing.T) {
 
 func TestValidateAcceptsAllFactsUnknown(t *testing.T) {
 	// Um anúncio de que o ML só devolveu o id é um fato sobre o ML; Listings
-	// grava Unknown, nunca recusa nem inventa (protocolo §4.1).
-	obs := contracts.ListingObservation{Key: testKey(t), Evidence: testEvidence(t)}
+	// grava Unknown, nunca recusa nem inventa (protocolo §4.1). But "Unknown"
+	// here means a deliberate fact.NewUnknown with a reason, not a Go zero
+	// value: the zero value is ALSO Unknown-shaped but carries no reason, and
+	// that is the malformed case Validate now rejects (0099's CHECK
+	// constraints reject it at the database with an opaque error).
+	e := testEvidence(t)
+	unknownString := func(reason string) fact.Fact[string] {
+		f, err := fact.NewUnknown[string](reason, e)
+		if err != nil {
+			t.Fatalf("fact.NewUnknown: %v", err)
+		}
+		return f
+	}
+	unknownInt := func(reason string) fact.Fact[int] {
+		f, err := fact.NewUnknown[int](reason, e)
+		if err != nil {
+			t.Fatalf("fact.NewUnknown: %v", err)
+		}
+		return f
+	}
+	unknownMoney := func(reason string) fact.Fact[exact.Money] {
+		f, err := fact.NewUnknown[exact.Money](reason, e)
+		if err != nil {
+			t.Fatalf("fact.NewUnknown: %v", err)
+		}
+		return f
+	}
+	obs := contracts.ListingObservation{
+		Key:               testKey(t),
+		Evidence:          e,
+		Title:             unknownString("ml omitted title"),
+		Status:            unknownString("ml omitted status"),
+		ListingType:       unknownString("ml omitted listing_type_id"),
+		Price:             unknownMoney("ml omitted price or currency"),
+		AvailableQuantity: unknownInt("ml omitted available_quantity"),
+		SellerSKU:         unknownString("ml omitted seller_sku"),
+		GTIN:              unknownString("ml omitted gtin attribute"),
+	}
 	if err := obs.Validate(); err != nil {
-		t.Fatalf("all-unknown observation rejected: %v", err)
+		t.Fatalf("all-unknown observation with reasons rejected: %v", err)
+	}
+}
+
+func TestValidateRejectsZeroValueFactAsMalformed(t *testing.T) {
+	// A zero-value fact.Fact[T] is Unknown-shaped but has no reason: that is
+	// not the same thing as a deliberate fact.NewUnknown(reason, evidence),
+	// and letting it through means the database CHECK constraint (0099) is
+	// the first place it is caught, with an opaque error instead of this one.
+	obs := contracts.ListingObservation{Key: testKey(t), Evidence: testEvidence(t)}
+	if err := obs.Validate(); err == nil {
+		t.Fatal("observation with zero-value (reasonless) facts accepted")
+	}
+}
+
+func TestValidateRejectsWhitespaceOnlyVariationID(t *testing.T) {
+	obs := contracts.ListingObservation{
+		Key:        testKey(t),
+		Evidence:   testEvidence(t),
+		Variations: []contracts.VariationObservation{{VariationID: "   "}},
+	}
+	if err := obs.Validate(); err == nil || !strings.Contains(err.Error(), "variation") {
+		t.Fatalf("whitespace-only variation id accepted or wrong error: %v", err)
 	}
 }
