@@ -339,6 +339,12 @@ function Invoke-HarnessPostgresLifecycle {
   $hostPort = 0
   $targetURL = ''
   $failureDiagnosticTokens = @()
+  # Counted here rather than inferred from what the child logged: a readiness
+  # attempt whose subprocess is killed at its own budget writes nothing, so a
+  # caller counting child rows reads 0 attempts on a run that made one. That
+  # miscount is what made the deadline assertion in postgres-lifecycle.tests.ps1
+  # fail under load on a tree that behaved correctly.
+  $readyAttempts = 0
   $heldConnectionConfirmed = $false
   $testsRun = -1
   $testsPassed = -1
@@ -419,6 +425,7 @@ function Invoke-HarnessPostgresLifecycle {
       $remainingMilliseconds = [Math]::Max(1, $ReadyTimeoutMilliseconds - $readyWatch.ElapsedMilliseconds)
       $readyProcessTimeoutSeconds = [Math]::Min($TimeoutSeconds, [Math]::Max(1, [Math]::Ceiling($remainingMilliseconds / 1000.0)))
       $ready = Invoke-Docker -ProcessTimeoutSeconds $readyProcessTimeoutSeconds -Arguments @('exec', $RunSpec.ContainerName, 'pg_isready', '--username', 'postgres', '--dbname', 'postgres', '--timeout', [string]$readyProcessTimeoutSeconds)
+      $readyAttempts++
       if ($ready.ExitCode -eq 0) { break }
       if ($attempt -ge $ReadyMaxAttempts -or $readyWatch.ElapsedMilliseconds -ge $ReadyTimeoutMilliseconds) { break }
       if ($ReadyRetryDelayMilliseconds -gt 0) { Start-Sleep -Milliseconds $ReadyRetryDelayMilliseconds }
@@ -537,6 +544,7 @@ function Invoke-HarnessPostgresLifecycle {
     DatabaseName = $RunSpec.DatabaseName
     HostPort = $hostPort
     FailureDiagnosticTokens = @($failureDiagnosticTokens)
+    ReadyAttempts = $readyAttempts
     HeldConnectionConfirmed = $heldConnectionConfirmed
     TestsRun = $testsRun
     TestsPassed = $testsPassed

@@ -89,14 +89,26 @@ try {
   Assert-True ($readyTimeout.Result.PrimaryReasonCode -eq 'HPG_READY_TIMEOUT') 'readiness exhaustion lacks stable reason'
   Assert-True (@($readyTimeout.Calls | Where-Object operation -eq 'ready').Count -eq 3) 'readiness exceeded bounded attempts'
 
+  # The attempt count comes from the harness, not from the fixture's log. Each
+  # attempt's subprocess budget is derived from the deadline that is left and
+  # floored at one second, so with a 1ms deadline the fixture has one second to
+  # start node and append its row -- and a child killed at that budget appends
+  # nothing. Counting child rows therefore read 0 attempts on a run that made
+  # one, which is how this assertion failed under whole-suite load on a tree
+  # that behaved correctly. `Result.ReadyAttempts` is incremented by the loop
+  # itself and cannot be lost that way. The log is still checked below for what
+  # only the child can attest: the arguments it was called with.
   $readyDeadline = Invoke-ProbeLifecycle '' @{ HARNESS_POSTGRES_PROBE_READY_FAILURES = '99' } 99 1
   $runs += $readyDeadline
-  $deadlineAttempts = @($readyDeadline.Calls | Where-Object operation -eq 'ready').Count
+  $deadlineAttempts = [int]$readyDeadline.Result.ReadyAttempts
   Assert-True ($readyDeadline.Result.PrimaryReasonCode -eq 'HPG_READY_TIMEOUT') 'readiness deadline lacks stable reason'
-  Assert-True ($deadlineAttempts -ge 1 -and $deadlineAttempts -lt 99) 'readiness ignored its deadline bound'
+  Assert-True ($deadlineAttempts -ge 1 -and $deadlineAttempts -lt 99) "readiness ignored its deadline bound: attempts=$deadlineAttempts"
 
   $hangingReadyWatch = [Diagnostics.Stopwatch]::StartNew()
-  $hangingReady = Invoke-ProbeLifecycle '' @{ HARNESS_POSTGRES_PROBE_READY_HANG_MILLISECONDS = '10000' } 99 1
+  # 3000ms, because the assertion below reads the arguments the child recorded:
+  # the child appends its row before it hangs, but it still has to start, and a
+  # 1ms deadline would give it a one-second budget to do that under load.
+  $hangingReady = Invoke-ProbeLifecycle '' @{ HARNESS_POSTGRES_PROBE_READY_HANG_MILLISECONDS = '10000' } 99 3000
   $hangingReadyWatch.Stop()
   $runs += $hangingReady
   Assert-True ($hangingReady.Result.PrimaryReasonCode -eq 'HPG_READY_TIMEOUT') 'hanging readiness lacks stable timeout reason'
@@ -105,8 +117,12 @@ try {
   # that: the probe spawns several node subprocesses whose startup under
   # whole-suite load has been measured past a 4s budget with no hang at all.
   Assert-True ($hangingReadyWatch.Elapsed.TotalSeconds -lt 8) 'hanging pg_isready exceeded bounded subprocess deadline'
-  $hangingCall = @($hangingReady.Calls | Where-Object operation -eq 'ready')[0]
-  Assert-True (@($hangingCall.args) -contains '--timeout') 'pg_isready lacks its own bounded timeout'
+  $hangingCalls = @($hangingReady.Calls | Where-Object operation -eq 'ready')
+  # Separated from the argument check on purpose: an empty log and a call made
+  # without --timeout used to fail with the same message, and only one of them
+  # is the harness losing its bound.
+  Assert-True ($hangingCalls.Count -ge 1) "hanging readiness recorded no call to inspect: attempts=$($hangingReady.Result.ReadyAttempts)"
+  Assert-True (@($hangingCalls[0].args) -contains '--timeout') 'pg_isready lacks its own bounded timeout'
 
   foreach ($conflict in @('HARNESS_POSTGRES_PROBE_NAME_CONFLICT', 'HARNESS_POSTGRES_PROBE_LABEL_CONFLICT')) {
     $run = Invoke-ProbeLifecycle '' @{ $conflict = '1' }
