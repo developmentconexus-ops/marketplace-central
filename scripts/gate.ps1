@@ -50,10 +50,9 @@ Import-Module (Join-Path $PSScriptRoot 'harness/Gate.psm1') -Force
 # own integration-package discovery instead of keeping a second copy of the rule.
 Import-Module (Join-Path $PSScriptRoot 'harness/Postgres.psm1') -Force
 
-# HARNESS-PROFILE §2 binds the Go caches to an ABSOLUTE path. The relative
-# `GOCACHE=.gocache` that AGENTS.md still prints was struck from the profile on
-# 2026-07-28 after a chip copied it and got an 83-byte EXIT 1 with zero `=== RUN`
-# -- a vacuous green handed over by the doctrine itself.
+# The Go caches bind to an ABSOLUTE path. The relative `GOCACHE=.gocache` form was
+# struck on 2026-07-28 after a copy of it produced an 83-byte EXIT 1 with zero
+# `=== RUN` -- a vacuous green. AGENTS.md prints the absolute form.
 $env:GOCACHE = [IO.Path]::GetFullPath((Join-Path $serverCore '.gocache'))
 $env:GOMODCACHE = [IO.Path]::GetFullPath((Join-Path $serverCore '.gomodcache'))
 
