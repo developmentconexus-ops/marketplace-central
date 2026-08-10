@@ -5,12 +5,21 @@
 // id) and writes only to the listings schema. The access token is resolved
 // the same way cmd/mlprobe resolves it (Postgres + AES-GCM local key) and is
 // never printed, logged, or embedded in an error.
+//
+// Which tenant to ingest for and how big a scan page to request are
+// parameters of the run, so they arrive as flags:
+//
+//	go run ./cmd/listingsingest -tenant tenant_default [-page-size 50]
+//
+// The environment carries only deployment configuration — the database URL
+// and the encryption key — read once by pgdb.LoadConfig.
 package main
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -27,13 +36,21 @@ import (
 	"marketplace-central/apps/server_core/internal/platform/pgdb"
 )
 
-const defaultPageSize = 50
+const (
+	commandName     = "listingsingest"
+	defaultPageSize = 50
+)
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if err := run(ctx); err != nil {
+	if err := run(ctx, os.Args[1:]); err != nil {
+		// -h is a request, not a failure: the usage text is already on stderr
+		// and this process has nothing to report.
+		if errors.Is(err, flag.ErrHelp) {
+			return
+		}
 		// Never a fabricated success: any failure here is printed verbatim to
 		// stderr and the process exits non-zero.
 		fmt.Fprintln(os.Stderr, err)
@@ -41,21 +58,63 @@ func main() {
 	}
 }
 
-func run(ctx context.Context) error {
-	dbCfg, err := pgdb.LoadConfig()
+// options are the parameters of one run — what this invocation is for, as
+// opposed to how the deployment is configured.
+type options struct {
+	tenant   string
+	pageSize int
+}
+
+// parseOptions reads the run's parameters from args and nothing else. There
+// is deliberately no environment fallback for either of them: a required flag
+// has no default that a forgotten export could be mistaken for, so the
+// fail-closed behaviour a live write path needs is a property of the channel
+// rather than a guard that has to be remembered (global constraint 9 —
+// unknown never becomes a plausible default).
+//
+// usageOut receives the usage text; the FlagSet's own printer is silenced so
+// that every failure leaves this process through main's single error path
+// instead of being written twice.
+func parseOptions(args []string, usageOut io.Writer) (options, error) {
+	fs := flag.NewFlagSet(commandName, flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	tenantFlag := fs.String("tenant", "", "tenant id this run ingests for (required)")
+	pageSizeFlag := fs.Int("page-size", defaultPageSize, "listing ids requested per scan page")
+
+	if err := fs.Parse(args); err != nil {
+		fs.SetOutput(usageOut)
+		fs.Usage()
+		return options{}, err
+	}
+	if fs.NArg() > 0 {
+		return options{}, fmt.Errorf("unexpected argument %q (this command takes flags only)", fs.Arg(0))
+	}
+	tenantID := strings.TrimSpace(*tenantFlag)
+	if tenantID == "" {
+		return options{}, errors.New("-tenant is required: the tenant to ingest for is a parameter of this run, not a deployment setting")
+	}
+	if *pageSizeFlag <= 0 {
+		return options{}, fmt.Errorf("-page-size must be a positive integer, got %d", *pageSizeFlag)
+	}
+	return options{tenant: tenantID, pageSize: *pageSizeFlag}, nil
+}
+
+func run(ctx context.Context, args []string) error {
+	opts, err := parseOptions(args, os.Stderr)
 	if err != nil {
-		return fmt.Errorf("listingsingest: database config: %w", err)
+		if errors.Is(err, flag.ErrHelp) {
+			return err
+		}
+		return fmt.Errorf("listingsingest: %w", err)
 	}
-	if err := requireTenantConfigured(os.Getenv); err != nil {
-		return err
-	}
-	tenantID, err := tenant.Parse(dbCfg.DefaultTenantID)
+	tenantID, err := tenant.Parse(opts.tenant)
 	if err != nil {
 		return fmt.Errorf("listingsingest: tenant: %w", err)
 	}
-	pageSize, err := loadPageSize(os.Getenv)
+
+	dbCfg, err := pgdb.LoadConfig()
 	if err != nil {
-		return fmt.Errorf("listingsingest: %w", err)
+		return fmt.Errorf("listingsingest: database config: %w", err)
 	}
 
 	pool, err := pgdb.NewPool(ctx, dbCfg)
@@ -87,7 +146,7 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("listingsingest: wire listings: %w", err)
 	}
 
-	report, err := composition.RunListingsIngest(ctx, wiring.Module, wiring.Feed.ListingFeed, tenantID, pageSize)
+	report, err := composition.RunListingsIngest(ctx, wiring.Module, wiring.Feed.ListingFeed, tenantID, opts.pageSize)
 	if err != nil {
 		return fmt.Errorf("listingsingest: run ingest: %w", err)
 	}
@@ -95,49 +154,6 @@ func run(ctx context.Context) error {
 	fmt.Printf("listings ingest report: pages=%d observed=%d created=%d changed=%d idempotent=%d\n",
 		report.Pages, report.Observed, report.Created, report.Changed, report.Idempotent)
 	return nil
-}
-
-// requireTenantConfigured fails closed when MC_DEFAULT_TENANT_ID is unset or
-// empty. pgdb.LoadConfig (internal/platform/pgdb/config.go) silently
-// substitutes "tenant_default" for every caller when the variable is absent
-// — correct for its many read-oriented callers, but wrong here: this command
-// performs live writes across an entire seller's listings (D-39,
-// .mnfs/HARNESS-DEBTS.md). An operator who forgets to export the variable
-// must see a failure naming it, not have thousands of rows land under an
-// invented tenant with a silent exit code 0 (global constraint 9: unknown
-// never becomes a plausible default).
-//
-// getenv is read directly here, exactly mirroring how pgdb.LoadConfig reads
-// the same variable (os.Getenv("MC_DEFAULT_TENANT_ID"), no trimming), so
-// this guard can never disagree with what LoadConfig saw. It keys on the
-// variable being absent/empty, never on the resolved value: a deployment
-// that legitimately names its tenant "tenant_default" still passes, and a
-// typo'd variable name still fails.
-//
-// pgdb.LoadConfig's defaulting itself is not changed — it is shared
-// infrastructure with other callers (cmd/server) that may have distinct
-// reasons to tolerate the default today.
-func requireTenantConfigured(getenv func(string) string) error {
-	if getenv("MC_DEFAULT_TENANT_ID") == "" {
-		return errors.New("listingsingest: MC_DEFAULT_TENANT_ID is required (refusing to silently default to \"tenant_default\" for a live write path)")
-	}
-	return nil
-}
-
-// loadPageSize reads the operator-tunable page size. Unlike a domain fact, a
-// paging batch size has no "unknown" state to preserve — it is an operational
-// default, not a fabricated business value — so an unset variable falls back
-// to defaultPageSize rather than failing closed.
-func loadPageSize(getenv func(string) string) (int, error) {
-	raw := strings.TrimSpace(getenv("MPC_LISTINGS_INGEST_PAGE_SIZE"))
-	if raw == "" {
-		return defaultPageSize, nil
-	}
-	parsed, err := strconv.Atoi(raw)
-	if err != nil || parsed <= 0 {
-		return 0, fmt.Errorf("MPC_LISTINGS_INGEST_PAGE_SIZE must be a positive integer, got %q", raw)
-	}
-	return parsed, nil
 }
 
 // resolveMLCredential resolves the live access token and the seller/account

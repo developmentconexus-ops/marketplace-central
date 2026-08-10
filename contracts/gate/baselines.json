@@ -115,16 +115,31 @@
       "",
       "The walk reads the working tree, not the git index, so a developer's untracked source files",
       "are in scope locally and absent on a CI checkout. An increase is real on either; a lower local",
-      "number with untracked files present proves nothing."
+      "number with untracked files present proves nothing.",
+      "",
+      "2026-08-10, 58 -> 53 (RCFG_UNAPPROVED_READER 20 -> 17, RCFG_UNDECLARED_READ 7 -> 5): paid,",
+      "not amended. The root cause of these five was one mistake repeated across three entry points",
+      "-- invocation parameters travelling as process environment. cmd/catalogingest,",
+      "cmd/listingsingest and cmd/mlprobe each reached past the typed loader for something the",
+      "caller decides per run. MC_DEFAULT_TENANT_ID and MPC_SANKHYA_INSTANCE are now the required",
+      "flags -tenant and -instance; MPC_CATALOG_INGEST_PAGE_SIZE and MPC_LISTINGS_INGEST_PAGE_SIZE",
+      "are now -page-size and the variables no longer exist; cmd/mlprobe takes MC_DATABASE_URL and",
+      "MPC_ENCRYPTION_KEY from pgdb.LoadConfig, the one registered reader of both. The",
+      "requireTenantConfigured guards those commands carried are deleted with them: that guard",
+      "existed only because LoadConfig substitutes \"tenant_default\" for an absent variable, which a",
+      "required flag cannot do. Each of the three keys now has exactly one reader in the tree.",
+      "",
+      "measured_at/measured_on above still name where the 58 was established; the 53 was measured on",
+      "branch fatia-listings against the tree this commit creates, which has no SHA to cite yet."
     ],
-    "total": 58,
+    "total": 53,
     "by_code": {
       "GOV_MODULE_DEPENDENCY": 12,
       "GOV_MODULE_LAYER": 8,
       "GOV_MIGRATION_PREFIX": 1,
-      "RCFG_UNAPPROVED_READER": 20,
+      "RCFG_UNAPPROVED_READER": 17,
       "RCFG_READER_MISSING": 10,
-      "RCFG_UNDECLARED_READ": 7
+      "RCFG_UNDECLARED_READ": 5
     }
   },
   "boundary": {
