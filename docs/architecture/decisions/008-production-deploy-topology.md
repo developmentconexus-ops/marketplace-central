@@ -69,3 +69,29 @@ Options evaluated (research 2026-07-19, sources in the deploy runbook):
   the registry reference in compose/CI is a one-line swap.
 - Postgres backup automation (`pg_dump` cron + offsite copy) is part of the
   production definition of done; the runbook carries the procedure.
+
+## Amendment 2026-08-10 — the CI publisher is retired; `scripts/release.sh` is the publisher
+
+Decision 1 named GitHub Actions as the publisher. Measured 2026-08-10:
+`.github/workflows/release-images.yml` ran 18 times between 2026-07-20 and
+2026-08-10 and **failed all 18**, always the same way — both images build, then
+the push is refused:
+
+```
+ERROR: failed to push ghcr.io/developmentconexus-ops/marketplace-central-server:latest:
+unexpected status from HEAD request to https://ghcr.io/v2/.../blobs/sha256:...: 403 Forbidden
+```
+
+The workflow therefore never published an image, and nothing has ever pulled
+one: `deploy/docker-compose.prod.yml` names these images but no host runs it
+yet. Its only effect on this repository was a permanent red run on `main`,
+which trains a reader to ignore red.
+
+The workflow is deleted. Image-based delivery (decision 1) is unchanged — it is
+`scripts/release.sh`, the local publisher, which the runbook already documented
+as the default. The GHCR credential problem is unfixed and is the precondition
+for restoring a CI publisher: either the packages exist under
+`developmentconexus-ops` and must grant this repository Write under *Manage
+Actions access*, or `GITHUB_TOKEN` cannot create them in that user namespace and
+the workflow needs a PAT with `write:packages`. Restoring the workflow before
+that is settled reproduces the same 18 failures.
