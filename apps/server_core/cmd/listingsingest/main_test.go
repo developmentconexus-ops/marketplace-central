@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"errors"
+	"flag"
 	"io"
 	"strings"
 	"testing"
@@ -26,15 +29,49 @@ func TestParseOptionsRequiresTenant(t *testing.T) {
 	}
 }
 
-// TestParseOptionsIgnoresEnvironmentTenant is the anti-regression assertion
-// for the whole refactor: with the old variable exported and no -tenant flag,
-// the command must still refuse to run. If someone reintroduces an
-// environment fallback "for convenience", this test goes red.
+// The next two are the anti-regression assertions for the whole refactor:
+// with a retired variable exported, the command must still refuse to take its
+// value from there. Each asserts the error names its own flag rather than
+// merely that some error came back, so a different check firing first cannot
+// mask the regression it is looking for.
 func TestParseOptionsIgnoresEnvironmentTenant(t *testing.T) {
 	t.Setenv("MC_DEFAULT_TENANT_ID", "tenant_from_environment")
 
-	if _, err := parseOptions(nil, io.Discard); err == nil {
-		t.Fatal("parseOptions(nil) error = nil with MC_DEFAULT_TENANT_ID exported; the environment must not supply the tenant")
+	_, err := parseOptions(nil, io.Discard)
+	if err == nil {
+		t.Fatal("error = nil with MC_DEFAULT_TENANT_ID exported; the environment must not supply the tenant")
+	}
+	if !strings.Contains(err.Error(), "-tenant") {
+		t.Fatalf("error = %q, want it to name -tenant", err.Error())
+	}
+}
+
+// The page size variable is gone rather than replaced, so nothing else would
+// notice it coming back: an exported value must not move the default.
+func TestParseOptionsIgnoresEnvironmentPageSize(t *testing.T) {
+	t.Setenv("MPC_LISTINGS_INGEST_PAGE_SIZE", "9999")
+
+	opts, err := parseOptions([]string{"-tenant", "t1"}, io.Discard)
+	if err != nil {
+		t.Fatalf("parseOptions: %v", err)
+	}
+	if opts.pageSize != defaultPageSize {
+		t.Fatalf("pageSize = %d with MPC_LISTINGS_INGEST_PAGE_SIZE=9999 exported, want the flag default %d", opts.pageSize, defaultPageSize)
+	}
+}
+
+// -h is a request, not a failure: parseOptions returns flag.ErrHelp (which
+// main turns into a silent exit 0) and writes the usage text exactly once, to
+// the writer it was handed rather than to the FlagSet's default stderr.
+func TestParseOptionsHelpIsNotAFailure(t *testing.T) {
+	var usage bytes.Buffer
+
+	_, err := parseOptions([]string{"-h"}, &usage)
+	if !errors.Is(err, flag.ErrHelp) {
+		t.Fatalf("parseOptions(-h) error = %v, want flag.ErrHelp", err)
+	}
+	if n := strings.Count(usage.String(), "-tenant"); n != 1 {
+		t.Fatalf("usage names -tenant %d times, want exactly 1 (the FlagSet's own printer must stay silenced)", n)
 	}
 }
 

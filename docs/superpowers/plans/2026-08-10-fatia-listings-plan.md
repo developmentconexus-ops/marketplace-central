@@ -2089,8 +2089,13 @@ Checks verdes → merge é do operador.
   Operador roda no container:
 
 ```bash
-docker exec -w /workspace/apps/server_core marketplace-central-backend-1 go run ./cmd/listingsingest
+docker exec -w /workspace/apps/server_core marketplace-central-backend-1 go run ./cmd/listingsingest -tenant tenant_default
 ```
+
+`-tenant` é obrigatório e não tem default (commit `b0c24e77`): o tenant é parâmetro
+desta corrida, não configuração do container. Trocar `tenant_default` pelo tenant real
+da instalação ML se for outro — sem a flag o comando recusa correr, que é o
+comportamento pretendido. `-page-size` é opcional, default 50.
 
 Esperado: `listings ingest report: pages=P observed=N created=N changed=0 idempotent=0`
 com N > 0. Segunda corrida imediata: `idempotent=N, created=0` — re-poll é grátis.

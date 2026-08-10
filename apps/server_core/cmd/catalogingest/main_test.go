@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"errors"
+	"flag"
 	"io"
 	"strings"
 	"testing"
@@ -33,16 +36,71 @@ func TestParseOptionsRequiresInstance(t *testing.T) {
 	}
 }
 
-// TestParseOptionsIgnoresEnvironmentTenant is the anti-regression assertion
-// for the class fix: with the retired variables exported and the flags
-// absent, this command must still refuse to run. A live catalogue write under
-// a tenant nobody named is exactly the failure D-39 recorded.
+// The next three are the anti-regression assertions for the class fix: with a
+// retired variable exported, the command must still refuse to take its value
+// from there. A live catalogue write under a tenant nobody named is exactly
+// the failure D-39 recorded.
+//
+// One test per field, and each supplies the OTHER required flag correctly.
+// Exporting both variables and passing no flags at all would be vacuous: a
+// reintroduced tenant fallback would be masked by the still-missing
+// -instance, and the test would stay green through the regression it claims
+// to catch. For the same reason each asserts the error names its own flag,
+// not merely that some error came back.
+
 func TestParseOptionsIgnoresEnvironmentTenant(t *testing.T) {
 	t.Setenv("MC_DEFAULT_TENANT_ID", "tenant_from_environment")
+
+	_, err := parseOptions([]string{"-instance", "prod"}, io.Discard)
+	if err == nil {
+		t.Fatal("error = nil with MC_DEFAULT_TENANT_ID exported; the environment must not supply the tenant")
+	}
+	if !strings.Contains(err.Error(), "-tenant") {
+		t.Fatalf("error = %q, want it to name -tenant: another check fired instead, so this test would not see a tenant fallback", err.Error())
+	}
+}
+
+func TestParseOptionsIgnoresEnvironmentInstance(t *testing.T) {
 	t.Setenv("MPC_SANKHYA_INSTANCE", "instance_from_environment")
 
-	if _, err := parseOptions(nil, io.Discard); err == nil {
-		t.Fatal("parseOptions(nil) error = nil with the retired variables exported; the environment must not supply invocation parameters")
+	_, err := parseOptions([]string{"-tenant", "t1"}, io.Discard)
+	if err == nil {
+		t.Fatal("error = nil with MPC_SANKHYA_INSTANCE exported; the environment must not supply the instance")
+	}
+	if !strings.Contains(err.Error(), "-instance") {
+		t.Fatalf("error = %q, want it to name -instance: another check fired instead, so this test would not see an instance fallback", err.Error())
+	}
+}
+
+// The page size variable is gone rather than replaced, so nothing else would
+// notice it coming back: an exported value must not move the default.
+func TestParseOptionsIgnoresEnvironmentPageSize(t *testing.T) {
+	t.Setenv("MPC_CATALOG_INGEST_PAGE_SIZE", "9999")
+
+	opts, err := parseOptions([]string{"-tenant", "t1", "-instance", "prod"}, io.Discard)
+	if err != nil {
+		t.Fatalf("parseOptions: %v", err)
+	}
+	if opts.pageSize != defaultPageSize {
+		t.Fatalf("pageSize = %d with MPC_CATALOG_INGEST_PAGE_SIZE=9999 exported, want the flag default %d", opts.pageSize, defaultPageSize)
+	}
+}
+
+// -h is a request, not a failure: parseOptions returns flag.ErrHelp (which
+// main turns into a silent exit 0) and writes the usage text exactly once, to
+// the writer it was handed rather than to the FlagSet's default stderr.
+func TestParseOptionsHelpIsNotAFailure(t *testing.T) {
+	var usage bytes.Buffer
+
+	_, err := parseOptions([]string{"-h"}, &usage)
+	if !errors.Is(err, flag.ErrHelp) {
+		t.Fatalf("parseOptions(-h) error = %v, want flag.ErrHelp", err)
+	}
+	if !strings.Contains(usage.String(), "-tenant") {
+		t.Fatalf("usage = %q, want it to describe -tenant", usage.String())
+	}
+	if n := strings.Count(usage.String(), "-instance"); n != 1 {
+		t.Fatalf("usage names -instance %d times, want exactly 1 (the FlagSet's own printer must stay silenced)", n)
 	}
 }
 
