@@ -426,6 +426,148 @@ function Compare-GateRatchet {
   }
 }
 
+function Measure-GateGuards {
+  <#
+    Holds a targeted `go test -run -v` output against the inventory's expected
+    test names. `\b` after the escaped name: `--- PASS: TestA` must not satisfy
+    an expectation of `TestAB`, and vice-versa Go suffixes the line with the
+    duration so a bare $ anchor would never match.
+  #>
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory)][AllowEmptyString()][string]$Text,
+    [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Expected
+  )
+  $passed = [Collections.Generic.List[string]]::new()
+  $missing = [Collections.Generic.List[string]]::new()
+  foreach ($name in $Expected) {
+    if ([regex]::IsMatch($Text, "(?m)^\s*--- PASS: $([regex]::Escape($name))\b")) { [void]$passed.Add($name) } else { [void]$missing.Add($name) }
+  }
+  return [pscustomobject]@{
+    Ran     = @([regex]::Matches($Text, '(?m)^\s*=== RUN\s')).Count
+    Passed  = @($passed)
+    Missing = @($missing)
+    Failed  = @([regex]::Matches($Text, '(?m)^\s*--- FAIL:')).Count
+  }
+}
+
+function Test-GateGuardInventory {
+  <#
+    The guards lane's verdict logic (issue #3 mechanism (a)), extracted from
+    `Invoke-GateGuards` in scripts/gate.ps1 so it can be exercised from a
+    self-test against synthetic inventories and injected runners, instead of
+    only from a live `go test` / pwsh spawn against the committed
+    contracts/gate/guards.json.
+
+    Takes the parsed inventory object, the repository root the pwsh_files and
+    presence_only paths resolve against, and two injected runner script
+    blocks -- one per execution path:
+
+      GoRunner:   param($Package, $Pattern) -> [pscustomobject]@{ ExitCode; Text }
+      PwshRunner: param($FilePath)          -> [pscustomobject]@{ ExitCode; Text }
+
+    The real caller builds these on Invoke-GateTool exactly as the lane did
+    before extraction; a test builds them as bare script blocks returning
+    canned output, so the verdict logic runs with no real process spawned.
+
+    Returns a result object carrying the failure lines and the counts this
+    lane prints: Entries (go+pwsh+presence total), GoExecuted, PwshEntries,
+    PwshExecuted, Presence, plus Passed/Reason/Counts for the verdict itself.
+    Counts is pre-formatted so the caller does not have to reconstruct the
+    lane's two distinct shapes (the 'entries=0' short-circuit versus the full
+    five-field line) -- that reconstruction is exactly the kind of drift this
+    extraction exists to prevent.
+  #>
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory)]$Inventory,
+    [Parameter(Mandatory)][string]$RepositoryRoot,
+    [Parameter(Mandatory)][scriptblock]$GoRunner,
+    [Parameter(Mandatory)][scriptblock]$PwshRunner
+  )
+
+  $goEntries = @($Inventory.go_tests); $pwshEntries = @($Inventory.pwsh_files); $presenceEntries = @($Inventory.presence_only)
+  $total = $goEntries.Count + $pwshEntries.Count + $presenceEntries.Count
+  if ($total -eq 0) {
+    return [pscustomobject]@{
+      Passed       = $false
+      Reason       = 'an empty inventory is not a green inventory'
+      Counts       = 'entries=0'
+      Entries      = 0
+      GoExecuted   = 0
+      PwshEntries  = 0
+      PwshExecuted = 0
+      Presence     = 0
+      Failures     = @()
+    }
+  }
+
+  $failures = [Collections.Generic.List[string]]::new()
+  $goExecuted = 0
+  foreach ($group in @($goEntries | Group-Object -Property package)) {
+    $names = @($group.Group | ForEach-Object { [string]$_.test })
+    $pattern = '^(' + (@($names | ForEach-Object { [regex]::Escape($_) }) -join '|') + ')$'
+    $result = & $GoRunner $group.Name $pattern
+    $measurement = Measure-GateGuards -Text $result.Text -Expected $names
+    if ($result.ExitCode -ne 0) { [void]$failures.Add("package $($group.Name) exited $($result.ExitCode)") }
+    if ($measurement.Ran -eq 0) { [void]$failures.Add("package $($group.Name): zero tests ran; the inventory names tests that do not execute") }
+    foreach ($name in $measurement.Missing) { [void]$failures.Add("no '--- PASS: $name' in $($group.Name)") }
+    $goExecuted += @($measurement.Passed).Count
+  }
+
+  # pwsh_files entries are EXECUTED here, not merely inspected for a string.
+  # Grouped by file first: several ids can share one fixture file (governance-drift
+  # alone carries 11), and running that file once per id would run it 11 times for
+  # no additional evidence. Each distinct file runs once; every entry pointing at
+  # it is checked against that one output.
+  $pwshExecuted = 0
+  foreach ($group in @($pwshEntries | Group-Object -Property file)) {
+    $file = Join-Path $RepositoryRoot ([string]$group.Name)
+    if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
+      [void]$failures.Add("$($group.Name) is missing")
+      continue
+    }
+    $leaf = [IO.Path]::GetFileName($file)
+    $inSelftestGlob = ($leaf -like '*.tests.ps1') -and ($leaf -notlike '*.integration.tests.ps1') -and
+      ([IO.Path]::GetFullPath([IO.Path]::GetDirectoryName($file)) -eq [IO.Path]::GetFullPath((Join-Path $RepositoryRoot 'scripts/tests')))
+    if (-not $inSelftestGlob) {
+      [void]$failures.Add("$($group.Name) sits outside the selftest lane's discovery glob; its execution is delegated to nothing")
+    }
+
+    $result = & $PwshRunner $file
+    $pwshExecuted++
+    if ($result.ExitCode -ne 0) { [void]$failures.Add("$($group.Name) exited $($result.ExitCode)") }
+    foreach ($entry in $group.Group) {
+      $token = [string]$entry.token
+      if (-not ([regex]::IsMatch($result.Text, "(?m)^\s*$([regex]::Escape($token))\s*$"))) {
+        [void]$failures.Add("no '$token' in $($group.Name)")
+      }
+    }
+  }
+
+  foreach ($entry in $presenceEntries) {
+    $file = Join-Path $RepositoryRoot ([string]$entry.file)
+    if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { [void]$failures.Add("$($entry.file) is missing"); continue }
+    if (-not (Select-String -LiteralPath $file -Pattern ([regex]::Escape([string]$entry.anchor)) -Quiet)) {
+      [void]$failures.Add("$($entry.file): anchor '$($entry.anchor)' not found")
+    }
+  }
+
+  $counts = "entries=$total go_executed=$goExecuted pwsh_entries=$($pwshEntries.Count) pwsh_executed=$pwshExecuted presence=$($presenceEntries.Count) failures=$($failures.Count)"
+  $passed = ($failures.Count -eq 0)
+  return [pscustomobject]@{
+    Passed       = $passed
+    Reason       = if ($passed) { '' } else { 'a registered guard has no executing fixture. A guard that cannot demonstrate a catch is indistinguishable from an absent one.' }
+    Counts       = $counts
+    Entries      = $total
+    GoExecuted   = $goExecuted
+    PwshEntries  = $pwshEntries.Count
+    PwshExecuted = $pwshExecuted
+    Presence     = $presenceEntries.Count
+    Failures     = @($failures)
+  }
+}
+
 function ConvertTo-GateCountMap {
   <#
     PSCustomObject to hashtable. ConvertFrom-Json yields the former and
@@ -443,4 +585,4 @@ function ConvertTo-GateCountMap {
 
 Export-ModuleMember -Function Measure-GateGoTest, Measure-GateVitest, Measure-GateTsc, Measure-GateGofmt, `
   Remove-GateAnsi, Measure-GateGolangciLint, Measure-GateEslint, Measure-GateEslintRules, Measure-GatePrettier, Measure-GateArchscan, `
-  Measure-GateBoundary, Measure-GateGovernance, Compare-GateRatchet, ConvertTo-GateCountMap
+  Measure-GateBoundary, Measure-GateGovernance, Compare-GateRatchet, ConvertTo-GateCountMap, Measure-GateGuards, Test-GateGuardInventory

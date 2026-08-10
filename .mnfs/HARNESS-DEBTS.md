@@ -1692,6 +1692,15 @@ Condição de remoção: `scripts/harness.ps1` ganhar um passo (ou lane nova) qu
 — ou `arch-gate.sh` passar a ser invocável via `npm run` e o seu passo 4 reportado separado do
 gofmt/vet/archscan para não ficar mascarado pela dívida ADR-023 herdada.
 
+**FECHADA (issue #3, Tarefa 6).** A segunda das duas condições de remoção acima aconteceu, mas
+não do jeito previsto: `scripts/arch-gate.sh` foi apagado no commit `0d1cc3f0` ("gate: retire
+arch-gate.sh -- zero executable references, superseded by gate lanes (#3)"), depois de uma
+remedição em `60f4d457` medir zero referências executáveis ao script em todo o repo (só docs,
+histórico `.mnfs` e planos superados o citavam). A dívida morre com o ficheiro que carregava o
+padrão — não foi refatorada nem ligada a `npm`; o passo 4 que este achado media deixou de existir.
+A primeira condição (lane nova em `harness.ps1` cobrindo `internal/...`) continua não implementada
+e é, portanto, fora do escopo desta baixa.
+
 **D-52. `scripts/arch-gate.sh` passo 1 (`gofmt`) nunca pode passar num checkout Windows deste
 repo — `core.autocrlf=true`, blobs git em LF, `.gitattributes` só fixa `*.sh`.** Isso produz ruído
 permanente de ~635 ficheiros marcados só por causa de CRLF, escondendo os poucos ficheiros
@@ -1893,3 +1902,97 @@ ao hub e é de uma linha.
 **Condição de remoção.** `AGENTS.md` deixar de conter uma forma relativa copiável — ou apontar para
 `HARNESS-PROFILE.md §2` em vez de reimprimir a regra, que é a disposição que o perfil já tomou para
 si próprio. Verificação: `grep -n 'GOCACHE=\.gocache' AGENTS.md` não devolver nada.
+
+---
+
+**D-57. `contracts/gate/guards.json` (o inventário de guards do issue #3) não é provado COMPLETO
+— só provado não-vazio.** Achado do CodeRabbit na PR #25 (`ci(gate): guard inventory -- evidence
+stops certifying itself (#3)`), aceito pelo operador como dívida em vez de trabalho dentro da PR.
+
+`Test-GateGuardInventory` (`scripts/harness/Gate.psm1:454-491`) soma `go_tests` + `pwsh_files` +
+`presence_only` do JSON e só falha quando essa soma é zero:
+
+```
+scripts/harness/Gate.psm1:490:  $total = $goEntries.Count + $pwshEntries.Count + $presenceEntries.Count
+scripts/harness/Gate.psm1:491:  if ($total -eq 0) {
+```
+
+Isso prova que o inventário não está vazio; não prova que ele lista toda família de guard que a
+harness de fato emite. Uma família nunca registrada, ou uma entrada apagada do JSON, desaparece
+sem nenhum sinal — o total só cai, nunca zera.
+
+Omissões medidas nesta sessão (verificadas contra o código, não copiadas do achado):
+
+```
+$ grep -n "throw 'HPG_\|Set-Primary 'HPG_\|Add-CleanupCode 'HPG_" scripts/harness/Postgres.psm1 | grep -o "HPG_[A-Z_]*" | sort -u
+HPG_CONTAINER_REMOVE_FAILED
+HPG_CONTAINER_START_FAILED
+HPG_DATABASE_CREATE_FAILED
+HPG_DATABASE_DROP_FAILED
+HPG_DOCKER_MISSING
+HPG_DOCKER_UNAVAILABLE
+HPG_IMAGE_MISSING
+HPG_MIGRATION_FAILED
+HPG_MIGRATION_INVENTORY_INVALID
+HPG_MIGRATION_NOT_IDEMPOTENT
+HPG_PORT_UNAVAILABLE
+HPG_READY_TIMEOUT
+HPG_RESOURCE_CONFLICT
+HPG_RESOURCE_LEAK
+HPG_RUN_ID_INVALID
+HPG_TEST_FAILED
+HPG_TEST_VACUOUS
+```
+
+`contracts/gate/guards.json` só regista `integration-vacuous-run` (token
+`guard_ran=integration-vacuous-run`, correspondendo a `HPG_TEST_VACUOUS`). `HPG_READY_TIMEOUT`,
+`HPG_RESOURCE_CONFLICT` e `HPG_TEST_FAILED` — três códigos que o mesmo módulo emite — não têm
+entrada nenhuma. (Nota de correção: o brief original citava só estes três; a varredura completa
+acima mostra que a lista real de códigos não registados é maior — 16 dos 17 `HPG_*` do módulo
+ficam fora do inventário, só `HPG_TEST_VACUOUS` está registado, não só os três citados.)
+
+`scripts/harness/Policy.psm1` emite a família `RCFG_*`:
+
+```
+$ grep -n "New-PolicyIssue 'RCFG_" scripts/harness/Policy.psm1 | grep -o "RCFG_[A-Z_]*" | sort -u
+RCFG_ALIAS_COLLISION
+RCFG_ALIAS_UNDECLARED
+RCFG_DYNAMIC_READER_UNBOUNDED
+RCFG_LANE_VIOLATION
+RCFG_READER_MISSING
+RCFG_REGISTRY_READER_COVERAGE
+RCFG_SECRET_CLASS_MISMATCH
+RCFG_UNAPPROVED_READER
+RCFG_UNDECLARED_READ
+```
+
+Nenhum `RCFG_*` aparece em `contracts/gate/guards.json` (confirmado — o arquivo só cobre `GOV_*`
+via `gov-*` em `governance-drift.tests.ps1`, `HPG_TEST_VACUOUS`, `gate-counters` e
+`guards-lane-counters`). Nove códigos de uma família inteira de política de runtime-config —
+`RCFG_UNAPPROVED_READER`/`RCFG_READER_MISSING` são justamente os que fundamentam o baseline de
+51 violações registado em B-9 — vivem fora do instrumento que devia prová-los guardados.
+
+Contexto que corrobora a classe: durante esta mesma PR (#25/#3) descobriu-se que
+`GOV_COMPOSITION_MISSING` estava listado no inventário com uma âncora satisfeita só por um
+COMENTÁRIO solto — SEM fixture nenhuma por trás. Ou seja, uma entrada presente na lista também
+mentia, não só as ausentes; a população precisa de medição tanto quanto cada entrada individual.
+O checador por âncora foi substituído por tokens de execução por entrada no commit `4790a358`, e
+a lógica de veredito da própria lane ganhou cobertura must-fail em `fbd34d29` — as duas correções
+fecham "cada entrada mente", nenhuma fecha "a lista está incompleta".
+
+Classe: **inventário hand-maintained que só falha vazio é população não medida** — mesma família
+de B-1/B-6/B-7 (verde não-discriminante por falta de contagem contra uma fonte independente).
+
+Conserto de classe — deliberadamente NÃO registrar entradas à mão para as omissões medidas acima:
+registrar por mão é exatamente o padrão que dá o próximo drift. O conserto real é uma checagem de
+completude que DERIVA a população esperada de guards de uma fonte autoritativa — as constantes de
+código emitido nos módulos da harness (`HPG_*`, `RCFG_*`, etc.), do mesmo jeito que
+`contracts/governance/invariants.json` já enumera os códigos `GOV_*` — e reprova a lane `guards`
+quando existe um código sem entrada no inventário.
+
+Condição de remoção: `Test-GateGuardInventory` (ou uma checagem irmã na mesma lane) passar a
+extrair os códigos emitidos por cada módulo da harness (por regex/AST sobre `throw`/`Set-Primary`/
+`New-PolicyIssue`/etc.) e comparar por conjunto contra `contracts/gate/guards.json`, falhando a
+lane `guards` para qualquer código sem entrada correspondente. Verificação: injetar um código novo
+num módulo da harness sem tocar `guards.json` e confirmar que a lane `guards` vira vermelha —
+mesmo padrão de prova must-fail que `fbd34d29` já estabeleceu para o veredito da lane.

@@ -133,14 +133,31 @@ try {
   $missingModule = New-PositiveFixture; $fixtures.Add($missingModule)
   Remove-Item -LiteralPath (Join-Path $missingModule 'apps/server_core/internal/modules/catalog') -Recurse -Force
   Assert-FailureCode $missingModule 'GOV_MODULE_COVERAGE'
+  Write-Output 'guard_ran=gov-module-coverage'
 
   $undeclaredDependency = New-PositiveFixture; $fixtures.Add($undeclaredDependency)
   Write-FixtureFile $undeclaredDependency 'apps/server_core/internal/modules/catalog/application/usecase.go' 'package application; import _ "marketplace-central/apps/server_core/internal/modules/pricing/domain"'
   Assert-FailureCode $undeclaredDependency 'GOV_MODULE_DEPENDENCY'
+  Write-Output 'guard_ran=gov-module-dependency'
 
   $applicationImport = New-PositiveFixture; $fixtures.Add($applicationImport)
   Write-FixtureFile $applicationImport 'apps/server_core/internal/modules/catalog/application/http.go' 'package application; import _ "net/http"'
   Assert-FailureCode $applicationImport 'GOV_APPLICATION_IMPORT'
+  Write-Output 'guard_ran=gov-application-import'
+
+  # GOV_COMPOSITION_MISSING: a composition_required module whose import line is
+  # absent from the composition root. `classifications` is chosen over `catalog`
+  # because the module-coverage fixture above already deletes catalog's tree, and
+  # this fixture needs a module that stays otherwise intact.
+  $compositionMissing = New-PositiveFixture; $fixtures.Add($compositionMissing)
+  $compositionRootPath = Join-Path $compositionMissing 'apps/server_core/internal/composition/root.go'
+  $compositionRootContent = Get-Content -Raw -LiteralPath $compositionRootPath
+  $compositionRootContent = $compositionRootContent -replace `
+    [regex]::Escape('import _ "marketplace-central/apps/server_core/internal/modules/classifications"' + "`n"), ''
+  Assert-True ($compositionRootContent -notmatch '/modules/classifications"') 'fixture premise broke: the classifications import line was not removed'
+  Set-Content -LiteralPath $compositionRootPath -Value $compositionRootContent -Encoding utf8NoBOM
+  Assert-FailureCode $compositionMissing 'GOV_COMPOSITION_MISSING'
+  Write-Output 'guard_ran=gov-composition-missing'
 
   $undeclaredReader = New-PositiveFixture; $fixtures.Add($undeclaredReader)
   Write-FixtureFile $undeclaredReader 'apps/server_core/internal/platform/config/rogue.go' 'package config; import "os"; var _ = os.Getenv("MPC_ROGUE_SECRET")'
@@ -180,15 +197,18 @@ try {
   $panicFixture = New-PositiveFixture; $fixtures.Add($panicFixture)
   Write-FixtureFile $panicFixture 'apps/server_core/internal/modules/catalog/domain/panic.go' 'package domain; func bad() { panic("new panic") }'
   Assert-FailureCode $panicFixture 'GOV_PRODUCTION_PANIC'
+  Write-Output 'guard_ran=gov-production-panic'
 
   $migrationFixture = New-PositiveFixture; $fixtures.Add($migrationFixture)
   Write-FixtureFile $migrationFixture 'apps/server_core/migrations/0099_first.sql' '-- fixture'
   Write-FixtureFile $migrationFixture 'apps/server_core/migrations/0099_second.sql' '-- fixture'
   Assert-FailureCode $migrationFixture 'GOV_MIGRATION_PREFIX'
+  Write-Output 'guard_ran=gov-migration-prefix'
 
   $frontendFixture = New-PositiveFixture; $fixtures.Add($frontendFixture)
   Write-FixtureFile $frontendFixture 'apps/web/src/rogue.ts' 'export const load = () => fetch("/api")'
   Assert-FailureCode $frontendFixture 'GOV_FRONTEND_FETCH'
+  Write-Output 'guard_ran=gov-frontend-fetch'
 
   $atomicFixture = New-PositiveFixture; $fixtures.Add($atomicFixture)
   & git -C $atomicFixture init --quiet
@@ -200,6 +220,7 @@ try {
   $baseSha = (& git -C $atomicFixture rev-parse HEAD).Trim()
   Add-Content -LiteralPath (Join-Path $atomicFixture 'contracts/api/marketplace-central.openapi.yaml') -Value '# changed'
   Assert-FailureCode $atomicFixture 'GOV_API_SDK_SPLIT' $baseSha
+  Write-Output 'guard_ran=gov-api-sdk-split'
 
   $powerShellEnvFixture = New-PositiveFixture; $fixtures.Add($powerShellEnvFixture)
   Write-FixtureFile $powerShellEnvFixture 'scripts/review-reader.ps1' '$value = $env:MPC_REVIEW_ROGUE_SECRET'
@@ -281,6 +302,29 @@ func bad() {
   Assert-True (-not $orphanResult.Passed) 'unregistered context directory produced no finding'
   Assert-True ('GOV_CONTEXT_UNREGISTERED' -in @($orphanResult.Violations.ErrorCode)) "missing GOV_CONTEXT_UNREGISTERED; actual=$(@($orphanResult.Violations.ErrorCode) -join ',')"
   Assert-True ('orphan' -in @($orphanResult.Violations.Id)) "GOV_CONTEXT_UNREGISTERED did not name the directory; actual=$(@($orphanResult.Violations.Id) -join ',')"
+  Write-Output 'guard_ran=gov-context-unregistered'
+
+  # GOV_MODULE_LAYER: a cross-module import that lands on adapters/ is coupling
+  # with an extra step, not translation (ADR-023 §2). Policy.psm1:378-382. The file
+  # sits in domain/, not application/, so GOV_APPLICATION_IMPORT stays out of the
+  # blast radius and the assertion isolates the code under test. The source module
+  # must be DECLARED (Policy.psm1:370 skips undeclared sources); orders is, at
+  # contracts/governance/modules.json:125.
+  $layerFixture = New-PositiveFixture; $fixtures.Add($layerFixture)
+  Write-FixtureFile $layerFixture 'apps/server_core/internal/modules/orders/domain/uses_catalog_adapters.go' "package domain`n`nimport _ `"marketplace-central/apps/server_core/internal/modules/catalog/adapters/postgres`"`n"
+  $layerResult = Test-GovernanceDrift -RepositoryRoot $layerFixture
+  Assert-True (-not $layerResult.Passed) 'cross-module adapters import produced no finding'
+  Assert-True ('GOV_MODULE_LAYER' -in @($layerResult.Violations.ErrorCode)) "expected GOV_MODULE_LAYER, got: $(@($layerResult.Violations.ErrorCode) -join ',')"
+  Write-Output 'guard_ran=gov-module-layer'
+
+  # GOV_POSTGRES_DRIVER: database/sql under adapters/postgres bypasses pgdb.
+  # Policy.psm1:412-417.
+  $driverFixture = New-PositiveFixture; $fixtures.Add($driverFixture)
+  Write-FixtureFile $driverFixture 'apps/server_core/internal/modules/orders/adapters/postgres/uses_database_sql.go' "package postgres`n`nimport _ `"database/sql`"`n"
+  $driverResult = Test-GovernanceDrift -RepositoryRoot $driverFixture
+  Assert-True (-not $driverResult.Passed) 'database/sql under adapters/postgres produced no finding'
+  Assert-True ('GOV_POSTGRES_DRIVER' -in @($driverResult.Violations.ErrorCode)) "expected GOV_POSTGRES_DRIVER, got: $(@($driverResult.Violations.ErrorCode) -join ',')"
+  Write-Output 'guard_ran=gov-postgres-driver'
 
   Assert-True ($reviewFailures.Count -eq 0) ($reviewFailures -join '; ')
 

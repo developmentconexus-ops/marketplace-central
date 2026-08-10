@@ -35,7 +35,7 @@
 #>
 [CmdletBinding()]
 param(
-  [ValidateSet('all', 'full', 'gofmt', 'format', 'build', 'typecheck', 'governance', 'arch', 'boundary', 'lint-go', 'lint-web', 'test-go', 'test-web', 'census', 'ci-hygiene', 'selftest', 'integration', 'edge')]
+  [ValidateSet('all', 'full', 'gofmt', 'format', 'build', 'typecheck', 'governance', 'arch', 'boundary', 'lint-go', 'lint-web', 'test-go', 'test-web', 'census', 'ci-hygiene', 'selftest', 'guards', 'integration', 'edge')]
   [string]$Lane = 'all',
   [switch]$ContinueOnFailure
 )
@@ -189,16 +189,32 @@ function Invoke-GateBuild {
   # test lane is not a substitute: `go test` without an explicit -vet flag runs a
   # curated subset of vet's checks (`go help testflag`), and vet's checks over
   # non-test code are outside it entirely.
+  #
+  # `go list ./...` first: build and vet report only exit codes, so without an
+  # independent package count this lane cannot tell "everything compiled" from
+  # "the pattern matched nothing" (issue #3, mechanism (b)).
+  $list = Invoke-GateTool -Name 'go-list' -FilePath 'go' -ArgumentList @('list', './...') -WorkingDirectory $serverCore -Quiet
+  if ($list.ExitCode -ne 0) {
+    return New-GateVerdict -Lane 'build' -Passed $false -Counts 'packages=unknown' -Reason "go list ./... exited $($list.ExitCode)"
+  }
+  # Count only lines shaped like an import path: Invoke-GateTool folds stderr in
+  # (see its header), and `go list` announces an empty match with a warning on
+  # stderr -- counting that line would make the zero-package floor unreachable.
+  $packages = @($list.Text -split "`r?`n" | Where-Object { $_ -match '^\S+$' -and $_ -notmatch '^go:' }).Count
+  if ($packages -eq 0) {
+    return New-GateVerdict -Lane 'build' -Passed $false -Counts 'packages=0' `
+      -Reason 'go list ./... resolved zero packages; the universe is empty, not clean'
+  }
   $build = Invoke-GateTool -Name 'go-build' -FilePath 'go' -ArgumentList @('build', './...') -WorkingDirectory $serverCore
   if ($build.ExitCode -ne 0) {
-    return New-GateVerdict -Lane 'build' -Passed $false -Counts 'build=fail' -Reason "go build ./... exited $($build.ExitCode)"
+    return New-GateVerdict -Lane 'build' -Passed $false -Counts "packages=$packages build=fail" -Reason "go build ./... exited $($build.ExitCode)"
   }
   $vet = Invoke-GateTool -Name 'go-vet' -FilePath 'go' -ArgumentList @('vet', './...') -WorkingDirectory $serverCore
   if ($vet.ExitCode -ne 0) {
-    return New-GateVerdict -Lane 'build' -Passed $false -Counts 'build=ok vet=fail' -Reason "go vet ./... exited $($vet.ExitCode)"
+    return New-GateVerdict -Lane 'build' -Passed $false -Counts "packages=$packages build=ok vet=fail" -Reason "go vet ./... exited $($vet.ExitCode)"
   }
-  Write-Host 'build=ok vet=ok'
-  return New-GateVerdict -Lane 'build' -Passed $true -Counts 'build=ok vet=ok'
+  Write-Host "packages=$packages build=ok vet=ok"
+  return New-GateVerdict -Lane 'build' -Passed $true -Counts "packages=$packages build=ok vet=ok"
 }
 
 # Pinned, not `@latest`. A gate whose tool version floats reports a different
@@ -472,6 +488,22 @@ function Invoke-GateLintGo {
   $platformMatches = ($platform -eq $baselinePlatform)
   Write-Host "$platform baseline_platform=$baselinePlatform comparable=$platformMatches"
 
+  # Same universe guard as the build lane: the ratchet compares totals, and a
+  # total taken over zero analyzed packages would read as the ratchet's best day
+  # ever (issue #3, mechanism (b)).
+  $list = Invoke-GateTool -Name 'golangci-go-list' -FilePath 'go' -ArgumentList @('list', './...') -WorkingDirectory $serverCore -Quiet
+  if ($list.ExitCode -ne 0) {
+    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts 'packages=unknown' -Reason "go list ./... exited $($list.ExitCode)"
+  }
+  # Count only lines shaped like an import path: Invoke-GateTool folds stderr in
+  # (see its header), and `go list` announces an empty match with a warning on
+  # stderr -- counting that line would make the zero-package floor unreachable.
+  $packages = @($list.Text -split "`r?`n" | Where-Object { $_ -match '^\S+$' -and $_ -notmatch '^go:' }).Count
+  if ($packages -eq 0) {
+    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts 'packages=0' `
+      -Reason 'go list ./... resolved zero packages; a lint verdict over the empty set is not a verdict'
+  }
+
   $reportPath = Join-Path $logDirectory 'golangci.json'
   if (Test-Path -LiteralPath $reportPath) { Remove-Item -LiteralPath $reportPath -Force }
   # `go run <module>@<version>` rather than an installed binary or a CI-only
@@ -484,7 +516,7 @@ function Invoke-GateLintGo {
     -WorkingDirectory $serverCore
 
   if (-not (Test-Path -LiteralPath $reportPath -PathType Leaf)) {
-    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts 'report=missing' `
+    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts "packages=$packages report=missing" `
       -Reason "golangci-lint wrote no report (exit $($result.ExitCode)). The lane cannot report zero findings for a run that did not happen."
   }
   $measurement = Measure-GateGolangciLint -Json (Get-Content -LiteralPath $reportPath -Raw)
@@ -493,14 +525,14 @@ function Invoke-GateLintGo {
   # normal state under a ratchet. Anything else is the tool failing to run, and
   # that must not read as a clean lane.
   if ($result.ExitCode -notin @(0, 1)) {
-    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts "total=$($measurement.Total)" `
+    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts "packages=$packages total=$($measurement.Total)" `
       -Reason "golangci-lint exited $($result.ExitCode), which is neither clean nor findings."
   }
 
   $enabledDrift = @(Compare-Object -ReferenceObject $script:GolangciLintExpected -DifferenceObject $measurement.Enabled)
   if ($enabledDrift.Count -ne 0) {
     $detail = ($enabledDrift | ForEach-Object { "$($_.SideIndicator) $($_.InputObject)" }) -join ', '
-    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts "enabled=$($measurement.Enabled.Count)" `
+    return New-GateVerdict -Lane 'lint-go' -Passed $false -Counts "packages=$packages enabled=$($measurement.Enabled.Count)" `
       -Reason "the enabled linter set is not the configured one ($detail). A count over the wrong rules is not a smaller count."
   }
 
@@ -509,7 +541,7 @@ function Invoke-GateLintGo {
   foreach ($key in @($measurement.ByLinter.Keys)) { $measuredMap[$key] = $measurement.ByLinter[$key] }
   $comparison = Compare-GateRatchet -Measured $measuredMap -Baseline $baseline
 
-  $counts = "total=$($measurement.Total) baseline=$($baselineDocument.'golangci-lint'.total) enabled=$($measurement.Enabled.Count)"
+  $counts = "packages=$packages total=$($measurement.Total) baseline=$($baselineDocument.'golangci-lint'.total) enabled=$($measurement.Enabled.Count)"
   Write-Host $counts
   foreach ($line in @($measurement.ByLinter.Keys | Sort-Object)) {
     Write-Host ("  {0,-14} {1,4}  baseline {2,4}" -f $line, $measurement.ByLinter[$line], $(if ($baseline.ContainsKey($line)) { $baseline[$line] } else { 'n/a' }))
@@ -871,6 +903,58 @@ function Invoke-GateSelftest {
   return New-GateVerdict -Lane 'selftest' -Passed $true -Counts $counts
 }
 
+function Invoke-GateGuards {
+  # Issue #3 mechanism (a): the inventory of guards, each held to the fixture
+  # that proves it can fail -- and the fixture must EXECUTE, not merely exist.
+  #
+  # The verdict logic itself lives in Test-GateGuardInventory
+  # (scripts/harness/Gate.psm1), so scripts/tests/guards-lane.tests.ps1 can
+  # exercise it against synthetic inventories and injected runners. This
+  # function stays the thin wrapper: parse the inventory, build the REAL
+  # runners on Invoke-GateTool, hand both to the extracted function, print its
+  # counts and failures exactly as before.
+  $inventoryPath = Join-Path $repositoryRoot 'contracts/gate/guards.json'
+  if (-not (Test-Path -LiteralPath $inventoryPath -PathType Leaf)) {
+    return New-GateVerdict -Lane 'guards' -Passed $false -Counts 'inventory=missing' `
+      -Reason 'contracts/gate/guards.json does not exist; an unlisted guard population is unmeasurable'
+  }
+  $inventory = Get-Content -LiteralPath $inventoryPath -Raw | ConvertFrom-Json
+
+  $goRunner = {
+    param([string]$Package, [string]$Pattern)
+    $toolName = 'guards-' + (($Package -replace '[^A-Za-z0-9]+', '-').Trim('-'))
+    Invoke-GateTool -Name $toolName -FilePath 'go' `
+      -ArgumentList @('test', $Package, '-run', $Pattern, '-count=1', '-v') -WorkingDirectory $serverCore
+  }
+  # Same invocation Invoke-GateSelftest uses (pwsh -NoProfile -ExecutionPolicy
+  # Bypass -File <path>), through the same Invoke-GateTool wrapper, so the
+  # evidence this lane collects is the same shape as the selftest lane's.
+  $pwshRunner = {
+    param([string]$FilePath)
+    $leaf = [IO.Path]::GetFileName($FilePath)
+    $toolName = 'guards-pwsh-' + (($leaf -replace '\.tests\.ps1$', '') -replace '[^A-Za-z0-9]+', '-').Trim('-')
+    Invoke-GateTool -Name $toolName -FilePath 'pwsh' `
+      -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $FilePath)
+  }
+
+  $result = Test-GateGuardInventory -Inventory $inventory -RepositoryRoot $repositoryRoot `
+    -GoRunner $goRunner -PwshRunner $pwshRunner
+
+  # The empty-inventory short circuit prints nothing and returns immediately,
+  # matching the pre-extraction lane exactly: no counts line was ever printed
+  # for that case, only the terse 'entries=0' verdict.
+  if ($result.Entries -eq 0) {
+    return New-GateVerdict -Lane 'guards' -Passed $false -Counts $result.Counts -Reason $result.Reason
+  }
+
+  Write-Host $result.Counts
+  if ($result.Failures.Count -gt 0) {
+    foreach ($line in $result.Failures) { Write-Host "  guard: $line" }
+    return New-GateVerdict -Lane 'guards' -Passed $false -Counts $result.Counts -Reason $result.Reason
+  }
+  return New-GateVerdict -Lane 'guards' -Passed $true -Counts $result.Counts
+}
+
 function Invoke-GateCensus {
   <#
     Every test file in the tree, held against the union of what the gate's lanes
@@ -1046,6 +1130,7 @@ $lanes = [ordered]@{
   'census'     = ${function:Invoke-GateCensus}
   'ci-hygiene' = ${function:Invoke-GateCiHygiene}
   'selftest'   = ${function:Invoke-GateSelftest}
+  'guards'     = ${function:Invoke-GateGuards}
   'integration' = ${function:Invoke-GateIntegration}
   'edge'       = ${function:Invoke-GateEdge}
 }
@@ -1053,7 +1138,7 @@ $lanes = [ordered]@{
 # 'all' is the everyday set; 'full' adds the lanes whose cost is minutes rather
 # than seconds (GATE-TOPOLOGY §2.3 verify-full). Both are the same product --
 # CI's verify-full job and a pre-merge local run say `full`, a push says `all`.
-$fullOnly = @('selftest', 'integration', 'edge')
+$fullOnly = @('selftest', 'guards', 'integration', 'edge')
 $selected = switch ($Lane) {
   'all' { @($lanes.Keys | Where-Object { $_ -notin $fullOnly }) }
   'full' { @($lanes.Keys) }
