@@ -192,6 +192,15 @@
       "composition_required": false,
       "openapi_prefixes": [],
       "dependencies": []
+    },
+    {
+      "id": "listings",
+      "kind": "context",
+      "root": "apps/server_core/internal/contexts/listings",
+      "code_owner_path": "apps/server_core/internal/contexts/listings",
+      "composition_required": false,
+      "openapi_prefixes": [],
+      "dependencies": []
     }
   ],
   "temporary_exceptions": [
