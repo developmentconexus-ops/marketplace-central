@@ -30,17 +30,45 @@
       "the lane refuses to call its lower numbers a shrink. Fewer findings because fewer files",
       "compiled is not progress."
     ],
-    "total": 122,
+    "forbidigo_note": [
+      "forbidigo entered 2026-08-10, carrying the `panic` rule that used to be the governance",
+      "registry's `production-panic`. Its 8 are the 8 production panic call sites that rule had",
+      "sanctioned one by one -- 6 files, 7 hand-written exception entries, one of them declared",
+      "twice to survive a line-ending difference. Every one of them is deliberate and argued in the",
+      "commit that moved the rule; none is a defect to pay down today. What the move buys is that a",
+      "NEW panic now shows up as 9 > 8 with no prose to write and no prose to read.",
+      "",
+      "Platform-independent, unlike errcheck: no `//go:build cgo` file in this module contains a",
+      "panic, so the count is 8 on the runner and 8 on a bare Windows host."
+    ],
+    "uniq_by_line_note": [
+      "`issues.uniq-by-line` was left at its default `true` when this baseline was first taken, and",
+      "that default keeps ONE issue per source line no matter how many were reported there. Under a",
+      "per-linter ratchet that is a hole, and it was measured 2026-08-10, not predicted:",
+      "",
+      "  func negativeControlPanic() { panic(\"negative control\") }",
+      "",
+      "added to a package produced `unused` on that line and NO forbidigo finding. forbidigo stayed",
+      "at 8, the lane stayed green, and a new production panic entered the tree invisibly. The same",
+      "function written over four lines was caught (forbidigo 9 > 8).",
+      "",
+      "Turning it off raised staticcheck from 17 to 23. The 6 are not new code: identity_resolver.go",
+      "lines 220, 251 and 299 each carry TWO `!(a && b)` De Morgan sites, and only one per line was",
+      "ever counted. Same for the rest -- every number here is now one-per-finding rather than",
+      "one-per-line."
+    ],
+    "total": 136,
     "by_linter": {
       "bodyclose": 8,
       "errcheck": 30,
       "errorlint": 30,
       "exhaustive": 19,
+      "forbidigo": 8,
       "ineffassign": 5,
       "noctx": 3,
       "rowserrcheck": 0,
       "sqlclosecheck": 3,
-      "staticcheck": 17,
+      "staticcheck": 23,
       "unused": 7
     }
   },

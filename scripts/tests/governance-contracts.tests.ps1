@@ -44,19 +44,6 @@ function Test-RuntimeExceptionReferences {
   return @($Registry.temporary_exceptions | Where-Object { $_.rule_id -notin $ruleIds }).Count -eq 0
 }
 
-function Test-PanicOccurrenceCoverage {
-  param([hashtable]$Registry, [hashtable[]]$Occurrences)
-  $declared = @($Registry.temporary_exceptions | Where-Object rule_id -eq 'production-panic' | ForEach-Object occurrences)
-  foreach ($occurrence in $Occurrences) {
-    $matches = @($declared | Where-Object {
-      $_.path -eq $occurrence.path -and $_.symbol -eq $occurrence.symbol -and
-      $_.fingerprint -eq $occurrence.fingerprint -and $_.count -eq $occurrence.count
-    })
-    if ($matches.Count -ne 1) { return $false }
-  }
-  return $declared.Count -eq $Occurrences.Count
-}
-
 function Read-GovernanceDocument {
   param([string]$Name)
   $documentPath = Join-Path $governanceRoot "$Name.json"
@@ -281,23 +268,15 @@ try {
     Assert-True (@($exception.paths | Where-Object { $_ -match '[*?\[]' }).Count -eq 0) "invariant exception $($exception.id) is not exact"
   }
 
-  # The positive case feeds the registry's own declared occurrences back to the
-  # coverage function: each must match exactly once, which is what catches an
-  # accidentally duplicated occurrence entry. A hardcoded one-panic fixture went
-  # stale the day the registry grew to its second exception.
-  $declaredPanics = @($invariants.temporary_exceptions |
-      Where-Object rule_id -eq 'production-panic' |
-      ForEach-Object occurrences |
-      ForEach-Object { @{ path = $_.path; symbol = $_.symbol; fingerprint = $_.fingerprint; count = $_.count } })
-  Assert-True ($declaredPanics.Count -gt 0) 'no production panic occurrences declared; the coverage assertions below would be vacuous'
-  Assert-True (Test-PanicOccurrenceCoverage $invariants $declaredPanics) 'production panic exception is not occurrence-exact'
-  $undeclaredPanic = @{
-    path = 'apps/server_core/internal/modules/product_links/application/resolution_service.go'
-    symbol = 'candidateStateToProductLinkState'
-    fingerprint = 'panic("second panic")'
-    count = 1
-  }
-  Assert-True (-not (Test-PanicOccurrenceCoverage $invariants ($declaredPanics + @($undeclaredPanic)))) 'production panic coverage accepted an undeclared occurrence'
+  # The occurrence-coverage assertions stood here. They existed because
+  # `production-panic` was the only rule whose exceptions carried per-site
+  # occurrence records -- a path, a symbol, a verbatim source fingerprint and a
+  # count -- and a duplicated or stale record silently widened the exception.
+  # The rule is now forbidigo under the lint-go ratchet and no exception in this
+  # registry carries occurrences any more, so there is nothing left to be exact
+  # about. The assertion below proves that rather than assuming it.
+  Assert-True (@($invariants.temporary_exceptions | Where-Object { @($_.occurrences).Count -gt 0 }).Count -eq 0) `
+    'an invariant exception carries occurrences; the occurrence-exactness assertions were removed with production-panic and would not cover it'
 
   $contextFixture = @{
     schema_version = '1.0'

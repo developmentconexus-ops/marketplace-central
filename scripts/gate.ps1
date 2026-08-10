@@ -228,7 +228,7 @@ $script:GolangciLintVersion = 'v2.12.2'
 # that failed to load leaves the tool running its own defaults and reporting a
 # healthy small number over the wrong rules.
 $script:GolangciLintExpected = @(
-  'bodyclose', 'errcheck', 'errorlint', 'exhaustive', 'ineffassign',
+  'bodyclose', 'errcheck', 'errorlint', 'exhaustive', 'forbidigo', 'ineffassign',
   'noctx', 'rowserrcheck', 'sqlclosecheck', 'staticcheck', 'typecheck', 'unused'
 ) | Sort-Object
 

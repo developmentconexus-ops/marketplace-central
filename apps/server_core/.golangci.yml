@@ -51,6 +51,15 @@ linters:
     - exhaustive
     # HTTP requests built without a context.
     - noctx
+    # `panic` in production code. This rule used to live in the governance
+    # registry as `production-panic`/`GOV_PRODUCTION_PANIC`, where every
+    # sanctioned site needed a hand-written `temporary_exceptions` entry: a
+    # path, a symbol, a verbatim source fingerprint, a paragraph of prose and a
+    # `removal_owner`. Eight sites had produced seven entries, one of them
+    # declared twice because the fingerprint was compared as raw text and the
+    # same blob materializes with either line ending under `core.autocrlf`.
+    # That bookkeeping is what the ratchet below already does with a number.
+    - forbidigo
 
   # Deliberately absent, as a decision rather than an oversight: `lll`,
   # `gocyclo`, `funlen`, `gocognit`, `dupl` and every other metric linter. They
@@ -73,6 +82,16 @@ linters:
       # them. A default that handles the unlisted cases is the point of a
       # default.
       default-signifies-exhaustive: true
+    forbidigo:
+      # An explicit list replaces forbidigo's defaults (fmt.Print* and friends),
+      # which are not the rule this repository is enforcing.
+      forbid:
+        - pattern: ^panic$
+          msg: >-
+            panic in production code takes the process down. Return an error.
+            If the site is deliberate -- a Must* constructor over a source
+            literal, or a sentinel re-raise the net/http contract requires --
+            it stays in the baseline count and shrinks when the site does.
 
   exclusions:
     # `generated: lax` skips files carrying the `// Code generated ... DO NOT
@@ -96,6 +115,13 @@ linters:
       # real findings and a ratchet on 276 that nobody will read.
       - linters: [noctx]
         path: _test\.go
+      # A panic in a test is how a test fails on an impossible input, and
+      # `t.Fatal` is not always reachable (helpers, table setup). The rule the
+      # governance registry enforced was scoped to production code and this
+      # keeps that scope; without it the count would be dominated by tests and
+      # would stop meaning "production panics".
+      - linters: [forbidigo]
+        path: _test\.go
 
 formatters:
   # gofmt already runs as its own gate lane (`npm run gate:gofmt`), which fails
@@ -109,3 +135,17 @@ issues:
   # would make the count a function of the cap rather than of the code.
   max-issues-per-linter: 0
   max-same-issues: 0
+  # Same reason, and it was missed when the two caps above were set. The default
+  # `true` keeps ONE issue per source line no matter how many linters reported
+  # it, which under a per-linter ratchet means a finding can be silently
+  # swallowed by an unrelated finding that happens to share its line.
+  #
+  # Measured 2026-08-10 while wiring forbidigo: adding
+  #
+  #     func negativeControlPanic() { panic("negative control") }
+  #
+  # to a package produced `unused` at that line and NO forbidigo finding --
+  # forbidigo stayed at 8, the lane stayed at its baseline, and a new production
+  # panic entered the tree invisibly. The same function written over four lines
+  # was caught (forbidigo 9 > 8). The rule was fine; the deduplication hid it.
+  uniq-by-line: false

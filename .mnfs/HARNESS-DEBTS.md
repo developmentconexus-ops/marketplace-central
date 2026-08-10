@@ -1983,6 +1983,12 @@ fecham "cada entrada mente", nenhuma fecha "a lista está incompleta".
 Classe: **inventário hand-maintained que só falha vazio é população não medida** — mesma família
 de B-1/B-6/B-7 (verde não-discriminante por falta de contagem contra uma fonte independente).
 
+**MIGRADA 2026-08-10 para https://github.com/developmentconexus-ops/marketplace-central/issues/28.**
+Esta entrada nasceu no arquivo errado: o gate é infraestrutura do repositório e sobrevive à
+substituição da camada de processo, enquanto este arquivo morre com ela. O texto acima fica como
+histórico; o issue é a versão viva, e é lá que o trabalho é rastreado. Achado novo sobre o gate
+vai para o GitHub, não para aqui.
+
 Conserto de classe — deliberadamente NÃO registrar entradas à mão para as omissões medidas acima:
 registrar por mão é exatamente o padrão que dá o próximo drift. O conserto real é uma checagem de
 completude que DERIVA a população esperada de guards de uma fonte autoritativa — as constantes de
