@@ -64,6 +64,11 @@
           "path": "apps/server_core/internal/platform/pgdb/config.go",
           "kind": "typed",
           "status": "approved"
+        },
+        {
+          "path": "apps/server_core/cmd/listingsingest/main.go",
+          "kind": "direct",
+          "status": "approved"
         }
       ]
     },
@@ -951,6 +956,20 @@
       "readers": [
         { "path": "deploy/docker-compose.prod.yml", "kind": "edge", "status": "approved" },
         { "path": "deploy/Caddyfile", "kind": "edge", "status": "approved" }
+      ]
+    },
+    {
+      "key": "MPC_LISTINGS_INGEST_PAGE_SIZE",
+      "owner": "cmd/listingsingest",
+      "sensitivity": "public",
+      "lifecycle": "active",
+      "allowed_lanes": ["provider-write"],
+      "readers": [
+        {
+          "path": "apps/server_core/cmd/listingsingest/main.go",
+          "kind": "direct",
+          "status": "approved"
+        }
       ]
     }
   ],
