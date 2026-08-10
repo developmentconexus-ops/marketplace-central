@@ -190,6 +190,27 @@ try {
   Assert-True (($failureTokens -join "`n") -notmatch 'postgres(?:ql)?://[^\s]+') 'database target leaked in child failure tokens'
   Assert-True (@($testsFail.Calls.operation) -contains 'drop' -and @($testsFail.Calls.operation) -contains 'remove') 'test failure skipped cleanup'
 
+  # A failing lane has to say WHERE, or the only move left is to re-run it until it
+  # goes green. These three tokens are the difference between "TestX failed" and a
+  # diagnosis; they are source and schema identifiers, so the redaction guarantees
+  # asserted for every other failure still have to hold for them.
+  $richFailure = Invoke-ProbeLifecycle 'tests' @{ HARNESS_POSTGRES_PROBE_RICH_TEST_FAILURE = '1' }
+  $runs += $richFailure
+  $richTokens = @($richFailure.Result.FailureDiagnosticTokens)
+  Assert-True ($richTokens -contains 'subtest=TestProbeContract/seeded_rows_survive_the_walk') "failing subtest was not named: $($richTokens -join ',')"
+  Assert-True ($richTokens -contains 'at=probe_contract_test.go:290') "failing assertion site was not named: $($richTokens -join ',')"
+  Assert-True ($richTokens -contains 'constraint=listings_pkey') "violated constraint was not named: $($richTokens -join ',')"
+  Assert-True ($richTokens -contains 'test=TestProbeContract' -and $richTokens -contains 'sqlstate=23505') 'the pre-existing token shapes stopped being emitted'
+  # A must-fail test logs the constraint it provoked and then PASSES. Swept
+  # rather than attributed, its file:line and its constraint are emitted beside
+  # the real failure and read exactly like it.
+  Assert-True ($richTokens -notcontains 'at=probe_mustfail_test.go:41') "a passing test's assertion site was reported as a failure site: $($richTokens -join ',')"
+  Assert-True ($richTokens -notcontains 'constraint=probe_only_one_open_row') "a passing test's constraint was reported as violated: $($richTokens -join ',')"
+  Assert-True (($richTokens -join "`n") -notmatch '(?i)(?:private|person@|customer|[a-z]:\\)') 'arbitrary child output entered structured diagnostics through the new tokens'
+  Assert-True (($richTokens -join "`n") -notmatch [regex]::Escape($richFailure.Password)) 'password leaked through the new tokens'
+  Assert-True (($richTokens -join "`n") -notmatch [regex]::Escape($repoRoot)) 'repository root leaked through the new tokens'
+  Assert-True (($richTokens -join "`n") -notmatch 'postgres(?:ql)?://[^\s]+') 'database target leaked through the new tokens'
+
   $arbitraryFailure = Invoke-ProbeLifecycle 'tests' @{ HARNESS_POSTGRES_PROBE_ARBITRARY_TEST_FAILURE = '1' }
   $runs += $arbitraryFailure
   Assert-True ((@($arbitraryFailure.Result.FailureDiagnosticTokens) -join ',') -ceq 'HPG_CHILD_OUTPUT_REDACTED') 'arbitrary child output did not collapse to safe fallback'

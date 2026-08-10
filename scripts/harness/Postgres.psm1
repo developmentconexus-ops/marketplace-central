@@ -251,7 +251,35 @@ function Get-HarnessPostgresFailureTokens {
   foreach ($match in [regex]::Matches([string]$Text, '\bSQLSTATE\s+(?<code>[0-9A-Z]{5})\b')) { [void]$tokens.Add("sqlstate=$($match.Groups['code'].Value)") }
   foreach ($match in [regex]::Matches([string]$Text, '(?m)^FAIL\s+(?<package>marketplace-central/[A-Za-z0-9_./-]{1,240})(?:\s|$)')) { [void]$tokens.Add("package=$($match.Groups['package'].Value)") }
   foreach ($match in [regex]::Matches([string]$Text, '(?m)^--- FAIL: (?<test>Test[A-Za-z0-9_]{1,160})(?:\s|$)')) { [void]$tokens.Add("test=$($match.Groups['test'].Value)") }
-  $safe = @($tokens | Sort-Object | Select-Object -First 24)
+  # Everything above names WHAT failed and nothing about WHERE. A run of this lane
+  # failed on 2026-08-10 with `test=TestListingsReadContractEndToEnd` plus two
+  # sqlstates and passed on re-run with the same tree; the tokens could not say
+  # which assertion, which subtest, or which constraint, so the only available
+  # move was to re-run it -- which is how a red lane becomes a habit of ignoring
+  # red. The three shapes below are source and schema identifiers, never row data:
+  # a Go subtest name (spaces are already underscores by the time go test prints
+  # it), a _test.go file and line, and a Postgres constraint name.
+  foreach ($match in [regex]::Matches([string]$Text, '(?m)^\s+--- FAIL: (?<test>Test[A-Za-z0-9_]{1,160}(?:/[A-Za-z0-9_]{1,120}){1,6})(?:\s|$)')) { [void]$tokens.Add("subtest=$($match.Groups['test'].Value)") }
+  #
+  # `at=` and `constraint=` are attributed, not swept. A test's own log lines sit
+  # between its `=== RUN` and its verdict line, so a file:line or a constraint
+  # name only belongs to a failure when the verdict that closes it is FAIL. Swept
+  # instead, a real run of this lane emitted 22 `at=` tokens and 3 constraints
+  # from tests that PASSED -- must-fail tests log the constraint they provoked --
+  # and the sort below would have spent the cap on them before reaching the one
+  # failing line. Interleaved parallel output can still misattribute a line; the
+  # tokens are source identifiers either way, never row data.
+  $pending = [System.Collections.Generic.List[string]]::new()
+  foreach ($line in ([string]$Text -split '\r?\n')) {
+    if ($line -match '^\s*--- (?<verdict>PASS|FAIL|SKIP):') {
+      if ($Matches['verdict'] -ceq 'FAIL') { foreach ($token in $pending) { [void]$tokens.Add($token) } }
+      $pending.Clear()
+      continue
+    }
+    if ($line -match '^\s*(?<file>[A-Za-z0-9_]{1,80}_test\.go):(?<line>\d{1,6}):') { $pending.Add("at=$($Matches['file']):$($Matches['line'])") }
+    if ($line -match 'constraint "(?<constraint>[a-z0-9_]{1,63})"') { $pending.Add("constraint=$($Matches['constraint'])") }
+  }
+  $safe = @($tokens | Sort-Object | Select-Object -First 32)
   if ($safe.Count -eq 0) { return @('HPG_CHILD_OUTPUT_REDACTED') }
   return $safe
 }

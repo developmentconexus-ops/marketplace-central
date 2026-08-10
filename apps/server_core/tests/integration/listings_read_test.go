@@ -131,6 +131,40 @@ func seedListing(t *testing.T, h listingsHarness, tenant, installation string, s
 	}
 }
 
+// tenantLeak reports tenant B's own data appearing in a tenant A response, by
+// whole JSON value. The check used to be strings.Contains over the encoded body,
+// including the literal "999" -- tenant B's internal product id. Every response
+// also carries the installation id, which is "f02-inst-" plus a UnixNano token,
+// and roughly one nanosecond in three prints a "999" somewhere inside it. That
+// is the flake this lane failed on in CI on 2026-08-10 and again locally: the
+// clock decided whether tenant isolation held. Substrings of an unrelated
+// identifier are not a leak; a value that IS tenant B's is.
+func tenantLeak(node any) string {
+	switch value := node.(type) {
+	case map[string]any:
+		for _, child := range value {
+			if hit := tenantLeak(child); hit != "" {
+				return hit
+			}
+		}
+	case []any:
+		for _, child := range value {
+			if hit := tenantLeak(child); hit != "" {
+				return hit
+			}
+		}
+	case string:
+		if strings.Contains(value, "Tenant B secret") || strings.Contains(value, "LEAK") || strings.Contains(value, "Leak") {
+			return value
+		}
+	case float64:
+		if value == 999 {
+			return "internal_product_id=999"
+		}
+	}
+	return ""
+}
+
 func requestJSON(t *testing.T, handler http.Handler, path string) (int, map[string]any) {
 	t.Helper()
 	rr := httptest.NewRecorder()
@@ -362,15 +396,24 @@ func TestListingsReadContractEndToEnd(t *testing.T) {
 	})
 
 	t.Run("tenant isolation all read paths and cursors", func(t *testing.T) {
+		// The detector is checked against a planted leak and against an id that
+		// merely contains the digits, so a walk that returned "" for everything
+		// could not pass this subtest by being blind.
+		planted := map[string]any{"items": []any{map[string]any{"internal_product_id": float64(999)}}}
+		if tenantLeak(planted) == "" {
+			t.Fatalf("leak detector is blind to a planted tenant B row")
+		}
+		if hit := tenantLeak(map[string]any{"installation_id": "f02-inst-1754999123456789"}); hit != "" {
+			t.Fatalf("leak detector reads an installation id as a leak: %s", hit)
+		}
 		paths := []string{"/listings" + base, "/listings" + base + "&q=secret", "/listings" + base + "&filter.product_id=999", "/listings/by-product" + base, "/listings/summary" + base, "/listings/" + url.PathEscape(h.installation+"~MLBTEST0001~-")}
 		for _, p := range paths {
 			s, b := requestJSON(t, h.mux, p)
 			if s != 200 {
 				t.Fatalf("%s status=%d body=%v", p, s, b)
 			}
-			encoded, _ := json.Marshal(b)
-			if strings.Contains(string(encoded), "Tenant B secret") || strings.Contains(string(encoded), "LEAK") || strings.Contains(string(encoded), "999") {
-				t.Fatalf("tenant leak path=%s body=%s", p, encoded)
+			if hit := tenantLeak(b); hit != "" {
+				t.Fatalf("tenant leak path=%s value=%s", p, hit)
 			}
 		}
 		_, b := requestJSON(t, h.mux, "/listings"+base+"&limit=2")

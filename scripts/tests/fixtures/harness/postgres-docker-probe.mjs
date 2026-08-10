@@ -127,11 +127,30 @@ if (operation === "ready") {
 }
 if (failures.includes(operation)) {
   const arbitraryOnly = process.env.HARNESS_POSTGRES_PROBE_ARBITRARY_TEST_FAILURE === "1";
+  // The shape `go test -v` actually prints when a subtest fails on a constraint,
+  // with the same untrusted noise around it the other fixtures carry. It exists so
+  // the subtest/at/constraint tokens are proved against real output, not against a
+  // string written to match the regex.
+  const richFailure = [
+    "=== RUN   TestProbeMustFail",
+    '    probe_mustfail_test.go:41: rejected as designed: violates check constraint "probe_only_one_open_row"',
+    "--- PASS: TestProbeMustFail (0.00s)",
+    "=== RUN   TestProbeContract",
+    "=== RUN   TestProbeContract/seeded_rows_survive_the_walk",
+    "    probe_contract_test.go:290: seed listing: ERROR: duplicate key value violates unique constraint " +
+      '"listings_pkey" (SQLSTATE 23505)',
+    "    --- FAIL: TestProbeContract/seeded_rows_survive_the_walk (0.01s)",
+    "--- FAIL: TestProbeContract (0.02s)",
+    "FAIL\tmarketplace-central/apps/server_core/tests/integration\t0.30s",
+    "C:\\private\\customer.txt person@example.test",
+  ].join("\n");
   process.stderr.write(
     operation === "tests"
       ? arbitraryOnly
         ? "C:\\private\\customer.txt person@example.test"
-        : "probe failure reason=HPG_TEST_FAILED_SENTINEL C:\\private\\customer.txt person@example.test"
+        : process.env.HARNESS_POSTGRES_PROBE_RICH_TEST_FAILURE === "1"
+          ? richFailure
+          : "probe failure reason=HPG_TEST_FAILED_SENTINEL C:\\private\\customer.txt person@example.test"
       : `probe failure operation=${operation}`,
   );
   process.exit(operation === "tests" ? 17 : 29);
