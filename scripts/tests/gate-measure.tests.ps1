@@ -605,4 +605,5 @@ foreach ($rule in @($eslintCommitted.Keys)) {
   Assert-True ($expectedRules -contains $rule) "the baseline names $rule and gate.ps1's expected rule set does not"
 }
 
+Write-Output 'guard_ran=gate-counters'
 Write-Output 'PASS gate measurement tests'

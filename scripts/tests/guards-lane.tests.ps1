@@ -51,4 +51,5 @@ PASS
 $m = Measure-GateGuards -Text $prefix -Expected @('TestAlpha')
 Assert-True ($m.Missing -contains 'TestAlpha') 'TestAlphaBravo must not satisfy TestAlpha (word boundary)'
 
+Write-Output 'guard_ran=guards-lane-counters'
 Write-Output 'PASS guards-lane measurements'

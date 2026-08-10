@@ -1,5 +1,5 @@
 {
-  "$comment": "Issue #3: every guard the delivery path relies on, keyed to the fixture that proves it can fail. go_tests are EXECUTED by the guards lane (proof = '--- PASS: <test>' from a targeted -run). pwsh_files delegate execution to the selftest lane, which runs every scripts/tests/*.tests.ps1 (minus *.integration.*) and requires a pass token per file; the guards lane verifies that delegation precondition plus the anchor. presence_only entries state why execution cannot be asserted here.",
+  "$comment": "Issue #3: every guard the delivery path relies on, keyed to the fixture that proves it can fail. go_tests are EXECUTED by the guards lane (proof = '--- PASS: <test>' from a targeted -run). pwsh_files are ALSO executed directly by the guards lane (proof = a per-guard 'guard_ran=<id>' token, written by Write-Output immediately after that fixture's own assertions pass -- not unconditionally, so a removed or skipped fixture cannot still print it); the file is also required to sit inside the selftest lane's discovery glob, so it is proved to run there too. presence_only entries state why execution cannot be asserted here.",
   "go_tests": [
     {
       "id": "arch-cross-context-internal",
@@ -36,72 +36,72 @@
     {
       "id": "gov-module-coverage",
       "file": "scripts/tests/governance-drift.tests.ps1",
-      "anchor": "GOV_MODULE_COVERAGE"
+      "token": "guard_ran=gov-module-coverage"
     },
     {
       "id": "gov-module-dependency",
       "file": "scripts/tests/governance-drift.tests.ps1",
-      "anchor": "GOV_MODULE_DEPENDENCY"
+      "token": "guard_ran=gov-module-dependency"
     },
     {
       "id": "gov-module-layer",
       "file": "scripts/tests/governance-drift.tests.ps1",
-      "anchor": "GOV_MODULE_LAYER"
+      "token": "guard_ran=gov-module-layer"
     },
     {
       "id": "gov-composition-missing",
       "file": "scripts/tests/governance-drift.tests.ps1",
-      "anchor": "GOV_COMPOSITION_MISSING"
+      "token": "guard_ran=gov-composition-missing"
     },
     {
       "id": "gov-application-import",
       "file": "scripts/tests/governance-drift.tests.ps1",
-      "anchor": "GOV_APPLICATION_IMPORT"
+      "token": "guard_ran=gov-application-import"
     },
     {
       "id": "gov-postgres-driver",
       "file": "scripts/tests/governance-drift.tests.ps1",
-      "anchor": "GOV_POSTGRES_DRIVER"
+      "token": "guard_ran=gov-postgres-driver"
     },
     {
       "id": "gov-production-panic",
       "file": "scripts/tests/governance-drift.tests.ps1",
-      "anchor": "GOV_PRODUCTION_PANIC"
+      "token": "guard_ran=gov-production-panic"
     },
     {
       "id": "gov-api-sdk-split",
       "file": "scripts/tests/governance-drift.tests.ps1",
-      "anchor": "GOV_API_SDK_SPLIT"
+      "token": "guard_ran=gov-api-sdk-split"
     },
     {
       "id": "gov-frontend-fetch",
       "file": "scripts/tests/governance-drift.tests.ps1",
-      "anchor": "GOV_FRONTEND_FETCH"
+      "token": "guard_ran=gov-frontend-fetch"
     },
     {
       "id": "gov-migration-prefix",
       "file": "scripts/tests/governance-drift.tests.ps1",
-      "anchor": "GOV_MIGRATION_PREFIX"
+      "token": "guard_ran=gov-migration-prefix"
     },
     {
       "id": "gov-context-unregistered",
       "file": "scripts/tests/governance-drift.tests.ps1",
-      "anchor": "GOV_CONTEXT_UNREGISTERED"
+      "token": "guard_ran=gov-context-unregistered"
     },
     {
       "id": "integration-vacuous-run",
       "file": "scripts/tests/postgres-lifecycle.tests.ps1",
-      "anchor": "HPG_TEST_VACUOUS"
+      "token": "guard_ran=integration-vacuous-run"
     },
     {
       "id": "gate-counters",
       "file": "scripts/tests/gate-measure.tests.ps1",
-      "anchor": "Measure-GateGoTest"
+      "token": "guard_ran=gate-counters"
     },
     {
       "id": "guards-lane-counters",
       "file": "scripts/tests/guards-lane.tests.ps1",
-      "anchor": "Measure-GateGuards"
+      "token": "guard_ran=guards-lane-counters"
     }
   ],
   "presence_only": [

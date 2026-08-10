@@ -934,15 +934,38 @@ function Invoke-GateGuards {
     $goExecuted += @($measurement.Passed).Count
   }
 
-  foreach ($entry in $pwshEntries) {
-    $file = Join-Path $repositoryRoot ([string]$entry.file)
-    if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { [void]$failures.Add("$($entry.file) is missing"); continue }
+  # pwsh_files entries are EXECUTED here, not merely inspected for a string.
+  # Grouped by file first: several ids can share one fixture file (governance-drift
+  # alone carries 11), and running that file once per id would run it 11 times for
+  # no additional evidence. Each distinct file runs once; every entry pointing at
+  # it is checked against that one output.
+  $pwshExecuted = 0
+  foreach ($group in @($pwshEntries | Group-Object -Property file)) {
+    $file = Join-Path $repositoryRoot ([string]$group.Name)
+    if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
+      [void]$failures.Add("$($group.Name) is missing")
+      continue
+    }
     $leaf = [IO.Path]::GetFileName($file)
     $inSelftestGlob = ($leaf -like '*.tests.ps1') -and ($leaf -notlike '*.integration.tests.ps1') -and
       ([IO.Path]::GetFullPath([IO.Path]::GetDirectoryName($file)) -eq [IO.Path]::GetFullPath((Join-Path $repositoryRoot 'scripts/tests')))
-    if (-not $inSelftestGlob) { [void]$failures.Add("$($entry.file) sits outside the selftest lane's discovery glob; its execution is delegated to nothing") }
-    if (-not (Select-String -LiteralPath $file -Pattern ([regex]::Escape([string]$entry.anchor)) -Quiet)) {
-      [void]$failures.Add("$($entry.file): anchor '$($entry.anchor)' not found")
+    if (-not $inSelftestGlob) {
+      [void]$failures.Add("$($group.Name) sits outside the selftest lane's discovery glob; its execution is delegated to nothing")
+    }
+
+    # Same invocation Invoke-GateSelftest uses (pwsh -NoProfile -ExecutionPolicy
+    # Bypass -File <path>), through the same Invoke-GateTool wrapper, so the
+    # evidence this lane collects is the same shape as the selftest lane's.
+    $toolName = 'guards-pwsh-' + (($leaf -replace '\.tests\.ps1$', '') -replace '[^A-Za-z0-9]+', '-').Trim('-')
+    $result = Invoke-GateTool -Name $toolName -FilePath 'pwsh' `
+      -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $file)
+    $pwshExecuted++
+    if ($result.ExitCode -ne 0) { [void]$failures.Add("$($group.Name) exited $($result.ExitCode)") }
+    foreach ($entry in $group.Group) {
+      $token = [string]$entry.token
+      if (-not ([regex]::IsMatch($result.Text, "(?m)^\s*$([regex]::Escape($token))\s*$"))) {
+        [void]$failures.Add("no '$token' in $($group.Name)")
+      }
     }
   }
 
@@ -954,7 +977,7 @@ function Invoke-GateGuards {
     }
   }
 
-  $counts = "entries=$total go_executed=$goExecuted pwsh=$($pwshEntries.Count) presence=$($presenceEntries.Count) failures=$($failures.Count)"
+  $counts = "entries=$total go_executed=$goExecuted pwsh_entries=$($pwshEntries.Count) pwsh_executed=$pwshExecuted presence=$($presenceEntries.Count) failures=$($failures.Count)"
   Write-Host $counts
   if ($failures.Count -gt 0) {
     foreach ($line in $failures) { Write-Host "  guard: $line" }

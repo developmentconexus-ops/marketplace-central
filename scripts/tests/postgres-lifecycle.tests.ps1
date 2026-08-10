@@ -151,6 +151,7 @@ try {
   Assert-True ($vacuous.Result.PrimaryReasonCode -eq 'HPG_TEST_VACUOUS') "zero-test run lacks stable reason: $($vacuous.Result.PrimaryReasonCode)"
   Assert-True (@($vacuous.Result.FailureDiagnosticTokens) -contains 'tests_run=0') 'zero-test run is not attributable from its tokens'
   Assert-True (@($vacuous.Calls.operation) -contains 'drop' -and @($vacuous.Calls.operation) -contains 'remove') 'vacuous run skipped cleanup'
+  Write-Output 'guard_ran=integration-vacuous-run'
 
   # The profile's own signature: every test ran and every test skipped, package
   # exits 0. Counting `=== RUN` alone accepts this, which is why the guard reads
