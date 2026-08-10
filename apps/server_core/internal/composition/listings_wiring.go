@@ -7,6 +7,7 @@ import (
 
 	"marketplace-central/apps/server_core/internal/adapters/marketplace/mercadolivre"
 	"marketplace-central/apps/server_core/internal/contexts/listings"
+	"marketplace-central/apps/server_core/internal/contexts/listings/port"
 )
 
 // ListingsWiring is the assembled listings slice. Like CatalogWiring, this
@@ -28,6 +29,22 @@ const (
 	MLBaseURL      = "https://api.mercadolibre.com"
 	MLProviderCode = "mercado_livre"
 )
+
+// ListingsReprocessWiring is the credential-free half of the listings slice:
+// the context plus the channel's offline mapper, and nothing that can reach
+// Mercado Livre. A reprocess assembled from WireListings would hold a live
+// client it must never use; this one cannot hold it at all.
+type ListingsReprocessWiring struct {
+	Module *listings.Module
+	Mapper port.ListingMapper
+}
+
+// WireListingsReprocess assembles that half. It takes no token source and no
+// base URL because it makes no call — the only inputs a reprocess has are the
+// database and the mapping already compiled into this binary.
+func WireListingsReprocess(pool *pgxpool.Pool) ListingsReprocessWiring {
+	return ListingsReprocessWiring{Module: listings.New(pool), Mapper: mercadolivre.NewListingMapper()}
+}
 
 // WireListings assembles the slice. The token source and account identity are
 // the root's decision, passed in from the operator entry point.

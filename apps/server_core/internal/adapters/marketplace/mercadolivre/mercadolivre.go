@@ -29,6 +29,17 @@ type Bundle struct {
 	ListingFeed listingsport.ListingFeed
 }
 
+// NewListingMapper builds the offline half of this adapter: the translation
+// from Mercado Livre item bytes to listing facts, with no client behind it.
+//
+// It is a second constructor on this root rather than a field of Bundle
+// because Bundle's whole content is credential-bound — New() takes a token
+// source and fails without one — and a reprocess must run with no credential
+// at all. Handing it a Config it does not use, or a token func that exists
+// only to be refused, would put a live-call shape around an operation whose
+// point is that it makes none.
+func NewListingMapper() listingsport.ListingMapper { return mllistings.NewMapper() }
+
 func New(cfg Config) (Bundle, error) {
 	client, err := api.NewClient(cfg.BaseURL, cfg.UserID, cfg.Token)
 	if err != nil {

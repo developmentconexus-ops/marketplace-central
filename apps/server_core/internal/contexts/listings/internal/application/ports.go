@@ -6,12 +6,17 @@ import (
 	"context"
 
 	"marketplace-central/apps/server_core/internal/contexts/listings/contracts"
+	"marketplace-central/apps/server_core/internal/kernel/tenant"
 )
 
 // CurrentListing is what the store knows about a listing before an ingest.
+// There is no payload hash here on purpose: State is what Ingest folds
+// against, and nothing should be able to fold on the hash instead (see
+// ingest.go). The hash still lives on the row as evidence, in
+// last_payload_hash, and is still written by SaveVersion.
 type CurrentListing struct {
-	Version     int
-	PayloadHash string
+	Version int
+	State   contracts.ListingState
 }
 
 // Store persists listing versions. SaveVersion must be atomic: the listing
@@ -29,7 +34,14 @@ type CurrentListing struct {
 // adapter: either SaveVersion takes the expected current version and fails on
 // mismatch, or the two calls collapse into one store operation that reads and
 // writes under the same transaction.
+//
+// StoredObservations reads back the payload each listing's current version was
+// derived from, in (channel, account, listing) order, taking rows strictly
+// after the cursor. Ordering and paging are the port's business rather than
+// the caller's because they are what makes a walk complete: the caller cannot
+// check that a page it never saw existed.
 type Store interface {
 	Current(ctx context.Context, key contracts.SourceListingKey) (CurrentListing, bool, error)
 	SaveVersion(ctx context.Context, o contracts.ListingObservation, version int) error
+	StoredObservations(ctx context.Context, t tenant.ID, after contracts.StoredCursor, limit int) ([]contracts.StoredObservation, error)
 }
