@@ -34,8 +34,8 @@
       "selectors": [
         {
           "path": "AGENTS.md",
-          "selector": "Harness Bootstrap",
-          "reason": "durable entry policy; names the plugin-sourced binding doctrine (core) + repo profile",
+          "selector": "Agent Bootstrap",
+          "reason": "durable entry policy; how work lands (branch/PR/CI), verification, truth order, architecture and operational rules",
           "estimated_tokens": 220
         },
         {
@@ -62,12 +62,6 @@
           "selector": "knowledge routes",
           "reason": "module and operating knowledge index",
           "estimated_tokens": 180
-        },
-        {
-          "path": ".mnfs/MIS-001-mercado-livre-operating-cockpit/mission.md",
-          "selector": "Current State, Milestone Strategy, Handoff",
-          "reason": "portfolio outcome, priority, and durable next action",
-          "estimated_tokens": 480
         }
       ]
     },

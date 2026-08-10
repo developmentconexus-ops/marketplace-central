@@ -251,7 +251,67 @@ function Get-HarnessPostgresFailureTokens {
   foreach ($match in [regex]::Matches([string]$Text, '\bSQLSTATE\s+(?<code>[0-9A-Z]{5})\b')) { [void]$tokens.Add("sqlstate=$($match.Groups['code'].Value)") }
   foreach ($match in [regex]::Matches([string]$Text, '(?m)^FAIL\s+(?<package>marketplace-central/[A-Za-z0-9_./-]{1,240})(?:\s|$)')) { [void]$tokens.Add("package=$($match.Groups['package'].Value)") }
   foreach ($match in [regex]::Matches([string]$Text, '(?m)^--- FAIL: (?<test>Test[A-Za-z0-9_]{1,160})(?:\s|$)')) { [void]$tokens.Add("test=$($match.Groups['test'].Value)") }
-  $safe = @($tokens | Sort-Object | Select-Object -First 24)
+  # Everything above names WHAT failed and nothing about WHERE. A run of this lane
+  # failed on 2026-08-10 with `test=TestListingsReadContractEndToEnd` plus two
+  # sqlstates and passed on re-run with the same tree; the tokens could not say
+  # which assertion, which subtest, or which constraint, so the only available
+  # move was to re-run it -- which is how a red lane becomes a habit of ignoring
+  # red. The three shapes below are source and schema identifiers, never row data:
+  # a Go subtest name (spaces are already underscores by the time go test prints
+  # it), a _test.go file and line, and a Postgres constraint name.
+  foreach ($match in [regex]::Matches([string]$Text, '(?m)^\s+--- FAIL: (?<test>Test[A-Za-z0-9_]{1,160}(?:/[A-Za-z0-9_]{1,120}){1,6})(?:\s|$)')) { [void]$tokens.Add("subtest=$($match.Groups['test'].Value)") }
+  #
+  # `at=` and `constraint=` are attributed, not swept. A test's own log lines sit
+  # between its `=== RUN` and its verdict line, so a file:line or a constraint
+  # name only belongs to a failure when the verdict that closes it is FAIL. Swept
+  # instead, a real run of this lane emitted 22 `at=` tokens and 3 constraints
+  # from tests that PASSED -- must-fail tests log the constraint they provoked --
+  # and the sort below would have spent the cap on them before reaching the one
+  # failing line.
+  #
+  # Attribution is by identity, not by position. Parallel tests interleave: a
+  # passing test's lines can print between a failing test's lines and the FAIL
+  # verdict, and a single buffer flushed on any FAIL would hand them to the
+  # failure. `=== RUN` and `=== CONT` name the test whose lines follow, so each
+  # test accumulates its own; a verdict emits only the lines filed under the
+  # test it names, and only when that verdict is FAIL. Lines that arrive with no
+  # owner are dropped -- a token naming the wrong file and line is worse than no
+  # token, because the next reader spends their time there.
+  $pending = @{}
+  $owner = ''
+  foreach ($line in ([string]$Text -split '\r?\n')) {
+    if ($line -match '^\s*=== (?:RUN|CONT)\s+(?<test>\S{1,320})\s*$') {
+      $owner = $Matches['test']
+      if (-not $pending.ContainsKey($owner)) { $pending[$owner] = [System.Collections.Generic.List[string]]::new() }
+      continue
+    }
+    if ($line -match '^\s*--- (?<verdict>PASS|FAIL|SKIP):\s+(?<test>\S{1,320})') {
+      $finished = $Matches['test']
+      if ($Matches['verdict'] -ceq 'FAIL' -and $pending.ContainsKey($finished)) {
+        foreach ($token in $pending[$finished]) { [void]$tokens.Add($token) }
+      }
+      $pending.Remove($finished)
+      continue
+    }
+    if ([string]::IsNullOrEmpty($owner)) { continue }
+    if ($line -match '^\s*(?<file>[A-Za-z0-9_]{1,80}_test\.go):(?<line>\d{1,6}):') { $pending[$owner].Add("at=$($Matches['file']):$($Matches['line'])") }
+    if ($line -match 'constraint "(?<constraint>[a-z0-9_]{1,63})"') { $pending[$owner].Add("constraint=$($Matches['constraint'])") }
+  }
+  # Two bounds, not one. The count alone does not bound the output: a subtest
+  # token can carry a 160-character test name plus six 120-character subtest
+  # segments, so 32 of them exceed the 8192-byte diagnostics contract that
+  # postgres-lifecycle.tests.ps1 asserts. Tokens are dropped, never truncated --
+  # half an identifier reads like a real one.
+  $safe = [System.Collections.Generic.List[string]]::new()
+  $serializedLength = 0
+  foreach ($token in @($tokens | Sort-Object)) {
+    if ($safe.Count -ge 32) { break }
+    $separatorLength = if ($safe.Count -eq 0) { 0 } else { 1 }
+    if ($serializedLength + $separatorLength + $token.Length -gt 8192) { continue }
+    $safe.Add($token)
+    $serializedLength += $separatorLength + $token.Length
+  }
+  $safe = @($safe)
   if ($safe.Count -eq 0) { return @('HPG_CHILD_OUTPUT_REDACTED') }
   return $safe
 }
@@ -311,6 +371,12 @@ function Invoke-HarnessPostgresLifecycle {
   $hostPort = 0
   $targetURL = ''
   $failureDiagnosticTokens = @()
+  # Counted here rather than inferred from what the child logged: a readiness
+  # attempt whose subprocess is killed at its own budget writes nothing, so a
+  # caller counting child rows reads 0 attempts on a run that made one. That
+  # miscount is what made the deadline assertion in postgres-lifecycle.tests.ps1
+  # fail under load on a tree that behaved correctly.
+  $readyAttempts = 0
   $heldConnectionConfirmed = $false
   $testsRun = -1
   $testsPassed = -1
@@ -391,6 +457,7 @@ function Invoke-HarnessPostgresLifecycle {
       $remainingMilliseconds = [Math]::Max(1, $ReadyTimeoutMilliseconds - $readyWatch.ElapsedMilliseconds)
       $readyProcessTimeoutSeconds = [Math]::Min($TimeoutSeconds, [Math]::Max(1, [Math]::Ceiling($remainingMilliseconds / 1000.0)))
       $ready = Invoke-Docker -ProcessTimeoutSeconds $readyProcessTimeoutSeconds -Arguments @('exec', $RunSpec.ContainerName, 'pg_isready', '--username', 'postgres', '--dbname', 'postgres', '--timeout', [string]$readyProcessTimeoutSeconds)
+      $readyAttempts++
       if ($ready.ExitCode -eq 0) { break }
       if ($attempt -ge $ReadyMaxAttempts -or $readyWatch.ElapsedMilliseconds -ge $ReadyTimeoutMilliseconds) { break }
       if ($ReadyRetryDelayMilliseconds -gt 0) { Start-Sleep -Milliseconds $ReadyRetryDelayMilliseconds }
@@ -509,6 +576,7 @@ function Invoke-HarnessPostgresLifecycle {
     DatabaseName = $RunSpec.DatabaseName
     HostPort = $hostPort
     FailureDiagnosticTokens = @($failureDiagnosticTokens)
+    ReadyAttempts = $readyAttempts
     HeldConnectionConfirmed = $heldConnectionConfirmed
     TestsRun = $testsRun
     TestsPassed = $testsPassed

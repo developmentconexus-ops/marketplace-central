@@ -48,12 +48,10 @@ permissions:
   contents: read
 
 jobs:
-  # HARNESS-PROFILE §2 binds GOCACHE/GOMODCACHE to an ABSOLUTE path for every Go
-  # command. The profile's own §2 correction of 2026-07-28 is the reason the literal
-  # below is not the `GOCACHE=.gocache` that AGENTS.md still prints: a chip copied
-  # that relative form and got an 83-byte EXIT 1 with zero `=== RUN` -- vacuous green
-  # handed over by the doctrine itself. The relative literal was struck from the
-  # profile; only the absolute binding survives.
+  # GOCACHE/GOMODCACHE bind to an ABSOLUTE path for every Go command, the same way
+  # scripts/gate.ps1 and AGENTS.md state it. The correction of 2026-07-28 is the
+  # reason the literal below is not a relative `GOCACHE=.gocache`: a copy of that
+  # form produced an 83-byte EXIT 1 with zero `=== RUN` -- a vacuous green.
   #
   # Declared at JOB level, which puts it in the environment before setup-go runs.
   # setup-go resolves its cache paths from `go env GOCACHE`/`GOMODCACHE`, so

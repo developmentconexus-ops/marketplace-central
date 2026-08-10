@@ -61,7 +61,7 @@ $after = Get-DevDigest
 if ($before.Digest -cne $after.Digest -or $before.TableCount -ne $after.TableCount) { throw 'dev-state-change: persistent dev table-count digest changed' }
 if ($nested.ExitCode -ne 0) {
   $safeDiagnostics = @((@($nested.Stdout, $nested.Stderr) -join "`n") -split '\r?\n' | Where-Object {
-    $_ -match '^(?:status=(?:blocked|failed)|child_diagnostic=(?:hpg=[A-Z0-9_]+|sqlstate=[0-9A-Z]{5}|package=marketplace-central/[A-Za-z0-9_./-]+|test=Test[A-Za-z0-9_]+|HPG_CHILD_OUTPUT_REDACTED)|migrations_(?:first|second)=-?\d+|resource_count=\d+)$'
+    $_ -match '^(?:status=(?:blocked|failed)|child_diagnostic=(?:hpg=[A-Z0-9_]+|sqlstate=[0-9A-Z]{5}|package=marketplace-central/[A-Za-z0-9_./-]+|test=Test[A-Za-z0-9_]+|subtest=Test[A-Za-z0-9_/]+|at=[A-Za-z0-9_]+_test\.go:\d+|constraint=[a-z0-9_]+|HPG_CHILD_OUTPUT_REDACTED)|migrations_(?:first|second)=-?\d+|resource_count=\d+)$'
   })
   foreach ($line in $safeDiagnostics) { Write-Output "nested_diagnostic=$line" }
   throw 'nested ephemeral PostgreSQL integration failed'
