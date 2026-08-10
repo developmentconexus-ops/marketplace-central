@@ -16,10 +16,15 @@ There is no other channel. Concretely:
 
 ## Verification
 
-`scripts/gate.ps1` is the single implementation of every check — CI invokes the same
-file a developer machine does. No lane logic lives in a workflow.
+`scripts/gate.ps1` is the single implementation of every lane — CI invokes the same
+file a developer machine does, and no lane logic lives in a workflow. Two checks live
+in `.github/workflows/ci.yml` by nature, because their subject is the workflow itself:
+the `required` aggregator with its topology assertion over the job/`needs`/`EXPECTED`
+enumerations, and the preflight run of the gate's own counter fixtures
+(`scripts/tests/gate-measure.tests.ps1`) ahead of the first lane. A local run is
+evidence about the lanes, not about those two.
 
-```
+```bash
 npm run gate        # -Lane all: the 13 everyday lanes, seconds
 npm run gate:full   # adds selftest, guards, integration, edge — matches CI verify-full
 ```
@@ -59,9 +64,18 @@ One writer owns a checkout or a shared seam. Do not reset, revert, stash, clean,
 unknown state, use WSL, expose secrets or PII, cold-clone, purge caches, or install
 dependencies as a ritual — a dependency change is its own PR, decided by the operator.
 
-Go commands run from `apps/server_core` with `GOCACHE` and `GOMODCACHE` bound to
-**absolute** paths (`apps/server_core/.gocache`, `apps/server_core/.gomodcache`); the
-relative form silently produces a vacuous green.
+Go commands run from `apps/server_core`, with `GOCACHE` and `GOMODCACHE` bound to
+**absolute** paths. A relative value makes `go env GOCACHE` report `off` and every Go
+build die with `build cache is required, but could not be located: GOCACHE is not an
+absolute path` — 83 bytes and zero `=== RUN`, which reads like a suite with nothing in
+it. `scripts/gate.ps1` binds them for every lane; a hand-run needs the same thing,
+resolved rather than transcribed:
+
+```powershell
+cd apps/server_core
+$env:GOCACHE = (Resolve-Path .).Path + '/.gocache'
+$env:GOMODCACHE = (Resolve-Path .).Path + '/.gomodcache'
+```
 
 Evidence is the PR: the diff, the CI run, and what the lanes printed. A claim with no
 run behind it did not happen.
