@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Local release path (no CI minutes needed): build both prod images, tag with
-# the current commit sha, push to GHCR. Mirrors what
-# .github/workflows/release-images.yml does on a runner.
+# The release path: build both prod images, tag with the current commit sha,
+# push to GHCR. There is no CI publisher -- the workflow that used to mirror
+# this on a runner was deleted 2026-08-10 after failing all 18 of its runs with
+# 403 Forbidden on the push (see the ADR-008 amendment).
 #
 # Prereq (once): docker login ghcr.io -u <github-user>   # PAT with write:packages
 # Usage:         bash scripts/release.sh [--no-push]

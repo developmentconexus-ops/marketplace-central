@@ -2,21 +2,26 @@
 
 Binding architecture: [ADR-008](../architecture/decisions/008-production-deploy-topology.md).
 Artifacts: `docker/prod/` (images), `deploy/` (compose + Caddyfile + env template),
-`.github/workflows/release-images.yml` (CI publish).
+`scripts/release.sh` (publisher).
 
 Flow in one line:
 
 ```
-build (scripts/release.sh or CI) → GHCR → host: docker compose pull && up -d
+build (scripts/release.sh) → GHCR → host: docker compose pull && up -d
 ```
 
-Two supported publishers, same registry and tag scheme (`sha-<commit>`):
+One publisher, tag scheme `sha-<commit>`:
 
 - **`bash scripts/release.sh`** — builds both images on the dev machine and
-  pushes to GHCR. Zero CI minutes; the default while GitHub Actions billing is
-  not enabled. Prereq once: `docker login ghcr.io` with a `write:packages` PAT.
-- **GitHub Actions** (`release-images.yml`) — same output on every push to
-  main, when the account has Actions minutes available.
+  pushes to GHCR. Prereq once: `docker login ghcr.io` with a `write:packages`
+  PAT.
+
+There is no CI publisher. `.github/workflows/release-images.yml` existed until
+2026-08-10 and failed all 18 of its runs with `403 Forbidden` on the GHCR push,
+never publishing an image; it was deleted rather than left red. See the
+[ADR-008 amendment](../architecture/decisions/008-production-deploy-topology.md#amendment-2026-08-10--the-ci-publisher-is-retired-scriptsreleasesh-is-the-publisher)
+for the credential precondition that must be settled before a CI publisher
+returns.
 
 ---
 
@@ -107,7 +112,8 @@ npm run harness:edge
 
 ## 3. Recurring: deploy an update
 
-CI publishes `sha-<commit>` tags on every push to main. To ship one:
+`bash scripts/release.sh` publishes a `sha-<commit>` tag from the dev machine.
+To ship one:
 
 ```bash
 ssh mpc@<tailscale-ip>                 # via tailnet
