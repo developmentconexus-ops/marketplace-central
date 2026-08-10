@@ -267,19 +267,51 @@ function Get-HarnessPostgresFailureTokens {
   # instead, a real run of this lane emitted 22 `at=` tokens and 3 constraints
   # from tests that PASSED -- must-fail tests log the constraint they provoked --
   # and the sort below would have spent the cap on them before reaching the one
-  # failing line. Interleaved parallel output can still misattribute a line; the
-  # tokens are source identifiers either way, never row data.
-  $pending = [System.Collections.Generic.List[string]]::new()
+  # failing line.
+  #
+  # Attribution is by identity, not by position. Parallel tests interleave: a
+  # passing test's lines can print between a failing test's lines and the FAIL
+  # verdict, and a single buffer flushed on any FAIL would hand them to the
+  # failure. `=== RUN` and `=== CONT` name the test whose lines follow, so each
+  # test accumulates its own; a verdict emits only the lines filed under the
+  # test it names, and only when that verdict is FAIL. Lines that arrive with no
+  # owner are dropped -- a token naming the wrong file and line is worse than no
+  # token, because the next reader spends their time there.
+  $pending = @{}
+  $owner = ''
   foreach ($line in ([string]$Text -split '\r?\n')) {
-    if ($line -match '^\s*--- (?<verdict>PASS|FAIL|SKIP):') {
-      if ($Matches['verdict'] -ceq 'FAIL') { foreach ($token in $pending) { [void]$tokens.Add($token) } }
-      $pending.Clear()
+    if ($line -match '^\s*=== (?:RUN|CONT)\s+(?<test>\S{1,320})\s*$') {
+      $owner = $Matches['test']
+      if (-not $pending.ContainsKey($owner)) { $pending[$owner] = [System.Collections.Generic.List[string]]::new() }
       continue
     }
-    if ($line -match '^\s*(?<file>[A-Za-z0-9_]{1,80}_test\.go):(?<line>\d{1,6}):') { $pending.Add("at=$($Matches['file']):$($Matches['line'])") }
-    if ($line -match 'constraint "(?<constraint>[a-z0-9_]{1,63})"') { $pending.Add("constraint=$($Matches['constraint'])") }
+    if ($line -match '^\s*--- (?<verdict>PASS|FAIL|SKIP):\s+(?<test>\S{1,320})') {
+      $finished = $Matches['test']
+      if ($Matches['verdict'] -ceq 'FAIL' -and $pending.ContainsKey($finished)) {
+        foreach ($token in $pending[$finished]) { [void]$tokens.Add($token) }
+      }
+      $pending.Remove($finished)
+      continue
+    }
+    if ([string]::IsNullOrEmpty($owner)) { continue }
+    if ($line -match '^\s*(?<file>[A-Za-z0-9_]{1,80}_test\.go):(?<line>\d{1,6}):') { $pending[$owner].Add("at=$($Matches['file']):$($Matches['line'])") }
+    if ($line -match 'constraint "(?<constraint>[a-z0-9_]{1,63})"') { $pending[$owner].Add("constraint=$($Matches['constraint'])") }
   }
-  $safe = @($tokens | Sort-Object | Select-Object -First 32)
+  # Two bounds, not one. The count alone does not bound the output: a subtest
+  # token can carry a 160-character test name plus six 120-character subtest
+  # segments, so 32 of them exceed the 8192-byte diagnostics contract that
+  # postgres-lifecycle.tests.ps1 asserts. Tokens are dropped, never truncated --
+  # half an identifier reads like a real one.
+  $safe = [System.Collections.Generic.List[string]]::new()
+  $serializedLength = 0
+  foreach ($token in @($tokens | Sort-Object)) {
+    if ($safe.Count -ge 32) { break }
+    $separatorLength = if ($safe.Count -eq 0) { 0 } else { 1 }
+    if ($serializedLength + $separatorLength + $token.Length -gt 8192) { continue }
+    $safe.Add($token)
+    $serializedLength += $separatorLength + $token.Length
+  }
+  $safe = @($safe)
   if ($safe.Count -eq 0) { return @('HPG_CHILD_OUTPUT_REDACTED') }
   return $safe
 }

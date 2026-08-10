@@ -131,10 +131,25 @@ if (failures.includes(operation)) {
   // with the same untrusted noise around it the other fixtures carry. It exists so
   // the subtest/at/constraint tokens are proved against real output, not against a
   // string written to match the regex.
+  //
+  // The interleaved block is what `go test -v` prints when parallel tests run:
+  // TestProbeParallelPass resumes on CONT, logs its own file:line, and its
+  // verdict lands AFTER the failing test's verdict. A parser that flushed a
+  // positional buffer would hand probe_parallel_test.go:77 to the failure.
   const richFailure = [
     "=== RUN   TestProbeMustFail",
     '    probe_mustfail_test.go:41: rejected as designed: violates check constraint "probe_only_one_open_row"',
     "--- PASS: TestProbeMustFail (0.00s)",
+    "=== RUN   TestProbeParallelFail",
+    "=== PAUSE TestProbeParallelFail",
+    "=== RUN   TestProbeParallelPass",
+    "=== PAUSE TestProbeParallelPass",
+    "=== CONT  TestProbeParallelFail",
+    '    probe_parallel_test.go:44: violates unique constraint "probe_parallel_pkey"',
+    "=== CONT  TestProbeParallelPass",
+    '    probe_parallel_test.go:77: tolerated: violates unique constraint "probe_tolerated_key"',
+    "--- FAIL: TestProbeParallelFail (0.03s)",
+    "--- PASS: TestProbeParallelPass (0.03s)",
     "=== RUN   TestProbeContract",
     "=== RUN   TestProbeContract/seeded_rows_survive_the_walk",
     "    probe_contract_test.go:290: seed listing: ERROR: duplicate key value violates unique constraint " +
@@ -144,13 +159,30 @@ if (failures.includes(operation)) {
     "FAIL\tmarketplace-central/apps/server_core/tests/integration\t0.30s",
     "C:\\private\\customer.txt person@example.test",
   ].join("\n");
+  // Maximum-shape subtest names: the token grammar allows a 160-character test
+  // name plus six 120-character segments, so each token is ~900 bytes and 32 of
+  // them would be four times the 8192-byte diagnostics contract. 40 of them here
+  // means the parser has to drop, not truncate.
+  const longFailure = Array.from({ length: 40 }, (_, index) => {
+    const name = `Test${"L".repeat(156)}${index}`.slice(0, 160);
+    const segments = Array.from({ length: 6 }, (_, part) =>
+      `${"s".repeat(118)}${part}${index}`.slice(0, 120),
+    ).join("/");
+    return [
+      `=== RUN   ${name}/${segments}`,
+      `    probe_long_test.go:${100 + index}: failed`,
+      `    --- FAIL: ${name}/${segments} (0.01s)`,
+    ].join("\n");
+  }).join("\n");
   process.stderr.write(
     operation === "tests"
       ? arbitraryOnly
         ? "C:\\private\\customer.txt person@example.test"
-        : process.env.HARNESS_POSTGRES_PROBE_RICH_TEST_FAILURE === "1"
-          ? richFailure
-          : "probe failure reason=HPG_TEST_FAILED_SENTINEL C:\\private\\customer.txt person@example.test"
+        : process.env.HARNESS_POSTGRES_PROBE_LONG_TOKEN_FAILURE === "1"
+          ? longFailure
+          : process.env.HARNESS_POSTGRES_PROBE_RICH_TEST_FAILURE === "1"
+            ? richFailure
+            : "probe failure reason=HPG_TEST_FAILED_SENTINEL C:\\private\\customer.txt person@example.test"
       : `probe failure operation=${operation}`,
   );
   process.exit(operation === "tests" ? 17 : 29);
