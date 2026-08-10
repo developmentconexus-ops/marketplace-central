@@ -53,16 +53,18 @@ func obs(t *testing.T, listingID, payloadHash string) contracts.ListingObservati
 		return f
 	}
 	return contracts.ListingObservation{
-		Key:               key,
-		Evidence:          ev,
-		RawPayload:        []byte(`{"id":"` + listingID + `"}`),
-		Title:             unknown("test fixture omitted title"),
-		Status:            unknown("test fixture omitted status"),
-		ListingType:       unknown("test fixture omitted listing_type"),
-		Price:             unknownMoney("test fixture omitted price"),
-		AvailableQuantity: unknownInt("test fixture omitted available_quantity"),
-		SellerSKU:         unknown("test fixture omitted seller_sku"),
-		GTIN:              unknown("test fixture omitted gtin"),
+		Key:        key,
+		Evidence:   ev,
+		RawPayload: []byte(`{"id":"` + listingID + `"}`),
+		State: contracts.ListingState{
+			Title:             unknown("test fixture omitted title"),
+			Status:            unknown("test fixture omitted status"),
+			ListingType:       unknown("test fixture omitted listing_type"),
+			Price:             unknownMoney("test fixture omitted price"),
+			AvailableQuantity: unknownInt("test fixture omitted available_quantity"),
+			SellerSKU:         unknown("test fixture omitted seller_sku"),
+			GTIN:              unknown("test fixture omitted gtin"),
+		},
 	}
 }
 
@@ -91,7 +93,75 @@ func TestSamePayloadHashIsIdempotent(t *testing.T) {
 	}
 }
 
+// TestChangedPayloadMintsNewVersion used to prove a changed hash alone minted
+// a new version. That is no longer the rule (ingest.go now folds on
+// State.Equal, not the hash — see TestIdenticalFactsDifferentEvidenceStaysIdempotent
+// for the case where the hash changes and nothing else does), so the second
+// observation here now also carries a changed FACT: the assertions are
+// unchanged, but the fixture that makes them true is a genuine fact change,
+// which is what "changed v2" actually names under the new fold.
 func TestChangedPayloadMintsNewVersion(t *testing.T) {
+	svc := application.NewService(newMemStore())
+	if _, err := svc.Ingest(context.Background(), obs(t, "MLB1", "h1")); err != nil {
+		t.Fatalf("first ingest: %v", err)
+	}
+	second := obs(t, "MLB1", "h2")
+	known, err := fact.NewKnown("paused", second.Evidence)
+	if err != nil {
+		t.Fatalf("fact.NewKnown: %v", err)
+	}
+	second.State.Status = known
+	got, err := svc.Ingest(context.Background(), second)
+	if err != nil {
+		t.Fatalf("second ingest: %v", err)
+	}
+	if got.Disposition != contracts.DispositionChanged || got.Version != 2 {
+		t.Fatalf("got %+v, want changed v2", got)
+	}
+}
+
+// TestSameEvidenceCorrectedFactMintsNewVersion is the defect that started this
+// change: a corrected mapper produces the SAME evidence (the channel's bytes
+// never moved, so the payload hash is identical) but a DIFFERENT fact --
+// SellerSKU goes from Unknown to Known. Under the old payload-hash fold this
+// read as idempotent, which is exactly why re-running the live ingest after
+// today's mapper fix healed only 14 of 34 rows: the other 20 listings' bytes
+// had not changed at Mercado Livre, so the fold never looked at the fact that
+// did change.
+func TestSameEvidenceCorrectedFactMintsNewVersion(t *testing.T) {
+	store := newMemStore()
+	svc := application.NewService(store)
+	first := obs(t, "MLB1", "h1")
+	if _, err := svc.Ingest(context.Background(), first); err != nil {
+		t.Fatalf("first ingest: %v", err)
+	}
+
+	second := first
+	known, err := fact.NewKnown("SKU-MLB1", first.Evidence)
+	if err != nil {
+		t.Fatalf("fact.NewKnown: %v", err)
+	}
+	second.State.SellerSKU = known
+
+	got, err := svc.Ingest(context.Background(), second)
+	if err != nil {
+		t.Fatalf("second ingest: %v", err)
+	}
+	if got.Disposition != contracts.DispositionChanged || got.Version != 2 {
+		t.Fatalf("got %+v, want changed v2 -- a corrected fact must mint a new version even though the payload hash did not move", got)
+	}
+	sku, ok := store.lastObservation.State.SellerSKU.Value()
+	if !ok || sku != "SKU-MLB1" {
+		t.Fatalf("stored seller_sku = %q known=%v, want the corrected value persisted", sku, ok)
+	}
+}
+
+// TestIdenticalFactsDifferentEvidenceStaysIdempotent is the converse of the
+// healing property above: re-polling an unchanged channel must stay free even
+// when the evidence itself differs (a later timestamp, a different payload
+// hash) as long as the facts derived from it are the same. A fold that keyed
+// on the hash alone would mint a version here for no reason a reader can see.
+func TestIdenticalFactsDifferentEvidenceStaysIdempotent(t *testing.T) {
 	svc := application.NewService(newMemStore())
 	if _, err := svc.Ingest(context.Background(), obs(t, "MLB1", "h1")); err != nil {
 		t.Fatalf("first ingest: %v", err)
@@ -100,8 +170,8 @@ func TestChangedPayloadMintsNewVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second ingest: %v", err)
 	}
-	if got.Disposition != contracts.DispositionChanged || got.Version != 2 {
-		t.Fatalf("got %+v, want changed v2", got)
+	if got.Disposition != contracts.DispositionIdempotent || got.Version != 1 {
+		t.Fatalf("got %+v, want idempotent v1 -- same facts, different evidence, must not mint a version", got)
 	}
 }
 

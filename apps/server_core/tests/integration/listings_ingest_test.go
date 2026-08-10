@@ -97,21 +97,23 @@ func listingObservation(t *testing.T, tid tenant.ID, listingID, hash string) con
 	}
 
 	return contracts.ListingObservation{
-		Key:               key,
-		Title:             title,
-		Status:            status,
-		ListingType:       listingType,
-		Price:             price,
-		AvailableQuantity: qty,
-		SellerSKU:         sku,
-		GTIN:              gtin,
-		Variations: []contracts.VariationObservation{
-			{
-				VariationID:       "V1",
-				Price:             vPrice,
-				AvailableQuantity: vQty,
-				SellerSKU:         vSku,
-				GTIN:              vGtin,
+		Key: key,
+		State: contracts.ListingState{
+			Title:             title,
+			Status:            status,
+			ListingType:       listingType,
+			Price:             price,
+			AvailableQuantity: qty,
+			SellerSKU:         sku,
+			GTIN:              gtin,
+			Variations: []contracts.VariationObservation{
+				{
+					VariationID:       "V1",
+					Price:             vPrice,
+					AvailableQuantity: vQty,
+					SellerSKU:         vSku,
+					GTIN:              vGtin,
+				},
 			},
 		},
 		RawPayload: []byte(`{"listing_id":"` + listingID + `","hash":"` + hash + `"}`),
@@ -188,5 +190,125 @@ func TestListingsIngestPersistsVersionAndVariations(t *testing.T) {
 	}
 	if rows != 2 {
 		t.Fatalf("observation rows = %d, want 2 (one per distinct payload)", rows)
+	}
+}
+
+// TestListingsCurrentRoundTripsState proves Current() reconstructs the exact
+// facts SaveVersion wrote -- a mix of Known, Unknown and NotApplicable states
+// plus a variation -- rather than just the version and a hash. A column read
+// in the wrong order, or a state string that does not map back to the right
+// constructor, shows up here as Equal returning false, not as a panic or a
+// wrong type: this is the test that catches it.
+func TestListingsCurrentRoundTripsState(t *testing.T) {
+	pool, cfg := testpostgres.OpenPool(t, "tenant_listings_current")
+	tid, err := tenant.Parse(cfg.DefaultTenantID)
+	if err != nil {
+		t.Fatalf("tenant.Parse: %v", err)
+	}
+	module := listings.New(pool)
+	ctx := context.Background()
+
+	e, err := provenance.NewEvidence("mercadolivre", "listing", "MLB-CUR-1", time.Now().UTC(), "hash-current")
+	if err != nil {
+		t.Fatalf("provenance.NewEvidence: %v", err)
+	}
+	code, err := channel.ParseCode("mercadolivre")
+	if err != nil {
+		t.Fatalf("channel.ParseCode: %v", err)
+	}
+	account, err := channel.NewAccountRef(code, "ml-account-01")
+	if err != nil {
+		t.Fatalf("channel.NewAccountRef: %v", err)
+	}
+	key, err := contracts.NewSourceListingKey(tid, account, "MLB-CUR-1")
+	if err != nil {
+		t.Fatalf("contracts.NewSourceListingKey: %v", err)
+	}
+	title, err := fact.NewKnown("Titulo current", e)
+	if err != nil {
+		t.Fatalf("fact.NewKnown title: %v", err)
+	}
+	status, err := fact.NewUnknown[string]("ml omitted status", e)
+	if err != nil {
+		t.Fatalf("fact.NewUnknown status: %v", err)
+	}
+	listingType, err := fact.NewNotApplicable[string]("classified listing has no type", e)
+	if err != nil {
+		t.Fatalf("fact.NewNotApplicable listing_type: %v", err)
+	}
+	currency, err := exact.ParseCurrency("BRL")
+	if err != nil {
+		t.Fatalf("exact.ParseCurrency: %v", err)
+	}
+	amount, err := exact.ParseMoney("149.50", currency)
+	if err != nil {
+		t.Fatalf("exact.ParseMoney: %v", err)
+	}
+	price, err := fact.NewKnown(amount, e)
+	if err != nil {
+		t.Fatalf("fact.NewKnown price: %v", err)
+	}
+	qty, err := fact.NewUnknown[int]("ml omitted available_quantity", e)
+	if err != nil {
+		t.Fatalf("fact.NewUnknown qty: %v", err)
+	}
+	sku, err := fact.NewKnown("SKU-CUR-1", e)
+	if err != nil {
+		t.Fatalf("fact.NewKnown sku: %v", err)
+	}
+	gtin, err := fact.NewUnknown[string]("ml omitted gtin attribute", e)
+	if err != nil {
+		t.Fatalf("fact.NewUnknown gtin: %v", err)
+	}
+	vPrice, err := fact.NewKnown(amount, e)
+	if err != nil {
+		t.Fatalf("fact.NewKnown variation price: %v", err)
+	}
+	vQty, err := fact.NewKnown(3, e)
+	if err != nil {
+		t.Fatalf("fact.NewKnown variation qty: %v", err)
+	}
+	vSku, err := fact.NewKnown("SKU-CUR-1-V1", e)
+	if err != nil {
+		t.Fatalf("fact.NewKnown variation sku: %v", err)
+	}
+	vGtin, err := fact.NewNotApplicable[string]("variation has no gtin of its own", e)
+	if err != nil {
+		t.Fatalf("fact.NewNotApplicable variation gtin: %v", err)
+	}
+
+	state := contracts.ListingState{
+		Title: title, Status: status, ListingType: listingType,
+		Price: price, AvailableQuantity: qty, SellerSKU: sku, GTIN: gtin,
+		Variations: []contracts.VariationObservation{
+			{VariationID: "V1", Price: vPrice, AvailableQuantity: vQty, SellerSKU: vSku, GTIN: vGtin},
+		},
+	}
+	observation := contracts.ListingObservation{
+		Key: key, State: state,
+		RawPayload: []byte(`{"listing_id":"MLB-CUR-1"}`), Evidence: e,
+	}
+
+	if _, err := module.IngestListing(ctx, observation); err != nil {
+		t.Fatalf("ingest: %v", err)
+	}
+
+	// module.CurrentState, not internal/postgres.Repository directly: this
+	// package sits outside internal/contexts/listings/**, so Go's own
+	// internal-import rule already forbids reaching past the module's public
+	// façade -- the same boundary contexts/listings/module.go states in its
+	// own package comment.
+	gotState, version, found, err := module.CurrentState(ctx, key)
+	if err != nil {
+		t.Fatalf("CurrentState: %v", err)
+	}
+	if !found {
+		t.Fatal("CurrentState reported not found for a listing just saved")
+	}
+	if version != 1 {
+		t.Fatalf("version = %d, want 1", version)
+	}
+	if !gotState.Equal(state) {
+		t.Fatalf("CurrentState did not round-trip the saved state: got %+v, want %+v", gotState, state)
 	}
 }

@@ -75,51 +75,76 @@ func (f *Feed) mapItem(t tenant.ID, item api.Item, observedAt time.Time) (contra
 	if err != nil {
 		return contracts.ListingObservation{}, err
 	}
-	sum := sha256.Sum256(item.Raw)
-	evidence, err := provenance.NewEvidence(systemName, "item", item.ID, observedAt, hex.EncodeToString(sum[:]))
+	evidence, err := provenance.NewEvidence(systemName, "item", item.ID, observedAt, payloadHash(item.Raw))
 	if err != nil {
 		return contracts.ListingObservation{}, err
 	}
 
-	obs := contracts.ListingObservation{Key: key, Evidence: evidence, RawPayload: item.Raw}
-	if obs.Title, err = stringFact(item.Title, "title", evidence); err != nil {
+	state, err := mapItemState(item, evidence)
+	if err != nil {
 		return contracts.ListingObservation{}, err
 	}
-	if obs.Status, err = stringFact(item.Status, "status", evidence); err != nil {
-		return contracts.ListingObservation{}, err
+	return contracts.ListingObservation{Key: key, State: state, RawPayload: item.Raw, Evidence: evidence}, nil
+}
+
+// mapItemState is THE translation from Mercado Livre's item shape to Listings'
+// facts, and the only one. Both entry points go through it: NextPage, which
+// maps what it just fetched, and Mapper.MapStored (replay.go), which maps what
+// Listings recorded earlier. Two copies of these rules would be two answers to
+// "what does this listing say", and the second one would be discovered by a
+// reprocess quietly rewriting rows the feed had got right.
+func mapItemState(item api.Item, evidence provenance.Evidence) (contracts.ListingState, error) {
+	var (
+		state contracts.ListingState
+		err   error
+	)
+	if state.Title, err = stringFact(item.Title, "title", evidence); err != nil {
+		return contracts.ListingState{}, err
 	}
-	if obs.ListingType, err = stringFact(item.ListingTypeID, "listing_type_id", evidence); err != nil {
-		return contracts.ListingObservation{}, err
+	if state.Status, err = stringFact(item.Status, "status", evidence); err != nil {
+		return contracts.ListingState{}, err
 	}
-	if obs.Price, err = moneyFact(item.Price, item.CurrencyID, evidence); err != nil {
-		return contracts.ListingObservation{}, err
+	if state.ListingType, err = stringFact(item.ListingTypeID, "listing_type_id", evidence); err != nil {
+		return contracts.ListingState{}, err
 	}
-	if obs.AvailableQuantity, err = intFact(item.AvailableQuantity, "available_quantity", evidence); err != nil {
-		return contracts.ListingObservation{}, err
+	if state.Price, err = moneyFact(item.Price, item.CurrencyID, evidence); err != nil {
+		return contracts.ListingState{}, err
 	}
-	if obs.SellerSKU, err = stringFact(item.SellerSKU, "seller_sku", evidence); err != nil {
-		return contracts.ListingObservation{}, err
+	if state.AvailableQuantity, err = intFact(item.AvailableQuantity, "available_quantity", evidence); err != nil {
+		return contracts.ListingState{}, err
 	}
-	if obs.GTIN, err = stringFact(api.GTIN(item.Attributes), "gtin attribute", evidence); err != nil {
-		return contracts.ListingObservation{}, err
+	if state.SellerSKU, err = stringFact(api.ItemSellerSKU(item), "seller_sku (SELLER_SKU attribute or seller_custom_field)", evidence); err != nil {
+		return contracts.ListingState{}, err
+	}
+	if state.GTIN, err = stringFact(api.GTIN(item.Attributes), "gtin attribute", evidence); err != nil {
+		return contracts.ListingState{}, err
 	}
 	for _, v := range item.Variations {
 		mapped := contracts.VariationObservation{VariationID: v.ID.String()}
 		if mapped.Price, err = moneyFact(v.Price, item.CurrencyID, evidence); err != nil {
-			return contracts.ListingObservation{}, err
+			return contracts.ListingState{}, err
 		}
 		if mapped.AvailableQuantity, err = intFact(v.AvailableQuantity, "variation available_quantity", evidence); err != nil {
-			return contracts.ListingObservation{}, err
+			return contracts.ListingState{}, err
 		}
-		if mapped.SellerSKU, err = stringFact(v.SellerSKU, "variation seller_sku", evidence); err != nil {
-			return contracts.ListingObservation{}, err
+		if mapped.SellerSKU, err = stringFact(api.VariationSellerSKU(item, v), "variation seller_sku (SELLER_SKU attribute or seller_custom_field, item as fallback)", evidence); err != nil {
+			return contracts.ListingState{}, err
 		}
 		if mapped.GTIN, err = stringFact(api.GTIN(v.Attributes), "variation gtin attribute", evidence); err != nil {
-			return contracts.ListingObservation{}, err
+			return contracts.ListingState{}, err
 		}
-		obs.Variations = append(obs.Variations, mapped)
+		state.Variations = append(state.Variations, mapped)
 	}
-	return obs, nil
+	return state, nil
+}
+
+// payloadHash is the one definition of a listing payload's identity. Both the
+// feed (hashing what it fetched) and the reprocess mapper (checking what was
+// stored) call it, so the check can never be comparing two different digests
+// of the same bytes.
+func payloadHash(raw []byte) string {
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:])
 }
 
 func stringFact(value, field string, e provenance.Evidence) (fact.Fact[string], error) {

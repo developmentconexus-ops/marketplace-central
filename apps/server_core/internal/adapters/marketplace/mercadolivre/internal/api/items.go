@@ -40,7 +40,7 @@ type Item struct {
 	Price             *json.Number    `json:"price"`
 	CurrencyID        string          `json:"currency_id"`
 	AvailableQuantity *int            `json:"available_quantity"`
-	SellerSKU         string          `json:"seller_sku"`
+	SellerCustomField string          `json:"seller_custom_field"`
 	Attributes        []Attribute     `json:"attributes"`
 	Variations        []Variation     `json:"variations"`
 	Raw               json.RawMessage `json:"-"`
@@ -55,16 +55,62 @@ type Variation struct {
 	ID                json.Number  `json:"id"`
 	Price             *json.Number `json:"price"`
 	AvailableQuantity *int         `json:"available_quantity"`
-	SellerSKU         string       `json:"seller_sku"`
+	SellerCustomField string       `json:"seller_custom_field"`
 	Attributes        []Attribute  `json:"attributes"`
 }
 
 // GTIN resolves the EAN attribute: id GTIN with EAN as fallback, value_name —
 // the exact rule the legacy mapper measured (multiget_mapper.go:197).
 func GTIN(attrs []Attribute) string {
-	for _, want := range []string{"GTIN", "EAN"} {
+	return attributeValue(attrs, "GTIN", "EAN")
+}
+
+// ItemSellerSKU resolves an item's SKU the way Mercado Livre documents it: the
+// SELLER_SKU attribute first, then the legacy seller_custom_field.
+//
+// There is no top-level seller_sku field on a Mercado Livre item. The full
+// documented item response has seller_custom_field and attributes and nothing
+// else that carries a SKU (developers.mercadolivre.com.br/pt_br/variacoes), the
+// PUT that writes a SKU writes it into attributes, and none of the 34 real
+// payloads from the first live drive contained the key. Reading a field the
+// channel never sends is not a missing feature — it produced 34 rows claiming
+// "ml omitted seller_sku" while the payload stored beside each one carried the
+// SKU twice.
+//
+// The attribute wins over seller_custom_field because ML says the SKU "deve ser
+// carregado no atributo SELLER_SKU, e não em campos personalizados do vendedor"
+// (developers.mercadolivre.com.br/pt_br/publicacao-de-produtos): the custom
+// field is the superseded location, so preferring it would let a stale value
+// shadow the one the seller maintains.
+func ItemSellerSKU(item Item) string {
+	if sku := attributeValue(item.Attributes, "SELLER_SKU"); sku != "" {
+		return sku
+	}
+	return strings.TrimSpace(item.SellerCustomField)
+}
+
+// VariationSellerSKU resolves a variation's SKU by ML's published priority:
+// the variation's SELLER_SKU attribute, its seller_custom_field, then the
+// item's two sources in the same order (mercado-envios-2, "hierarquia de
+// prioridade para SKUs"). The fallback to the item is what makes a
+// single-variation listing whose SKU is recorded once, at item level, resolve
+// for the variation too.
+func VariationSellerSKU(item Item, v Variation) string {
+	if sku := attributeValue(v.Attributes, "SELLER_SKU"); sku != "" {
+		return sku
+	}
+	if sku := strings.TrimSpace(v.SellerCustomField); sku != "" {
+		return sku
+	}
+	return ItemSellerSKU(item)
+}
+
+// attributeValue returns the first nonblank value_name among the wanted
+// attribute ids, in the order given — the ids are a priority list, not a set.
+func attributeValue(attrs []Attribute, want ...string) string {
+	for _, id := range want {
 		for _, a := range attrs {
-			if a.ID == want && strings.TrimSpace(a.ValueName) != "" {
+			if a.ID == id && strings.TrimSpace(a.ValueName) != "" {
 				return strings.TrimSpace(a.ValueName)
 			}
 		}
