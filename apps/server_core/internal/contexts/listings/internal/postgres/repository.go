@@ -6,6 +6,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -82,11 +83,14 @@ func (r *Repository) Current(ctx context.Context, key contracts.SourceListingKey
 			`SELECT version, last_payload_hash FROM listings.listings
 			 WHERE tenant_id=$1 AND channel=$2 AND account_external_id=$3 AND listing_id=$4`,
 			key.Tenant().String(), key.Account().Channel().String(), key.Account().External(), key.ListingID())
-		switch err := row.Scan(&current.Version, &current.PayloadHash); err {
-		case nil:
+		// errors.Is, not ==: a wrapped ErrNoRows read as a real failure would
+		// turn a first-ingest into an error, and read as anything else would
+		// turn a real failure into "no such listing" — a fabricated absence.
+		switch err := row.Scan(&current.Version, &current.PayloadHash); {
+		case err == nil:
 			found = true
 			return nil
-		case pgx.ErrNoRows:
+		case errors.Is(err, pgx.ErrNoRows):
 			return nil
 		default:
 			return fmt.Errorf("listings postgres: read current: %w", err)
