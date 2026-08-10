@@ -417,21 +417,16 @@ function Test-GovernanceDrift {
     }
   }
 
-  foreach ($file in @($files | Where-Object { (ConvertTo-NormalizedPath $RepositoryRoot $_.FullName) -match '^apps/server_core/(?!.*_test\.go$).+\.go$' })) {
-    $path = ConvertTo-NormalizedPath $RepositoryRoot $file.FullName
-    $content = Get-Content -Raw -LiteralPath $file.FullName
-    $panicMatches = @([regex]::Matches($content, 'panic\s*\((?s:.*?)\)'))
-    if ($panicMatches.Count -eq 0) { continue }
-    $exceptions = @($documents.invariants.temporary_exceptions | Where-Object { $_.rule_id -eq 'production-panic' -and $path -in @($_.paths) })
-    $covered = 0
-    foreach ($exception in $exceptions) {
-      foreach ($occurrence in @($exception.occurrences | Where-Object path -eq $path)) {
-        $actualCount = @($panicMatches | Where-Object { $_.Value -eq $occurrence.fingerprint }).Count
-        if ($actualCount -eq [int]$occurrence.count) { $covered += $actualCount; Add-BaselineException $baselines $baselineSeen ([string]$exception.id) $path }
-      }
-    }
-    if ($covered -ne $panicMatches.Count) { $issues.Add((New-PolicyIssue 'GOV_PRODUCTION_PANIC' 'panic' $path)) }
-  }
+  # The `production-panic` check used to sit here. It is now forbidigo in
+  # apps/server_core/.golangci.yml, counted by the lint-go ratchet. It left
+  # because of what it cost, not because the rule was wrong: every sanctioned
+  # panic needed a hand-written exception carrying a path, a symbol, a verbatim
+  # source fingerprint compared by exact string equality, an occurrence count,
+  # a paragraph of prose and a removal_owner -- and one of them had to be
+  # declared TWICE because the same git blob materializes with either line
+  # ending under core.autocrlf, so the fingerprint matched in one checkout and
+  # not the other. Eight call sites, seven entries, ~90 lines of registry.
+  # The ratchet expresses the same thing as `forbidigo: 8`.
 
   $runtime = $documents.'runtime-config'
   $reads = Get-EnvironmentReads $RepositoryRoot $files

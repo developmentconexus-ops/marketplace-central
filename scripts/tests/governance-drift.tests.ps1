@@ -127,7 +127,6 @@ try {
   $positive = New-PositiveFixture; $fixtures.Add($positive)
   $positiveResult = Test-GovernanceDrift -RepositoryRoot $positive
   Assert-True $positiveResult.Passed "positive fixture failed: $(@($positiveResult.Violations.ErrorCode) -join ',')"
-  Assert-True ('production-panic-product-link-transition' -in @($positiveResult.BaselineExceptions.Id)) 'positive fixture did not report panic baseline exception'
   Assert-True ('migration-prefix-0021-duplicate' -in @($positiveResult.BaselineExceptions.Id)) 'positive fixture did not report migration baseline exception'
 
   $missingModule = New-PositiveFixture; $fixtures.Add($missingModule)
@@ -194,11 +193,10 @@ try {
   $runtime | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $runtimePath -Encoding utf8NoBOM
   Assert-FailureCode $secretClassification 'RCFG_SECRET_CLASS_MISMATCH'
 
-  $panicFixture = New-PositiveFixture; $fixtures.Add($panicFixture)
-  Write-FixtureFile $panicFixture 'apps/server_core/internal/modules/catalog/domain/panic.go' 'package domain; func bad() { panic("new panic") }'
-  Assert-FailureCode $panicFixture 'GOV_PRODUCTION_PANIC'
-  Write-Output 'guard_ran=gov-production-panic'
-
+  # The GOV_PRODUCTION_PANIC fixture stood here. The rule is now forbidigo in
+  # apps/server_core/.golangci.yml under the lint-go ratchet, and its own
+  # negative control lives there: a ninth panic reads `increase: forbidigo=9
+  # baseline=8 +1`.
   $migrationFixture = New-PositiveFixture; $fixtures.Add($migrationFixture)
   Write-FixtureFile $migrationFixture 'apps/server_core/migrations/0099_first.sql' '-- fixture'
   Write-FixtureFile $migrationFixture 'apps/server_core/migrations/0099_second.sql' '-- fixture'
@@ -258,17 +256,6 @@ try {
   # And the exclusion must not widen: a src file alongside the test still fires.
   Write-FixtureFile $sdkTestOnlyFixture 'packages/sdk-runtime/src/review-shape.ts' 'export const reviewShape = true'
   Test-ReviewFailureCode $reviewFailures $sdkTestOnlyFixture 'GOV_API_SDK_SPLIT' 'SDK src change alongside test' $sdkTestOnlyBaseSha
-
-  $multilinePanicFixture = New-PositiveFixture; $fixtures.Add($multilinePanicFixture)
-  Write-FixtureFile $multilinePanicFixture 'apps/server_core/internal/modules/catalog/domain/review_panic.go' @'
-package domain
-func bad() {
-  panic(
-    "review"
-  )
-}
-'@
-  Test-ReviewFailureCode $reviewFailures $multilinePanicFixture 'GOV_PRODUCTION_PANIC' 'multiline production panic'
 
   # A context under internal/contexts must be registrable, and its id may collide
   # with a module's — internal/modules/<id> and internal/contexts/<id> coexist for

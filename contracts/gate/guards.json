@@ -64,11 +64,6 @@
       "token": "guard_ran=gov-postgres-driver"
     },
     {
-      "id": "gov-production-panic",
-      "file": "scripts/tests/governance-drift.tests.ps1",
-      "token": "guard_ran=gov-production-panic"
-    },
-    {
       "id": "gov-api-sdk-split",
       "file": "scripts/tests/governance-drift.tests.ps1",
       "token": "guard_ran=gov-api-sdk-split"
