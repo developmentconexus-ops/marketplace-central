@@ -62,12 +62,6 @@
           "selector": "knowledge routes",
           "reason": "module and operating knowledge index",
           "estimated_tokens": 180
-        },
-        {
-          "path": ".mnfs/MIS-001-mercado-livre-operating-cockpit/mission.md",
-          "selector": "Current State, Milestone Strategy, Handoff",
-          "reason": "portfolio outcome, priority, and durable next action",
-          "estimated_tokens": 480
         }
       ]
     },
