@@ -906,85 +906,53 @@ function Invoke-GateSelftest {
 function Invoke-GateGuards {
   # Issue #3 mechanism (a): the inventory of guards, each held to the fixture
   # that proves it can fail -- and the fixture must EXECUTE, not merely exist.
+  #
+  # The verdict logic itself lives in Test-GateGuardInventory
+  # (scripts/harness/Gate.psm1), so scripts/tests/guards-lane.tests.ps1 can
+  # exercise it against synthetic inventories and injected runners. This
+  # function stays the thin wrapper: parse the inventory, build the REAL
+  # runners on Invoke-GateTool, hand both to the extracted function, print its
+  # counts and failures exactly as before.
   $inventoryPath = Join-Path $repositoryRoot 'contracts/gate/guards.json'
   if (-not (Test-Path -LiteralPath $inventoryPath -PathType Leaf)) {
     return New-GateVerdict -Lane 'guards' -Passed $false -Counts 'inventory=missing' `
       -Reason 'contracts/gate/guards.json does not exist; an unlisted guard population is unmeasurable'
   }
   $inventory = Get-Content -LiteralPath $inventoryPath -Raw | ConvertFrom-Json
-  $goEntries = @($inventory.go_tests); $pwshEntries = @($inventory.pwsh_files); $presenceEntries = @($inventory.presence_only)
-  $total = $goEntries.Count + $pwshEntries.Count + $presenceEntries.Count
-  if ($total -eq 0) {
-    return New-GateVerdict -Lane 'guards' -Passed $false -Counts 'entries=0' `
-      -Reason 'an empty inventory is not a green inventory'
+
+  $goRunner = {
+    param([string]$Package, [string]$Pattern)
+    $toolName = 'guards-' + (($Package -replace '[^A-Za-z0-9]+', '-').Trim('-'))
+    Invoke-GateTool -Name $toolName -FilePath 'go' `
+      -ArgumentList @('test', $Package, '-run', $Pattern, '-count=1', '-v') -WorkingDirectory $serverCore
   }
-
-  $failures = [Collections.Generic.List[string]]::new()
-  $goExecuted = 0
-  foreach ($group in @($goEntries | Group-Object -Property package)) {
-    $names = @($group.Group | ForEach-Object { [string]$_.test })
-    $pattern = '^(' + (@($names | ForEach-Object { [regex]::Escape($_) }) -join '|') + ')$'
-    $toolName = 'guards-' + (($group.Name -replace '[^A-Za-z0-9]+', '-').Trim('-'))
-    $result = Invoke-GateTool -Name $toolName -FilePath 'go' `
-      -ArgumentList @('test', $group.Name, '-run', $pattern, '-count=1', '-v') -WorkingDirectory $serverCore
-    $measurement = Measure-GateGuards -Text $result.Text -Expected $names
-    if ($result.ExitCode -ne 0) { [void]$failures.Add("package $($group.Name) exited $($result.ExitCode)") }
-    if ($measurement.Ran -eq 0) { [void]$failures.Add("package $($group.Name): zero tests ran; the inventory names tests that do not execute") }
-    foreach ($name in $measurement.Missing) { [void]$failures.Add("no '--- PASS: $name' in $($group.Name)") }
-    $goExecuted += @($measurement.Passed).Count
-  }
-
-  # pwsh_files entries are EXECUTED here, not merely inspected for a string.
-  # Grouped by file first: several ids can share one fixture file (governance-drift
-  # alone carries 11), and running that file once per id would run it 11 times for
-  # no additional evidence. Each distinct file runs once; every entry pointing at
-  # it is checked against that one output.
-  $pwshExecuted = 0
-  foreach ($group in @($pwshEntries | Group-Object -Property file)) {
-    $file = Join-Path $repositoryRoot ([string]$group.Name)
-    if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
-      [void]$failures.Add("$($group.Name) is missing")
-      continue
-    }
-    $leaf = [IO.Path]::GetFileName($file)
-    $inSelftestGlob = ($leaf -like '*.tests.ps1') -and ($leaf -notlike '*.integration.tests.ps1') -and
-      ([IO.Path]::GetFullPath([IO.Path]::GetDirectoryName($file)) -eq [IO.Path]::GetFullPath((Join-Path $repositoryRoot 'scripts/tests')))
-    if (-not $inSelftestGlob) {
-      [void]$failures.Add("$($group.Name) sits outside the selftest lane's discovery glob; its execution is delegated to nothing")
-    }
-
-    # Same invocation Invoke-GateSelftest uses (pwsh -NoProfile -ExecutionPolicy
-    # Bypass -File <path>), through the same Invoke-GateTool wrapper, so the
-    # evidence this lane collects is the same shape as the selftest lane's.
+  # Same invocation Invoke-GateSelftest uses (pwsh -NoProfile -ExecutionPolicy
+  # Bypass -File <path>), through the same Invoke-GateTool wrapper, so the
+  # evidence this lane collects is the same shape as the selftest lane's.
+  $pwshRunner = {
+    param([string]$FilePath)
+    $leaf = [IO.Path]::GetFileName($FilePath)
     $toolName = 'guards-pwsh-' + (($leaf -replace '\.tests\.ps1$', '') -replace '[^A-Za-z0-9]+', '-').Trim('-')
-    $result = Invoke-GateTool -Name $toolName -FilePath 'pwsh' `
-      -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $file)
-    $pwshExecuted++
-    if ($result.ExitCode -ne 0) { [void]$failures.Add("$($group.Name) exited $($result.ExitCode)") }
-    foreach ($entry in $group.Group) {
-      $token = [string]$entry.token
-      if (-not ([regex]::IsMatch($result.Text, "(?m)^\s*$([regex]::Escape($token))\s*$"))) {
-        [void]$failures.Add("no '$token' in $($group.Name)")
-      }
-    }
+    Invoke-GateTool -Name $toolName -FilePath 'pwsh' `
+      -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $FilePath)
   }
 
-  foreach ($entry in $presenceEntries) {
-    $file = Join-Path $repositoryRoot ([string]$entry.file)
-    if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { [void]$failures.Add("$($entry.file) is missing"); continue }
-    if (-not (Select-String -LiteralPath $file -Pattern ([regex]::Escape([string]$entry.anchor)) -Quiet)) {
-      [void]$failures.Add("$($entry.file): anchor '$($entry.anchor)' not found")
-    }
+  $result = Test-GateGuardInventory -Inventory $inventory -RepositoryRoot $repositoryRoot `
+    -GoRunner $goRunner -PwshRunner $pwshRunner
+
+  # The empty-inventory short circuit prints nothing and returns immediately,
+  # matching the pre-extraction lane exactly: no counts line was ever printed
+  # for that case, only the terse 'entries=0' verdict.
+  if ($result.Entries -eq 0) {
+    return New-GateVerdict -Lane 'guards' -Passed $false -Counts $result.Counts -Reason $result.Reason
   }
 
-  $counts = "entries=$total go_executed=$goExecuted pwsh_entries=$($pwshEntries.Count) pwsh_executed=$pwshExecuted presence=$($presenceEntries.Count) failures=$($failures.Count)"
-  Write-Host $counts
-  if ($failures.Count -gt 0) {
-    foreach ($line in $failures) { Write-Host "  guard: $line" }
-    return New-GateVerdict -Lane 'guards' -Passed $false -Counts $counts `
-      -Reason 'a registered guard has no executing fixture. A guard that cannot demonstrate a catch is indistinguishable from an absent one.'
+  Write-Host $result.Counts
+  if ($result.Failures.Count -gt 0) {
+    foreach ($line in $result.Failures) { Write-Host "  guard: $line" }
+    return New-GateVerdict -Lane 'guards' -Passed $false -Counts $result.Counts -Reason $result.Reason
   }
-  return New-GateVerdict -Lane 'guards' -Passed $true -Counts $counts
+  return New-GateVerdict -Lane 'guards' -Passed $true -Counts $result.Counts
 }
 
 function Invoke-GateCensus {
