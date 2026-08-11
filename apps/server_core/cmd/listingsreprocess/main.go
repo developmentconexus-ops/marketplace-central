@@ -111,7 +111,10 @@ func run(ctx context.Context, args []string) error {
 		return fmt.Errorf("listingsreprocess: tenant: %w", err)
 	}
 
-	dbCfg, err := pgdb.LoadConfig()
+	// LoadPoolConfig, not LoadConfig: this command resolves no credential, so
+	// it must not require MPC_ENCRYPTION_KEY -- asking for a secret a process
+	// never uses is exposure with nothing bought.
+	dbCfg, err := pgdb.LoadPoolConfig()
 	if err != nil {
 		return fmt.Errorf("listingsreprocess: database config: %w", err)
 	}

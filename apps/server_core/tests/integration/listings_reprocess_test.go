@@ -183,8 +183,13 @@ func TestListingsReprocessHealsStaleFactsWithoutCallingTheChannel(t *testing.T) 
 		skuState, skuValue string
 		version            int
 	)
+	// coalesce, because an unhealed row leaves seller_sku_value NULL and a raw
+	// scan would fail with "cannot scan NULL into *string" -- a message about
+	// this test's plumbing rather than about the defect it exists to catch.
+	// Measured: with the SELLER_SKU reader removed, this test must fail saying
+	// the reprocess did not heal the row, and that is what it now says.
 	if err := queryTenantRow(pool, tid,
-		`SELECT seller_sku_state, seller_sku_value, version FROM listings.listings WHERE tenant_id=$1 AND listing_id=$2`,
+		`SELECT seller_sku_state, coalesce(seller_sku_value, ''), version FROM listings.listings WHERE tenant_id=$1 AND listing_id=$2`,
 		[]any{tid.String(), listingID}, &skuState, &skuValue, &version); err != nil {
 		t.Fatalf("read healed listing: %v", err)
 	}
