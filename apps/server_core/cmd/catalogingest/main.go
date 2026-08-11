@@ -9,14 +9,24 @@
 // already uses. That keeps this file, and `go build ./...` on a host with no C
 // toolchain, green; only a cgo build with the Oracle Instant Client actually
 // talks to Oracle.
+//
+// Which tenant to ingest for, which Sankhya instance to read, and how big a
+// page to request are parameters of the run, so they arrive as flags:
+//
+//	go run ./cmd/catalogingest -tenant tenant_default -instance <name> [-page-size 200]
+//
+// The environment carries only deployment configuration — the Postgres URL
+// and encryption key via pgdb.LoadConfig, the Oracle connection via
+// oracleconfig.LoadConfigFromEnv — each read once by its typed loader.
 package main
 
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
+	"io"
 	"os"
-	"strconv"
 	"strings"
 
 	"marketplace-central/apps/server_core/internal/composition"
@@ -25,13 +35,21 @@ import (
 	"marketplace-central/apps/server_core/internal/platform/pgdb"
 )
 
-const defaultPageSize = 200
+const (
+	commandName     = "catalogingest"
+	defaultPageSize = 200
+)
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if err := run(ctx); err != nil {
+	if err := run(ctx, os.Args[1:]); err != nil {
+		// -h is a request, not a failure: the usage text is already on stderr
+		// and this process has nothing to report.
+		if errors.Is(err, flag.ErrHelp) {
+			return
+		}
 		// Never a fabricated success: any failure here is printed verbatim to
 		// stderr and the process exits non-zero. A "0 processed, exit 0" on a
 		// real error would be the invisible failure this command exists to end.
@@ -40,25 +58,72 @@ func main() {
 	}
 }
 
-func run(ctx context.Context) error {
-	dbCfg, err := pgdb.LoadConfig()
+// options are the parameters of one run — what this invocation is for, as
+// opposed to how the deployment is configured.
+type options struct {
+	tenant   string
+	instance string
+	pageSize int
+}
+
+// parseOptions reads the run's parameters from args and nothing else. There
+// is deliberately no environment fallback for any of them: a required flag
+// has no default that a forgotten export could be mistaken for, so the
+// fail-closed behaviour a live write path needs is a property of the channel
+// rather than a guard that has to be remembered (global constraint 9 —
+// unknown never becomes a plausible default). This is what the retired
+// requireTenantConfigured guard was compensating for: pgdb.LoadConfig
+// substitutes "tenant_default" for an absent variable, so a tenant arriving
+// through the environment could not be told apart from a forgotten export.
+//
+// usageOut receives the usage text; the FlagSet's own printer is silenced so
+// that every failure leaves this process through main's single error path
+// instead of being written twice.
+func parseOptions(args []string, usageOut io.Writer) (options, error) {
+	fs := flag.NewFlagSet(commandName, flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	tenantFlag := fs.String("tenant", "", "tenant id this run ingests for (required)")
+	instanceFlag := fs.String("instance", "", "Sankhya instance the catalogue is read from (required)")
+	pageSizeFlag := fs.Int("page-size", defaultPageSize, "catalogue rows requested per page")
+
+	if err := fs.Parse(args); err != nil {
+		fs.SetOutput(usageOut)
+		fs.Usage()
+		return options{}, err
+	}
+	if fs.NArg() > 0 {
+		return options{}, fmt.Errorf("unexpected argument %q (this command takes flags only)", fs.Arg(0))
+	}
+	tenantID := strings.TrimSpace(*tenantFlag)
+	if tenantID == "" {
+		return options{}, errors.New("-tenant is required: the tenant to ingest for is a parameter of this run, not a deployment setting")
+	}
+	instance := strings.TrimSpace(*instanceFlag)
+	if instance == "" {
+		return options{}, errors.New("-instance is required: the Sankhya instance this run reads is a parameter of this run, not a deployment setting")
+	}
+	if *pageSizeFlag <= 0 {
+		return options{}, fmt.Errorf("-page-size must be a positive integer, got %d", *pageSizeFlag)
+	}
+	return options{tenant: tenantID, instance: instance, pageSize: *pageSizeFlag}, nil
+}
+
+func run(ctx context.Context, args []string) error {
+	opts, err := parseOptions(args, os.Stderr)
 	if err != nil {
-		return fmt.Errorf("catalogingest: database config: %w", err)
+		if errors.Is(err, flag.ErrHelp) {
+			return err
+		}
+		return fmt.Errorf("catalogingest: %w", err)
 	}
-	if err := requireTenantConfigured(os.Getenv); err != nil {
-		return err
-	}
-	tenantID, err := tenant.Parse(dbCfg.DefaultTenantID)
+	tenantID, err := tenant.Parse(opts.tenant)
 	if err != nil {
 		return fmt.Errorf("catalogingest: tenant: %w", err)
 	}
-	instance := strings.TrimSpace(os.Getenv("MPC_SANKHYA_INSTANCE"))
-	if instance == "" {
-		return errors.New("catalogingest: MPC_SANKHYA_INSTANCE is required")
-	}
-	pageSize, err := loadPageSize(os.Getenv)
+
+	dbCfg, err := pgdb.LoadConfig()
 	if err != nil {
-		return fmt.Errorf("catalogingest: %w", err)
+		return fmt.Errorf("catalogingest: database config: %w", err)
 	}
 
 	pool, err := pgdb.NewPool(ctx, dbCfg)
@@ -80,12 +145,12 @@ func run(ctx context.Context) error {
 	}
 	defer oracleDB.Close()
 
-	wiring, err := composition.WireCatalog(pool, oracleDB, instance)
+	wiring, err := composition.WireCatalog(pool, oracleDB, opts.instance)
 	if err != nil {
 		return fmt.Errorf("catalogingest: wire catalog: %w", err)
 	}
 
-	report, err := composition.RunCatalogIngest(ctx, wiring.Module, wiring.Feed.CatalogFeed, tenantID, pageSize)
+	report, err := composition.RunCatalogIngest(ctx, wiring.Module, wiring.Feed.CatalogFeed, tenantID, opts.pageSize)
 	if err != nil {
 		return fmt.Errorf("catalogingest: run ingest: %w", err)
 	}
@@ -93,47 +158,4 @@ func run(ctx context.Context) error {
 	fmt.Printf("catalog ingest report: pages=%d observed=%d created=%d changed=%d idempotent=%d conflicts=%d\n",
 		report.Pages, report.Observed, report.Created, report.Changed, report.Idempotent, len(report.Conflicts))
 	return nil
-}
-
-// requireTenantConfigured fails closed when MC_DEFAULT_TENANT_ID is unset or
-// empty. pgdb.LoadConfig (internal/platform/pgdb/config.go) silently
-// substitutes "tenant_default" for every caller when the variable is absent
-// — correct for its many read-oriented callers, but wrong here: this command
-// performs live writes across the entire catalogue (D-39,
-// .mnfs/HARNESS-DEBTS.md). An operator who forgets to export the variable
-// must see a failure naming it, not have thousands of rows land under an
-// invented tenant with a silent exit code 0 (global constraint 9: unknown
-// never becomes a plausible default).
-//
-// getenv is read directly here, exactly mirroring how pgdb.LoadConfig reads
-// the same variable (os.Getenv("MC_DEFAULT_TENANT_ID"), no trimming), so
-// this guard can never disagree with what LoadConfig saw. It keys on the
-// variable being absent/empty, never on the resolved value: a deployment
-// that legitimately names its tenant "tenant_default" still passes, and a
-// typo'd variable name still fails.
-//
-// pgdb.LoadConfig's defaulting itself is not changed — it is shared
-// infrastructure with other callers (cmd/server) that may have distinct
-// reasons to tolerate the default today.
-func requireTenantConfigured(getenv func(string) string) error {
-	if getenv("MC_DEFAULT_TENANT_ID") == "" {
-		return errors.New("catalogingest: MC_DEFAULT_TENANT_ID is required (refusing to silently default to \"tenant_default\" for a live write path)")
-	}
-	return nil
-}
-
-// loadPageSize reads the operator-tunable page size. Unlike a domain fact, a
-// paging batch size has no "unknown" state to preserve — it is an operational
-// default, not a fabricated business value — so an unset variable falls back
-// to defaultPageSize rather than failing closed.
-func loadPageSize(getenv func(string) string) (int, error) {
-	raw := strings.TrimSpace(getenv("MPC_CATALOG_INGEST_PAGE_SIZE"))
-	if raw == "" {
-		return defaultPageSize, nil
-	}
-	parsed, err := strconv.Atoi(raw)
-	if err != nil || parsed <= 0 {
-		return 0, fmt.Errorf("MPC_CATALOG_INGEST_PAGE_SIZE must be a positive integer, got %q", raw)
-	}
-	return parsed, nil
 }

@@ -27,6 +27,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"marketplace-central/apps/server_core/internal/modules/integrations/adapters/crypto"
+	"marketplace-central/apps/server_core/internal/platform/pgdb"
 )
 
 const (
@@ -73,22 +74,26 @@ func main() {
 
 func run() error {
 	ctx := context.Background()
-	dbURL := os.Getenv("MC_DATABASE_URL")
-	key := os.Getenv("MPC_ENCRYPTION_KEY")
-	if dbURL == "" || key == "" {
-		return fmt.Errorf("MC_DATABASE_URL / MPC_ENCRYPTION_KEY missing")
+	// The database URL and the encryption key are deployment configuration,
+	// not parameters of this diagnostic run: they come from the one typed
+	// loader that owns them, which already fails closed on each. Reading them
+	// raw here duplicated that validation and put this file outside the
+	// runtime-config registry for no gain.
+	dbCfg, err := pgdb.LoadConfig()
+	if err != nil {
+		return err
 	}
 	if err := os.MkdirAll(evidenceDir, 0o755); err != nil {
 		return err
 	}
 
-	pool, err := pgxpool.New(ctx, dbURL)
+	pool, err := pgxpool.New(ctx, dbCfg.DatabaseURL)
 	if err != nil {
 		return err
 	}
 	defer pool.Close()
 
-	token, installationID, tenantID, err := resolveToken(ctx, pool, key)
+	token, installationID, tenantID, err := resolveToken(ctx, pool, dbCfg.EncryptionKey)
 	if err != nil {
 		return err
 	}
