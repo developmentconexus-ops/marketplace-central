@@ -14,12 +14,6 @@ type Service struct {
 
 func NewService(store Store) *Service { return &Service{store: store} }
 
-// Current exposes what the store knows about a listing, for callers that need
-// to read without folding (the module's public CurrentState wraps this).
-func (s *Service) Current(ctx context.Context, key contracts.SourceListingKey) (CurrentListing, bool, error) {
-	return s.store.Current(ctx, key)
-}
-
 // Ingest decides created/changed/idempotent by comparing the facts this
 // observation would store against the facts already stored — not by the
 // provider's payload hash. The row we keep is a function of TWO inputs, the

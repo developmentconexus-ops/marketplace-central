@@ -293,22 +293,66 @@ func TestListingsCurrentRoundTripsState(t *testing.T) {
 		t.Fatalf("ingest: %v", err)
 	}
 
-	// module.CurrentState, not internal/postgres.Repository directly: this
-	// package sits outside internal/contexts/listings/**, so Go's own
-	// internal-import rule already forbids reaching past the module's public
-	// façade -- the same boundary contexts/listings/module.go states in its
-	// own package comment.
-	gotState, version, found, err := module.CurrentState(ctx, key)
+	// The round-trip is proven twice, and neither proof needs a public method
+	// that exists only for this test to call. A façade method with no
+	// production caller is the orphan surface this slice's own plan forbids,
+	// and it buys nothing here: both assertions below are strictly stronger.
+	//
+	// First through the door production uses. Folding the identical
+	// observation again must report idempotent, and that verdict IS the
+	// round-trip: Ingest reaches it by reconstructing the stored row through
+	// Current and comparing it to this observation with ListingState.Equal. A
+	// reader that dropped a fact, mangled a state, or lost the variation would
+	// report changed here and bump the version.
+	again, err := module.IngestListing(ctx, observation)
 	if err != nil {
-		t.Fatalf("CurrentState: %v", err)
+		t.Fatalf("second ingest: %v", err)
 	}
-	if !found {
-		t.Fatal("CurrentState reported not found for a listing just saved")
+	if again.Disposition != contracts.DispositionIdempotent {
+		t.Fatalf("second ingest of an identical observation = %q at version %d, want %q at version 1 -- the stored row did not read back equal to what was written",
+			again.Disposition, again.Version, contracts.DispositionIdempotent)
 	}
-	if version != 1 {
-		t.Fatalf("version = %d, want 1", version)
+	if again.Version != 1 {
+		t.Fatalf("version = %d after an idempotent fold, want 1", again.Version)
 	}
-	if !gotState.Equal(state) {
-		t.Fatalf("CurrentState did not round-trip the saved state: got %+v, want %+v", gotState, state)
+
+	// Second on the columns themselves, in SQL none of this context's Go code
+	// touches. The fold above compares a reconstruction against the
+	// observation, so a defect that writes a fact to the wrong column and
+	// reads it back from that same wrong column is invisible to it. This is
+	// not: it names the column it expected.
+	var (
+		skuState, skuValue     string
+		gtinState, gtinReason  string
+		priceAmount, priceCurr string
+		variationSKU           string
+	)
+	if err := queryTenantRow(pool, tid,
+		`SELECT seller_sku_state, coalesce(seller_sku_value,''), gtin_state, coalesce(gtin_reason,''),
+		        coalesce(price_amount::text,''), coalesce(price_currency,'')
+		 FROM listings.listings WHERE tenant_id=$1 AND listing_id=$2`,
+		[]any{tid.String(), "MLB-CUR-1"},
+		&skuState, &skuValue, &gtinState, &gtinReason, &priceAmount, &priceCurr); err != nil {
+		t.Fatalf("read listing columns: %v", err)
+	}
+	if skuState != "known" || skuValue != "SKU-CUR-1" {
+		t.Fatalf("seller_sku columns = state=%q value=%q, want known/SKU-CUR-1", skuState, skuValue)
+	}
+	// An unknown fact keeps its reason and stores no value: the knowledge
+	// state is data, not an absence to be read as zero.
+	if gtinState != "unknown" || gtinReason != "ml omitted gtin attribute" {
+		t.Fatalf("gtin columns = state=%q reason=%q, want unknown with the reason preserved", gtinState, gtinReason)
+	}
+	if priceAmount != "149.50" || priceCurr != "BRL" {
+		t.Fatalf("price columns = amount=%q currency=%q, want 149.50/BRL", priceAmount, priceCurr)
+	}
+	if err := queryTenantRow(pool, tid,
+		`SELECT coalesce(seller_sku_value,'') FROM listings.listing_variations
+		 WHERE tenant_id=$1 AND listing_id=$2 AND variation_id=$3`,
+		[]any{tid.String(), "MLB-CUR-1", "V1"}, &variationSKU); err != nil {
+		t.Fatalf("read variation columns: %v", err)
+	}
+	if variationSKU != "SKU-CUR-1-V1" {
+		t.Fatalf("variation seller_sku_value = %q, want SKU-CUR-1-V1", variationSKU)
 	}
 }
