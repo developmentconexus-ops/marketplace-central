@@ -13,6 +13,18 @@ There is no other channel. Concretely:
   `build-go`, `test-go-unit`, `test-frontend`, `verify-full`, aggregated by
   `required`. CodeRabbit reviews the PR. Red is a stop, not a note.
 - Work is tracked in GitHub issues and PRs. Nothing else is a queue.
+- An issue declares its scope in both directions — what changes and what does not —
+  and its acceptance as a measurement with a positive control
+  (`.github/ISSUE_TEMPLATE/`). A PR answers that scope point by point and names
+  every file it touched that the issue did not foresee
+  (`.github/pull_request_template.md`). Scope drift has two directions and only one
+  of them turns anything red: a PR that does less fails its own acceptance, while a
+  PR that does more passes every lane it has. That is why the excess is written
+  down rather than measured.
+- Before merge, the diff is reviewed against the issue's scope by someone who did
+  not implement it, returning `COBRE` / `FALTA` / `EXCEDE` with `file:line`. The
+  author already knows the intent and reads the diff for it; the point of the cold
+  pass is to read the diff for what it says.
 
 ## Verification
 
