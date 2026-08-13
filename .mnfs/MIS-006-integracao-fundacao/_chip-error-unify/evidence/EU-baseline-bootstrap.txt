@@ -1,4 +1,0 @@
-# CHIP-ERROR-UNIFY bootstrap @ base 0007de8e5649db694690cc25df57428da62afdae
-npm ci (worktree root)        EXIT=0   [ran]
-go mod download all (GOMODCACHE abs) EXIT=0 [ran]
-tsc pre-existing errors       COUNT=12 [ran] -> EU-baseline-tsc.txt
