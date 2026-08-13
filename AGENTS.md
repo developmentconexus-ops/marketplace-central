@@ -1,93 +1,130 @@
 # Marketplace Central — Agent Bootstrap
 
+## Current program
+
+Marketplace Central is in **Architecture Rebaseline / Technical System Design**. Product implementation is intentionally blocked until the D0–D9 design program is completed and accepted.
+
+Start every session in this order:
+
+1. `AGENTS.md`
+2. `docs/engineering/rebaseline/README.md` — current stage, status, exact next action
+3. `docs/engineering/standards/root-cause-global-maximum-method.md`
+4. `ARCHITECTURE.md` — only stable product-level constraints
+5. `docs/architecture/decisions/README.md` — ADR registry and current/reopened status
+6. the document for the active D-stage, if separate from the rebaseline README
+7. code/contracts/runtime evidence needed for that stage
+
+Do **not** reconstruct the roadmap from Git history, deleted plans, old handoffs or memory. Git history is evidence only when the current rebaseline explicitly asks for historical evidence.
+
+## Rebaseline gate
+
+The governing sequence is:
+
+`D0 current state → D1 contexts → D2 identity/data → D3 communication/events → D4 external integrations → D5 API → D6 frontend → D7 runtime/transactions/outbox → D8 golden flows → D9 adversarial global-maximum review → implementation DAG → implementation plan → implementation`
+
+Until D9 is accepted:
+
+- do not start product-feature implementation merely because an old plan says it is next;
+- do not create a new context/module, schema cutover, API redesign, frontend topology migration or legacy deletion unless the active D-stage explicitly authorizes that change;
+- documentation cleanup, measurement, proof tooling and non-behavioral corrections are allowed only when they directly support the active D-stage;
+- an implementation plan for the product rebaseline is premature before D9.
+
+The current status and exact next action live in one place only: `docs/engineering/rebaseline/README.md`.
+
+## Binding engineering method
+
+All non-trivial planning, implementation, refactoring and review follows `docs/engineering/standards/root-cause-global-maximum-method.md`.
+
+Binding principle:
+
+> Always simplify the code, never simplify correctness. Find the root cause, determine whether the proposed solution is only a local maximum, and prefer the global structure that makes the defect class unrepresentable or mechanically impossible at the strongest reasonable boundary.
+
+Before choosing a solution, name:
+
+- the observed symptom/evidence;
+- the root cause;
+- the target property/invariant;
+- the authority and ownership boundary;
+- credible local-maximum and global-maximum candidates;
+- the strongest reasonable enforcement mechanism;
+- the proof that will distinguish the fixed and broken worlds.
+
+YAGNI removes speculative or redundant capability. It does not remove required invariants, fail-closed behavior or proof.
+
+## Authority and conflict handling
+
+For **current target design**, use this order:
+
+1. operator-approved decisions recorded by the active rebaseline and current accepted ADRs;
+2. `ARCHITECTURE.md` stable product-level constraints;
+3. accepted D-stage design outputs;
+4. OpenAPI/governance/runtime code as current-state evidence for what exists today;
+5. tests/builds/commits as execution evidence.
+
+Current code shape is evidence about the present system, **not an argument that the target must preserve that shape**. A prior ADR that `docs/architecture/decisions/README.md` marks `reopened by ADR-035` is historical evidence, not target authority until the named D-stage re-adjudicates it.
+
+When architecture, contract, runtime, ownership or verification evidence conflicts, stop the local conclusion and classify the conflict. Do not silently pick a side.
+
 ## How work lands
 
-Branch, commit, open a PR, get it green, get it reviewed, and the operator merges.
-There is no other channel. Concretely:
-
-- One branch per change. Conventional-commit PR title (`pr-title.yml` enforces the
-  type list: feat fix docs style refactor perf test build ci chore revert).
-- **Never `git push` without explicit operator permission**, and never merge — merge
-  is the operator's event.
-- CI (`.github/workflows/ci.yml`) must be green: `lint-go`, `lint-frontend`,
-  `build-go`, `test-go-unit`, `test-frontend`, `verify-full`, aggregated by
-  `required`. CodeRabbit reviews the PR. Red is a stop, not a note.
-- Work is tracked in GitHub issues and PRs. Nothing else is a queue.
-- An issue declares its scope in both directions — what changes and what does not —
-  and its acceptance as a measurement with a positive control
-  (`.github/ISSUE_TEMPLATE/`). A PR answers that scope point by point and names
-  every file it touched that the issue did not foresee
-  (`.github/pull_request_template.md`). Scope drift has two directions and only one
-  of them turns anything red: a PR that does less fails its own acceptance, while a
-  PR that does more passes every lane it has. That is why the excess is written
-  down rather than measured.
-- Before merge, the diff is reviewed against the issue's scope by someone who did
-  not implement it, returning `COBRE` / `FALTA` / `EXCEDE` with `file:line`. The
-  author already knows the intent and reads the diff for it; the point of the cold
-  pass is to read the diff for what it says.
+- One branch per change.
+- Conventional-commit PR title; repository workflow enforces the allowed type set.
+- **Never push without explicit operator permission and never merge without explicit operator authorization.**
+- Work is tracked in GitHub issues/PRs when connector support permits it. If a connector blocks creation of a tracking issue, record that fact in the PR; do not invent an issue number.
+- PR scope is declared in both directions: what changes and what does not.
+- Before merge, perform a cold review against the declared target property and scope.
 
 ## Verification
 
-`scripts/gate.ps1` is the single implementation of every lane — CI invokes the same
-file a developer machine does, and no lane logic lives in a workflow. Two checks live
-in `.github/workflows/ci.yml` by nature, because their subject is the workflow itself:
-the `required` aggregator with its topology assertion over the job/`needs`/`EXPECTED`
-enumerations, and the preflight run of the gate's own counter fixtures
-(`scripts/tests/gate-measure.tests.ps1`) ahead of the first lane. A local run is
-evidence about the lanes, not about those two.
+`scripts/gate.ps1` is the single local/CI implementation of the gate lanes.
 
-```bash
-npm run gate        # -Lane all: the 13 everyday lanes, seconds
-npm run gate:full   # adds selftest, guards, integration, edge — matches CI verify-full
+```powershell
+npm run gate
+npm run gate:full
 ```
 
-Counted checks are ratchets in `contracts/gate/baselines.json`: a number may shrink,
-never grow, and an unknown key fails. **Do not raise a baseline to make a lane green** —
-that is the defect the ratchet exists to catch. Declared rules live in
-`contracts/governance/invariants.json`; a rule that needs an exception gets one there
-with a reason, or gets fixed.
+Rules:
 
-Presence is not execution. A test that is skipped and a test that passed are
-byte-identical in a log unless the lane prints what it ran — assert the count or the
-token, never the exit code alone.
+- CI and local verification invoke the same gate implementation.
+- Red is a stop, not a note.
+- Ratchet baselines may shrink and must never be raised merely to make a change green.
+- Presence is not execution: a check must prove it actually ran the intended units.
+- A mock/fake proves local contract behavior; it does not prove a real external integration.
+- Claims about Oracle, Mercado Livre, Postgres deployment state or browser behavior require the appropriate real-environment proof when the claim depends on that environment.
 
-## Repository truth, in order
+The current gate contains legacy ratchets anchored to `internal/modules`. During D0/D1 they are evidence and transitional controls; do not mistake their current scope for target architecture.
 
-`ARCHITECTURE.md` and the ADRs under `docs/architecture/decisions/`, then the OpenAPI
-spec plus the SDK, then `contracts/governance/`, then the wiki, then tests, builds and
-commits. Stop and classify architecture, contract, runtime, ownership, or verification
-conflicts instead of picking a side silently.
+## Architecture safety rules that remain binding during the rebaseline
 
-`.mnfs/` is a frozen archive of the retired hub-and-chips process. It is history, not
-authority — read it for context, never cite it as a rule, and do not add to it.
+- Mercado Livre is the first operational marketplace control plane.
+- Oracle/Sankhya is an external source behind MPC-owned adapter boundaries; raw Oracle/driver knowledge does not belong in business contexts.
+- Marketplace provider integration enters through `internal/adapters/marketplace/<vendor>` and implements ports owned by consuming contexts (ADR-033).
+- Provider wire DTOs and provider-specific protocol knowledge remain inside their adapter tree.
+- Unknown business/operational facts never become plausible zero/default values.
+- External writes are never blindly retried after an ambiguous outcome and must be auditable/reconcilable.
+- Raw provider PII is not retained merely for convenience.
+- Frontend is not a second business-logic authority.
 
-## Architecture rules
-
-Keep domain/application/ports/adapters/transport boundaries; tenant queries scope
-`tenant_id`; provider payloads remain at adapters; unknown operational facts never
-become zero or a default. API changes update OpenAPI and `sdk-runtime` in the same
-commit. Provider writes need resolved linkage, explicit policy/source time, duplicate
-protection, and audit. Mocks prove contract behavior, never live integration. Live ML
-writes require explicit operator authorization.
+Anything more specific than these may be under D0–D9 re-adjudication; check the ADR registry and rebaseline status before relying on an older rule.
 
 ## Operational rules
 
-One writer owns a checkout or a shared seam. Do not reset, revert, stash, clean, delete
-unknown state, use WSL, expose secrets or PII, cold-clone, purge caches, or install
-dependencies as a ritual — a dependency change is its own PR, decided by the operator.
+- One writer owns a checkout/shared seam at a time.
+- Do not reset, revert, stash, clean or delete unknown working state.
+- Do not expose secrets or PII in logs, transcripts, commits or documentation.
+- Dependency changes are explicit scope, not incidental environment preparation.
+- Go commands run from `apps/server_core`; when hand-running Go on Windows, `GOCACHE` and `GOMODCACHE` must resolve to absolute paths.
+- Live Mercado Livre writes require explicit operator authorization.
 
-Go commands run from `apps/server_core`, with `GOCACHE` and `GOMODCACHE` bound to
-**absolute** paths. A relative value makes `go env GOCACHE` report `off` and every Go
-build die with `build cache is required, but could not be located: GOCACHE is not an
-absolute path` — 83 bytes and zero `=== RUN`, which reads like a suite with nothing in
-it. `scripts/gate.ps1` binds them for every lane; a hand-run needs the same thing,
-resolved rather than transcribed:
+## Documentation lifecycle
 
-```powershell
-cd apps/server_core
-$env:GOCACHE = (Resolve-Path .).Path + '/.gocache'
-$env:GOMODCACHE = (Resolve-Path .).Path + '/.gomodcache'
-```
+The active repository intentionally does **not** retain an `old/`, archive wiki, dated implementation-plan cemetery or session-handoff tree.
 
-Evidence is the PR: the diff, the CI run, and what the lanes printed. A claim with no
-run behind it did not happen.
+- Git history is the archive.
+- `docs/engineering/rebaseline/README.md` is the sole current progress/router document.
+- Accepted durable decisions live in ADRs or `ARCHITECTURE.md`.
+- Stage evidence/design lives in the current D-stage document.
+- Supporting references must be explicitly labeled non-authoritative.
+- A superseded roadmap/spec/handoff is deleted after any still-valid decision has been absorbed into the current authority.
+
+A new session should never need to decide which of several roadmaps is current.
