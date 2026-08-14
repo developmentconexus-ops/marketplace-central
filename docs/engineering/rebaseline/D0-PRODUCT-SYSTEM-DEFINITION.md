@@ -307,26 +307,54 @@ Product 1.0 must preserve these invariants regardless of later implementation sh
 5. MPC-owned workflow state is not replaced by guessing from one provider response; ambiguous or divergent cross-system outcomes remain explicit until reconciled.
 6. Provider/ERP-specific mechanisms remain implementation concerns for later stages; the Product 1.0 boundary is stated in business terms.
 
-## 8. Current open D0 decision
+## 8. D0.6 — Product 1.0 completion / user-observable outcomes
 
-### D0.6 — Product 1.0 completion / user-observable outcomes
+**Accepted by operator.**
 
-**Next exact decision with the operator.**
+Product 1.0 is complete only when Marketplace Central is demonstrably usable as the normal operational control plane, not merely when individual capabilities exist in isolation.
 
-Define what must be demonstrably true for Marketplace Central Product 1.0 to count as a complete usable product, not merely a collection of implemented capabilities.
+The acceptance bar is user-observable:
 
-D0.6 should establish user-observable end-state outcomes across the accepted Product 1.0 loop, including at minimum:
+1. **Attention is portfolio-driven, not manual-search driven.** Operators can see what is healthy, changed, divergent, blocked, approval-required or otherwise actionable without manually inspecting products and external systems one by one.
+2. **An eligible internal product can reach a verified marketplace state through MPC.** The normal path covers readiness/linkage, commercial analysis, creation/publication and subsequent observation of the real channel state.
+3. **Competitive/pricing intelligence replaces major manual analysis.** MPC can expose grounded comparable-market position, relevant internal economics, price scenarios, expected profitability and insufficient-evidence cases at portfolio and individual-product level.
+4. **Decision closes into controlled action.** Authorized human or bounded policy-driven decisions can become external actions with policy enforcement, auditability, verification and reconciliation rather than ending as recommendations that require ordinary manual execution elsewhere.
+5. **A marketplace sale can traverse the normal operating loop through MPC.** The normal path covers order recognition, corresponding ERP operation, fulfillment queue, physical separation/conference, invoicing trigger and verification, packing and dispatch handoff without hidden manual system hopping as a required normal step.
+6. **Failures become explicit work.** Missing evidence, ambiguous external results, integration failures and physical/order divergences are surfaced with what is known/unknown and what requires action instead of silently becoming plausible success/defaults.
+7. **The economic loop closes.** MPC can compare expected versus realized profitability using attributable authoritative facts so material variance can be understood rather than treating `faturado` as the end of the business outcome.
+8. **Organizational governance is operable without code edits.** Actors can exercise the legitimate MPC-owned authorities assigned in D0.4, while externally governed rules remain governed externally and mandatory safety/audit invariants are not configurable away.
 
-- operators can identify what needs attention instead of manually searching systems/product by product;
-- competitive/pricing analysis is actionable and grounded in attributable facts;
-- authorized marketplace actions can be executed and their result verified/reconciled;
-- marketplace orders can progress through ERP creation, physical conference, invoicing, packing and dispatch without hidden manual system hopping as the normal path;
-- expected versus realized profitability can be understood after a sale;
-- uncertainty, missing evidence and cross-system failures surface as explicit work/exceptions rather than plausible defaults or silent success.
+The Product 1.0 completion statement is:
 
-This is still a product definition decision. Detailed golden-flow proofs belong to D8; D0 defines which user outcomes D8 will eventually have to prove.
+> **A company can take its internal products, determine marketplace readiness, publish and operate offers, monitor market position and profitability at portfolio scale, make and execute decisions under policy, receive sales, progress them through ERP and physical fulfillment, surface/reconcile exceptions, and understand the realized economic result — using Marketplace Central as the normal marketplace operations control plane.**
 
-## 9. Resume contract for a fresh session
+### D0.6a — Normal-path rule
+
+The normal operational path must be executable through MPC for responsibilities that Product 1.0 claims to control.
+
+Direct use of Mercado Livre, Sankhya or another participating external system remains legitimate when:
+
+- the responsibility inherently belongs to that external system and is intentionally outside MPC scope;
+- investigation/support requires native-system inspection;
+- an exceptional recovery path explicitly requires it.
+
+Direct external-system hopping must **not** be a hidden required step in an otherwise claimed MPC normal workflow. A Product 1.0 flow with routine manual gaps between MPC, marketplace and ERP is incomplete even if each individual integration exists.
+
+Detailed end-to-end proof scenarios remain a D8 responsibility; D0.6 defines the outcomes that D8 must eventually prove.
+
+## 9. D0.7 — Product completeness / contradiction review
+
+**OPEN — exact next D0 work.**
+
+Before D0 can be accepted as a whole, review the accepted Product 1.0 definition adversarially for missing business lifecycle responsibilities, contradictions and accidental scope gaps.
+
+The first material open question found by that review is the **post-sale lifecycle**. Current Product 1.0 explicitly covers sale → ERP → physical fulfillment/dispatch → realized economics, but does not yet say whether normal marketplace cancellations, returns/refunds and post-dispatch operational exceptions are Product 1.0 responsibilities or deferred capabilities.
+
+This question must be decided at product level before D0 closes. D0 should decide whether MPC must control the post-sale marketplace workflow; later stages decide exact statuses, data ownership, provider/ERP contracts, fiscal mechanics and implementation.
+
+Other findings discovered during D0.7 are classified as MUST DECIDE NOW, SHOULD DECIDE NOW or CAN DEFER SAFELY. D0 closes only when no material Product 1.0 semantic is being left for implementation to invent.
+
+## 10. Resume contract for a fresh session
 
 A fresh session must read `AGENTS.md`, `docs/engineering/rebaseline/README.md`, the canonical engineering method, `ARCHITECTURE.md`, the ADR registry, and then this D0 artifact.
 
@@ -335,8 +363,9 @@ It should conclude:
 - D0 is open and not yet accepted as a whole;
 - D0.1–D0.3b are operator-approved product decisions;
 - D0.4 is accepted with four actors and explicit responsibility/authority boundaries;
-- D0.5 is accepted: MPC uses the product-level authority classes **OWN / ORCHESTRATE / OBSERVE-DERIVE** and owns the marketplace operating model without taking ownership of external facts merely because it consumes or causes them;
+- D0.5 is accepted: MPC uses **OWN / ORCHESTRATE / OBSERVE-DERIVE** and owns the marketplace operating model without taking ownership of external facts merely because it consumes or causes them;
+- D0.6 is accepted: Product 1.0 has a user-observable completion bar and the normal path for MPC-owned/orchestrated responsibilities must be executable through MPC rather than requiring routine manual system hopping;
 - Sankhya API availability for writes is evidence to carry into D4, not a D0 transport decision;
 - business rules/policies may be MPC-owned, externally governed or derived, and later D2/D4 must preserve that provenance;
 - no D1+ target architecture may be invented yet;
-- the exact next work is **D0.6 — Product 1.0 completion / user-observable outcomes**.
+- the exact next work is **D0.7 — Product completeness / contradiction review**, beginning with the post-sale lifecycle decision.
