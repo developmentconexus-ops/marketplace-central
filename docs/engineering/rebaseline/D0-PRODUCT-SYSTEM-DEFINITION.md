@@ -74,9 +74,10 @@ Product 1.0 includes these product capabilities:
 5. **Decision & Policy Control** — translate observations/recommendations into permitted, approval-required or prohibited actions according to governing company rules/policies.
 6. **Order-to-ERP Operations** — receive/understand marketplace orders and coordinate the corresponding business operations in Sankhya, including order creation and invoicing where authorized.
 7. **Marketplace Fulfillment / Dispatch** — progress marketplace orders through physical separation, conference, invoicing trigger, packing and dispatch handoff without becoming a company-wide WMS.
-8. **Essential Post-Sale Operations** — control the operational response to marketplace cancellations, returns and refunds when they affect an MPC-controlled sale, coordinating consequences across the marketplace/ERP/fulfillment/economic loop without becoming a general CRM/SAC platform.
-9. **Reconciliation & Exception Operations** — identify cases where an expected cross-system result cannot be proven or systems diverge, and make them actionable instead of silently assuming success.
-10. **Realized Profitability** — determine realized sale economics, including material post-sale reversals/adjustments, and compare expected versus realized results so material variance can be explained.
+8. **Shipment / Delivery Observation & Exceptions** — continue observing the marketplace shipment after dispatch handoff until a relevant terminal outcome, surfacing delays, delivery failures, returns or other delivery exceptions without becoming a company-wide TMS or carrier platform.
+9. **Essential Post-Sale Operations** — control the operational response to marketplace cancellations, returns and refunds when they affect an MPC-controlled sale, coordinating consequences across the marketplace/ERP/fulfillment/economic loop without becoming a general CRM/SAC platform.
+10. **Reconciliation & Exception Operations** — identify cases where an expected cross-system result cannot be proven or systems diverge, and make them actionable instead of silently assuming success.
+11. **Realized Profitability** — determine realized sale economics, including material delivery/post-sale reversals or adjustments, and compare expected versus realized results so material variance can be explained.
 
 Automation/human approval is a cross-cutting control-plane property, not a separate business capability.
 
@@ -119,12 +120,12 @@ The following are not required to define Product 1.0 as complete unless later D0
 - general CRM/SAC and broad customer-service automation;
 - broad reputation optimization;
 - company-wide demand forecasting or purchasing;
-- company-wide logistics/WMS replacement;
+- company-wide logistics/WMS/TMS replacement;
 - marketplaces beyond what is needed to prove the first Mercado Livre operating loop;
 - unrestricted AI/autonomous commercial decisions without explicit policy;
 - a generic integration framework for many speculative providers.
 
-These may become future MPC capabilities; deferral is not a permanent exclusion. Essential cancellation/return/refund operations tied to an MPC-controlled marketplace sale are **not** deferred by this list; D0.7a includes them in Product 1.0.
+These may become future MPC capabilities; deferral is not a permanent exclusion. Essential cancellation/return/refund operations tied to an MPC-controlled marketplace sale and shipment/delivery observation for that sale are **not** deferred by this list; D0.7 includes them in Product 1.0.
 
 ## 4. Operator-provided Sankhya evidence / constraint
 
@@ -295,9 +296,10 @@ This classification is conceptual. D0 does not decide tables, context ownership,
 | Marketplace-originated order facts | marketplace/provider is authoritative for originating channel facts; MPC **ORCHESTRATES** |
 | ERP order/invoice/accounting facts produced in Sankhya | Sankhya is authoritative; MPC **ORCHESTRATES** the marketplace workflow that causes/observes them |
 | Marketplace-order fulfillment workflow: queue, conference, invoicing trigger, packing/dispatch progression, exceptions | **OWN**, while underlying ERP/carrier facts retain their external authority |
+| Shipment/delivery state after dispatch handoff | marketplace/carrier/provider remains authoritative for native logistics facts; MPC **OBSERVES / ORCHESTRATES** delivery exceptions and sale-lifecycle closure |
 | Marketplace cancellation/return/refund channel facts | marketplace/provider remains authoritative; MPC **ORCHESTRATES** the cross-system response and observes/reconciles consequences |
 | ERP reversal/credit/fiscal/accounting facts caused by post-sale operations | Sankhya/ERP remains authoritative; MPC **ORCHESTRATES** the marketplace post-sale workflow that requires/observes them |
-| Realized profitability interpretation | **OWN / DERIVE** from authoritative realized facts, including material post-sale adjustments |
+| Realized profitability interpretation | **OWN / DERIVE** from authoritative realized facts, including material delivery/post-sale adjustments |
 | Audit/reconciliation records for MPC-controlled operations | **OWN** |
 
 ### D0.5b — Boundary invariants
@@ -324,14 +326,15 @@ The acceptance bar is user-observable:
 3. **Competitive/pricing intelligence replaces major manual analysis.** MPC can expose grounded comparable-market position, relevant internal economics, price scenarios, expected profitability and insufficient-evidence cases at portfolio and individual-product level.
 4. **Decision closes into controlled action.** Authorized human or bounded policy-driven decisions can become external actions with policy enforcement, auditability, verification and reconciliation rather than ending as recommendations that require ordinary manual execution elsewhere.
 5. **A marketplace sale can traverse the normal operating loop through MPC.** The normal path covers order recognition, corresponding ERP operation, fulfillment queue, physical separation/conference, invoicing trigger and verification, packing and dispatch handoff without hidden manual system hopping as a required normal step.
-6. **Essential post-sale changes remain inside the controlled lifecycle.** Cancellation, return or refund events that materially affect an MPC-controlled marketplace sale can be understood and progressed through the necessary cross-system response/reconciliation without dropping the normal operation back into manual system hopping.
-7. **Failures become explicit work.** Missing evidence, ambiguous external results, integration failures and physical/order/post-sale divergences are surfaced with what is known/unknown and what requires action instead of silently becoming plausible success/defaults.
-8. **The economic loop closes.** MPC can compare expected versus realized profitability using attributable authoritative facts, including material cancellation/return/refund effects, so a reversed sale does not remain represented as profitable merely because it was previously invoiced.
-9. **Organizational governance is operable without code edits.** Actors can exercise the legitimate MPC-owned authorities assigned in D0.4, while externally governed rules remain governed externally and mandatory safety/audit invariants are not configurable away.
+6. **Delivery remains visible through terminal outcome.** After dispatch handoff, MPC continues observing the relevant shipment/delivery lifecycle until delivered, returned, cancelled or another equivalent terminal state; delays/failures/returns become explicit operational work rather than forcing routine native-system monitoring.
+7. **Essential post-sale changes remain inside the controlled lifecycle.** Cancellation, return or refund events that materially affect an MPC-controlled marketplace sale can be understood and progressed through the necessary cross-system response/reconciliation without dropping the normal operation back into manual system hopping.
+8. **Failures become explicit work.** Missing evidence, ambiguous external results, integration failures and physical/order/delivery/post-sale divergences are surfaced with what is known/unknown and what requires action instead of silently becoming plausible success/defaults.
+9. **The economic loop closes.** MPC can compare expected versus realized profitability using attributable authoritative facts, including material delivery/cancellation/return/refund effects, so a reversed or materially adjusted sale does not remain represented using stale pre-adjustment economics.
+10. **Organizational governance is operable without code edits.** Actors can exercise the legitimate MPC-owned authorities assigned in D0.4, while externally governed rules remain governed externally and mandatory safety/audit invariants are not configurable away.
 
 The Product 1.0 completion statement is:
 
-> **A company can take its internal products, determine marketplace readiness, publish and operate offers, monitor market position and profitability at portfolio scale, make and execute decisions under policy, receive sales, progress them through ERP and physical fulfillment, handle essential cancellation/return/refund consequences, surface/reconcile exceptions, and understand the realized economic result — using Marketplace Central as the normal marketplace operations control plane.**
+> **A company can take its internal products, determine marketplace readiness, publish and operate offers, monitor market position and profitability at portfolio scale, make and execute decisions under policy, receive sales, progress them through ERP and physical fulfillment, follow delivery to a terminal outcome, handle essential cancellation/return/refund consequences, surface/reconcile exceptions, and understand the realized economic result — using Marketplace Central as the normal marketplace operations control plane.**
 
 ### D0.6a — Normal-path rule
 
@@ -374,11 +377,29 @@ Marketplace/provider remains authoritative for native marketplace cancellation/r
 
 Exact statuses, return logistics, fiscal reversal mechanics, refund contracts and provider-specific behavior belong to later D-stages.
 
+### D0.7b — Shipment / delivery lifecycle after dispatch handoff
+
+**Accepted by operator.**
+
+Product 1.0 continues observing the shipment/delivery lifecycle of an MPC-controlled marketplace sale after physical dispatch handoff until the order reaches a relevant terminal outcome such as delivered, returned, cancelled or an equivalent terminal provider state.
+
+The product-level responsibility is to:
+
+- observe the authoritative shipment/delivery state supplied by the marketplace/carrier/provider;
+- surface delays, failed delivery attempts, returns-to-sender and other material delivery exceptions as operational work;
+- correlate delivery exceptions with the MPC-controlled sale workflow;
+- route a returned/cancelled/post-sale consequence into the appropriate post-sale/reconciliation path;
+- avoid forcing routine operator monitoring in the native marketplace/carrier system merely to know whether an MPC-controlled sale completed.
+
+This does **not** make Product 1.0 a carrier, route planner, fleet system, company-wide transport manager or TMS. Native carrier/provider logistics facts remain externally authoritative; MPC observes/orchestrates only what is needed to close the marketplace sale lifecycle and its exceptions.
+
+Exact tracking mechanisms, carrier/provider contracts and status vocabularies belong to later D-stages.
+
 ### Next D0.7 question
 
-The review continues. The next material boundary to decide is **shipment/delivery lifecycle visibility after dispatch handoff**: whether Product 1.0 merely hands the parcel to the carrier/provider and stops, or must continue observing delivery state and surfacing delivery exceptions until the marketplace order reaches a terminal delivered/returned/cancelled outcome.
+The review continues. The next material boundary is **stock / marketplace availability control**. Product 1.0 already claims listing availability operations and observes ERP facts, but D0 has not yet stated whether maintaining marketplace availability coherently with the governing internal stock/availability rules is a normal MPC responsibility or merely a manual operator action.
 
-This is a product boundary decision; carrier/provider contracts, tracking APIs and status models belong to later stages.
+This must be decided at product level before D0 closes. Exact stock authority, reservation semantics, buffers, source reads, event/sync strategy and provider update mechanisms belong to D2–D4/D7.
 
 Other findings discovered during D0.7 are classified as MUST DECIDE NOW, SHOULD DECIDE NOW or CAN DEFER SAFELY. D0 closes only when no material Product 1.0 semantic is being left for implementation to invent.
 
@@ -394,7 +415,8 @@ It should conclude:
 - D0.5 is accepted: MPC uses **OWN / ORCHESTRATE / OBSERVE-DERIVE** and owns the marketplace operating model without taking ownership of external facts merely because it consumes or causes them;
 - D0.6 is accepted: Product 1.0 has a user-observable completion bar and the normal path for MPC-owned/orchestrated responsibilities must be executable through MPC rather than requiring routine manual system hopping;
 - D0.7a is accepted: essential cancellation/return/refund operations remain inside the MPC-controlled sale lifecycle without expanding Product 1.0 into general CRM/SAC;
+- D0.7b is accepted: shipment/delivery state remains visible through a terminal outcome and material delivery exceptions become MPC operational work without turning MPC into a TMS;
 - Sankhya API availability for writes is evidence to carry into D4, not a D0 transport decision;
 - business rules/policies may be MPC-owned, externally governed or derived, and later D2/D4 must preserve that provenance;
 - no D1+ target architecture may be invented yet;
-- the exact next work is **D0.7 Product completeness review — shipment/delivery lifecycle after dispatch handoff**.
+- the exact next work is **D0.7 Product completeness review — stock / marketplace availability control**.
