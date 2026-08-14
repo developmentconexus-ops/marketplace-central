@@ -104,7 +104,7 @@ function Invoke-Edge {
   # Issue #1 negative fixture. Drives deploy/Caddyfile and
   # docker/dev/oauth-edge.Caddyfile through real Caddy against stub upstreams.
   # Docker only — no ERP, no dev stack, no provider credentials, no secrets,
-  # which is why this lane is CI-able (GATE-TOPOLOGY.md §5).
+  # which keeps this lane hermetic and CI-able.
   Write-Output 'target=edge-caddy'; Write-Output 'postgres=disabled'; Write-Output 'oracle=disabled'; Write-Output 'provider_network=disabled'
   if ($PreflightOnly) { Write-Summary -TargetType 'edge-caddy' -Status 'ready'; return }
   $pwshPath = Resolve-HarnessApplication -Name 'pwsh'
