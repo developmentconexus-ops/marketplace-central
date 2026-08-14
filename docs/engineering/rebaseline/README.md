@@ -199,9 +199,9 @@ Any additional codebase measurement is performed when a D-stage decision require
 
 ## 10. Exact next action
 
-**Continue D0 with the operator: decide D0.5 — System boundary / authority classes.**
+**Continue D0 with the operator: decide D0.6 — Product 1.0 completion / user-observable outcomes.**
 
-Accepted D0.1–D0.4 decisions, policy/rule provenance, the current actor authority model and Sankhya integration evidence are recorded in `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`.
+Accepted D0.1–D0.5 decisions, policy/rule provenance, actor authority and the system-boundary authority map are recorded in `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`.
 
 Nothing else is authorized. In particular: do not start product implementation, do not begin D1–D9 before D0 is accepted, and do not reopen the documentary cleanup.
 
@@ -213,10 +213,11 @@ A fresh session should be able to read `AGENTS.md`, this file and the current D0
 
 - documentary/governance cleanup is DONE;
 - D0 Product / System Definition is OPEN and not yet accepted as a whole;
-- D0.1–D0.4 recorded in the D0 artifact are operator-approved decisions;
+- D0.1–D0.5 recorded in the D0 artifact are operator-approved decisions;
+- MPC owns the marketplace operating model while external systems retain authority for facts/processes that inherently belong to them;
 - rules/policies may be MPC-owned, externally governed or derived; MPC must preserve that provenance rather than silently duplicating authority;
 - historical code/docs are evidence, not target authority;
 - implementation remains blocked until D9 is accepted;
-- the exact next decision is **D0.5 — System boundary / authority classes**.
+- the exact next decision is **D0.6 — Product 1.0 completion / user-observable outcomes**.
 
 If it cannot, the current authority path is incomplete or contradictory.
