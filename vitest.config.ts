@@ -1,7 +1,7 @@
 import { defineConfig } from "vitest/config";
 import path from "path";
 
-// The single vitest entry point for the repository (GATE-TOPOLOGY §2.3):
+// The single vitest entry point for the repository:
 // discovery is glob-based over every workspace, with no filename pins, so a
 // new test file is reachable the moment it exists. Two projects because the
 // environments genuinely differ -- sdk-runtime is a node library, everything

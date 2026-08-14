@@ -231,7 +231,7 @@ function Get-SourceFiles {
     # in the Onda 0 set diff, plus a 25-minute stall. A gate may only ever read the
     # checkout under test — anything else is a cross-branch measurement.
     $relative -notmatch '(?:^|/)(?:\.git|\.claude|node_modules|\.gocache|\.gomodcache|\.worktrees)/' -and
-      $relative -notmatch '^(?:\.mnfs|scripts/\.runs|scripts/tests|contracts/governance)/' -and
+      $relative -notmatch '^(?:scripts/\.runs|scripts/tests|contracts/governance)/' -and
       ($_.Extension -in $extensions -or $relative -eq 'docker-compose.yml')
   })
 }

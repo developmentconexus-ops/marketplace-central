@@ -55,7 +55,7 @@ $goEmptyMeasured = Measure-GateGoTest -Text $goEmpty
 Assert-True ($goEmptyMeasured.Run -eq 0) 'an empty package set did not measure as zero runs'
 Assert-True ($goEmptyMeasured.Passed -eq 0) 'an empty package set did not measure as zero passes'
 
-# HARNESS-PROFILE.md records this exact shape: every test skipped, package `ok`,
+# This repository measured this exact shape: every test skipped, package `ok`,
 # exit 0, with the slice's whole reason to exist among the skips. Run>0 alone
 # would accept it, which is why the gate's guard reads run==0 OR passed==0.
 $goAllSkipped = @"

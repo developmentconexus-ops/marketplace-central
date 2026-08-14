@@ -21,9 +21,9 @@ coverage/
 apps/web/src/api/generated/
 packages/sdk-runtime/src/generated/
 
-# Captured output, in JSON rather than markdown. Same rule as `.mnfs/` below:
-# what a tool or a provider actually returned is evidence, and evidence that has
-# been reflowed is no longer verbatim.
+# Captured output, in JSON rather than markdown. The rule is the same one the
+# vendored-tree block below states: what a tool or a provider actually returned
+# is evidence, and evidence that has been reflowed is no longer verbatim.
 #
 #   - testdata/ under the provider adapters holds recorded Mercado Livre response
 #     bodies -- item multiget, order, shipment. Their value is that they are what
@@ -47,20 +47,20 @@ docs/marketplaces/
 # assert the literal text of this file. The formatter and the parity tests are
 # two instruments over one document, and that is how they come to disagree.
 #
-# The spec is also the authority for the SDK and for the route/spec/SDK equality
-# checks of GATE-TOPOLOGY §2.3. A cosmetic rewrite of an authority is not
+# The spec is also the authority for the SDK and for the gate's route/spec/SDK
+# equality checks. A cosmetic rewrite of an authority is not
 # cosmetic. Its shape is owned by whoever edits the contract, not by this
 # formatter.
 contracts/api/*.yaml
 
-# Markdown, all of it. This started as an exclusion of `.mnfs/` only, and the
+# Markdown, all of it. This started as an exclusion of one evidence tree, and the
 # measurement widened it.
 #
 # Prettier's markdown printer cannot re-indent a line that sits inside an inline
 # code span spanning a line break, so it strips the indentation instead. In a
 # nested list that moves the continuation line to column 0 and lifts it out of
-# the list -- a change to document structure, not to formatting. Found first in
-# docs/HARNESS-PROFILE.md §2, then measured across the whole scope on 2026-08-08:
+# the list -- a change to document structure, not to formatting. Found first in a
+# nested list of that kind, then measured across the whole scope on 2026-08-08:
 # 77 of the 236 markdown files Prettier wanted to rewrite show the pattern.
 #
 # A formatter that damages one document in three cannot run unattended over a
@@ -70,16 +70,15 @@ contracts/api/*.yaml
 # indentation of wrapped code spans.
 *.md
 
-# Evidence, and this is the entry that matters.
+# Trees a formatter must not write to.
 #
-# `.mnfs/` holds 1000 markdown files: mission artifacts, dispatch ledgers,
-# measured output pasted verbatim from tools. Reformatting them rewrites the
-# record -- line breaks, table alignment, list markers -- and evidence that has
-# been reflowed is no longer verbatim. `AGENTS.md` puts it as "evidence lives in
-# .mnfs artifacts"; a formatter with write access to the audit trail is a worse
-# problem than an unaligned table.
+# `.mnfs/` was 1000 markdown files of mission artifacts, dispatch ledgers and
+# measured output pasted verbatim from tools. The tree is retired and no longer
+# tracked; the entry stays because a checkout that predates the removal still
+# carries its gitignored run logs, and a formatter with write access to an audit
+# trail is a worse problem than an unaligned table.
 #
-# The same applies, at lower stakes, to the vendored agent/tooling trees below:
+# The same reasoning, at lower stakes, covers the vendored agent/tooling trees:
 # they are copies of upstream, and diffing them against upstream is easier when
 # they have not been through our formatter.
 .mnfs/

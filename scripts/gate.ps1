@@ -184,7 +184,7 @@ function Invoke-GateGofmt {
 }
 
 function Invoke-GateBuild {
-  # HARNESS-PROFILE §11 defines the deterministic L0 lane as build AND vet. The
+  # The deterministic L0 lane is build AND vet, not one of the two. The
   # test lane is not a substitute: `go test` without an explicit -vet flag runs a
   # curated subset of vet's checks (`go help testflag`), and vet's checks over
   # non-test code are outside it entirely.
@@ -239,7 +239,7 @@ $script:GolangciLintExpected = @(
 # off is reported as progress by any instrument that only counts findings, and
 # the ratchet then locks the lower number in.
 #
-# GATE-TOPOLOGY §2.3a names these six. The list is the contract; the baseline's
+# These six are the enabled set. The list is the contract; the baseline's
 # by_rule keys are checked against it too, so the two cannot drift apart.
 $script:EslintExpected = @(
   '@typescript-eslint/await-thenable',
@@ -332,12 +332,13 @@ function Invoke-GateGovernance {
 function Invoke-GateBoundary {
   # TestModuleBoundaryADR023, the detector for ADR-023 §2: a module is
   # importable by another module only at X/ports. It is red on main by design --
-  # 234 cross-module imports in the legacy tree, owned by Onda 1 of
-  # docs/superpowers/plans/2026-08-05-arquitetura-protocolo-de-modulo-plan.md --
-  # so the test-go lane skips it and THIS lane runs it as a ratchet: the debt
-  # may shrink and may not grow. When Onda 1 task 1.5 lands and the count
-  # reaches zero, this lane keeps the test enforcing at zero; delete the skip in
-  # Invoke-GateGoTest then, not this lane.
+  # 234 cross-module imports in the legacy tree -- so the test-go lane skips it
+  # and THIS lane runs it as a ratchet: the debt may shrink and may not grow.
+  # ADR-023 is reopened for D1 (docs/architecture/decisions/README.md), so
+  # whether that boundary survives in this form, and who pays the 234 down, is a
+  # D1 decision and not an owned task today. Until then the ratchet is the whole
+  # control. If the count ever reaches zero this lane keeps the test enforcing at
+  # zero; delete the skip in Invoke-GateGoTest then, not this lane.
   $baselinePath = Join-Path $repositoryRoot 'contracts/gate/baselines.json'
   if (-not (Test-Path -LiteralPath $baselinePath -PathType Leaf)) {
     return New-GateVerdict -Lane 'boundary' -Passed $false -Counts 'baseline=missing' `
@@ -581,9 +582,9 @@ function Get-GateWebSources {
 }
 
 function Invoke-GateFormat {
-  # Prettier, blocking at zero and never ratcheted. GATE-TOPOLOGY §2.3a: formatting
-  # admits no legitimate exception, so a ratchet would only record how long the
-  # drift had been tolerated.
+  # Prettier, blocking at zero and never ratcheted: formatting admits no
+  # legitimate exception, so a ratchet would only record how long the drift had
+  # been tolerated.
   #
   # Markdown is deliberately out of scope and `.prettierignore` carries the
   # measurement -- Prettier's markdown printer damages nested lists whose
@@ -750,9 +751,8 @@ function Invoke-GateGoTest {
   # -skip TestModuleBoundaryADR023: that test is red on main by design (234
   # cross-module import violations) and the `boundary` lane runs it as a
   # ratchet, so the debt blocks on increase without turning this lane red.
-  # Paying it down is Onda 1 of
-  # docs/superpowers/plans/2026-08-05-arquitetura-protocolo-de-modulo-plan.md,
-  # tasks 1.1 through 1.6. DELETE THIS SKIP when task 1.5 lands.
+  # ADR-023 is reopened for D1, so paying it down is a D1 decision with no owning
+  # task today. DELETE THIS SKIP when the boundary count reaches zero.
   #
   # -count=1 defeats the test cache: a cached PASS is not evidence that this
   # commit's tests ran.
@@ -835,7 +835,7 @@ function Invoke-GateTypecheck {
 
 function Invoke-GateTestWeb {
   # The root config is the single vitest entry point: glob discovery over every
-  # workspace (GATE-TOPOLOGY §2.3), so a test file in a package no lane names
+  # workspace, so a test file in a package no lane names
   # still runs. The census lane holds the count against the tree.
   $result = Invoke-GateTool -Name 'vitest' -FilePath 'npx' `
     -ArgumentList @('--no-install', 'vitest', 'run', '--config', 'vitest.config.ts')
@@ -957,8 +957,8 @@ function Invoke-GateGuards {
 function Invoke-GateCensus {
   <#
     Every test file in the tree, held against the union of what the gate's lanes
-    actually execute (GATE-TOPOLOGY §2.3: kills the dark-test-file class rather
-    than one instance at a time). Static -- nothing runs; discovery is compared,
+    actually execute -- it kills the dark-test-file class rather than one
+    instance at a time. Static -- nothing runs; discovery is compared,
     not execution. Exemptions live in contracts/gate/census-exempt.json with a
     reason each, and a stale exemption (file gone, or file now reachable) fails
     the lane the same way an uncovered file does.
@@ -1038,7 +1038,7 @@ function Invoke-GateCensus {
 }
 
 function Invoke-GateCiHygiene {
-  # GATE-TOPOLOGY §2.3/§3: `pull_request_target` runs workflow code with write
+  # `pull_request_target` runs workflow code with write
   # credentials against a PR's HEAD, which is the textbook CI privilege
   # escalation. No workflow here needs it, so the string itself is the finding.
   $files = @(& git -C $repositoryRoot ls-files --cached --others --exclude-standard '.github/**' |
@@ -1065,7 +1065,7 @@ function Invoke-GateCiHygiene {
 
 function Invoke-GateIntegration {
   # Wraps `harness.ps1 -Command integration`: ephemeral Postgres in Docker,
-  # embedded migrations, no ERP and no dev stack (GATE-TOPOLOGY §2.3). The
+  # embedded migrations, no ERP and no dev stack. The
   # harness prints tests_run= with -1 for "the test step was never reached",
   # which is a different fact from 0 -- both fail here, for different reasons
   # the count makes attributable.
@@ -1135,7 +1135,7 @@ $lanes = [ordered]@{
 }
 
 # 'all' is the everyday set; 'full' adds the lanes whose cost is minutes rather
-# than seconds (GATE-TOPOLOGY §2.3 verify-full). Both are the same product --
+# than seconds. Both are the same product --
 # CI's verify-full job and a pre-merge local run say `full`, a push says `all`.
 $fullOnly = @('selftest', 'guards', 'integration', 'edge')
 $selected = switch ($Lane) {

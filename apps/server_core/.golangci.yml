@@ -1,9 +1,7 @@
-# The Go lint standard. Settled in
-# docs/engineering/repo-audit-2026-08-07/GATE-TOPOLOGY.md §2.3a, which exists
-# because it was not settled anywhere else: measured 2026-08-07, this repository
-# had no linter at all.
+# The Go lint standard. It exists because the standard was not settled anywhere
+# else: measured 2026-08-07, this repository had no linter at all.
 #
-# The choice principle, from that section: every linter here earns its place by
+# The choice principle: every linter here earns its place by
 # catching a failure mode the audit actually found, or by compensating for a
 # decision the audit actually made. None is included because it is popular.
 
@@ -104,7 +102,7 @@ linters:
     rules:
       # Measured 2026-08-08 on the first run this repository has ever had: noctx
       # reported 276 findings, and 273 of them were in `*_test.go`. The rule
-      # earns its place in GATE-TOPOLOGY.md §2.3a as a control over provider HTTP
+      # earns its place as a control over provider HTTP
       # clients -- a request built without a context there cannot be cancelled or
       # deadlined by its caller. A test has no ambient context to propagate; the
       # finding is a fact about `http.NewRequest` being the shorter call, not

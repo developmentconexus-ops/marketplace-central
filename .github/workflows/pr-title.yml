@@ -1,4 +1,4 @@
-# PR title = Conventional Commit (GATE-TOPOLOGY §2.3a). Linear history plus
+# PR title = Conventional Commit. Linear history plus
 # squash merge makes the PR title the commit subject, so this one job validates
 # what actually lands on main; validating every branch commit would not.
 #

@@ -21,7 +21,7 @@
 *.cjs   text eol=lf
 
 # JSON is global, and unlike the markdown rule below it is NOT pinned by path.
-# Raised on PR #21: `.mnfs/`, the provider `testdata/` trees and
+# Raised on PR #21: the retired `.mnfs/` tree, the provider `testdata/` trees and
 # `docs/research/evidence/` hold recorded output, and `.prettierignore` argues at
 # length that a tool rewriting recorded bytes destroys the record -- a line
 # ending is still a byte. The two rules say opposite things about the same files.
@@ -33,7 +33,7 @@
 #
 # Left global on purpose. The only attribute that would actually guarantee
 # verbatim bytes is `-text`, and that also marks all 68 binary in `git diff` --
-# for `.mnfs/` that is cheap, for a recorded provider payload under `testdata/`
+# for an evidence tree that is cheap, for a recorded provider payload under `testdata/`
 # it is not, because the diff of what the API returned is the point of keeping
 # it. Paid when a capture is measured to have been altered, not before.
 *.json  text eol=lf
@@ -49,12 +49,14 @@
 # file. Measured 2026-08-08: 30 of the 251 markdown files in Prettier's scope are
 # CRLF in the working tree.
 #
-# Pinned per directory rather than as `*.md`, so `.mnfs/` is never touched. That
-# tree holds 1000 markdown files of mission evidence, and renormalising them
-# rewrites their stored bytes -- a line-ending change is still a change to a
-# record that is supposed to be verbatim. Exempting it with `-text` would work
-# and would also mark every one of them binary in `git diff`, which costs more
-# than it buys. Absence is the exemption.
+# Pinned per directory rather than as `*.md`, so an untracked evidence tree is
+# never touched. The rule was written for `.mnfs/`, 1000 markdown files of
+# mission evidence: renormalising them rewrites their stored bytes, and a
+# line-ending change is still a change to a record that is supposed to be
+# verbatim. Exempting a tree with `-text` would work and would also mark every
+# file in it binary in `git diff`, which costs more than it buys. Absence is the
+# exemption, and the pinning stays after the tree's retirement because the same
+# argument covers the next captured tree.
 /*.md           text eol=lf
 docs/**/*.md    text eol=lf
 wiki/**/*.md    text eol=lf

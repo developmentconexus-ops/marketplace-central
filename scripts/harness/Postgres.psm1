@@ -526,8 +526,8 @@ function Invoke-HarnessPostgresLifecycle {
     # the same green as a full run. This is the only place that can tell them
     # apart, because it is the only place that holds the output.
     #
-    # The skipped case is the one the profile already names: HARNESS-PROFILE.md
-    # records `RUN 27 / PASS 1 / SKIP 26` from a lane whose environment was never
+    # The skipped case is not hypothetical: this repository measured
+    # `RUN 27 / PASS 1 / SKIP 26` from a lane whose environment was never
     # loaded, so every DB test hit SkipWithoutTarget and the package printed `ok`
     # with exit 0 -- with the slice's whole reason to exist among the skips. That
     # is why the guard is `passed -eq 0` and not only `run -eq 0`: a suite that

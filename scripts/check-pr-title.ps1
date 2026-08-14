@@ -4,7 +4,7 @@
   Validates that a PR title is a Conventional Commit subject.
 
 .DESCRIPTION
-  GATE-TOPOLOGY §2.3a: with linear history and squash merges, the PR title
+  With linear history and squash merges, the PR title
   becomes the commit subject, so validating the title is sufficient and
   validating every commit in the branch is not. The repository already writes
   Conventional Commits consistently; this makes the convention enforced instead

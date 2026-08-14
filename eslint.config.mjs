@@ -1,4 +1,5 @@
-// ESLint, flat config. The rule set is GATE-TOPOLOGY.md §2.3a and nothing else.
+// ESLint, flat config. The rule set is the one `scripts/gate.ps1` pins in
+// `$script:EslintExpected` and nothing else.
 //
 // Two properties are deliberate and both are easy to lose by accident:
 //
@@ -43,7 +44,6 @@ export default [
       "**/.gocache/**",
       "scripts/.runs/**",
       ".worktrees/**",
-      ".mnfs/**",
       // tsc emit alongside source, gitignored for the reason recorded in
       // `.gitignore`: Vite resolves `.js`/`.d.ts` before `.tsx`.
       "apps/web/src/**/*.d.ts",
