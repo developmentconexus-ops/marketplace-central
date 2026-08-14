@@ -181,9 +181,37 @@ If the operator finds missing stock, wrong item, damaged material, quantity dive
 
 D0 does not decide how this authority is represented in permissions, how the workflow state is persisted, or how the Sankhya call is implemented. Those belong to later stages.
 
+#### D0.4b — Marketplace Operations Operator authority
+
+**Accepted by operator.**
+
+The Marketplace Operations Operator owns routine day-to-day marketplace control within company policy. At product/workflow level this actor may:
+
+- prepare and correct product/channel readiness information and operational linkage where the underlying evidence is sufficient;
+- create and publish a new marketplace listing when the product is fully ready and the action satisfies all current policies and required conditions;
+- inspect and edit listings and their permitted operational state;
+- analyze competitive position, price scenarios and expected profitability;
+- execute price changes and other bounded marketplace actions when they remain inside accepted commercial policies;
+- pause/reactivate or correct marketplace operational state when the action is policy-compliant;
+- investigate and progress ordinary marketplace divergences/exceptions that are within the actor's operational authority.
+
+The actor does **not** own the commercial policies themselves. It cannot redefine margin floors, price boundaries, approval thresholds or automation authority merely to make an action permissible.
+
+The product decision rule is:
+
+```text
+fully ready + inside accepted policy
+  → Marketplace Operations Operator may decide/execute
+
+outside policy / insufficient evidence / higher-impact exception
+  → Commercial / Marketplace Manager review or other explicit escalation
+```
+
+Initial listing creation is therefore **not approval-gated merely because it is the first publication**. If the product is fully ready and all governing policies are satisfied, the Marketplace Operations Operator can create/publish it directly through MPC. The exact readiness criteria, policy representation and authorization mechanism are later-stage decisions.
+
 #### Next exact D0.4 decision
 
-Define the responsibility/authority boundary of the **Marketplace Operations Operator**, including which listing/product/order actions are routine, which require commercial approval, and which become exceptions.
+Define the responsibility/authority boundary of the **Commercial / Marketplace Manager**, especially what this actor may approve, which commercial policies it may define/change, and what remains reserved for Owner / Administrator / Policy Approver.
 
 Do this at product/workflow level only; do not design permissions/auth implementation yet.
 
@@ -195,9 +223,10 @@ It should conclude:
 
 - D0 is open and not yet accepted as a whole;
 - D0.1–D0.3a above are operator-approved decisions;
-- D0.4 has four accepted actor classes so far: Marketplace Operations Operator, Fulfillment / Dispatch Operator, Commercial / Marketplace Manager, and Owner / Administrator / Policy Approver;
+- D0.4 has four accepted actor classes: Marketplace Operations Operator, Fulfillment / Dispatch Operator, Commercial / Marketplace Manager, and Owner / Administrator / Policy Approver;
 - D0.4a is accepted: the fulfillment operator physically separates/checks the order and, when valid, triggers invoicing through MPC before packing/dispatch; physical inconsistencies block normal invoicing and become exceptions;
-- D0.4 remains open for the responsibility/approval/accountability boundaries of the other actors;
+- D0.4b is accepted: the marketplace operator controls routine marketplace operations within policy and may create/publish a new listing without separate commercial approval when the product is fully ready and policy-compliant;
+- D0.4 remains open for the responsibility/approval/accountability boundaries of Commercial / Marketplace Manager and Owner / Administrator / Policy Approver;
 - no D1+ target architecture may be invented yet;
 - Sankhya API availability for writes is evidence to carry into D4, not a D0 transport decision;
-- the exact next work is the **Marketplace Operations Operator** authority boundary inside D0.4.
+- the exact next work is the **Commercial / Marketplace Manager** authority boundary inside D0.4.
