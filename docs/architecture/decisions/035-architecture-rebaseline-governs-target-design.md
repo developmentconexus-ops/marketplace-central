@@ -1,91 +1,100 @@
 # ADR-035: Architecture Rebaseline governs target design during D0–D9
 
 **Date:** 2026-08-13  
+**Amended:** 2026-08-14  
 **Status:** accepted
 
 ## Context
 
-Marketplace Central contains several architectural eras at once:
+Marketplace Central contains several architectural eras at once: legacy modules, newer contexts/adapters, multiple persistence/API/frontend shapes and historical plans/specs/handoffs that described incompatible targets.
 
-- 21 legacy `internal/modules` directories;
-- the newer `internal/contexts` shape already used by `catalog` and `listings`;
-- provider adapters moving from `connectors` to `internal/adapters`;
-- a large historical migration chain;
-- a hand-authored API/SDK/routing model;
-- several dated plans/specs/handoffs/wikis describing incompatible target structures.
+The operator has chosen to design the technical system deeply enough that implementation does not invent architectural semantics locally. At the same time, the operator explicitly rejected turning that design program into a multi-week exhaustive audit of the existing repository before architecture discussion begins.
 
-The platform has no production users whose compatibility requirements force preservation of those historical shapes.
+Those concerns are compatible only if two things stay separate:
 
-The operator has explicitly chosen to perform a full technical architecture deep dive before continuing implementation. Merely choosing folder names/context candidates is insufficient: identity, data ownership, internal communication, events, external integrations, API, frontend, runtime and golden flows must be designed deeply enough that implementation does not need to invent architectural decisions locally.
+1. **documentary/governance authority cleanup**, which removes competing historical authority now; and
+2. **target-system design**, which consults current code/schema/runtime as evidence on demand for the decision being made.
 
-Keeping every previous `accepted` structural ADR as equal target authority would defeat that program: some decisions were correct for an earlier module architecture but directly answer questions D0–D9 is now required to re-adjudicate.
-
-Deleting ADR history outright would also be wrong: code/citations need provenance and old decisions remain useful evidence of why the current system has its shape.
+Current source shape is evidence about the present system. It does not receive target-design authority merely because it exists.
 
 ## Decision
 
-### 1. D0–D9 is the governing target-design program
+### 1. Documentary authority cleanup precedes D0
+
+Before target design begins, PR #41 (or an accepted successor) removes/retargets retired documentary authority and its active consumers.
+
+This cleanup does **not** decide the target disposition of legacy product/runtime code.
+
+It ends when current governance is self-contained, active consumers no longer route to/recreate retired documentary authority, verification is green without weakening controls, and a fresh session can identify one authority path and one exact next action.
+
+After that point, stop cleaning and begin D0.
+
+### 2. D0–D9 is the governing target-design program
 
 The required sequence is:
 
-1. **D0** — Current State & Authority Baseline
-2. **D1** — Context Adjudication
-3. **D2** — Identity & Data Ownership
-4. **D3** — Internal Communication & Event Model
-5. **D4** — External Integration Contracts
-6. **D5** — HTTP/API Contract
-7. **D6** — Frontend Contract
-8. **D7** — Runtime / Scheduler / Transactions / Outbox
-9. **D8** — Golden Flow Simulation
-10. **D9** — Adversarial Global-Maximum Review
+1. **D0 — Product / System Definition**
+2. **D1 — Domains / Boundaries**
+3. **D2 — Identity / Tenant / Data Ownership**
+4. **D3 — Communication / Events**
+5. **D4 — External Integrations**
+6. **D5 — API**
+7. **D6 — Frontend**
+8. **D7 — Runtime / Jobs / Transactions**
+9. **D8 — Golden Flows**
+10. **D9 — Adversarial Architecture Review**
 
-Only after D9 acceptance may the repository create the implementation DAG and implementation plan for the rebaseline.
+Only after D9 acceptance may the repository create the implementation DAG/plan and begin product implementation.
 
-Product implementation is not authorized by approval of D0–D8 alone.
+### 3. Evidence is pulled by the decision; exhaustive legacy census is not a prerequisite
 
-### 2. Git is the archive; active documentation has one path
+Each D-stage begins from its architectural/product question. It identifies the evidence needed to answer that question and then inspects only the relevant code, schema, contracts, runtime, external behavior and historical evidence.
 
-Historical plans, handoffs, evidence snapshots, wikis and old design documents are removed from the active tree after their still-valid principles are absorbed.
+Already-collected current-state facts live as supporting evidence (for example in `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`). They do not create a gate requiring every fact to be freshly reproduced before D0 or before design discussion.
+
+When a stage needs a package graph, writer/reader census, route topology, adapter capability map, runtime reachability measurement or other repository analysis, that measurement is performed for that decision.
+
+### 4. Git is the archive; active documentation has one current-program path
+
+Historical plans, handoffs, wikis and old design documents are removed from the active tree after still-valid principles/evidence are absorbed where necessary.
 
 There is no `old/`, `archive/` or parallel legacy roadmap.
 
-Current program status lives only at `docs/engineering/rebaseline/README.md`.
+Current program status and exact next action live only at `docs/engineering/rebaseline/README.md`.
 
-### 3. Hard cutover is permitted
+### 5. Hard cutover is permitted, but only after the relevant design decision
 
-Because no production user depends on current compatibility, target architecture may intentionally break/delete current routes, schemas, IDs, package APIs, module boundaries and frontend redirects.
+Because no production user requires preservation of current application compatibility, accepted target architecture may intentionally replace/delete current routes, schemas, IDs, package APIs, module boundaries and frontend redirects.
 
 Compatibility requires a measured consumer/reason.
 
-Hard cutover does not authorize an indefinitely red/ambiguous `main`; each landing must converge to one authority with proof.
+This permission is **not** authority to delete legacy source during documentary cleanup. A source unit is adjudicated only when the D-stage responsible for its concern has established the target owner/contract and cutover.
 
-### 4. Prior ADR records remain historical but their target authority is classified below
+Hard cutover also does not authorize an indefinitely red/ambiguous `main`; each landing must converge to one authority with proof.
 
-A prior ADR marked **reopened** by this decision remains useful evidence. It does **not** constrain target design until the named D-stage re-adjudicates it. If the old decision survives, the stage records why and may restore it as current. If it does not, a later ADR amends/supersedes it explicitly.
+### 6. Prior ADR records remain historical but target authority is classified
 
-This later ADR takes precedence over the older status for target-design work.
+A prior ADR marked **reopened** remains useful evidence. It does not constrain target design until the relevant D-stage re-adjudicates it. If the old decision survives, the stage records why. If it does not, a later ADR amends/supersedes it explicitly.
 
 ## Still-binding constraints during the rebaseline
 
-These remain current unless a new material finding explicitly reopens them:
+These remain current unless a material finding explicitly reopens them:
 
 - **ADR-005** — Mercado Livre is the first operational control plane.
 - **ADR-006** — Oracle/Sankhya reads are MPC-owned behind application adapter boundaries.
 - **ADR-007** — godror/OCI is the current canonical Oracle runtime.
 - **ADR-009** — fee values carry provenance.
 - **ADR-013** — webhook payload is a pointer/trigger, not trusted domain truth.
-- **ADR-021** — TanStack Query is the frontend server-state mechanism; D6 may redesign package/route topology without duplicating server state authority.
+- **ADR-021** — TanStack Query is the frontend server-state mechanism; D6 may redesign package/route topology without duplicating server-state authority.
 - **ADR-025** — raw provider PII is not retained merely for convenience.
 - **ADR-027** — absence from a partial pull is not closure/deletion.
 - **ADR-029** — provider writes are not blindly retried after failure/ambiguous outcome.
-- **ADR-033** — external marketplaces enter through vendor adapter trees implementing consumer-owned ports.
-- **ADR-034** — `internal/kernel/fact` is the accepted primitive replacing the old prose-only unknown-is-never-zero mechanism; **D2 decides where uncertainty semantics actually require it**, not whether every value must use it.
+- **ADR-033** — external marketplaces enter through vendor adapter boundaries implementing consumer-owned ports; D1/D4 may re-adjudicate exact target package topology without moving provider protocol into business policy.
+- **ADR-034** — `internal/kernel/fact` is the current uncertainty primitive; D2 decides its target scope rather than forcing it onto every value.
 
 These are constraints, not a complete target architecture.
 
 ## Reopened / non-authoritative for target design
-
-The following are reopened because they encode structural choices D0–D9 must evaluate as a coherent system:
 
 | ADR | Previous decision | Re-adjudicated in |
 |---|---|---|
@@ -110,50 +119,59 @@ The following are reopened because they encode structural choices D0–D9 must e
 | 031 | products-mirror keep-absent merge | D1 / D2 |
 | 032 | ML catalog-offers flag/default policy | D4 |
 
-Reopened means **do not cite the old decision as proof that the target must keep it**.
+Reopened means: **do not cite the old decision as proof that the target must keep it**.
 
 ## Already superseded historical records
 
 - ADR-001 and ADR-002 were superseded in July 2026.
 - ADR-017 was superseded by ADR-034.
 
-Their files may remain for numbering/provenance but are not current authority.
+Their records may remain for numbering/provenance but are not current target authority.
 
 ## Consequences
 
-1. `AGENTS.md` routes every new session through the rebaseline status before any old architectural artifact.
-2. `ARCHITECTURE.md` contains only stable product-level constraints during the program; old module layout is removed from it.
-3. `docs/architecture/decisions/README.md` is the only ADR status registry; its status column reflects this decision.
-4. Legacy planning/documentation surfaces are deleted from the active tree rather than moved to another archive directory.
-5. The current OpenAPI, schema, modules and frontend are D0 evidence. Their existence does not automatically grant them target authority.
-6. D1–D9 can restore an old decision if it survives the global-maximum review; that survival must be justified by domain/failure-mode evidence, not inertia.
-7. No implementation-plan generation or Codex execution of the rebaseline occurs before D9 acceptance.
+1. `AGENTS.md` routes every fresh session through the current rebaseline status before historical material.
+2. `docs/engineering/rebaseline/README.md` is the sole current program/status/next-action authority.
+3. `ARCHITECTURE.md` contains stable constraints, not an inventory that blesses current code shape.
+4. `docs/architecture/decisions/README.md` is the ADR status registry.
+5. Existing OpenAPI, schema, modules, contexts, packages, runtime and frontend are supporting evidence consulted by the D-stage that needs them, not an exhaustive D0 prerequisite.
+6. Legacy product/runtime disposition is decided stage by stage; documentary cleanup cannot smuggle in KEEP/REPLACE/DELETE decisions.
+7. D0 begins with the question **“what exactly are we building?”**, not “audit every file first.”
+8. No product implementation-plan generation or implementation occurs before D9 acceptance.
 
 ## Alternatives considered
 
+### Exhaustively census the repository before architecture discussion
+
+Rejected. It turns current implementation history into the agenda for target design, delays product/system definition and creates a false prerequisite to inspect every legacy surface before asking what should exist.
+
+### Delete/refactor obviously old code during documentary cleanup
+
+Rejected. Age or directory shape is not a target-design decision. It can erase useful evidence and prematurely select one historical architecture over another.
+
 ### Keep all old docs/ADRs active and add a new roadmap
 
-Rejected. It preserves several mutually valid-looking routes through the repository and forces every fresh session to infer precedence.
+Rejected. It preserves several mutually valid-looking routes and forces fresh sessions to infer precedence.
 
 ### Delete all ADRs and start numbering over
 
-Rejected. It destroys provenance, breaks citations and confuses historical evidence. The problem is authority status, not the existence of a record.
+Rejected. It destroys provenance and breaks historical citations. The problem is authority status, not existence of a record.
 
-### Move legacy docs to `docs/archive/` or `old/`
+### Move legacy docs/source to `docs/archive/` or `old/`
 
-Rejected. It creates another searchable in-repo knowledge surface and invites future agents to resurrect superseded designs. Git already provides immutable history.
+Rejected. It creates another searchable in-repo authority surface. Git already provides immutable history.
 
-### Begin implementation and decide technical details per context PR
+### Begin implementation and decide architecture per feature PR
 
-Rejected. That is the root failure mode the rebaseline exists to remove: local PRs would decide identity, data ownership, events, retries, API and frontend semantics independently and recreate architectural drift under cleaner folder names.
+Rejected. Local implementation would again decide identity, data ownership, events, retries, API and frontend semantics independently.
 
 ## Proof / review
 
-This decision is correctly applied when a fresh session can read `AGENTS.md`, `docs/engineering/rebaseline/README.md`, the current D-stage and the ADR registry and determine unambiguously:
+This decision is correctly applied when a fresh session can determine unambiguously that:
 
-- what is accepted;
-- what is reopened;
-- what work is prohibited;
-- current stage/progress;
-- exact next action;
-- why historical documents cannot silently regain authority.
+- current work is documentary/governance cleanup until its explicit completion gate passes;
+- legacy product/runtime code is untouched by that cleanup except narrow retargeting of retired documentary consumers/writers;
+- after cleanup the next stage is D0 Product/System Definition;
+- code/schema/runtime are evidence pulled on demand by the relevant design decision;
+- historical documents/ADRs cannot silently regain target authority;
+- product implementation remains blocked until D9 is accepted.
