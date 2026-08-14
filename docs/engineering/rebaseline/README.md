@@ -1,7 +1,7 @@
 # Marketplace Central — Architecture Rebaseline
 
 > **Role:** sole current-program status / router after `AGENTS.md`  
-> **Current phase:** DOCUMENTARY / GOVERNANCE AUTHORITY CLEANUP — DONE. D0 not yet opened.  
+> **Current phase:** D0 — PRODUCT / SYSTEM DEFINITION — OPEN; working, not yet accepted as a whole.  
 > **Implementation:** BLOCKED until D9 is accepted  
 > **Evidence baseline:** `main@de1dc88bcef5a6ed5515378e7c646682c0bc15d2`  
 > **Last updated:** 2026-08-14
@@ -78,16 +78,16 @@ The documentary cleanup was DONE only when all of the following held. Each row r
 
 The cleanup stops here. It is not extended into a general codebase audit.
 
-## 4. What happens after cleanup
+## 4. Current design program
 
-After cleanup, the target-design program begins with **D0 — Product / System Definition**.
+After cleanup, the target-design program begins with **D0 — Product / System Definition**. D0 is now open. Its current working artifact is `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`.
 
 The governing sequence is:
 
 ```text
-DOCUMENTARY / GOVERNANCE AUTHORITY CLEANUP
+DOCUMENTARY / GOVERNANCE AUTHORITY CLEANUP — DONE
   ↓
-D0 — Product / System Definition
+D0 — Product / System Definition — OPEN
   ↓
 D1 — Domains / Boundaries
   ↓
@@ -163,7 +163,7 @@ Each stage consults legacy code/runtime/schema only to answer the questions actu
 
 ## 7. Legacy disposition policy
 
-Legacy product/runtime units are not classified for deletion during the current documentary cleanup.
+Legacy product/runtime units are not classified for deletion merely because D0 is open.
 
 During the relevant D-stage they may later be classified as, for example:
 
@@ -174,7 +174,7 @@ During the relevant D-stage they may later be classified as, for example:
 - REPLACE;
 - DELETE.
 
-No classification is granted solely by age, directory name, or current reachability discovered incidentally during documentary cleanup.
+No classification is granted solely by age, directory name, or current reachability discovered incidentally.
 
 ## 8. Documentation authority
 
@@ -185,7 +185,7 @@ Read active authority in this order:
 3. `docs/engineering/standards/root-cause-global-maximum-method.md` — decision method;
 4. `ARCHITECTURE.md` — stable product/platform constraints that have actually survived rebaseline authority review;
 5. `docs/architecture/decisions/README.md` — ADR status registry;
-6. accepted/current D-stage artifact(s), once design begins;
+6. `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md` — current D0 artifact while D0 is active;
 7. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md` — supporting evidence only;
 8. code, OpenAPI, schemas, tests and runtime — current-state evidence.
 
@@ -193,26 +193,29 @@ Historical plans/specs/handoffs/wikis do not become target authority because the
 
 ## 9. Current supporting evidence
 
-`docs/engineering/rebaseline/EVIDENCE-REGISTER.md` contains already-collected facts worth carrying forward. They are supporting evidence, not prerequisites that must all be exhaustively reproduced before D0 starts.
+`docs/engineering/rebaseline/EVIDENCE-REGISTER.md` contains already-collected facts worth carrying forward. They are supporting evidence, not prerequisites that must all be exhaustively reproduced before D0 continues.
 
 Any additional codebase measurement is performed when a D-stage decision requires it.
 
 ## 10. Exact next action
 
-**Open D0 — Product / System Definition with the operator.**
+**Continue D0 with the operator: decide D0.4 — Actors / operational users.**
 
-Nothing else is authorized. In particular: do not start product implementation, do not begin any D1–D9 stage before D0 is accepted, and do not reopen the documentary cleanup — §3 records the condition on which it closed.
+Accepted D0.1–D0.3a decisions and the current Sankhya integration evidence are recorded in `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`.
 
-D0 answers the question in §6: what exactly are we building, for whom, what problem does it solve, what belongs inside and outside, and what is Product 1.0. It runs by the decision method in §5, and its output is an accepted D0 artifact recorded under `docs/engineering/rebaseline/`.
+Nothing else is authorized. In particular: do not start product implementation, do not begin D1–D9 before D0 is accepted, and do not reopen the documentary cleanup.
+
+D0 remains open until its product/system definition is complete, internally coherent, reviewed with the operator, and explicitly accepted as a whole.
 
 ## 11. Fresh-session success test
 
-After cleanup, a fresh session should be able to read `AGENTS.md` and this file and state correctly:
+A fresh session should be able to read `AGENTS.md`, this file and the current D0 artifact and state correctly:
 
-- we are not implementing product features yet;
-- the cleanup has either a precise remaining action or is DONE;
+- documentary/governance cleanup is DONE;
+- D0 Product / System Definition is OPEN and not yet accepted as a whole;
+- D0.1–D0.3a recorded in the D0 artifact are operator-approved decisions;
 - historical code/docs are evidence, not target authority;
-- the next design stage is D0 Product / System Definition;
-- implementation begins only after the design program is accepted.
+- implementation remains blocked until D9 is accepted;
+- the exact next decision is **D0.4 — Actors / operational users**.
 
-If it cannot, authority cleanup is not finished.
+If it cannot, the current authority path is incomplete or contradictory.
