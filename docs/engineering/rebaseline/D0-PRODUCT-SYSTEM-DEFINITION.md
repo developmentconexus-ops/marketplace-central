@@ -272,6 +272,7 @@ Governing principle:
 | Pricing scenarios / expected profitability | **OWN / DERIVE** |
 | MPC-owned marketplace commercial policies | **OWN** |
 | Marketplace account/installation membership under an MPC organization | **OWN** as MPC organization/control-plane configuration; provider account identity itself remains provider-owned |
+| MPC Selling Entity identity/membership and transaction attribution | **OWN** as MPC business/control-plane semantics; an ERP or legal registry may remain authoritative for corresponding external legal/company identities |
 | Actual listing/channel state inherent in marketplace | provider authoritative; MPC **OBSERVES / ORCHESTRATES** |
 | Marketplace listing/price mutation intent | **OWN / ORCHESTRATE** |
 | Marketplace-originated order facts | marketplace/provider authoritative; MPC **ORCHESTRATES** |
@@ -296,7 +297,9 @@ Governing principle:
 9. Any listing/order/action/policy whose meaning depends on a marketplace installation must be attributable to the correct installation; no implicit “current seller account” may become product semantics.
 10. **MPC canonical business semantics are defined from marketplace-operating needs, not copied from an ERP ontology.** Native ERP identifiers, tables, fields and taxonomies remain at the integration boundary unless the MPC domain independently requires an equivalent concept.
 11. ERP integration is semantic translation, not merely field renaming: an adapter maps authoritative facts/capabilities/commands/results between the ERP’s native model and MPC semantics and must represent unsupported or uncertain mappings explicitly rather than inventing equivalence.
-12. Provider/ERP-specific mechanisms remain implementation concerns for later stages.
+12. **Selling Entity is a canonical MPC business concept, not an alias for ERP company/branch.** When a marketplace operation materially depends on which business/legal/fiscal entity is acting, that attribution must be explicit and preserved.
+13. Selling Entity must not be silently collapsed with inventory source, fulfillment location, cost scope or another business dimension merely because a particular ERP or first deployment represents them together. Any relationship between those dimensions must be explicit and justified by business semantics.
+14. Provider/ERP-specific mechanisms remain implementation concerns for later stages.
 
 ---
 
@@ -313,16 +316,17 @@ The acceptance bar is user-observable:
 3. **Marketplace availability remains operationally coherent without per-change manual work.** When governing stock/rules change and sellable availability is known, MPC updates marketplace availability on the normal path and verifies convergence; uncertainty or failure becomes explicit work rather than guessed quantity or silent drift.
 4. **Competitive/pricing intelligence replaces major manual analysis.** MPC exposes grounded comparable-market position, relevant internal economics, price scenarios, expected profitability and insufficient-evidence cases at portfolio and product level.
 5. **Decision closes into controlled action.** Authorized human or bounded policy-driven decisions can become external actions with policy enforcement, auditability, verification and reconciliation.
-6. **A marketplace sale traverses the normal operating loop through MPC.** Order recognition, ERP operation, fulfillment queue, conference, invoicing trigger/verification, packing and dispatch do not require hidden manual system hopping as a normal step.
-7. **Delivery remains visible through terminal outcome.** After dispatch, MPC continues observing until delivered, returned, cancelled or equivalent terminal state; material delivery exceptions become explicit work.
-8. **Essential post-sale changes remain inside the controlled lifecycle.** Cancellation, return/refund effects can be progressed through necessary cross-system response/reconciliation without dropping normal operation back to manual system hopping.
-9. **Failures become explicit work.** Missing evidence, ambiguous external results, integration failures and physical/order/availability/delivery/post-sale divergences surface with what is known/unknown and what requires action.
-10. **The economic loop closes.** MPC compares expected versus realized profitability using attributable authoritative facts, including material delivery/cancellation/return/refund effects.
-11. **Organizational governance is operable without code edits.** Actors can exercise legitimate MPC-owned authorities while externally governed rules remain externally governed and mandatory safety/audit invariants cannot be configured away.
+6. **Material transaction context is explicit.** When a marketplace operation depends on which business/legal/fiscal entity is acting, MPC can attribute the workflow to the correct Selling Entity rather than relying on an implicit ERP/default-company assumption.
+7. **A marketplace sale traverses the normal operating loop through MPC.** Order recognition, ERP operation, fulfillment queue, conference, invoicing trigger/verification, packing and dispatch do not require hidden manual system hopping as a normal step.
+8. **Delivery remains visible through terminal outcome.** After dispatch, MPC continues observing until delivered, returned, cancelled or equivalent terminal state; material delivery exceptions become explicit work.
+9. **Essential post-sale changes remain inside the controlled lifecycle.** Cancellation, return/refund effects can be progressed through necessary cross-system response/reconciliation without dropping normal operation back to manual system hopping.
+10. **Failures become explicit work.** Missing evidence, ambiguous external results, integration failures and physical/order/availability/delivery/post-sale divergences surface with what is known/unknown and what requires action.
+11. **The economic loop closes.** MPC compares expected versus realized profitability using attributable authoritative facts, including material delivery/cancellation/return/refund effects.
+12. **Organizational governance is operable without code edits.** Actors can exercise legitimate MPC-owned authorities while externally governed rules remain externally governed and mandatory safety/audit invariants cannot be configured away.
 
 Completion statement:
 
-> **A company can take its internal products, determine marketplace readiness, publish and operate offers, keep marketplace availability coherent with governing stock/rules, monitor market position and profitability at portfolio scale, make and execute decisions under policy, receive sales, progress them through ERP and physical fulfillment, follow delivery to a terminal outcome, handle essential cancellation/return/refund consequences, surface/reconcile exceptions, and understand the realized economic result — using Marketplace Central as the normal marketplace operations control plane.**
+> **A company can take its internal products, determine marketplace readiness, publish and operate offers, keep marketplace availability coherent with governing stock/rules, preserve the correct business entity context for material marketplace transactions, monitor market position and profitability at portfolio scale, make and execute decisions under policy, receive sales, progress them through ERP and physical fulfillment, follow delivery to a terminal outcome, handle essential cancellation/return/refund consequences, surface/reconcile exceptions, and understand the realized economic result — using Marketplace Central as the normal marketplace operations control plane.**
 
 ### D0.6a — Normal-path rule
 
@@ -441,17 +445,46 @@ Examples such as Sankhya `CODEMP`, `CODLOC`, native cost variants, stock structu
 
 This principle does **not** require building a speculative universal ERP abstraction. MPC should define only the business semantics actually required by accepted marketplace workflows.
 
+#### D0.7e.1 — Selling Entity
+
+**Accepted by operator.**
+
+`Selling Entity` is the first ERP-independent canonical business dimension accepted for MPC.
+
+A **Selling Entity** is the business entity to which a marketplace commercial operation belongs when that distinction is material to who is acting as seller and to the transaction's business, legal or fiscal consequences.
+
+Product-level cardinality permits:
+
+```text
+Organization 1 → N Selling Entities
+```
+
+The purpose of the concept is to answer, in MPC language:
+
+> **Which business/legal/fiscal entity of this organization is acting for this marketplace transaction?**
+
+Product-level requirements:
+
+- an order, invoice-triggering workflow, reversal or other marketplace operation whose business/fiscal meaning depends on the acting entity must be attributable to the correct Selling Entity;
+- organization identity is not Selling Entity identity merely because a first deployment has one legal/company entity;
+- Selling Entity is not defined as an ERP company/branch identifier and does not inherit an ERP ontology;
+- a marketplace installation is not inherently bound one-to-one to a Selling Entity; any routing relationship between them is explicit policy/configuration, not structural identity;
+- Selling Entity does **not** automatically determine inventory source, fulfillment location, costing scope or another operational dimension. Those dimensions remain separate until their own business semantics are decided;
+- a participating ERP adapter must translate the MPC Selling Entity semantic to the ERP-native structures needed to execute/read the operation. If that mapping is missing or ambiguous, the adapter/workflow must expose unsupported/unknown/configuration-required state rather than selecting an arbitrary default entity.
+
+The first deployment may use one Selling Entity without hardcoding single-entity semantics into the product.
+
 #### Next D0.7e decision
 
-Identify the first ERP-independent business dimension MPC actually needs: **enterprise / legal / fiscal operating scope**.
+Define the next ERP-independent business dimension: **Inventory Source / Stock Scope**.
 
-The question is not “what maps to `CODEMP`?”. The question is:
+The question is not “what maps to Sankhya `CODLOC`/`CODEMP`?” or “what is a warehouse in ERP X?”. The question is:
 
-> When a marketplace operation depends on *which business/legal/fiscal entity is acting*, what distinction must MPC be able to express and preserve?
+> **What must MPC be able to represent in order to know which authoritative stock pools/sources may contribute to the sellable availability of a marketplace offer, and which may not?**
 
-This decision must be made in MPC/business language. Only later D2/D4 decide whether Sankhya `CODEMP`, another ERP company/site/legal-entity construct, or a combination of native structures supplies that semantic.
+D0 must decide the product semantics and boundary only. Exact physical-location identities, ERP mappings, stock ledgers, reservation models, aggregation rules, precedence and synchronization mechanics belong to D2/D4/D7.
 
-Subsequent ERP-independent dimensions to test include inventory source/scope, fulfillment source/location, cost semantics/scope, order execution scope and fiscal/invoicing scope. D0 must not assume these are identical entities or necessarily six separate entities before each need is proven.
+Subsequent ERP-independent dimensions to test include fulfillment source/location, cost semantics/scope, order execution scope and fiscal/invoicing scope. D0 must not assume these are identical entities or necessarily separate entities before each need is proven.
 
 Other findings discovered during D0.7 are classified as MUST DECIDE NOW, SHOULD DECIDE NOW or CAN DEFER SAFELY. D0 closes only when no material Product 1.0 semantic is being left for implementation to invent.
 
@@ -470,10 +503,11 @@ It should conclude:
 - D0.7c is accepted: marketplace availability is maintained automatically from governing authoritative stock/rules when sufficiently known, while uncertainty/failure becomes explicit work and MPC does not become physical-stock authority;
 - D0.7d is accepted: one MPC organization may own/control one or more marketplace installations, even if Product 1.0 is initially proven with one Mercado Livre account;
 - D0.7e is accepted: canonical MPC business semantics are defined from marketplace-operating needs before ERP-specific mapping; ERP integration semantically translates rather than dictating the MPC domain;
-- organization identity must not be collapsed into marketplace seller-account identity;
+- D0.7e.1 is accepted: `Selling Entity` is a canonical MPC business dimension for the acting business/legal/fiscal entity, independent from ERP company identifiers, marketplace installation, inventory source, fulfillment location and costing scope unless explicit business rules relate them;
+- organization identity must not be collapsed into marketplace seller-account or Selling Entity identity;
 - Sankhya-native concepts such as `CODEMP`, `CODLOC` and cost variants are integration evidence, not automatically canonical MPC concepts;
 - MPC uses **OWN / ORCHESTRATE / OBSERVE-DERIVE** and owns the marketplace operating model without taking ownership of external facts merely because it consumes or causes them;
 - Sankhya API availability for writes is evidence to carry into D4, not a D0 transport decision;
 - business rules/policies may be MPC-owned, externally governed or derived, and later D2/D4 must preserve that provenance;
 - no D1+ target architecture may be invented yet;
-- the exact next work is **D0.7e — define the ERP-independent enterprise/legal/fiscal operating scope needed by MPC**.
+- the exact next work is **D0.7e — define ERP-independent Inventory Source / Stock Scope semantics needed by MPC**.
