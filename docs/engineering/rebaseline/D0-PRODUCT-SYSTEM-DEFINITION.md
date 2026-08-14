@@ -260,23 +260,73 @@ The Owner/Admin is **not** intended to approve routine commercial changes merely
 
 No actor may use its authority to disable mandatory audit/reconciliation/safety invariants or silently convert externally governed business rules into local editable copies.
 
-## 7. Current open D0 decision
+## 7. D0.5 — System boundary / authority classes
 
-### D0.5 — System boundary / authority classes
+**Accepted by operator.**
+
+Marketplace Central uses three product-level authority classes:
+
+- **OWN** — MPC is the business authority for the concern/state;
+- **ORCHESTRATE** — another system remains authoritative for the underlying business fact/process, while MPC owns the cross-system operational intent/control/workflow around its participation in marketplace operations;
+- **OBSERVE / DERIVE** — MPC consumes authoritative external facts and may derive decision-support information without becoming source of truth for the underlying fact.
+
+The governing principle is:
+
+> **MPC owns the marketplace operating model. External systems own the facts and processes that inherently belong to them. MPC orchestrates their participation in the marketplace operating loop.**
+
+This classification is conceptual. D0 does not decide tables, context ownership, sync topology, ports, APIs or persistence mechanisms.
+
+### D0.5a — Product 1.0 authority map
+
+| Concern | Product-level MPC authority |
+|---|---|
+| Internal master product facts, ERP base cost and ERP-governed fiscal facts | **OBSERVE / DERIVE** |
+| Business rules/policies whose authority remains in Sankhya/another ERP/system | **OBSERVE / CONSUME** |
+| Product ↔ marketplace linkage/evidence maintained by MPC | **OWN** |
+| Marketplace readiness and readiness assessment | **OWN / DERIVE** |
+| Cross-system operational intent, workflow, correlation, divergence and exception state | **OWN** |
+| Competitive intelligence and comparable-market interpretation | **OWN / DERIVE** |
+| Pricing scenarios and expected profitability | **OWN / DERIVE** |
+| MPC-owned marketplace commercial policies | **OWN** |
+| Actual listing/channel state that inherently exists in the marketplace provider | provider is authoritative; MPC **ORCHESTRATES** and observes |
+| MPC intent to create/change/pause/reactivate a marketplace listing or price | **OWN / ORCHESTRATE** |
+| Marketplace-originated order facts | marketplace/provider is authoritative for originating channel facts; MPC **ORCHESTRATES** |
+| ERP order/invoice/accounting facts produced in Sankhya | Sankhya is authoritative; MPC **ORCHESTRATES** the marketplace workflow that causes/observes them |
+| Marketplace-order fulfillment workflow: queue, conference, invoicing trigger, packing/dispatch progression, exceptions | **OWN**, while underlying ERP/carrier facts retain their external authority |
+| Realized profitability interpretation | **OWN / DERIVE** from authoritative realized facts |
+| Audit/reconciliation records for MPC-controlled operations | **OWN** |
+
+### D0.5b — Boundary invariants
+
+Product 1.0 must preserve these invariants regardless of later implementation shape:
+
+1. Observing an external fact does not transfer ownership of that fact to MPC.
+2. Orchestrating an external process does not make MPC the source of truth for the external system's resulting native record.
+3. An MPC-derived commercial conclusion must preserve the provenance/freshness needed to understand which authoritative facts/rules produced it.
+4. Externally governed rules are not silently copied into mutable MPC-owned policy.
+5. MPC-owned workflow state is not replaced by guessing from one provider response; ambiguous or divergent cross-system outcomes remain explicit until reconciled.
+6. Provider/ERP-specific mechanisms remain implementation concerns for later stages; the Product 1.0 boundary is stated in business terms.
+
+## 8. Current open D0 decision
+
+### D0.6 — Product 1.0 completion / user-observable outcomes
 
 **Next exact decision with the operator.**
 
-Now that Product 1.0 capabilities and actors are defined, establish the product boundary without prematurely doing D1/D2/D4 implementation design.
+Define what must be demonstrably true for Marketplace Central Product 1.0 to count as a complete usable product, not merely a collection of implemented capabilities.
 
-For each major concern, classify Marketplace Central at product level as one of:
+D0.6 should establish user-observable end-state outcomes across the accepted Product 1.0 loop, including at minimum:
 
-- **OWN** — MPC is the business authority for the concern/state;
-- **ORCHESTRATE** — another system remains authoritative for the underlying business fact/process, but MPC owns the cross-system operational workflow/intent/control around it;
-- **OBSERVE / DERIVE** — MPC consumes authoritative external facts and may derive decision-support information without becoming the source of truth for the underlying fact.
+- operators can identify what needs attention instead of manually searching systems/product by product;
+- competitive/pricing analysis is actionable and grounded in attributable facts;
+- authorized marketplace actions can be executed and their result verified/reconciled;
+- marketplace orders can progress through ERP creation, physical conference, invoicing, packing and dispatch without hidden manual system hopping as the normal path;
+- expected versus realized profitability can be understood after a sale;
+- uncertainty, missing evidence and cross-system failures surface as explicit work/exceptions rather than plausible defaults or silent success.
 
-D0.5 must answer where MPC begins/ends for the Product 1.0 loop while deferring exact identities, tables, schemas, ports, synchronization and API mechanics to D1–D4.
+This is still a product definition decision. Detailed golden-flow proofs belong to D8; D0 defines which user outcomes D8 will eventually have to prove.
 
-## 8. Resume contract for a fresh session
+## 9. Resume contract for a fresh session
 
 A fresh session must read `AGENTS.md`, `docs/engineering/rebaseline/README.md`, the canonical engineering method, `ARCHITECTURE.md`, the ADR registry, and then this D0 artifact.
 
@@ -285,11 +335,8 @@ It should conclude:
 - D0 is open and not yet accepted as a whole;
 - D0.1–D0.3b are operator-approved product decisions;
 - D0.4 is accepted with four actors and explicit responsibility/authority boundaries;
-- Fulfillment / Dispatch physically separates/conferences before triggering invoicing; physical inconsistency blocks normal invoicing;
-- Marketplace Operations Operator may create/publish and perform routine actions when fully ready and policy-compliant;
-- Commercial / Marketplace Manager governs ordinary **MPC-owned** commercial policy, approvals and bounded automation, but does not silently override externally governed ERP/system rules;
-- Owner / Administrator governs system/organization-level controls and exceptional authority without becoming a routine commercial approval bottleneck;
+- D0.5 is accepted: MPC uses the product-level authority classes **OWN / ORCHESTRATE / OBSERVE-DERIVE** and owns the marketplace operating model without taking ownership of external facts merely because it consumes or causes them;
 - Sankhya API availability for writes is evidence to carry into D4, not a D0 transport decision;
 - business rules/policies may be MPC-owned, externally governed or derived, and later D2/D4 must preserve that provenance;
 - no D1+ target architecture may be invented yet;
-- the exact next work is **D0.5 — System boundary / authority classes**.
+- the exact next work is **D0.6 — Product 1.0 completion / user-observable outcomes**.
