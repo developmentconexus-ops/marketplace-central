@@ -52,9 +52,10 @@ internal product
   → controlled decision / policy
   → marketplace action
   → sale / marketplace order
-  → business-order intent / ERP materialization
-  → invoicing
-  → fulfillment / dispatch
+  → business-order intent / business-system materialization
+  → fulfillment readiness / physical conference
+  → invoicing intent / fiscal materialization
+  → packing / dispatch
   → shipment / delivery lifecycle
   → essential cancellation / return / refund lifecycle when applicable
   → realized economics
@@ -69,7 +70,7 @@ The accepted Product 1.0 capabilities are:
 4. **Competitive Intelligence** — observe comparable market offers/prices, expose competitive position and meaningful changes, and represent insufficient comparison evidence honestly.
 5. **Pricing & Profitability Intelligence** — combine relevant internal economics under an explicit, explainable Cost Basis with market observations to calculate price scenarios, expected margin/profitability and decision-relevant trade-offs.
 6. **Decision & Policy Control** — translate observations/recommendations into permitted, approval-required or prohibited actions according to governing company rules/policies.
-7. **Order-to-Business-System Operations** — receive/understand marketplace orders, express the corresponding `Business Order Intent` in MPC semantics, cause the participating ERP/business system to materialize the appropriate native order operation, and verify/correlate the result without importing ERP-native order types into the canonical MPC domain.
+7. **Order & Invoicing Business-System Operations** — receive/understand marketplace orders, express the corresponding `Business Order Intent`, cause and verify the native business-order result, and when invoicing readiness is proven express an `Invoicing Intent` and verify the authoritative fiscal/documentary result without importing ERP-native order/fiscal operation types into the canonical MPC domain.
 8. **Marketplace Fulfillment / Dispatch** — progress marketplace orders through eligible fulfillment execution, including physical separation, conference, invoicing trigger when applicable, packing and dispatch handoff, without becoming a company-wide WMS.
 9. **Shipment / Delivery Observation & Exceptions** — continue observing shipment after dispatch handoff until a relevant terminal outcome, surfacing delays, delivery failures, returns or other material exceptions without becoming a TMS/carrier platform.
 10. **Essential Post-Sale Operations** — control the operational response to marketplace cancellations, returns and refunds when they affect an MPC-controlled sale, coordinating consequences across marketplace/ERP/fulfillment/economic workflows without becoming general CRM/SAC.
@@ -207,9 +208,9 @@ marketplace order / business-order readiness
   → fulfillment queue
   → physical separation
   → physical conference
-  → if valid: operator triggers invoicing through MPC
-  → MPC causes ERP invoicing through the later-accepted integration boundary
-  → invoicing result is verified
+  → if valid and invoicing prerequisites are sufficiently proven: operator triggers invoicing through MPC
+  → MPC creates Invoicing Intent and causes the accepted fiscal/business-system operation
+  → authoritative invoicing result is verified/reconciled
   → packing
   → dispatch handoff
   → completion or exception
@@ -294,12 +295,14 @@ Governing principle:
 | Business Order Intent, cross-system order correlation and materialization workflow | **OWN** as MPC control-plane semantics/workflow |
 | ERP-native order type/operation configuration used to materialize an intent | participating ERP/integration configuration remains native/integration-specific; MPC **ORCHESTRATES** through semantic mapping rather than importing it as canonical domain |
 | ERP-native order record/result | participating ERP authoritative; MPC **OBSERVES / ORCHESTRATES** and reconciles the result against the Business Order Intent |
+| Invoicing readiness, Invoicing Intent and cross-system invoicing correlation/workflow | **OWN / DERIVE** for readiness from governing evidence/rules; **OWN** for intent/correlation/workflow |
+| ERP/fiscal-system-native invoice/fiscal document, tax posting and other native fiscal outcome facts | participating ERP/fiscal system authoritative; MPC **OBSERVES / ORCHESTRATES** and reconciles the result against the Invoicing Intent |
 | Actual listing/channel state inherent in marketplace | provider authoritative; MPC **OBSERVES / ORCHESTRATES** |
 | Marketplace listing/price mutation intent | **OWN / ORCHESTRATE** |
 | Marketplace-order fulfillment workflow | **OWN**, while native ERP/WMS/provider/carrier execution facts retain their external authority where applicable |
 | Shipment/delivery state after dispatch | marketplace/carrier/provider authoritative; MPC **OBSERVES / ORCHESTRATES** exceptions/lifecycle closure |
 | Marketplace cancellation/return/refund facts | marketplace/provider authoritative; MPC **ORCHESTRATES** cross-system response |
-| ERP-native reversal/credit/fiscal/accounting facts | participating ERP authoritative; MPC **ORCHESTRATES** post-sale workflow |
+| ERP-native reversal/credit/fiscal/accounting facts and fiscal consequences of post-sale operations | participating ERP/fiscal system authoritative; MPC **ORCHESTRATES** the required post-sale workflow and reconciliation |
 | Realized profitability interpretation | **OWN / DERIVE** from attributable authoritative/derived economic facts, including the applicable Cost Basis and material delivery/post-sale adjustments |
 | Audit/reconciliation records for MPC-controlled operations | **OWN** |
 
@@ -336,7 +339,13 @@ Governing principle:
 29. **Order materialization mapping must be explicit and semantically sufficient.** Missing or ambiguous mapping/configuration must become unsupported/configuration-required/exception state rather than causing an adapter to choose an arbitrary default ERP company/order type/operation.
 30. **Ambiguous order-write outcome is not blind retry.** If MPC cannot prove whether the ERP materialized the Business Order Intent, the workflow remains ambiguous until reconciled using later-accepted duplicate-protection/recovery semantics.
 31. No separate canonical `Order Execution Scope` is introduced in D0.7e.5. Material order-execution context belongs in the Business Order Intent plus explicit governing policies/integration mappings; a separate scope concept may only be added later if new evidence proves independent business semantics.
-32. Provider/ERP-specific mechanisms remain implementation concerns for later stages.
+32. **Invoicing Intent is canonical MPC intent, not an ERP/native fiscal operation.** ERP invoice operations, TOPs, document types, tax/fiscal operation codes and equivalent native constructs remain integration/native semantics unless an independent MPC business distinction justifies a canonical concept.
+33. **Order existence is not invoicing readiness.** MPC may create Invoicing Intent only when the governing business prerequisites are sufficiently proven; an unknown or unresolved prerequisite cannot silently become `ready`.
+34. **MPC owns invoicing intent/readiness/correlation; the fiscal system owns the native fiscal result.** Observing or causing a native invoice/fiscal document does not transfer authority for that document/tax fact to MPC.
+35. **Ambiguous invoicing outcome is not blind retry.** If MPC cannot prove whether fiscal materialization occurred, the workflow remains ambiguous until reconciled; a transport timeout or uncertain response is not evidence that it is safe to invoice again.
+36. No separate canonical `Fiscal Scope` / `Invoicing Scope` is introduced in D0.7e.6. Selling Entity plus the material context carried by Invoicing Intent and explicit policies/mappings is sufficient until independent business evidence proves another canonical fiscal dimension.
+37. **Post-sale fiscal consequences remain controlled lifecycle work.** When a cancellation/return/refund requires an authoritative fiscal reversal/credit/adjustment, MPC orchestrates and reconciles the required outcome without inventing the provider/ERP-native document taxonomy in D0.
+38. Provider/ERP-specific mechanisms remain implementation concerns for later stages.
 
 ---
 
@@ -356,16 +365,17 @@ The acceptance bar is user-observable:
 6. **Material transaction context is explicit.** When a marketplace operation depends on which business/legal/fiscal entity is acting, MPC can attribute the workflow to the correct Selling Entity rather than relying on an implicit ERP/default-company assumption.
 7. **Fulfillment responsibility is explicit.** When fulfillment execution location/capability is material, MPC knows which Fulfillment Nodes are eligible and which node is responsible for the operation rather than relying on an implicit ERP warehouse/default shipping point.
 8. **A marketplace sale can become the correct business-system order through MPC.** MPC expresses a Business Order Intent with the material business context/provenance, causes the participating ERP/business system to materialize the corresponding native order through explicit semantic mapping, correlates the result to the marketplace sale and surfaces unsupported/ambiguous materialization rather than relying on hidden TOP/order-type/default-company behavior.
-9. **A marketplace sale traverses the normal operating loop through MPC.** Order recognition/materialization, eligible/selected fulfillment, conference, invoicing trigger/verification when applicable, packing and dispatch do not require hidden manual system hopping as a normal step.
-10. **Delivery remains visible through terminal outcome.** After dispatch, MPC continues observing until delivered, returned, cancelled or equivalent terminal state; material delivery exceptions become explicit work.
-11. **Essential post-sale changes remain inside the controlled lifecycle.** Cancellation, return/refund effects can be progressed through necessary cross-system response/reconciliation without dropping normal operation back to manual system hopping.
-12. **Failures become explicit work.** Missing evidence, ambiguous external results, integration failures and physical/order/availability/fulfillment/delivery/post-sale divergences surface with what is known/unknown and what requires action.
-13. **The economic loop closes.** MPC compares expected versus realized profitability using attributable economic facts and explicit cost semantics appropriate to each temporal/transaction context, including material delivery/cancellation/return/refund effects, so the result can be explained rather than merely recomputed from current values.
-14. **Organizational governance is operable without code edits.** Actors can exercise legitimate MPC-owned authorities while externally governed rules remain externally governed and mandatory safety/audit invariants cannot be configured away.
+9. **Invoicing is readiness-gated and verifiable.** When the accepted business prerequisites are sufficiently proven, MPC expresses an Invoicing Intent, causes the participating fiscal/business system to materialize the authoritative result, correlates/verifies it and surfaces unsupported/ambiguous outcomes; order existence or a successful transport response alone cannot masquerade as invoicing readiness/success.
+10. **A marketplace sale traverses the normal operating loop through MPC.** Order recognition/materialization, eligible/selected fulfillment, conference, invoicing intent/result verification, packing and dispatch do not require hidden manual system hopping as a normal step.
+11. **Delivery remains visible through terminal outcome.** After dispatch, MPC continues observing until delivered, returned, cancelled or equivalent terminal state; material delivery exceptions become explicit work.
+12. **Essential post-sale changes remain inside the controlled lifecycle.** Cancellation, return/refund and material fiscal consequences can be progressed through necessary cross-system response/reconciliation without dropping normal operation back to manual system hopping.
+13. **Failures become explicit work.** Missing evidence, ambiguous external results, integration failures and physical/order/invoicing/availability/fulfillment/delivery/post-sale divergences surface with what is known/unknown and what requires action.
+14. **The economic loop closes.** MPC compares expected versus realized profitability using attributable economic facts and explicit cost semantics appropriate to each temporal/transaction context, including material delivery/cancellation/return/refund effects, so the result can be explained rather than merely recomputed from current values.
+15. **Organizational governance is operable without code edits.** Actors can exercise legitimate MPC-owned authorities while externally governed rules remain externally governed and mandatory safety/audit invariants cannot be configured away.
 
 Completion statement:
 
-> **A company can take its internal products, determine marketplace readiness, publish and operate offers, derive marketplace availability from explicitly eligible inventory sources, governing facts/rules and MPC-owned allocation policies, preserve the correct business entity context, translate a marketplace sale into a correlated business-system order through explicit Business Order Intent semantics, route physical fulfillment through an eligible recognized fulfillment node, analyze price/profitability with explainable cost semantics and attributable economics, make and execute decisions under policy, follow delivery to a terminal outcome, handle essential cancellation/return/refund consequences, surface/reconcile exceptions, and understand the realized economic result — using Marketplace Central as the normal marketplace operations control plane.**
+> **A company can take its internal products, determine marketplace readiness, publish and operate offers, derive marketplace availability from explicitly eligible inventory sources, governing facts/rules and MPC-owned allocation policies, preserve the correct business entity context, translate a marketplace sale into a correlated business-system order through explicit Business Order Intent semantics, route physical fulfillment through an eligible recognized fulfillment node, materialize invoicing only when readiness is proven through explicit Invoicing Intent semantics, analyze price/profitability with explainable cost semantics and attributable economics, make and execute decisions under policy, follow delivery to a terminal outcome, handle essential cancellation/return/refund and fiscal consequences, surface/reconcile exceptions, and understand the realized economic result — using Marketplace Central as the normal marketplace operations control plane.**
 
 ### D0.6a — Normal-path rule
 
@@ -664,15 +674,54 @@ D0 explicitly does **not** introduce a separate canonical `Order Execution Scope
 
 Exact intent schema, ERP order/document types, TOPs/native codes, partner/customer mapping, API payloads, idempotency keys, duplicate detection, correlation identifiers, retry/recovery and adapter configuration belong to later stages.
 
-#### Next D0.7e decision
+#### D0.7e.6 — Invoicing Intent
 
-Define the remaining ERP-independent business dimension to test: **Fiscal / Invoicing Semantics**.
+**Accepted by operator.**
 
-The question is not “which Sankhya TOP faturates the order?” or “which native invoice endpoint do we call?”. The question is:
+`Invoicing Intent` is the canonical MPC semantic for the intention to produce the authoritative fiscal/documentary result required for a marketplace sale **after the governing business prerequisites for invoicing have been sufficiently proven**.
 
-> **What must MPC mean when it decides that a marketplace sale is ready to be invoiced/fiscally materialized, which business/fiscal context and prerequisites must be preserved, and what outcome must be verified — without importing an ERP-native invoicing operation into the canonical domain?**
+It answers, in MPC language:
 
-D0 must determine whether a canonical invoicing/fiscal intent semantic is required, whether it is distinct from Selling Entity and Business Order Intent, and which business distinctions the product must preserve. Exact fiscal rules, document models, tax calculations, ERP operation codes/endpoints and reversal mechanics belong to later stages.
+> **Is this marketplace sale actually ready to be fiscally/documentarily materialized, what material business context must be preserved, what authoritative outcome is required, and how will MPC prove/reconcile that outcome without importing an ERP-native invoicing operation into the canonical domain?**
+
+Conceptually:
+
+```text
+marketplace sale / Business Order Intent / native order result
+  → governing readiness evidence and rules
+  → eligible fulfillment / physical conference when the accepted flow requires it
+  → MPC Invoicing Intent
+      → material business/fiscal context / provenance
+      → semantic integration mapping
+  → ERP/fiscal-system native fiscal operation
+  → observe / correlate / verify / reconcile
+```
+
+Product-level requirements:
+
+- `Invoicing Intent` is distinct from `Business Order Intent`: materializing an order does not itself prove that invoicing is ready or authorized;
+- invoicing readiness is an MPC-controlled conclusion derived from the governing authoritative evidence/rules and the accepted workflow. Unknown, conflicting or missing prerequisites remain explicit and block the normal ready path rather than becoming plausible readiness;
+- on the accepted internal-fulfillment normal path, physical separation/conference is a required readiness condition before the operator triggers invoicing. Other fulfillment modes may establish readiness through different later-accepted evidence without changing the canonical intent semantic;
+- Invoicing Intent must preserve material context/provenance such as the originating marketplace sale/order, marketplace installation, Selling Entity when material, the correlated business order/result and other business/fiscal context independently proven necessary;
+- Invoicing Intent is **not** a renamed Sankhya TOP, ERP invoice type, fiscal operation code, tax document type or generic opaque `invoice(payload)` wrapper;
+- ERP/fiscal-native requirements and mapping keys belong to the semantic integration mapping/configuration unless an independent MPC business need proves a canonical concept;
+- the adapter must translate an Invoicing Intent to the appropriate native fiscal/business-system operation and return enough evidence to correlate/verify the authoritative result;
+- an HTTP/API success response alone does not prove fiscal materialization. MPC must observe/correlate the authoritative resulting fiscal/documentary state or explicitly retain uncertainty;
+- a timeout or ambiguous write result must not trigger blind duplicate invoicing. MPC preserves the ambiguous outcome until later-accepted reconciliation/idempotency/recovery semantics prove whether fiscal materialization occurred;
+- post-sale cancellation/return/refund consequences that require an authoritative fiscal reversal/credit/adjustment remain part of the controlled lifecycle. D0 does not invent a universal fiscal-document taxonomy or require a separate intent type for each ERP-native consequence;
+- the first deployment may use one accepted invoicing mapping/profile in Sankhya if it satisfies the real business need without hardcoding that profile as the universal MPC meaning of invoicing.
+
+D0 explicitly does **not** introduce a separate canonical `Fiscal Scope` or `Invoicing Scope`. `Selling Entity`, the material context preserved by Invoicing Intent, and explicit governing policies/integration mappings are sufficient until independent business evidence proves another canonical fiscal dimension.
+
+Exact readiness rules, tax/fiscal calculations, native document types, TOPs/operation codes, API payloads, idempotency keys, duplicate detection, correlation identifiers, post-sale fiscal document mechanics, retry/recovery and adapter configuration belong to later stages.
+
+### Next D0.7 question
+
+The ERP-agnostic semantic pass is now complete for the material Product 1.0 concerns identified so far. Return to the whole-product completeness review and decide the next material boundary: **marketplace financial settlement / payout reconciliation**.
+
+The question is whether Product 1.0's claimed realized economics and control-plane closure require MPC to observe/reconcile the marketplace's monetary settlement/remittance outcomes (fees, adjustments, refunds/chargebacks and expected-vs-paid divergence) at the marketplace-sale/settlement level, or whether Product 1.0 intentionally stops at transaction economics and leaves settlement verification to another finance/accounting process.
+
+This is a Product 1.0 boundary decision, not a payment-provider implementation decision. Exact payment APIs, account ledgers, payout schedules, accounting entries and ERP-finance mappings belong to later stages.
 
 Other findings discovered during D0.7 are classified as MUST DECIDE NOW, SHOULD DECIDE NOW or CAN DEFER SAFELY. D0 closes only when no material Product 1.0 semantic is being left for implementation to invent.
 
@@ -697,7 +746,8 @@ It should conclude:
 - D0.7e.3 is accepted: `Fulfillment Node` identifies a recognized physical-fulfillment execution point/capability, `Fulfillment Scope` governs which nodes are eligible, and fulfillment semantics remain distinct from inventory promise, Selling Entity and provider-native locations;
 - D0.7e.4 is accepted: `Cost Observation` preserves cost meaning/value/time-context/provenance, `Cost Basis` explicitly selects the economically appropriate cost semantic, and ERP-native cost types cannot become silent MPC defaults/fallbacks;
 - D0.7e.5 is accepted: `Business Order Intent` is MPC-owned intent/correlation semantics for materializing a marketplace sale in a business system; ERP-native order types/TOPs remain integration details, and no separate `Order Execution Scope` is currently justified;
-- ambiguous order materialization cannot be blindly retried or silently treated as failure/success;
+- D0.7e.6 is accepted: `Invoicing Intent` is MPC-owned readiness-gated fiscal/documentary materialization intent; native fiscal documents remain externally authoritative, uncertain prerequisites do not become readiness, ambiguous invoicing cannot be blindly retried, and no separate `Fiscal Scope` is currently justified;
+- material post-sale fiscal consequences remain orchestrated/reconciled without importing ERP-native fiscal-document taxonomy into D0;
 - historical/realized economics must not silently use current cost as a substitute, and cost remains distinct from other economic components such as marketplace fees, freight and taxes;
 - organization identity must not be collapsed into marketplace seller-account or Selling Entity identity;
 - Sankhya-native concepts such as `CODEMP`, `CODLOC`, TOPs and cost variants are integration evidence, not automatically canonical MPC concepts;
@@ -705,4 +755,4 @@ It should conclude:
 - Sankhya API availability for writes is evidence to carry into D4, not a D0 transport decision;
 - business rules/policies may be MPC-owned, externally governed or derived, and later stages must preserve that provenance;
 - no D1+ target architecture may be invented yet;
-- the exact next work is **D0.7e — define ERP-independent Fiscal / Invoicing Semantics needed by MPC**.
+- the exact next work is **D0.7 Product completeness review — marketplace financial settlement / payout reconciliation**.
