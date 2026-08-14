@@ -146,22 +146,44 @@ D0 distinguishes human actors by the operational responsibility they carry. "Ope
 The actor classes accepted so far are:
 
 1. **Marketplace Operations Operator** — performs day-to-day channel operations around products, listings, prices, marketplace state, orders, divergences and operational exceptions within permitted authority.
-2. **Fulfillment / Dispatch Operator** — owns the physical execution step after an order is ready for fulfillment: identifying work to prepare, packing the correct items, preparing the shipment/dispatch handoff, reporting completion/problems and progressing the order through the physical dispatch workflow exposed by MPC.
+2. **Fulfillment / Dispatch Operator** — owns the physical fulfillment execution for marketplace orders: identifying work to prepare, separating and physically checking the correct items, progressing valid orders into invoicing, packing, preparing the shipment/dispatch handoff, reporting completion/problems and progressing the order through the physical dispatch workflow exposed by MPC.
 3. **Commercial / Marketplace Manager** — governs or approves commercial decisions such as price/margin boundaries, higher-impact changes, exception decisions and bounded automation policies.
 4. **Owner / Administrator / Policy Approver** — governs system-level configuration, integrations, users and exceptional/high-impact policy authority where that responsibility is not delegated elsewhere.
 
 This actor model does **not** define JWT roles, permission tables or technical authorization implementation. Those are later-stage concerns.
 
-The Fulfillment / Dispatch Operator makes an important product-boundary distinction: MPC Product 1.0 includes the marketplace-order fulfillment workflow needed to move a marketplace sale from ERP/order readiness through packing and dispatch handoff. This does **not** make MPC a company-wide WMS or logistics platform.
+The Fulfillment / Dispatch Operator makes an important product-boundary distinction: MPC Product 1.0 includes the marketplace-order fulfillment workflow needed to move a marketplace sale from ERP/order readiness through physical separation, invoicing, packing and dispatch handoff. This does **not** make MPC a company-wide WMS or logistics platform.
+
+#### D0.4a — Fulfillment / Dispatch Operator authority
+
+**Accepted by operator.**
+
+The fulfillment workflow follows the business sequence:
+
+```text
+marketplace order / ERP order readiness
+  → fulfillment work queue
+  → physical separation
+  → physical verification / conference
+  → if valid: operator triggers invoicing through MPC
+  → MPC causes the corresponding Sankhya invoicing operation through the later-accepted integration boundary
+  → invoicing result is verified
+  → packing
+  → dispatch / carrier handoff
+  → completion or exception
+```
+
+The Fulfillment / Dispatch Operator is therefore not limited to packing already-invoiced orders. Within the accepted fulfillment workflow, this actor has business authority to confirm that the physical order is correct and then request/trigger invoicing.
+
+The target property is that **an order is not intentionally invoiced through the normal fulfillment path before the operator has physically confirmed that the correct items are available and separated**.
+
+If the operator finds missing stock, wrong item, damaged material, quantity divergence or another physical inconsistency, the normal invoicing transition is blocked and the order becomes an operational exception requiring resolution rather than being invoiced optimistically.
+
+D0 does not decide how this authority is represented in permissions, how the workflow state is persisted, or how the Sankhya call is implemented. Those belong to later stages.
 
 #### Next exact D0.4 decision
 
-For each accepted actor, define the business decisions/actions they must be able to perform and which actions:
-
-- are routine within their own authority;
-- require another actor's approval;
-- must be escalated as an exception;
-- are outside their responsibility.
+Define the responsibility/authority boundary of the **Marketplace Operations Operator**, including which listing/product/order actions are routine, which require commercial approval, and which become exceptions.
 
 Do this at product/workflow level only; do not design permissions/auth implementation yet.
 
@@ -174,7 +196,8 @@ It should conclude:
 - D0 is open and not yet accepted as a whole;
 - D0.1–D0.3a above are operator-approved decisions;
 - D0.4 has four accepted actor classes so far: Marketplace Operations Operator, Fulfillment / Dispatch Operator, Commercial / Marketplace Manager, and Owner / Administrator / Policy Approver;
-- D0.4 remains open only for responsibility/approval/accountability boundaries between those actors;
+- D0.4a is accepted: the fulfillment operator physically separates/checks the order and, when valid, triggers invoicing through MPC before packing/dispatch; physical inconsistencies block normal invoicing and become exceptions;
+- D0.4 remains open for the responsibility/approval/accountability boundaries of the other actors;
 - no D1+ target architecture may be invented yet;
 - Sankhya API availability for writes is evidence to carry into D4, not a D0 transport decision;
-- the exact next work is to define actor responsibilities and approval boundaries inside **D0.4 — Actors / operational users**.
+- the exact next work is the **Marketplace Operations Operator** authority boundary inside D0.4.
