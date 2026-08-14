@@ -1,7 +1,7 @@
 # Marketplace Central — Architecture Rebaseline
 
 > **Role:** sole current-program status / router after `AGENTS.md`  
-> **Current phase:** DOCUMENTARY / GOVERNANCE AUTHORITY CLEANUP — IN PROGRESS  
+> **Current phase:** DOCUMENTARY / GOVERNANCE AUTHORITY CLEANUP — DONE. D0 not yet opened.  
 > **Implementation:** BLOCKED until D9 is accepted  
 > **Evidence baseline:** `main@de1dc88bcef5a6ed5515378e7c646682c0bc15d2`  
 > **Last updated:** 2026-08-14
@@ -18,11 +18,13 @@ This is the one place a fresh session uses to determine:
 
 There is deliberately no parallel roadmap, wiki progress page, permanent session-handoff tree or active legacy implementation plan. Git history is the archive.
 
-## 2. Current phase: documentary / governance authority cleanup
+## 2. Closed phase: documentary / governance authority cleanup
 
-The current PR is **#41**. Its purpose is not to design the target software. Its purpose is to remove competing legacy authority so the future design process starts from one unambiguous control plane.
+The cleanup landed in PR **#41**. Its purpose was not to design the target software. Its purpose was to remove competing legacy authority so the design process starts from one unambiguous control plane. It is closed; §3 records how each completion criterion was discharged.
 
-### In scope now
+The scope below is kept because it defines what the cleanup was allowed to touch, and therefore what it did **not** decide.
+
+### In scope for that cleanup
 
 - remove or retarget references to retired documents and authority trees;
 - remove stale milestone/feature/wave ownership (`M-xx`, `F-xx`, old missions/plans) from active authority;
@@ -32,11 +34,11 @@ The current PR is **#41**. Its purpose is not to design the target software. Its
 - verify the cleanup without weakening gates or raising ratchet baselines merely to make them pass;
 - prove that a fresh session finds one authority path and one exact next action.
 
-### Explicitly out of scope now
+### Explicitly out of scope, then and now
 
 Do **not** redesign, refactor, migrate, choose or delete legacy product/runtime code merely because it looks old.
 
-In particular, the cleanup does not decide:
+In particular, the cleanup did not decide:
 
 - `modules` versus `contexts`;
 - domain boundaries;
@@ -55,24 +57,26 @@ A product/runtime finding discovered during cleanup is recorded as evidence and 
 
 ### Narrow exception: documentary consumers inside tooling
 
-A tool may be changed during cleanup only when the change is necessary to stop it from consuming or recreating retired documentary authority.
+A tool could be changed during cleanup only when the change was necessary to stop it from consuming or recreating retired documentary authority.
 
-Example: `apps/server_core/cmd/mlprobe` currently references retired `docs/design/...` material and writes evidence into `docs/design/evidence/ml-api`. Retargeting that documentary output/reference is cleanup; redesigning the probe's marketplace behavior is not.
+Worked example, now discharged: `apps/server_core/cmd/mlprobe` referenced retired `docs/design/...` material and wrote evidence into `docs/design/evidence/ml-api`. It now writes to `/workspace/output/ml-api` and cites nothing under `docs/design/`. Retargeting that documentary output/reference was cleanup; redesigning the probe's marketplace behavior would not have been.
 
-## 3. Cleanup completion criteria
+## 3. Cleanup completion criteria, and how each was discharged
 
-The documentary cleanup is DONE only when all of the following hold:
+The documentary cleanup was DONE only when all of the following held. Each row records the criterion and the evidence that closed it, so a later session can re-check the claim instead of trusting it.
 
-1. no retired document competes as architecture/program authority;
-2. no active governance registry points to deleted authority as current authority;
-3. gates/workflows/scripts do not depend conceptually on retired documentary authority;
-4. auxiliary tools no longer recreate retired documentation trees;
-5. current governance is self-contained;
-6. verification is green without weakening controls or inflating ratchets;
-7. no material dead reference remains in the active authority path;
-8. a fresh session can identify one authority path and one exact next action without chat history.
+| # | Criterion | Discharged by |
+|---|---|---|
+| 1 | no retired document competes as architecture/program authority | the retired trees (`.mnfs/`, `docs/superpowers/`, `docs/design/`, `docs/HARNESS-PROFILE.md`, `docs/engineering/repo-audit-2026-08-07/`) are deleted from the repository; `docs/README.md` carries the removal record. A checkout that predates the removal can still hold gitignored leftovers under those paths on disk — they are untracked local residue, never authority, and `git ls-files` is the check that settles it |
+| 2 | no active governance registry points to deleted authority as current authority | governance exceptions carry `re_adjudicate_in: D<N>` instead of milestone/feature `removal_owner`; `scripts/tests/governance-contracts.tests.ps1` asserts that field and fails if either side is absent |
+| 3 | gates/workflows/scripts do not depend conceptually on retired documentary authority | every `HARNESS-PROFILE` / `GATE-TOPOLOGY` / `docs/superpowers` citation in `scripts/`, `.github/`, `eslint.config.mjs`, `.golangci.yml`, `vitest.config.ts`, `contracts/gate/baselines.json` and `deploy/` was replaced by the rule itself or retargeted to the owning D-stage |
+| 4 | auxiliary tools no longer recreate retired documentation trees | `cmd/mlprobe` writes to `/workspace/output/ml-api`; `scripts/harness/pack-measure.sh`, whose only subject was measuring an evidence pack inside `.mnfs/`, is deleted and had no invoker |
+| 5 | current governance is self-contained | the authority chain in §8 resolves entirely to files in this tree |
+| 6 | verification is green without weakening controls or inflating ratchets | `npm run gate:full` — 17 lanes, 0 failed. No baseline in `contracts/gate/baselines.json` was raised, no lane disabled, no test skipped, no scanner exemption added |
+| 7 | no material dead reference remains in the active authority path | swept; what remains are quoted-inline provenance citations in historical ADRs and `_citations/`, which the ADR registry explicitly retains, and product-code comments recording where a fact came from |
+| 8 | a fresh session can identify one authority path and one exact next action without chat history | §11, run cold against `AGENTS.md` alone |
 
-When these conditions pass, the cleanup stops. We do not extend it into a general codebase audit.
+The cleanup stops here. It is not extended into a general codebase audit.
 
 ## 4. What happens after cleanup
 
@@ -195,19 +199,11 @@ Any additional codebase measurement is performed when a D-stage decision require
 
 ## 10. Exact next action
 
-**Finish PR #41 documentary / governance authority cleanup. Do not start D0 design yet.**
+**Open D0 — Product / System Definition with the operator.**
 
-Specifically:
+Nothing else is authorized. In particular: do not start product implementation, do not begin any D1–D9 stage before D0 is accepted, and do not reopen the documentary cleanup — §3 records the condition on which it closed.
 
-1. reconcile remaining active consumers of retired documentary authority;
-2. retarget tools that recreate retired documentation paths (including `mlprobe`);
-3. remove/retarget stale governance references and ownership language;
-4. run the repository's existing verification gates without weakening them;
-5. perform the fresh-session authority test;
-6. delete the temporary session handoff once canonical authority alone is sufficient;
-7. mark documentary cleanup DONE.
-
-Then stop cleaning and open **D0 — Product / System Definition** with the operator.
+D0 answers the question in §6: what exactly are we building, for whom, what problem does it solve, what belongs inside and outside, and what is Product 1.0. It runs by the decision method in §5, and its output is an accepted D0 artifact recorded under `docs/engineering/rebaseline/`.
 
 ## 11. Fresh-session success test
 

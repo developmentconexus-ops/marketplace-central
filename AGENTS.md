@@ -6,28 +6,26 @@ Marketplace Central is in **Architecture Rebaseline / Technical System Design**.
 
 ### Immediate operating boundary
 
-The repository is currently finishing **documentary / governance authority cleanup** on PR #41 before software-design discussion begins.
+The **documentary / governance authority cleanup is closed** (PR #41). **D0 — Product / System Definition has not been opened with the operator yet.**
 
-Until that cleanup is explicitly closed:
+Until D0 is opened and produces an accepted decision:
 
-- change only documentation, documentation authority, governance metadata/schemas, gates/workflows/scripts where they consume retired documentary authority, auxiliary tools where they recreate retired documentary trees, and proof needed to verify that cleanup;
+- no software design change is authorized — not module/context layout, persistence, API, frontend, runtime, auth or integration architecture;
 - do **not** redesign, refactor, delete or choose a target for legacy product code;
-- do **not** use the cleanup as an excuse to settle module/context, persistence, API, frontend, runtime, auth or integration architecture;
-- product/source findings discovered while inspecting cleanup are evidence only and are carried into the relevant D-stage;
-- legacy source disposition is adjudicated **stage by stage across D0–D9** and implemented only after the corresponding architecture/cutover decision is accepted. It is not part of the current documentary cleanup.
+- product/source findings are evidence only and are carried into the relevant D-stage;
+- legacy source disposition is adjudicated **stage by stage across D0–D9** and implemented only after the corresponding architecture/cutover decision is accepted.
 
-The current cleanup ends when retired documentary authorities and their active consumers are removed/retargeted, current governance is self-contained, verification is green without weakening controls or raising ratchets, and a fresh session can identify one authority path and one exact next action.
+Do not reopen the documentary cleanup to keep working. It ended on a measured condition: retired documentary authorities and their active consumers removed or retargeted, current governance self-contained, verification green without weakening controls or raising ratchets, and a fresh session able to identify one authority path and one exact next action. `docs/engineering/rebaseline/README.md` records how each of those was discharged.
 
 Start every session in this order:
 
 1. `AGENTS.md`
 2. `docs/engineering/rebaseline/README.md` — current phase, status, exact next action
-3. `docs/engineering/rebaseline/TMP-SESSION-HANDOFF.md` **while the documentary cleanup remains open** — continuity only, never design authority
-4. `docs/engineering/standards/root-cause-global-maximum-method.md`
-5. `ARCHITECTURE.md` — stable product/platform constraints only
-6. `docs/architecture/decisions/README.md` — ADR registry and current/reopened status
-7. the artifact for the active D-stage, once design begins
-8. code/contracts/runtime evidence needed for the specific decision being made
+3. `docs/engineering/standards/root-cause-global-maximum-method.md`
+4. `ARCHITECTURE.md` — stable product/platform constraints only
+5. `docs/architecture/decisions/README.md` — ADR registry and current/reopened status
+6. the artifact for the active D-stage, once design begins
+7. code/contracts/runtime evidence needed for the specific decision being made
 
 Do **not** reconstruct the roadmap from Git history, deleted plans, old handoffs or memory. Git history is evidence only when the current rebaseline explicitly asks for historical evidence.
 
@@ -140,6 +138,6 @@ The active repository intentionally does **not** retain an `old/`, archive wiki,
 - Stage evidence/design lives in the current D-stage artifact.
 - Supporting references must be explicitly labeled non-authoritative.
 - A superseded roadmap/spec/handoff is deleted after any still-valid decision has been absorbed into the current authority.
-- `TMP-SESSION-HANDOFF.md` is allowed only while the current documentary cleanup is unfinished; delete it after the canonical topology passes the fresh-session test.
+- A temporary session-handoff file is allowed only while a cleanup is unfinished, and is deleted as soon as the canonical topology passes the fresh-session test on its own.
 
 A new session should never need to decide which of several roadmaps is current.
