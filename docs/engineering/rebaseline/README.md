@@ -199,9 +199,9 @@ Any additional codebase measurement is performed when a D-stage decision require
 
 ## 10. Exact next action
 
-**Continue D0 with the operator: D0.7 Product completeness / contradiction review — decide marketplace account / installation multiplicity inside one organization.**
+**Continue D0 with the operator: D0.7 Product completeness / contradiction review — decide ERP company / branch multiplicity inside one organization.**
 
-Accepted D0.1–D0.6 decisions plus D0.7a essential post-sale, D0.7b shipment/delivery lifecycle and D0.7c automatic marketplace availability control are recorded in `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`.
+Accepted D0.1–D0.6 decisions plus D0.7a essential post-sale, D0.7b shipment/delivery lifecycle, D0.7c automatic marketplace availability control and D0.7d `Organization 1 → N Marketplace Installations` are recorded in `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`.
 
 Nothing else is authorized. In particular: do not start product implementation, do not begin D1–D9 before D0 is accepted, and do not reopen the documentary cleanup.
 
@@ -213,15 +213,16 @@ A fresh session should be able to read `AGENTS.md`, this file and the current D0
 
 - documentary/governance cleanup is DONE;
 - D0 Product / System Definition is OPEN and not yet accepted as a whole;
-- D0.1–D0.6 and D0.7a–D0.7c recorded in the D0 artifact are operator-approved decisions;
+- D0.1–D0.6 and D0.7a–D0.7d recorded in the D0 artifact are operator-approved decisions;
 - essential cancellation/return/refund operations remain inside the controlled sale lifecycle without expanding Product 1.0 into general CRM/SAC;
 - shipment/delivery remains visible through a terminal outcome without turning MPC into a TMS;
 - marketplace availability is automatically maintained from governing authoritative stock/rules when sufficiently known; uncertainty/failure becomes explicit work and MPC does not become physical-stock authority;
+- one MPC organization may control one or more marketplace installations, even if the first deployment uses one Mercado Livre seller account; organization identity is not marketplace-account identity;
 - MPC owns the marketplace operating model while external systems retain authority for facts/processes that inherently belong to them;
 - rules/policies may be MPC-owned, externally governed or derived; MPC must preserve that provenance rather than silently duplicating authority;
 - Product 1.0 requires its claimed normal operational path to be executable through MPC rather than relying on hidden routine manual system hopping;
 - historical code/docs are evidence, not target authority;
 - implementation remains blocked until D9 is accepted;
-- the exact next work is **D0.7 Product completeness review — marketplace account / installation multiplicity inside one organization**.
+- the exact next work is **D0.7 Product completeness review — ERP company / branch multiplicity inside one organization**.
 
 If it cannot, the current authority path is incomplete or contradictory.
