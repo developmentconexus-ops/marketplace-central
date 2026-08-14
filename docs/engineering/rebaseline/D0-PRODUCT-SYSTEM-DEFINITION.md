@@ -260,11 +260,12 @@ Governing principle:
 | Concern | Product-level MPC authority |
 |---|---|
 | Internal master product facts, ERP base cost/fiscal facts | **OBSERVE / DERIVE** |
-| ERP physical/on-hand/reserved/other stock facts | **OBSERVE / CONSUME** |
+| ERP/WMS/3PL/provider-native physical/on-hand/reserved/other stock facts | **OBSERVE / CONSUME** |
 | Business rules/policies whose authority remains in an ERP/another system | **OBSERVE / CONSUME** |
 | Product ↔ marketplace linkage/evidence maintained by MPC | **OWN** |
 | Marketplace readiness/readiness assessment | **OWN / DERIVE** |
-| Sellable marketplace availability derived from authoritative stock/rules | **OWN / DERIVE** as an MPC operating conclusion; underlying stock facts/rules retain their source authority |
+| MPC Inventory Source identity/membership and Inventory Scope eligibility | **OWN** as MPC operating semantics/configuration; each external system remains authoritative for its native stock-source identity and stock facts |
+| Sellable marketplace availability derived from eligible Inventory Sources plus authoritative stock/rules | **OWN / DERIVE** as an MPC operating conclusion; underlying stock facts/rules retain their source authority |
 | Intent to publish/update marketplace quantity/availability | **OWN / ORCHESTRATE** |
 | Actual marketplace quantity/availability state | provider authoritative; MPC **OBSERVES / ORCHESTRATES** convergence |
 | Cross-system intent, workflow, correlation, divergence and exception state | **OWN** |
@@ -299,7 +300,10 @@ Governing principle:
 11. ERP integration is semantic translation, not merely field renaming: an adapter maps authoritative facts/capabilities/commands/results between the ERP’s native model and MPC semantics and must represent unsupported or uncertain mappings explicitly rather than inventing equivalence.
 12. **Selling Entity is a canonical MPC business concept, not an alias for ERP company/branch.** When a marketplace operation materially depends on which business/legal/fiscal entity is acting, that attribution must be explicit and preserved.
 13. Selling Entity must not be silently collapsed with inventory source, fulfillment location, cost scope or another business dimension merely because a particular ERP or first deployment represents them together. Any relationship between those dimensions must be explicit and justified by business semantics.
-14. Provider/ERP-specific mechanisms remain implementation concerns for later stages.
+14. **Inventory Source is a canonical MPC inventory-origin concept, not an alias for ERP warehouse/location/company.** One MPC Inventory Source may require one or many native external structures to represent it, and one native external structure may contribute to multiple MPC-relevant semantics when justified.
+15. **Inventory Scope is explicit eligibility, not “all stock we can find”.** Only Inventory Sources allowed by the offer’s governing scope/policy may contribute to Sellable Availability; stock outside that scope must not leak into marketplace availability merely because it exists.
+16. Inventory Source must not be silently collapsed with Selling Entity or Fulfillment Location. Their relationships are explicit business rules/configuration unless a later accepted decision proves stronger identity.
+17. Provider/ERP-specific mechanisms remain implementation concerns for later stages.
 
 ---
 
@@ -313,7 +317,7 @@ The acceptance bar is user-observable:
 
 1. **Attention is portfolio-driven, not manual-search driven.** Operators can see what is healthy, changed, divergent, blocked, approval-required or otherwise actionable without inspecting products/external systems one by one.
 2. **An eligible internal product can reach a verified marketplace state through MPC.** The normal path covers readiness/linkage, commercial analysis, creation/publication and observation of the real channel state.
-3. **Marketplace availability remains operationally coherent without per-change manual work.** When governing stock/rules change and sellable availability is known, MPC updates marketplace availability on the normal path and verifies convergence; uncertainty or failure becomes explicit work rather than guessed quantity or silent drift.
+3. **Inventory eligibility is explicit and marketplace availability remains operationally coherent without per-change manual work.** MPC knows which Inventory Sources may contribute to an offer; when governing stock/rules change and Sellable Availability is known, it updates marketplace availability and verifies convergence. Uncertainty, missing source mapping or failure becomes explicit work rather than guessed quantity, unintended stock aggregation or silent drift.
 4. **Competitive/pricing intelligence replaces major manual analysis.** MPC exposes grounded comparable-market position, relevant internal economics, price scenarios, expected profitability and insufficient-evidence cases at portfolio and product level.
 5. **Decision closes into controlled action.** Authorized human or bounded policy-driven decisions can become external actions with policy enforcement, auditability, verification and reconciliation.
 6. **Material transaction context is explicit.** When a marketplace operation depends on which business/legal/fiscal entity is acting, MPC can attribute the workflow to the correct Selling Entity rather than relying on an implicit ERP/default-company assumption.
@@ -326,7 +330,7 @@ The acceptance bar is user-observable:
 
 Completion statement:
 
-> **A company can take its internal products, determine marketplace readiness, publish and operate offers, keep marketplace availability coherent with governing stock/rules, preserve the correct business entity context for material marketplace transactions, monitor market position and profitability at portfolio scale, make and execute decisions under policy, receive sales, progress them through ERP and physical fulfillment, follow delivery to a terminal outcome, handle essential cancellation/return/refund consequences, surface/reconcile exceptions, and understand the realized economic result — using Marketplace Central as the normal marketplace operations control plane.**
+> **A company can take its internal products, determine marketplace readiness, publish and operate offers, derive marketplace availability from explicitly eligible inventory sources and governing rules, preserve the correct business entity context for material marketplace transactions, monitor market position and profitability at portfolio scale, make and execute decisions under policy, receive sales, progress them through ERP and physical fulfillment, follow delivery to a terminal outcome, handle essential cancellation/return/refund consequences, surface/reconcile exceptions, and understand the realized economic result — using Marketplace Central as the normal marketplace operations control plane.**
 
 ### D0.6a — Normal-path rule
 
@@ -474,17 +478,44 @@ Product-level requirements:
 
 The first deployment may use one Selling Entity without hardcoding single-entity semantics into the product.
 
+#### D0.7e.2 — Inventory Source and Inventory Scope
+
+**Accepted by operator.**
+
+`Inventory Source` and `Inventory Scope` are canonical MPC inventory semantics defined independently of any ERP/WMS/provider storage model.
+
+An **Inventory Source** is a business-recognized source or pool of inventory whose authoritative stock facts may be eligible to contribute to the sellable availability of a marketplace offer.
+
+An **Inventory Scope** is the explicit eligibility definition — directly or through governing policy — that determines which Inventory Sources may contribute to a particular offer/operation and which must not.
+
+The purpose is to answer, in MPC language:
+
+> **Which authoritative inventory sources are allowed to contribute to what we promise as sellable for this marketplace offer?**
+
+Product-level requirements:
+
+- an Inventory Source is not defined as an ERP warehouse/location/company, physical address, marketplace-fulfillment warehouse or any other provider-native structure;
+- authoritative stock facts for an Inventory Source may come from an ERP, WMS, marketplace-fulfillment provider, 3PL or another accepted authority;
+- an ERP/provider mapping is semantic rather than cardinality-preserving: a single MPC Inventory Source may map to one or many native structures, and multiple native structures may need to be combined to represent one source; no `1:1` mapping is assumed;
+- Inventory Scope determines eligibility. Stock from a source outside the governing scope must not contribute to Sellable Availability merely because that stock exists or is technically reachable;
+- Sellable Availability is a derived MPC operating conclusion from eligible Inventory Sources, their authoritative stock/reservation/availability facts and the applicable external/MPC-owned rules, buffers or policies;
+- Inventory Source is not Selling Entity and is not Fulfillment Location. A business may relate these concepts explicitly, but D0 does not collapse them into one identity;
+- if source mapping, source eligibility or source facts are incomplete/ambiguous, MPC must surface uncertainty/configuration-required state instead of silently aggregating stock from an arbitrary/default location;
+- the first deployment may use one Inventory Source and a trivial Inventory Scope without hardcoding single-source semantics into Product 1.0.
+
+Exact source identities, native ERP/WMS mappings, stock ledger semantics, reservations, aggregation formulas, source precedence, buffers and synchronization/event mechanics belong to D2/D4/D7.
+
 #### Next D0.7e decision
 
-Define the next ERP-independent business dimension: **Inventory Source / Stock Scope**.
+Define the next ERP-independent business dimension: **Fulfillment Location / Fulfillment Scope**.
 
-The question is not “what maps to Sankhya `CODLOC`/`CODEMP`?” or “what is a warehouse in ERP X?”. The question is:
+The question is not “which `CODLOC` ships the order?” or “which ERP warehouse is fulfillment?”. The question is:
 
-> **What must MPC be able to represent in order to know which authoritative stock pools/sources may contribute to the sellable availability of a marketplace offer, and which may not?**
+> **What must MPC represent in order to know where the physical marketplace-order execution — separation, conference, packing and dispatch handoff — is performed, and which fulfillment points are eligible for a given operation?**
 
-D0 must decide the product semantics and boundary only. Exact physical-location identities, ERP mappings, stock ledgers, reservation models, aggregation rules, precedence and synchronization mechanics belong to D2/D4/D7.
+D0 must decide whether a canonical fulfillment-location/scope concept is required and how it differs from Inventory Source. Exact physical addresses, ERP/WMS mappings, routing algorithms and capacity logic belong to later D-stages.
 
-Subsequent ERP-independent dimensions to test include fulfillment source/location, cost semantics/scope, order execution scope and fiscal/invoicing scope. D0 must not assume these are identical entities or necessarily separate entities before each need is proven.
+Subsequent ERP-independent dimensions to test include cost semantics/scope, order execution scope and fiscal/invoicing scope. D0 must not assume these are identical entities or necessarily separate entities before each need is proven.
 
 Other findings discovered during D0.7 are classified as MUST DECIDE NOW, SHOULD DECIDE NOW or CAN DEFER SAFELY. D0 closes only when no material Product 1.0 semantic is being left for implementation to invent.
 
@@ -504,10 +535,11 @@ It should conclude:
 - D0.7d is accepted: one MPC organization may own/control one or more marketplace installations, even if Product 1.0 is initially proven with one Mercado Livre account;
 - D0.7e is accepted: canonical MPC business semantics are defined from marketplace-operating needs before ERP-specific mapping; ERP integration semantically translates rather than dictating the MPC domain;
 - D0.7e.1 is accepted: `Selling Entity` is a canonical MPC business dimension for the acting business/legal/fiscal entity, independent from ERP company identifiers, marketplace installation, inventory source, fulfillment location and costing scope unless explicit business rules relate them;
+- D0.7e.2 is accepted: `Inventory Source` identifies business-recognized inventory sources, `Inventory Scope` explicitly governs which sources may contribute to an offer, and Sellable Availability is derived from eligible sources plus authoritative facts/rules rather than copied from an external stock field;
 - organization identity must not be collapsed into marketplace seller-account or Selling Entity identity;
 - Sankhya-native concepts such as `CODEMP`, `CODLOC` and cost variants are integration evidence, not automatically canonical MPC concepts;
 - MPC uses **OWN / ORCHESTRATE / OBSERVE-DERIVE** and owns the marketplace operating model without taking ownership of external facts merely because it consumes or causes them;
 - Sankhya API availability for writes is evidence to carry into D4, not a D0 transport decision;
 - business rules/policies may be MPC-owned, externally governed or derived, and later D2/D4 must preserve that provenance;
 - no D1+ target architecture may be invented yet;
-- the exact next work is **D0.7e — define ERP-independent Inventory Source / Stock Scope semantics needed by MPC**.
+- the exact next work is **D0.7e — define ERP-independent Fulfillment Location / Fulfillment Scope semantics needed by MPC**.
