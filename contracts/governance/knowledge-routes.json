@@ -40,7 +40,7 @@
         },
         {
           "path": "docs/engineering/rebaseline/README.md",
-          "selector": "current stage and exact next action",
+          "selector": "current phase and exact next action",
           "reason": "sole current-program status authority",
           "estimated_tokens": 900
         },
@@ -55,7 +55,7 @@
     {
       "id": "portfolio-core",
       "module_id": "repository",
-      "concerns": ["portfolio", "architecture", "mission"],
+      "concerns": ["portfolio", "architecture", "evidence"],
       "selectors": [
         {
           "path": "ARCHITECTURE.md",
@@ -64,16 +64,16 @@
           "estimated_tokens": 420
         },
         {
-          "path": "docs/engineering/rebaseline/D0-current-state-and-authority.md",
-          "selector": "current-state census",
-          "reason": "active D0 evidence and measurement scope",
-          "estimated_tokens": 600
-        },
-        {
           "path": "docs/architecture/decisions/README.md",
           "selector": "ADR status registry",
           "reason": "current binding, reopened and superseded decision status",
           "estimated_tokens": 280
+        },
+        {
+          "path": "docs/engineering/rebaseline/EVIDENCE-REGISTER.md",
+          "selector": "supporting current-state and historical evidence",
+          "reason": "non-authoritative evidence consulted on demand by D-stages",
+          "estimated_tokens": 600
         }
       ]
     },
