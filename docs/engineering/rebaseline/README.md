@@ -1,381 +1,222 @@
 # Marketplace Central — Architecture Rebaseline
 
-> **Role:** canonical current-program entrypoint after `AGENTS.md`  
-> **Program:** Technical Architecture Deep Dive  
-> **Status:** D0 — Current State & Authority Baseline — IN PROGRESS  
-> **Implementation:** **BLOCKED until D9 is accepted**  
+> **Role:** sole current-program status / router after `AGENTS.md`  
+> **Current phase:** DOCUMENTARY / GOVERNANCE AUTHORITY CLEANUP — IN PROGRESS  
+> **Implementation:** BLOCKED until D9 is accepted  
 > **Evidence baseline:** `main@de1dc88bcef5a6ed5515378e7c646682c0bc15d2`  
-> **Last updated:** 2026-08-13
+> **Last updated:** 2026-08-14
 
-## Why this file exists
+## 1. Why this file exists
 
-This is the one place a fresh session uses to answer:
+This is the one place a fresh session uses to determine:
 
 - where the program is;
-- what has been accepted;
-- what remains open;
-- what is forbidden right now;
-- which document to read next;
-- the exact next action.
+- what is authoritative now;
+- what is prohibited now;
+- what the exact next action is;
+- when the current phase is finished.
 
-There is deliberately no parallel roadmap, wiki progress page, dated handoff tree or active legacy implementation plan.
+There is deliberately no parallel roadmap, wiki progress page, permanent session-handoff tree or active legacy implementation plan. Git history is the archive.
 
-Git history is the archive. Deleted documents are recovered only when a current stage explicitly needs historical evidence.
+## 2. Current phase: documentary / governance authority cleanup
 
----
+The current PR is **#41**. Its purpose is not to design the target software. Its purpose is to remove competing legacy authority so the future design process starts from one unambiguous control plane.
 
-## 1. Product objective
+### In scope now
 
-Marketplace Central is an internal operations and intelligence system for marketplace commerce, initially Mercado Livre, backed by real Sankhya/Oracle operational facts.
+- remove or retarget references to retired documents and authority trees;
+- remove stale milestone/feature/wave ownership (`M-xx`, `F-xx`, old missions/plans) from active authority;
+- align governance registries, gates, workflows and scripts where they consume retired documentary authority;
+- prevent auxiliary tools from recreating retired documentation trees;
+- keep `AGENTS.md`, this file, `ARCHITECTURE.md`, the ADR registry and `contracts/governance/` mutually coherent;
+- verify the cleanup without weakening gates or raising ratchet baselines merely to make them pass;
+- prove that a fresh session finds one authority path and one exact next action.
 
-The target system must support a trustworthy loop from internal product/stock/cost/tax truth through marketplace observations, linking, pricing/action decisions, safe external writes, orders, reconciliation and realized profitability.
+### Explicitly out of scope now
 
-The rebaseline exists because the repository grew through multiple architectural eras and accumulated competing authorities across modules, API shapes, database state, integration boundaries, frontend surfaces and documentation.
+Do **not** redesign, refactor, migrate, choose or delete legacy product/runtime code merely because it looks old.
 
-The objective is not to preserve that history. It is to establish one coherent technical system before the next implementation wave.
+In particular, the cleanup does not decide:
 
----
+- `modules` versus `contexts`;
+- domain boundaries;
+- identity or tenant model;
+- database target schema;
+- API target contract;
+- frontend target topology;
+- runtime/process/job topology;
+- Mercado Livre/Sankhya target adapter design;
+- auth/permissions;
+- transaction/event/outbox architecture.
 
-## 2. Binding rebaseline decisions
+Existing code, schema, OpenAPI, tests and runtime are **evidence about the present system**, not authority for the target system.
 
-### RB-01 — Plan the technical system before product implementation
+A product/runtime finding discovered during cleanup is recorded as evidence and adjudicated only when the corresponding D-stage needs it.
 
-Architecture folders alone are insufficient. Context ownership, identity, persistence, communication, events, external adapters, API, frontend, runtime and golden flows must be decided deeply enough that an implementation task does not invent architectural semantics.
+### Narrow exception: documentary consumers inside tooling
 
-### RB-02 — No product implementation before D9
+A tool may be changed during cleanup only when the change is necessary to stop it from consuming or recreating retired documentary authority.
 
-The governing flow is:
+Example: `apps/server_core/cmd/mlprobe` currently references retired `docs/design/...` material and writes evidence into `docs/design/evidence/ml-api`. Retargeting that documentary output/reference is cleanup; redesigning the probe's marketplace behavior is not.
 
-```text
-D0 current state / authority
-  ↓
-D1 context adjudication
-  ↓
-D2 identity / data ownership
-  ↓
-D3 communication / events
-  ↓
-D4 external integrations
-  ↓
-D5 HTTP API
-  ↓
-D6 frontend
-  ↓
-D7 runtime / scheduler / transactions / outbox
-  ↓
-D8 golden-flow simulation
-  ↓
-D9 adversarial global-maximum review
-  ↓
-implementation DAG
-  ↓
-implementation plan
-  ↓
-implementation
-```
+## 3. Cleanup completion criteria
 
-### RB-03 — No `old/` or archive source tree
+The documentary cleanup is DONE only when all of the following hold:
 
-Git history is the historical archive. Legacy source and documentation are removed from the active tree after any still-valid property/evidence is absorbed into a current authority.
+1. no retired document competes as architecture/program authority;
+2. no active governance registry points to deleted authority as current authority;
+3. gates/workflows/scripts do not depend conceptually on retired documentary authority;
+4. auxiliary tools no longer recreate retired documentation trees;
+5. current governance is self-contained;
+6. verification is green without weakening controls or inflating ratchets;
+7. no material dead reference remains in the active authority path;
+8. a fresh session can identify one authority path and one exact next action without chat history.
 
-### RB-04 — Hard cutover is allowed
+When these conditions pass, the cleanup stops. We do not extend it into a general codebase audit.
 
-There are no production users requiring backward compatibility. Routes, schemas, IDs, package APIs and frontend navigation may break when the accepted target design requires it.
+## 4. What happens after cleanup
 
-Compatibility is opt-in and requires a measured consumer/constraint.
+After cleanup, the target-design program begins with **D0 — Product / System Definition**.
 
-### RB-05 — `main` must remain epistemically trustworthy
-
-Hard cutover does not mean an indefinitely red or ambiguous `main`.
-
-Preferred landing unit:
+The governing sequence is:
 
 ```text
-new authority
-  → all consumers/writers cut over
-  → old authority unreachable
-  → old code/schema/route removed
-  → proof green
-  → one authority on main
+DOCUMENTARY / GOVERNANCE AUTHORITY CLEANUP
+  ↓
+D0 — Product / System Definition
+  ↓
+D1 — Domains / Boundaries
+  ↓
+D2 — Identity / Tenant / Data Ownership
+  ↓
+D3 — Communication / Events
+  ↓
+D4 — External Integrations
+  ↓
+D5 — API
+  ↓
+D6 — Frontend
+  ↓
+D7 — Runtime / Jobs / Transactions
+  ↓
+D8 — Golden Flows
+  ↓
+D9 — Adversarial Architecture Review
+  ↓
+Implementation DAG / Plan
+  ↓
+Implementation
 ```
 
-### RB-06 — Current structure is evidence, not target proof
+Product implementation remains blocked until D9 is accepted.
 
-Current code, schema, OpenAPI, packages, gates and old ADRs explain the present system and migration cost. They are not sufficient arguments that the target should preserve their boundaries.
+## 5. D-stage decision method
 
-Use the inversion test from the Root-Cause / Global-Maximum method.
+Each D-stage is a decision process, not a pretext for auditing every legacy file first.
 
-### RB-07 — No broker without a measured need
+For each material decision:
 
-A PostgreSQL transactional outbox plus bounded consumers is the default async candidate. Kafka, NATS, RabbitMQ or another broker requires a concrete need that Postgres cannot adequately satisfy.
+```text
+needed evidence
+  → alternatives
+  → relevant mature patterns / external facts
+  → trade-offs
+  → recommendation
+  → operator discussion
+  → explicit decision
+  → recorded contract / artifact
+  → implications for later stages
+```
 
-### RB-08 — A clean database baseline is an allowed candidate
+Use `docs/engineering/standards/root-cause-global-maximum-method.md` for non-trivial decisions.
 
-Before deciding, D2 classifies every current state class as re-derivable, re-authorizable, configuration, human decision or non-rederivable audit/history.
+The current repository is inspected **on demand** according to the decision being made. Existing work is useful evidence, but it does not get a vote merely because it already exists.
 
-### RB-09 — The old 13-context proposal is a hypothesis
+For each question distinguish:
 
-The previous proposal (`account`, `catalog`, `listings`, `linking`, `inventory`, `costing`, `tax`, `pricing`, `orders`, `reconciliation`, `profitability`, `intelligence`, `changecontrol`) contains useful measured ideas but is not accepted wholesale. D1 re-adjudicates the context set from domain semantics and ownership.
+- **MUST DECIDE NOW** — implementation would otherwise invent semantics;
+- **SHOULD DECIDE NOW** — materially affects downstream architecture;
+- **CAN DEFER SAFELY** — operational/configuration detail that can be decided later without creating architectural ambiguity.
 
-### RB-10 — Issues and historical documents do not define target architecture
+A later D-stage may explicitly reopen an earlier decision when new evidence creates a material contradiction. Silent contradiction is not allowed.
 
-Issues are evidence/traceability. Historical plans, specs and handoffs do not become a roadmap merely because Git retains them.
+## 6. D0–D9 questions
 
----
+| Stage | Core question |
+|---|---|
+| **D0 — Product / System Definition** | What exactly are we building, for whom, what problem does it solve, what belongs inside/outside, and what is Product 1.0? |
+| **D1 — Domains / Boundaries** | Which capabilities/domains exist and who owns each responsibility/state? |
+| **D2 — Identity / Tenant / Data Ownership** | Who/what are the canonical identities and which authority owns each class of data? |
+| **D3 — Communication / Events** | How do components coordinate state and communicate without duplicate authority? |
+| **D4 — External Integrations** | How do Mercado Livre, Sankhya/Oracle and future external systems enter the product? |
+| **D5 — API** | What contracts expose the accepted capabilities and semantics? |
+| **D6 — Frontend** | How does the application represent workflows and consume capabilities without duplicating business authority? |
+| **D7 — Runtime / Jobs / Transactions** | How are execution, scheduling, concurrency, retries, transactions and failure recovery handled? |
+| **D8 — Golden Flows** | Do the important end-to-end flows remain coherent through success, partial failure, retry and reconciliation? |
+| **D9 — Adversarial Architecture Review** | Where can the accepted design contradict itself, overbuild, under-specify or fail under real constraints? |
 
-## 3. Program gates
+Each stage consults legacy code/runtime/schema only to answer the questions actually in front of it.
 
-| Gate | Question | Required output | Status |
-|---|---|---|---|
-| **D0** | What actually exists and which authorities are live? | current-state topology, import/runtime/API/DB/event/frontend census, document authority, legacy inventory, contradictions | **IN PROGRESS** |
-| **D1** | Which business contexts should exist? | context admission/rejection, responsibilities, commands, queries, contracts, ports, legacy destination | PENDING |
-| **D2** | What are the identities and data authorities? | canonical IDs, external refs, table/schema ownership, writers/readers, temporal/knowledge semantics, RLS, reset decision | PENDING |
-| **D3** | How do internal components communicate? | sync-call matrix, event catalog, projection rules, transaction/outbox ownership, ordering/idempotency | PENDING |
-| **D4** | How do external systems integrate? | Mercado Livre and Sankhya capability catalogs, auth/account ownership, pagination, rate limit, retry, freshness, write/readback semantics | PENDING |
-| **D5** | What is the external HTTP contract? | operation inventory keep/redesign/delete, target OpenAPI, error model, pagination/idempotency/concurrency, generation/runtime-validation decision | PENDING |
-| **D6** | How does the frontend map to product capabilities? | route/screen/API map, feature topology, query/cache/invalidation/error/loading/empty states | PENDING |
-| **D7** | How does the system run? | process topology, scheduler, leases, workers, transaction spine, outbox dispatcher, readiness/shutdown/observability | PENDING |
-| **D8** | Does the design survive real end-to-end scenarios? | fully traced golden flows with ownership, transaction, failure, retry, freshness and proof at each hop | PENDING |
-| **D9** | Is this the global maximum for current constraints? | adversarial contradiction review, local-vs-global findings, YAGNI pass, implementation dependency DAG/proof matrix, material blockers = 0 | PENDING |
+## 7. Legacy disposition policy
 
-No gate is complete because its document exists. It completes only after its target questions are answered, contradictions are dispositioned and the operator accepts the written result.
+Legacy product/runtime units are not classified for deletion during the current documentary cleanup.
 
----
+During the relevant D-stage they may later be classified as, for example:
 
-## 4. Required technical maps before implementation
+- KEEP;
+- KEEP AS REFERENCE;
+- REFACTOR;
+- MIGRATE / MOVE;
+- REPLACE;
+- DELETE.
 
-The deep dive must produce these as accepted design outputs, not implementation-time guesses.
+No classification is granted solely by age, directory name, or current reachability discovered incidentally during documentary cleanup.
 
-### 4.1 Context map
+## 8. Documentation authority
 
-For every candidate context:
+Read active authority in this order:
 
-- business responsibility/language;
-- state/lifecycle authority;
-- commands and queries;
-- published contracts;
-- required ports;
-- events produced/consumed;
-- external adapters used;
-- tables/state owned;
-- API/frontend surfaces;
-- legacy replaced;
-- deletion gate.
+1. `AGENTS.md` — bootstrap, process, prohibitions;
+2. **this file** — sole current status and exact next action;
+3. `docs/engineering/standards/root-cause-global-maximum-method.md` — decision method;
+4. `ARCHITECTURE.md` — stable product/platform constraints that have actually survived rebaseline authority review;
+5. `docs/architecture/decisions/README.md` — ADR status registry;
+6. accepted/current D-stage artifact(s), once design begins;
+7. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md` — supporting evidence only;
+8. code, OpenAPI, schemas, tests and runtime — current-state evidence.
 
-### 4.2 Data ownership map
+Historical plans/specs/handoffs/wikis do not become target authority because they remain available in Git history.
 
-For every persistent object/table:
+## 9. Current supporting evidence
 
-- context owner;
-- source-of-truth classification;
-- primary/unique identity;
-- tenant boundary;
-- one writer authority;
-- legal readers;
-- temporal semantics;
-- unknown/estimated/not-applicable semantics;
-- exact monetary representation where applicable;
-- RLS/constraints;
-- retention/rebuildability;
-- idempotency/concurrency key where relevant;
-- legacy disposition.
+`docs/engineering/rebaseline/EVIDENCE-REGISTER.md` contains already-collected facts worth carrying forward. They are supporting evidence, not prerequisites that must all be exhaustively reproduced before D0 starts.
 
-### 4.3 Identity map
+Any additional codebase measurement is performed when a D-stage decision requires it.
 
-At minimum adjudicate:
+## 10. Exact next action
 
-- tenant/human identity;
-- marketplace channel account / installation identity;
-- ERP connection / instance identity;
-- product / source-product identity;
-- listing / variation internal and external identity;
-- order / external-order identity;
-- linking/decision/evidence identity.
+**Finish PR #41 documentary / governance authority cleanup. Do not start D0 design yet.**
 
-External identifiers are not assumed to be canonical internal identities.
+Specifically:
 
-### 4.4 Internal communication map
+1. reconcile remaining active consumers of retired documentary authority;
+2. retarget tools that recreate retired documentation paths (including `mlprobe`);
+3. remove/retarget stale governance references and ownership language;
+4. run the repository's existing verification gates without weakening them;
+5. perform the fresh-session authority test;
+6. delete the temporary session handoff once canonical authority alone is sufficient;
+7. mark documentary cleanup DONE.
 
-Every cross-context relationship is deliberately one of:
+Then stop cleaning and open **D0 — Product / System Definition** with the operator.
 
-- synchronous capability/query because the result is required now;
-- asynchronous event because another component reacts to a committed fact;
-- projection/read model because several authorities are combined for reading.
+## 11. Fresh-session success test
 
-Cross-context SQL or accidental imports are not acceptable unclassified communication modes.
+After cleanup, a fresh session should be able to read `AGENTS.md` and this file and state correctly:
 
-### 4.5 Event catalog
+- we are not implementing product features yet;
+- the cleanup has either a precise remaining action or is DONE;
+- historical code/docs are evidence, not target authority;
+- the next design stage is D0 Product / System Definition;
+- implementation begins only after the design program is accepted.
 
-For each admitted event define:
-
-- producer/authority;
-- event type/version and entity/aggregate identity;
-- tenant/correlation/causation;
-- transaction/outbox boundary;
-- payload contract;
-- consumers;
-- ordering key when needed;
-- dedupe/idempotency;
-- retry/dead-letter/escalation behavior where needed;
-- schema/version evolution.
-
-Events are not used merely to avoid a normal synchronous call.
-
-### 4.6 External capability map
-
-For Mercado Livre and Sankhya/Oracle, record per operation/capability:
-
-- external operation/query;
-- read/write;
-- owning context port;
-- auth/account scope;
-- pagination/cursor;
-- rate limits;
-- freshness/completeness semantics;
-- retry rules;
-- timeout/ambiguous-outcome semantics;
-- idempotency;
-- raw payload/evidence retention;
-- error translation;
-- read-after-write/reconciliation.
-
-### 4.7 HTTP/API map
-
-For every current operation:
-
-`current operation → owner → keep / redesign / delete`
-
-For every target operation define:
-
-- operationId;
-- method/path;
-- owning context/use case;
-- auth/tenant;
-- request/response;
-- problem/error model;
-- pagination/filter/sort;
-- idempotency/concurrency;
-- cache/freshness semantics;
-- frontend/external consumer.
-
-D5 must choose and prove the actual OpenAPI generation/runtime-validation approach against this repository.
-
-### 4.8 Frontend map
-
-For every screen/route:
-
-`screen → query/mutation → API operation → owning context/projection`
-
-Also decide feature/package topology, query keys, invalidation, loading, empty, stale, error and permission/account states.
-
-The frontend must not become a second business-policy authority.
-
-### 4.9 Runtime map
-
-Classify each executable/runtime capability as serving process, worker/background capability, operator command, migration/test tooling or temporary probe with deletion gate.
-
-Decide scheduler, leases/fencing, process isolation, readiness, shutdown, transaction ownership, outbox dispatch and observability from measured needs rather than enterprise convention.
-
-### 4.10 Golden flows
-
-Trace real flows through every boundary and failure mode. Minimum families:
-
-1. Sankhya product → catalog authority → listing/linking/inventory/pricing decision;
-2. Mercado Livre listing observation → mapping/linking → stock/price interpretation;
-3. safe external price/stock write → ambiguous outcome → readback → verified/diverged;
-4. Mercado Livre order → product/cost/tax/fees → reconciliation → realized profitability.
-
-If a flow reaches “decide during implementation”, the design is not complete.
-
----
-
-## 5. Stage working protocol
-
-For each D-stage:
-
-1. Read this file and the current stage document.
-2. Measure the current system; distinguish known fact from hypothesis.
-3. Use current official/external technical sources when a decision depends on provider/library behavior.
-4. Group findings by root cause/target property, not historical issue number.
-5. Propose credible alternatives and identify local-maximum risks.
-6. Record the chosen authority/boundary and proof.
-7. Run a contradiction/self-review against all earlier accepted stages.
-8. Present the stage for operator acceptance.
-9. Update this status table and exact next action in the same documentation change.
-10. Only then open the next D-stage.
-
-A later stage may reopen an earlier one only on a material contradiction or changed constraint, and this status table must show it explicitly.
-
----
-
-## 6. Documentation authority
-
-Read active docs in this order:
-
-1. `AGENTS.md` — routing/process/current prohibitions.
-2. **This file** — sole current program status/progress/next action.
-3. `docs/engineering/standards/root-cause-global-maximum-method.md` — decision method.
-4. `ARCHITECTURE.md` — stable product-level constraints.
-5. `docs/architecture/decisions/README.md` — ADR current status; check registry before treating an old ADR as target authority.
-6. Current D-stage document(s).
-7. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md` — supporting evidence only.
-8. `contracts/api/`, `contracts/governance/`, code, migrations and tests — current-state/runtime evidence, not automatic target architecture.
-9. Explicitly labeled supporting operational references.
-
-There is intentionally no active `wiki/`, `.mnfs/`, `.harness/`, `.superpowers/`, `docs/superpowers/`, legacy `IMPLEMENTATION_PLAN.md` or session-handoff tree after the D0 documentation hygiene change.
-
----
-
-## 7. D0 facts already established
-
-At `main@de1dc88b...`:
-
-- `internal/modules/` contains **21** legacy module directories;
-- `internal/contexts/` contains **2** new contexts: `catalog`, `listings`;
-- `internal/adapters/` already separates `erp/` and `marketplace/`;
-- `cmd/` has **7** entrypoint directories;
-- frontend organization is mixed between `packages/feature-*` and `apps/web/src/routes/pages`;
-- legacy redirects remain in `AppRouter.tsx`;
-- OpenAPI is large and contract authority has historically been manually duplicated;
-- migrations span several architectural eras;
-- current governance contains controls/ratchets scoped to `internal/modules`, so those controls are transitional current-state evidence rather than proof of the target boundary.
-
-Detailed established facts and remaining census work live in `D0-current-state-and-authority.md`.
-
----
-
-## 8. Exact next action
-
-**Complete D0 — Current State & Authority Baseline. Do not start D1 yet.**
-
-Finish the current-state census across:
-
-1. package/import graph, fan-in/out and SCCs;
-2. runtime composition/reachability and entrypoint classification;
-3. table/schema ownership and every productive writer/reader;
-4. API/route/handler/SDK/frontend-consumer topology;
-5. current event/outbox/job/scheduler topology;
-6. Mercado Livre and Sankhya adapter reachability/protocol surfaces;
-7. frontend feature/route/query topology;
-8. recoverability classification of current database state;
-9. surviving references to retired documentary authorities;
-10. root-cause grouping of measured contradictions.
-
-Then present D0 for operator acceptance.
-
-Only after **D0 ACCEPTED** does D1 Context Adjudication begin.
-
----
-
-## 9. Session restart rule
-
-A fresh session should be able to say, after reading only `AGENTS.md`, this file and the active D-stage document:
-
-- current phase;
-- accepted decisions;
-- prohibited work;
-- current evidence baseline;
-- exact unfinished measurements;
-- exact next gate.
-
-If it cannot, the documentation topology has regressed and must be fixed before continuing product design.
+If it cannot, authority cleanup is not finished.
