@@ -47,7 +47,7 @@ certificates/
 .superpowers/sdd/task-2-report.md
 .tmp-web-4174.log
 
-# Generated artifacts (session tooling)
+# Generated artifacts (session tooling and diagnostic probes)
 __pycache__/
 output/
 
@@ -70,8 +70,3 @@ apps/web/vite.config.js
 # versionado; o executavel, nao.
 apps/server_core/mlprobe
 apps/server_core/mlprobe.exe
-
-# Dumps crus da API do provider. Carregam PII (documento e endereco de
-# comprador E do vendedor). ADR-C6: scrub na CAPTURA, nunca depois — payload
-# cru nao entra no repo em hipotese nenhuma.
-docs/design/evidence/ml-api/
