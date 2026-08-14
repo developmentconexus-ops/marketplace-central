@@ -51,6 +51,7 @@ internal product
   → Business Order Intent / business-system materialization
   → fulfillment readiness / physical execution
   → Invoicing Intent / fiscal materialization
+  → provider-requirement closure / provider-accepted dispatch readiness
   → packing / dispatch
   → shipment / delivery lifecycle
   → essential cancellation / return / refund lifecycle when applicable
@@ -68,13 +69,13 @@ Product 1.0 capabilities are:
 5. **Pricing & Profitability Intelligence** — combine market evidence and explainable internal economics under an explicit Cost Basis to simulate price, expected margin/profitability and trade-offs.
 6. **Decision & Policy Control** — translate evidence/recommendations into permitted, approval-required or prohibited actions under governing rules/policies.
 7. **Order & Invoicing Business-System Operations** — express `Business Order Intent`, cause/verify the corresponding native business order, and later express readiness-gated `Invoicing Intent` and verify the authoritative fiscal/documentary result without importing ERP-native operation types into MPC semantics.
-8. **Marketplace Fulfillment / Dispatch** — progress marketplace sales through eligible physical fulfillment execution, conference, invoicing trigger when applicable, packing and dispatch handoff without becoming a company-wide WMS.
+8. **Marketplace Fulfillment / Dispatch** — progress marketplace sales through eligible physical fulfillment execution, provider-required prerequisites/data/artifacts/readiness, conference, invoicing trigger when applicable, packing and verified dispatch handoff without becoming a company-wide WMS.
 9. **Shipment / Delivery Observation & Exceptions** — observe shipment after dispatch until a relevant terminal outcome and surface material delivery exceptions without becoming a TMS/carrier.
 10. **Essential Post-Sale Operations** — coordinate cancellation, return and refund consequences for MPC-controlled marketplace sales without becoming general CRM/SAC or company-wide reverse logistics.
 11. **Reconciliation & Exception Operations** — turn missing evidence, ambiguous outcomes and cross-system divergence into explicit work instead of plausible defaults or silent success.
 12. **Economic Evidence & Realized Profitability** — preserve an explainable economic evidence chain from simulation through order economics, marketplace settlement and cash-receipt evidence where available; reconcile stage-to-stage variance, calculate attributable realized profitability and create calibration/exception work when evidence proves a model or operational discrepancy.
 
-Mercado Livre and Sankhya are the first concrete systems used to prove relevant capabilities, but provider/ERP-specific mechanics belong to D4.
+Mercado Livre and Sankhya are the first concrete systems used to prove relevant capabilities. Provider/ERP-specific mechanics belong to D4.
 
 ### 3.1 Action authority model
 
@@ -117,13 +118,16 @@ Unless later D0 evidence reopens them, Product 1.0 does not require:
 - marketplaces beyond what is needed to prove the first Mercado Livre operating loop;
 - unrestricted AI/autonomous commercial action without explicit policy;
 - a generic integration framework for speculative providers;
-- a universal ERP model.
+- a universal ERP model;
+- runtime dependency on marketplace hubs such as ANYMARKET or Magis5 merely to reach marketplaces MPC is intended to control directly.
 
-Essential shipment/delivery observation, cancellation/return/refund consequences, marketplace economic settlement and the cash evidence needed to close the marketplace economic chain are **not** deferred merely because their source systems are external.
+Essential shipment/delivery observation, cancellation/return/refund consequences, provider-requirement closure for claimed normal fulfillment paths, marketplace economic settlement and the cash evidence needed to close the marketplace economic chain are **not** deferred merely because their source systems are external.
 
 ---
 
-## 5. Operator-provided Sankhya evidence / constraint
+## 5. External-system evidence / target direction
+
+### 5.1 Sankhya evidence
 
 This is **D0/D4 evidence**, not target transport or canonical MPC domain design.
 
@@ -136,6 +140,16 @@ Consequences:
 - externally governed Sankhya rules remain external authority;
 - existing binding Oracle-read constraints are not silently reopened;
 - `CODEMP`, `CODLOC`, TOPs, native cost variants and other Sankhya structures are integration evidence, **not automatically canonical MPC concepts**.
+
+### 5.2 Marketplace/hub landscape evidence
+
+Current provider and competitor research covers Mercado Livre, Amazon, Magalu, Casas Bahia, Leroy/Mirakl, Shopee, MadeiraMadeira, ANYMARKET, Magis5 and Bling. The detailed observations live in `EVIDENCE-REGISTER.md`; this artifact records only accepted product implications.
+
+**Accepted target direction:** MPC is itself the marketplace operations/control-plane product. For marketplaces Product 1.0 or later releases choose to support, the target direction is an MPC-owned provider integration boundary rather than routing marketplace operation through another marketplace hub by default.
+
+ANYMARKET, Magis5 and similar marketplace hubs are benchmark/competitive evidence, not Product 1.0 runtime dependencies. Bling may only become a future business-system/ERP integration when used in that role; its marketplace-hub role is not a required dependency.
+
+This does not preclude future evidence from justifying an intermediary integration, but no intermediary abstraction or compatibility tax is authorized in the current target design.
 
 ---
 
@@ -164,7 +178,7 @@ Owns routine marketplace control inside policy: readiness/linkage preparation, l
 
 ### Fulfillment / Dispatch Operator
 
-For an internally operated selected Fulfillment Node, owns the physical work queue, separation/conference, invoicing trigger when readiness is proven, packing, dispatch handoff and exception reporting.
+For an internally operated selected Fulfillment Node, owns the physical work queue, separation/conference, invoicing trigger when readiness is proven, provider-required fulfillment/handoff steps that belong to the accepted workflow, packing, dispatch handoff and exception reporting.
 
 Accepted internal normal path:
 
@@ -175,8 +189,8 @@ marketplace sale / business-order readiness
   → physical conference
   → if valid + invoicing prerequisites proven: trigger invoicing through MPC
   → authoritative invoicing result verified/reconciled
-  → packing
-  → dispatch handoff
+  → satisfy/orchestrate provider-required dispatch prerequisites/artifacts/readiness
+  → packing / dispatch handoff
 ```
 
 **Invariant:** the accepted internal normal path does not intentionally invoice before physical confirmation that the correct items are available/separated. Physical inconsistency blocks normal invoicing and becomes explicit exception work.
@@ -220,6 +234,8 @@ No actor may configure away mandatory audit/reconciliation/safety invariants or 
 | Provider actual listing/price/availability state | provider authoritative; MPC **OBSERVES / ORCHESTRATES** |
 | Listing/price/availability mutation intent | **OWN / ORCHESTRATE** |
 | Fulfillment Node / Fulfillment Scope / routing intent | **OWN / ORCHESTRATE**; native execution facts stay with their authority |
+| Effective provider capability/requirement interpretation for a claimed workflow | **OWN / DERIVE** from provider-native mode/state/contract evidence; provider remains authority for native capability/state/artifact semantics |
+| Provider-required native fulfillment prerequisites, acknowledgements, shipment readiness and artifacts | provider authoritative where native; MPC **OBSERVES / ORCHESTRATES / RECONCILES** closure inside claimed normal paths |
 | Cost Observation | **OBSERVE / DERIVE** from attributable authoritative economics |
 | Cost Basis | **OWN** when MPC-governed; **OBSERVE / CONSUME** when externally governed |
 | Competitive/pricing/expected-profitability interpretation | **OWN / DERIVE** |
@@ -268,7 +284,13 @@ No actor may configure away mandatory audit/reconciliation/safety invariants or 
 27. **Unattributable financial movement is not invented attribution.** Unknown/aggregate adjustments remain unresolved rather than being spread across sales merely to close arithmetic.
 28. **Payout/cash matching is not assumed 1:1 with an order.** Aggregated many-sale/many-movement payouts must preserve lineage and uncertainty.
 29. **Simulator calibration is evidence-driven.** Confirmed model/rule drift creates explicit calibration work; explainable context variance does not masquerade as a model bug.
-30. Provider/ERP/payment/bank transport mechanics remain later-stage responsibilities.
+30. **Provider capability/authority is context-sensitive.** Marketplace brand alone does not prove what the provider/seller/MPC can or must do for an offer/order; effective capability may depend on installation, native operating/fulfillment mode and accepted provider contract evidence.
+31. **A claimed MPC-controlled normal fulfillment path must close provider requirements.** Required provider data handoffs, acknowledgements, readiness and artifacts must be surfaced, satisfied or orchestrated through MPC; a hidden routine provider-UI step means that path is incomplete.
+32. **Native provider states/artifacts remain native.** Labels, provider fiscal documents, shipment states and analogous provider artifacts do not become universal MPC domain types merely because several providers expose analogous constructs.
+33. **Unsupported/external-required provider work is explicit.** If a required step cannot be supported through the accepted integration, the workflow may be explicitly limited/exceptional but must not masquerade as fully MPC-executable.
+34. **Marketplace hubs are not Product 1.0 runtime dependencies by default.** ANYMARKET, Magis5 and similar systems are competitive/architectural evidence; no intermediary compatibility layer is introduced without new business evidence.
+35. **Shared provider technology does not change business-provider identity.** A future shared protocol/family implementation such as Mirakl may reuse technical infrastructure, but the marketplace/business provider remains the marketplace being operated.
+36. Provider/ERP/payment/bank transport mechanics remain later-stage responsibilities.
 
 ---
 
@@ -287,24 +309,27 @@ Product 1.0 is complete only when MPC is demonstrably usable as the normal marke
 7. **Fulfillment responsibility is explicit.** Eligible/selected Fulfillment Node and physical responsibility are known when material.
 8. **A marketplace sale becomes the correct business-system order through MPC.** Business Order Intent is mapped, executed, correlated and verified without leaking native order types into canonical semantics.
 9. **Invoicing is readiness-gated and verifiable.** Invoicing Intent is emitted only after sufficient evidence; native result is observed/reconciled.
-10. **The normal sale lifecycle runs through MPC.** Order materialization → fulfillment/conference → invoicing → packing/dispatch without hidden routine system hopping.
-11. **Shipment remains visible through terminal outcome.** Material delivery exceptions become explicit work.
-12. **Essential post-sale changes remain controlled.** Cancellation/return/refund and required fiscal/economic consequences remain orchestrated/reconciled.
-13. **Failures become explicit work.** Missing evidence, ambiguity and divergence identify what is known/unknown and what action is required.
-14. **The economic evidence chain closes as far as authoritative evidence is available.** MPC preserves and compares Expected Economics → Order Economics → Marketplace Settlement → Cash Receipt evidence, without collapsing distinct stages into one opaque number.
-15. **Simulator drift becomes actionable learning.** Materially comparable simulation/order evidence can identify model/provider-rule drift and create calibration work; explainable input/context changes are classified separately.
-16. **Realized profitability is explainable.** The system can attribute material cost/fees/freight/tax/post-sale/settlement effects and distinguish unresolved economics instead of recomputing history from convenient current values.
-17. **Organizational governance is operable without code edits.** Legitimate MPC-owned authorities are configurable while external authority and mandatory safety/audit invariants remain protected.
+10. **Provider requirements close inside claimed normal fulfillment paths.** MPC determines the effective provider requirements/capabilities for the supported operating context, surfaces or orchestrates required data/artifacts/acknowledgements and proves provider-specific readiness needed to reach dispatch handoff without hidden routine provider-UI work.
+11. **The normal sale lifecycle runs through MPC.** Order materialization → fulfillment/conference → invoicing → provider-requirement closure → packing/dispatch without hidden routine system hopping for responsibilities the product claims to control.
+12. **Shipment remains visible through terminal outcome.** Material delivery exceptions become explicit work.
+13. **Essential post-sale changes remain controlled.** Cancellation/return/refund and required fiscal/economic consequences remain orchestrated/reconciled.
+14. **Failures become explicit work.** Missing evidence, ambiguity, unsupported capability and divergence identify what is known/unknown and what action is required.
+15. **The economic evidence chain closes as far as authoritative evidence is available.** MPC preserves and compares Expected Economics → Order Economics → Marketplace Settlement → Cash Receipt evidence, without collapsing distinct stages into one opaque number.
+16. **Simulator drift becomes actionable learning.** Materially comparable simulation/order evidence can identify model/provider-rule drift and create calibration work; explainable input/context changes are classified separately.
+17. **Realized profitability is explainable.** The system can attribute material cost/fees/freight/tax/post-sale/settlement effects and distinguish unresolved economics instead of recomputing history from convenient current values.
+18. **Organizational governance is operable without code edits.** Legitimate MPC-owned authorities are configurable while external authority and mandatory safety/audit invariants remain protected.
 
 Completion statement:
 
-> **A company can take internal products, determine marketplace readiness, publish and operate offers, maintain availability from explicit inventory scope/policy, monitor competition and profitability, make and execute controlled decisions, materialize marketplace sales in business/fiscal systems, fulfill and dispatch them, observe delivery and essential post-sale consequences, preserve the economic evidence from simulation through order/settlement/cash where available, reconcile divergence, learn when its own simulator is wrong, and explain realized economic outcome — using Marketplace Central as the normal marketplace operations control plane.**
+> **A company can take internal products, determine marketplace readiness, publish and operate offers, maintain availability from explicit inventory scope/policy, monitor competition and profitability, make and execute controlled decisions, materialize marketplace sales in business/fiscal systems, fulfill them through explicit eligible nodes, close provider-required prerequisites/artifacts/readiness for the supported operating path, dispatch and observe delivery/post-sale consequences, preserve economic evidence from simulation through order/settlement/cash where available, reconcile divergence, learn when its own simulator is wrong, and explain realized economic outcome — using Marketplace Central as the normal marketplace operations control plane.**
 
 ### 9.1 Normal-path rule
 
 The normal operational path must be executable through MPC for responsibilities Product 1.0 claims to control.
 
 Direct use of a marketplace, ERP or another external system remains legitimate for intentionally external responsibilities, investigation/support and explicit exceptional recovery. It must **not** be a hidden routine step in a workflow MPC claims to control.
+
+If a provider-required operation cannot be performed through an accepted Product 1.0 integration, that limitation must be explicit; the affected path cannot be presented or proven as a fully MPC-controlled normal path.
 
 D8 later proves detailed golden flows; D0 defines what those flows must prove.
 
@@ -380,73 +405,47 @@ L3 — Bank Cash Receipt evidence, when available
 
 These layers form an **Economic Evidence Chain**; later evidence refines what is known but does not overwrite earlier evidence/history.
 
-#### L0 — Simulation / Expected Economics
+Simulation/order variance is classified before becoming a simulator defect. Explained input/context variance, facts knowable only at/after sale, provider-rule drift, confirmed model drift and insufficient evidence remain distinct causes. Only materially comparable residual discrepancy becomes a `Simulator Calibration Case`.
 
-MPC owns/derives a simulation from explicit inputs/evidence such as price, relevant marketplace/provider costs, shipping assumptions, Cost Basis, taxes/economic effects known to the product, policy and timestamp/context. Exact acquisition and formulas belong later.
+Order Economics is reconciled with authoritative marketplace/payment settlement evidence. Explained fees/refunds/chargebacks/adjustments remain attributable; unexplained or unassignable differences become explicit financial exceptions.
 
-#### L1 — Order Economics
+Marketplace payout/withdrawal evidence is distinct from bank-side cash receipt. Payouts may aggregate many orders/movements; MPC does not invent `Order 1 → Bank Transaction 1` or proportionally fabricate attribution merely to close totals.
 
-Once the real sale exists, MPC derives an order-level economic interpretation from authoritative order/payment/shipping/discount/fee and other material facts. The real sale may contain facts unavailable or different at simulation time.
+This closes the **marketplace operation's own economic lineage** without expanding MPC into company-wide accounting, treasury or bank reconciliation. Exact Mercado Pago/report APIs, SFTP, Open Finance/bank integration, statement formats, matching algorithms/tolerances/windows and persistence belong later.
 
-#### L2 — Marketplace Settlement
+### D0.7g — Context-sensitive provider capabilities and Provider Requirement Closure
 
-MPC observes authoritative marketplace/payment-provider account movements needed to determine the financial result the marketplace/payment layer actually recognized: applicable fees, shipping effects, taxes, refunds, chargebacks/disputes/adjustments, settlement/release movements and similar material marketplace-originated economics.
+**Accepted by operator after broad current-provider/competitor research.**
 
-MPC owns attribution/reconciliation interpretation, **not** the native settlement fact.
+Marketplace fulfillment/dispatch responsibility is not determined by marketplace brand alone. The effective operating contract can vary by marketplace installation, offer/order context and provider-native fulfillment/logistics mode. Product 1.0 must therefore reason from the **effective provider capabilities, authorities and requirements for the supported operating flow**, not from a universal assumption that every marketplace exposes the same workflow.
 
-#### L3 — Cash Receipt
+For every marketplace operating flow Product 1.0 claims as an **MPC-controlled normal path**, MPC must:
 
-When a business chooses to close the chain to cash, bank-side evidence is the authority that proves final receipt. Provider payout/withdrawal evidence proves a marketplace/payment-account remittance movement; it does **not** by itself prove the bank credited the account.
+- determine enough of the effective provider capability/authority context to know what MPC/seller/provider is responsible for;
+- surface, satisfy or orchestrate provider-required prerequisites and data handoffs that are necessary to advance the workflow;
+- obtain/surface/orchestrate provider-required operational artifacts when they are necessary to perform the claimed workflow;
+- observe/verify the provider-specific readiness/acknowledgement needed to prove the sale reached a dispatch-ready/provider-accepted state;
+- turn missing capability, unsupported requirement, rejected handoff or non-convergent provider state into explicit work rather than hiding it behind a generic fulfillment status.
 
-D0 deliberately does not choose Open Finance, bank API, statement import, file format or other transport. Those are D4 responsibilities.
+Native labels, provider fiscal documents, shipment/fulfillment statuses, manifests, QR codes or analogous artifacts/states remain provider-native authority. D0 does **not** create universal `Label`, `Invoice`, `ShipmentStatus` or `FulfillmentMode` domain types merely because several providers expose analogous constructs. D1/D4 later determine the smallest canonical requirement/readiness semantics and provider capability contracts needed by accepted workflows.
 
-#### R1 — Simulation reconciliation and calibration loop
+A provider-required manual UI step may remain an explicitly unsupported/external-required or exceptional path. It **cannot** remain a hidden routine step inside a flow the product claims is fully executable through MPC.
 
-A difference between simulation and real order economics is classified before becoming a simulator defect. Candidate causal classes include:
+Product 1.0 only needs end-to-end closure for the Mercado Livre operating mode(s) selected for the first real proof. It does not need to implement every logistics/fulfillment mode of Mercado Livre, Amazon, Magalu, Casas Bahia, Shopee or any other future provider merely to preserve the correct architecture.
 
-- explained input/context variance;
-- fact only knowable at/after the sale;
-- external/provider rule drift;
-- confirmed simulator/model drift;
-- insufficient evidence / unresolved variance.
+#### Direct marketplace target direction / competitor-hub boundary
 
-Only after materially comparable context is established, or known differences are accounted for, may a residual discrepancy become a **Simulator Calibration Case**.
+MPC is itself the marketplace operations/control-plane product. ANYMARKET, Magis5 and similar marketplace hubs are **benchmark/competitive evidence, not target runtime dependencies**. The accepted Product 1.0 direction is MPC-owned direct provider integration boundaries for the marketplaces it supports.
 
-```text
-simulate → sell → observe → reconcile → classify
-                               ↓
-                    confirmed model/rule drift
-                               ↓
-                      calibration work queue
-                               ↓
-                    improved future simulation
-```
-
-This is deterministic/auditable variance analysis first; Product 1.0 does not require machine learning.
-
-#### R2 — Settlement reconciliation
-
-Order Economics is compared with authoritative marketplace/payment-account settlement evidence. Explained fees/refunds/chargebacks/adjustments remain attributable; unexplained or unassignable differences become explicit financial exceptions instead of silent corrections.
-
-#### R3 — Cash reconciliation
-
-Marketplace payout/withdrawal evidence is reconciled with bank-side receipt evidence when the cash layer is enabled/available.
-
-A payout may aggregate many orders and movements. MPC must **not** assume `Order 1 → Bank Transaction 1`; reconciliation may require many-to-many lineage. Unattributable movements remain unresolved rather than being proportionally fabricated merely to close a total.
-
-#### Product boundary
-
-Economic Evidence Chain closes the **marketplace operation's own economic lineage**. It does not expand MPC into company-wide accounting, treasury, cash management or general bank reconciliation.
-
-Exact Mercado Pago/report APIs, SFTP, bank/Open Finance integrations, statement formats, payout batching/matching, tolerances, timing windows, persistence schemas and algorithms belong to later stages.
+No generic intermediary/hub compatibility layer is introduced in D0/D4 without future independent business evidence. If a future provider family shares protocol infrastructure (for example marketplaces built on Mirakl), D4 may reuse technical transport/components without changing the business marketplace identity or pretending all marketplace contracts are identical.
 
 ### Next D0.7 question
 
-The next material contradiction is **fulfillment execution prerequisites and provider-required handoff artifacts/data**.
+The next material product-completeness question is **time-bound marketplace obligations / operational deadlines**.
 
-Product 1.0 claims that the normal fulfillment/dispatch path is executable through MPC without hidden routine external-system hopping. D0 must therefore decide whether, when a marketplace/provider requires shipment labels, fiscal/billing data, invoice handoff, dispatch documents or equivalent provider artifacts to complete a controlled fulfillment flow, MPC must surface/orchestrate those prerequisites inside its normal workflow rather than forcing the operator to open the provider UI.
+MPC is intended to be the normal marketplace operations control plane and to drive portfolio-level attention. D0 must decide whether provider/business deadlines that materially affect the lifecycle — for example action, invoicing, dispatch, delivery or post-sale obligations — must become explicit priority/attention semantics rather than remaining timestamps operators must discover manually in provider UIs.
 
-This is a product-boundary question, not a decision about Mercado Livre endpoints, PDF/ZPL formats, printers, XML transport or provider-specific workflow. Exact mechanics belong to D4/D6/D7.
+This is a product responsibility question, not a scheduler/cron/SLA implementation decision. Exact provider deadline fields, clocks, escalation rules, timers, notifications and runtime mechanics belong to D4/D6/D7.
 
 Other remaining D0.7 findings will continue to be classified adversarially; D0 closes only when no material Product 1.0 semantic is left for implementation to invent.
 
@@ -459,7 +458,7 @@ A fresh session must read `AGENTS.md`, `docs/engineering/rebaseline/README.md`, 
 It should conclude:
 
 - D0 is OPEN and not yet accepted as a whole; implementation remains blocked until D9;
-- D0.1–D0.6 and D0.7a–D0.7f are operator-approved;
+- D0.1–D0.6 and D0.7a–D0.7g are operator-approved;
 - Product 1.0 is Marketplace Operations + Commercial Intelligence (A+), not an ERP/marketplace replacement;
 - `Organization 1 → N Marketplace Installations` and `Organization 1 → N Selling Entities`; identities do not collapse;
 - canonical MPC semantics are defined before ERP/provider mapping;
@@ -469,9 +468,11 @@ It should conclude:
 - Business Order Intent and Invoicing Intent remain separate from native ERP TOP/document operations; ambiguous writes are not blindly retried;
 - the Economic Evidence Chain is accepted as `Simulation → Order Economics → Marketplace Settlement → Cash Receipt evidence where available`;
 - simulation/order variance is classified before creating a simulator-calibration defect;
-- marketplace/payment settlement and bank receipt are distinct evidence authorities;
-- payouts are not assumed 1:1 with orders and unattributable financial movement is never invented;
-- the economic chain is marketplace-scoped and does not make MPC company-wide finance/accounting/treasury;
+- marketplace/payment settlement and bank receipt are distinct evidence authorities; payouts are not assumed 1:1 with orders;
+- provider capability/authority depends on the effective operating context, not only marketplace brand;
+- claimed MPC-controlled fulfillment paths must close provider-required prerequisites/data/artifacts/readiness without hidden routine provider-UI work;
+- native provider artifacts/states retain provider authority and do not become universal MPC domain types by analogy;
+- ANYMARKET, Magis5 and similar marketplace hubs are benchmark/competitive evidence, not Product 1.0 runtime dependencies; the current target direction is MPC-owned direct marketplace integration boundaries;
 - current code/docs remain evidence, not target authority;
 - no D1+ target architecture may be invented yet;
-- the exact next work is **D0.7 Product completeness review — fulfillment execution prerequisites and provider-required handoff artifacts/data**.
+- the exact next work is **D0.7 Product completeness review — time-bound marketplace obligations / operational deadlines**.
