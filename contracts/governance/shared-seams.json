@@ -24,8 +24,7 @@
       "exclusive_paths": [
         "scripts/harness",
         "scripts/harness.ps1",
-        "contracts/governance",
-        "docs/HARNESS-PROFILE.md"
+        "contracts/governance"
       ]
     },
     {
