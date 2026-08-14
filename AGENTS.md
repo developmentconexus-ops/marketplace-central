@@ -4,15 +4,30 @@
 
 Marketplace Central is in **Architecture Rebaseline / Technical System Design**. Product implementation is intentionally blocked until the D0–D9 design program is completed and accepted.
 
+### Immediate operating boundary
+
+The repository is currently finishing **documentary / governance authority cleanup** on PR #41 before deeper software-design discussion resumes.
+
+Until that cleanup is explicitly closed:
+
+- change only documentation, documentation authority, governance metadata/schemas, gates/workflows/scripts where they consume retired documentary authority, and proof needed to verify that cleanup;
+- do **not** redesign, refactor, delete or choose a target for legacy product code;
+- do **not** use the cleanup as an excuse to settle module/context, persistence, API, frontend, runtime or integration architecture;
+- product/source findings discovered while inspecting cleanup are evidence only and are carried into the relevant D-stage;
+- legacy source disposition is adjudicated **stage by stage across D0–D9** and implemented only after the corresponding architecture/cutover decision is accepted. It is not part of the current documentary cleanup.
+
+The current cleanup ends when retired documentary authorities and their active consumers are removed/retargeted, current governance is self-contained, verification is green without weakening controls or raising ratchets, and a fresh session can identify one authority path and one exact next action.
+
 Start every session in this order:
 
 1. `AGENTS.md`
 2. `docs/engineering/rebaseline/README.md` — current stage, status, exact next action
-3. `docs/engineering/standards/root-cause-global-maximum-method.md`
-4. `ARCHITECTURE.md` — only stable product-level constraints
-5. `docs/architecture/decisions/README.md` — ADR registry and current/reopened status
-6. the document for the active D-stage, if separate from the rebaseline README
-7. code/contracts/runtime evidence needed for that stage
+3. `docs/engineering/rebaseline/TMP-SESSION-HANDOFF.md` **while the documentary cleanup remains open** — continuity only, never design authority
+4. `docs/engineering/standards/root-cause-global-maximum-method.md`
+5. `ARCHITECTURE.md` — only stable product-level constraints
+6. `docs/architecture/decisions/README.md` — ADR registry and current/reopened status
+7. the document for the active D-stage, if separate from the rebaseline README
+8. code/contracts/runtime evidence needed for that stage
 
 Do **not** reconstruct the roadmap from Git history, deleted plans, old handoffs or memory. Git history is evidence only when the current rebaseline explicitly asks for historical evidence.
 
@@ -20,13 +35,13 @@ Do **not** reconstruct the roadmap from Git history, deleted plans, old handoffs
 
 The governing sequence is:
 
-`D0 current state → D1 contexts → D2 identity/data → D3 communication/events → D4 external integrations → D5 API → D6 frontend → D7 runtime/transactions/outbox → D8 golden flows → D9 adversarial global-maximum review → implementation DAG → implementation plan → implementation`
+`documentary authority cleanup → D0 current state → D1 contexts → D2 identity/data → D3 communication/events → D4 external integrations → D5 API → D6 frontend → D7 runtime/transactions/outbox → D8 golden flows → D9 adversarial global-maximum review → implementation DAG → implementation plan → implementation`
 
 Until D9 is accepted:
 
 - do not start product-feature implementation merely because an old plan says it is next;
-- do not create a new context/module, schema cutover, API redesign, frontend topology migration or legacy deletion unless the active D-stage explicitly authorizes that change;
-- documentation cleanup, measurement, proof tooling and non-behavioral corrections are allowed only when they directly support the active D-stage;
+- do not create a new context/module, schema cutover, API redesign, frontend topology migration or legacy deletion unless the accepted design flow explicitly authorizes that change;
+- documentary cleanup, measurement and proof tooling are allowed only when they directly support the current gate and do not smuggle in target architecture;
 - an implementation plan for the product rebaseline is premature before D9.
 
 The current status and exact next action live in one place only: `docs/engineering/rebaseline/README.md`.
@@ -118,7 +133,7 @@ Anything more specific than these may be under D0–D9 re-adjudication; check th
 
 ## Documentation lifecycle
 
-The active repository intentionally does **not** retain an `old/`, archive wiki, dated implementation-plan cemetery or session-handoff tree.
+The active repository intentionally does **not** retain an `old/`, archive wiki, dated implementation-plan cemetery or permanent session-handoff tree.
 
 - Git history is the archive.
 - `docs/engineering/rebaseline/README.md` is the sole current progress/router document.
@@ -126,5 +141,6 @@ The active repository intentionally does **not** retain an `old/`, archive wiki,
 - Stage evidence/design lives in the current D-stage document.
 - Supporting references must be explicitly labeled non-authoritative.
 - A superseded roadmap/spec/handoff is deleted after any still-valid decision has been absorbed into the current authority.
+- `TMP-SESSION-HANDOFF.md` is allowed only while the current documentary cleanup is unfinished; delete it after the canonical topology passes the fresh-session test.
 
 A new session should never need to decide which of several roadmaps is current.
