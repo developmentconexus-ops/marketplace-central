@@ -66,14 +66,14 @@ The accepted Product 1.0 capabilities are:
 2. **Marketplace Listing Operations** — create, inspect and control listings and material channel state, then verify whether requested changes converged.
 3. **Marketplace Availability Control** — keep published marketplace availability coherently aligned with sellable availability derived from authoritative stock facts/rules and applicable MPC-owned allocation policy, automatically on the normal path and with explicit exceptions when evidence or convergence is uncertain.
 4. **Competitive Intelligence** — observe comparable market offers/prices, expose competitive position and meaningful changes, and represent insufficient comparison evidence honestly.
-5. **Pricing & Profitability Intelligence** — combine relevant internal economics and market observations to calculate price scenarios, expected margin/profitability and decision-relevant trade-offs.
+5. **Pricing & Profitability Intelligence** — combine relevant internal economics under an explicit, explainable Cost Basis with market observations to calculate price scenarios, expected margin/profitability and decision-relevant trade-offs.
 6. **Decision & Policy Control** — translate observations/recommendations into permitted, approval-required or prohibited actions according to governing company rules/policies.
 7. **Order-to-ERP Operations** — receive/understand marketplace orders and coordinate corresponding operations in the participating ERP, including order creation and invoicing where authorized.
 8. **Marketplace Fulfillment / Dispatch** — progress marketplace orders through eligible fulfillment execution, including physical separation, conference, invoicing trigger when applicable, packing and dispatch handoff, without becoming a company-wide WMS.
 9. **Shipment / Delivery Observation & Exceptions** — continue observing shipment after dispatch handoff until a relevant terminal outcome, surfacing delays, delivery failures, returns or other material exceptions without becoming a TMS/carrier platform.
 10. **Essential Post-Sale Operations** — control the operational response to marketplace cancellations, returns and refunds when they affect an MPC-controlled sale, coordinating consequences across marketplace/ERP/fulfillment/economic workflows without becoming general CRM/SAC.
 11. **Reconciliation & Exception Operations** — identify cases where an expected cross-system result cannot be proven or systems diverge, making them explicit work instead of silently assuming success.
-12. **Realized Profitability** — determine realized sale economics, including material delivery/post-sale reversals or adjustments, and compare expected versus realized results.
+12. **Realized Profitability** — determine realized sale economics from attributable authoritative/derived economic facts, including the relevant Cost Basis and material delivery/post-sale reversals or adjustments, and compare expected versus realized results.
 
 The provider-independent requirement is to express these capabilities in business terms. Mercado Livre and Sankhya are the first concrete systems used to prove relevant capabilities; provider-specific mechanics belong to D4.
 
@@ -267,7 +267,7 @@ Governing principle:
 
 | Concern | Product-level MPC authority |
 |---|---|
-| Internal master product facts, ERP base cost/fiscal facts | **OBSERVE / DERIVE** |
+| Internal master product facts, ERP-native cost/fiscal facts | **OBSERVE / CONSUME** as external facts; MPC may derive normalized economic conclusions without taking ownership of the source facts |
 | ERP/WMS/3PL/provider-native physical/on-hand/reserved/other stock facts | **OBSERVE / CONSUME** |
 | Business rules/policies whose authority remains in an ERP/another system | **OBSERVE / CONSUME** |
 | Product ↔ marketplace linkage/evidence maintained by MPC | **OWN** |
@@ -279,6 +279,8 @@ Governing principle:
 | MPC Fulfillment Node identity/membership | **OWN** as MPC fulfillment-operating semantics/configuration; native facility/provider identities and physical execution facts retain their relevant external authority |
 | Fulfillment Scope / node eligibility for an order, offer or policy context | **OWN** as MPC operating policy/configuration |
 | Fulfillment-node selection/routing intent once governing policy decides it | **OWN / ORCHESTRATE**; exact routing algorithm is deferred |
+| Cost Observation normalized for MPC economic use | **OBSERVE / DERIVE** from authoritative economic facts with meaning, time/context and provenance preserved |
+| Cost Basis / cost-selection semantics | **OWN** when intentionally governed by MPC; **OBSERVE / CONSUME** when externally governed; the effective basis and provenance must remain explicit |
 | Intent to publish/update marketplace quantity/availability | **OWN / ORCHESTRATE** |
 | Actual marketplace quantity/availability state | provider authoritative; MPC **OBSERVES / ORCHESTRATES** convergence |
 | Cross-system intent, workflow, correlation, divergence and exception state | **OWN** |
@@ -295,7 +297,7 @@ Governing principle:
 | Shipment/delivery state after dispatch | marketplace/carrier/provider authoritative; MPC **OBSERVES / ORCHESTRATES** exceptions/lifecycle closure |
 | Marketplace cancellation/return/refund facts | marketplace/provider authoritative; MPC **ORCHESTRATES** cross-system response |
 | ERP-native reversal/credit/fiscal/accounting facts | participating ERP authoritative; MPC **ORCHESTRATES** post-sale workflow |
-| Realized profitability interpretation | **OWN / DERIVE** from authoritative realized facts, including material delivery/post-sale adjustments |
+| Realized profitability interpretation | **OWN / DERIVE** from attributable authoritative/derived economic facts, including the applicable Cost Basis and material delivery/post-sale adjustments |
 | Audit/reconciliation records for MPC-controlled operations | **OWN** |
 
 ### D0.5b — Boundary invariants
@@ -321,7 +323,12 @@ Governing principle:
 19. **Fulfillment Node is a canonical MPC execution concept, not an alias for Inventory Source, ERP warehouse/location or physical address.** It represents the business-recognized fulfillment execution point/capability responsible for marketplace-order physical work; it may be internally operated or externally operated by a provider.
 20. **Fulfillment Scope is explicit eligibility.** Only Fulfillment Nodes allowed by the governing order/offer/policy context may be selected for the operation. No implicit “default warehouse” may become product semantics when more than one node is material.
 21. A Fulfillment Node may use inventory associated with one or more Inventory Sources, but that relationship is explicit. Inventory promise and physical execution are different semantics even when the first deployment uses the same facility for both.
-22. Provider/ERP-specific mechanisms remain implementation concerns for later stages.
+22. **Cost Observation is not a bare number.** Any cost used materially by MPC must preserve enough economic meaning, amount/currency, applicable temporal/business context and provenance to explain what the number represents and where it came from.
+23. **Cost Basis is not an ERP cost-type alias.** It expresses which cost semantic is economically appropriate for a particular analysis/decision/transaction. An adapter must not choose a convenient native cost field/type silently when the required basis is unsupported or ambiguous.
+24. **Missing or ambiguous cost does not silently fall back.** Unsupported basis, missing historical evidence or conflicting mappings become explicit uncertainty/configuration/exception state unless a later accepted policy explicitly authorizes a specific fallback semantic.
+25. **Current cost is not historical transaction cost by default.** Expected and realized profitability must preserve the temporal/economic evidence required by their respective use cases; recomputing a past sale using a convenient current cost without explicit semantics is prohibited.
+26. **Cost is not the entire sale economy.** Marketplace fees, freight effects, taxes, discounts, subsidies, reversals and other material economic components remain separately attributable facts/conclusions rather than being hidden inside an opaque “cost” number.
+27. Provider/ERP-specific mechanisms remain implementation concerns for later stages.
 
 ---
 
@@ -336,7 +343,7 @@ The acceptance bar is user-observable:
 1. **Attention is portfolio-driven, not manual-search driven.** Operators can see what is healthy, changed, divergent, blocked, approval-required or otherwise actionable without inspecting products/external systems one by one.
 2. **An eligible internal product can reach a verified marketplace state through MPC.** The normal path covers readiness/linkage, commercial analysis, creation/publication and observation of the real channel state.
 3. **Inventory eligibility and allocation are explicit and marketplace availability remains operationally coherent without per-change manual work.** MPC knows which Inventory Sources may contribute to an offer, applies authoritative rules and applicable MPC-owned allocation policy, derives Sellable Availability, updates the marketplace and verifies convergence. Uncertainty, missing mapping, policy ambiguity or failure becomes explicit work rather than guessed quantity, unintended stock aggregation or silent drift.
-4. **Competitive/pricing intelligence replaces major manual analysis.** MPC exposes grounded comparable-market position, relevant internal economics, price scenarios, expected profitability and insufficient-evidence cases at portfolio and product level.
+4. **Competitive/pricing intelligence replaces major manual analysis with explainable economics.** MPC exposes grounded comparable-market position, relevant internal economics, price scenarios and expected profitability using an explicit Cost Basis and attributable Cost Observations/economic facts; insufficient or ambiguous cost evidence is visible rather than silently substituted.
 5. **Decision closes into controlled action.** Authorized human or bounded policy-driven decisions can become external actions with policy enforcement, auditability, verification and reconciliation.
 6. **Material transaction context is explicit.** When a marketplace operation depends on which business/legal/fiscal entity is acting, MPC can attribute the workflow to the correct Selling Entity rather than relying on an implicit ERP/default-company assumption.
 7. **Fulfillment responsibility is explicit.** When fulfillment execution location/capability is material, MPC knows which Fulfillment Nodes are eligible and which node is responsible for the operation rather than relying on an implicit ERP warehouse/default shipping point.
@@ -344,12 +351,12 @@ The acceptance bar is user-observable:
 9. **Delivery remains visible through terminal outcome.** After dispatch, MPC continues observing until delivered, returned, cancelled or equivalent terminal state; material delivery exceptions become explicit work.
 10. **Essential post-sale changes remain inside the controlled lifecycle.** Cancellation, return/refund effects can be progressed through necessary cross-system response/reconciliation without dropping normal operation back to manual system hopping.
 11. **Failures become explicit work.** Missing evidence, ambiguous external results, integration failures and physical/order/availability/fulfillment/delivery/post-sale divergences surface with what is known/unknown and what requires action.
-12. **The economic loop closes.** MPC compares expected versus realized profitability using attributable authoritative facts, including material delivery/cancellation/return/refund effects.
+12. **The economic loop closes.** MPC compares expected versus realized profitability using attributable economic facts and explicit cost semantics appropriate to each temporal/transaction context, including material delivery/cancellation/return/refund effects, so the result can be explained rather than merely recomputed from current values.
 13. **Organizational governance is operable without code edits.** Actors can exercise legitimate MPC-owned authorities while externally governed rules remain externally governed and mandatory safety/audit invariants cannot be configured away.
 
 Completion statement:
 
-> **A company can take its internal products, determine marketplace readiness, publish and operate offers, derive marketplace availability from explicitly eligible inventory sources, governing facts/rules and MPC-owned allocation policies, preserve the correct business entity context, route physical fulfillment through an eligible recognized fulfillment node, monitor market position and profitability at portfolio scale, make and execute decisions under policy, receive sales, progress them through ERP and physical fulfillment, follow delivery to a terminal outcome, handle essential cancellation/return/refund consequences, surface/reconcile exceptions, and understand the realized economic result — using Marketplace Central as the normal marketplace operations control plane.**
+> **A company can take its internal products, determine marketplace readiness, publish and operate offers, derive marketplace availability from explicitly eligible inventory sources, governing facts/rules and MPC-owned allocation policies, preserve the correct business entity context, route physical fulfillment through an eligible recognized fulfillment node, analyze price/profitability with explainable cost semantics and attributable economics, make and execute decisions under policy, receive sales, progress them through ERP and physical fulfillment, follow delivery to a terminal outcome, handle essential cancellation/return/refund consequences, surface/reconcile exceptions, and understand the realized economic result — using Marketplace Central as the normal marketplace operations control plane.**
 
 ### D0.6a — Normal-path rule
 
@@ -583,17 +590,46 @@ Product-level requirements:
 
 Exact node identities, addresses, native ERP/WMS/provider mappings, node capability taxonomy, routing policy/algorithm, capacity/SLA logic and execution contracts belong to later stages.
 
+#### D0.7e.4 — Cost Observation and Cost Basis
+
+**Accepted by operator.**
+
+`Cost Observation` and `Cost Basis` are canonical MPC economic semantics defined independently of any ERP-native cost taxonomy.
+
+A **Cost Observation** is an attributable economic observation or derived conclusion about cost that preserves enough meaning to state what the value represents, its amount/currency, relevant temporal/business context and provenance.
+
+A **Cost Basis** is the explicit economic semantic or governing selection policy that determines which cost meaning/evidence is appropriate for a particular pricing analysis, expected-profitability decision, transaction interpretation or realized-profitability calculation.
+
+The purpose is to answer, in MPC language:
+
+> **Which cost is economically appropriate for this decision/transaction, what does it mean, when/contextually where is it valid, and what evidence produced it?**
+
+Product-level requirements:
+
+- a cost used materially by MPC is not represented as an unexplained number; its semantic meaning and provenance must remain inspectable;
+- Cost Basis is not defined as an ERP cost field/type/name. A participating adapter translates the required MPC cost semantic to authoritative ERP/other-source evidence when that mapping is supportable;
+- one Cost Basis may require combining/transforming multiple native facts, and one native cost construct may satisfy different MPC uses only where its semantic meaning actually matches; no `1:1` mapping is assumed;
+- if a requested Cost Basis cannot be satisfied reliably, MPC represents unsupported/missing/ambiguous cost evidence rather than choosing another native cost silently;
+- expected profitability uses cost evidence appropriate to the decision context/time, while realized profitability uses evidence appropriate to the realized transaction/economic outcome. They are not required to be numerically identical and their variance may itself be decision-relevant;
+- historical economic interpretation must not silently substitute a current product cost for the cost semantic relevant to the historical transaction;
+- Cost Observation/Cost Basis do not absorb all economics into one opaque value. Marketplace fees, freight effects, taxes, discounts, subsidies, refunds/reversals and other material components remain separately attributable where they affect profitability;
+- Cost Basis may be MPC-owned policy, externally governed rule or derived selection depending on the business authority. Its provenance/authority class must remain explicit;
+- where Cost Basis is legitimately MPC-owned and configurable, later stages may apply the same inherited/default plus explicit override principles accepted for MPC policy, but D0 does not freeze a cost-basis catalog or every override scope;
+- the first deployment may use a single accepted Cost Basis if that satisfies the real business need, without hardcoding a particular Sankhya cost variant as the universal MPC meaning of cost.
+
+Exact native cost mappings, source fields/APIs, cost taxonomy, calculation methods, effective-time lookup, currency handling, allowed fallback semantics, policy scopes and profitability formulas belong to later stages.
+
 #### Next D0.7e decision
 
-Define the next ERP-independent business dimension: **Cost Semantics / Cost Basis**.
+Define the next ERP-independent business dimension: **Order Execution Scope**.
 
-The question is not “which Sankhya cost field/type do we use?”. The question is:
+The question is not “which Sankhya TOP/company/fields create the order?”. The question is:
 
-> **What must MPC know about cost so pricing, expected profitability and realized profitability use the economically correct cost for the decision/transaction, with enough scope/time/provenance to explain the result?**
+> **What must MPC represent so a marketplace sale can be translated into the correct business-system order operation, with the right execution context and governing rules, without making an ERP-native order type/configuration part of the MPC canonical domain?**
 
-D0 must decide the business semantic and boundary without copying an ERP cost taxonomy. Exact source fields, costing methods, temporal lookup mechanics, fallback rules and calculation formulas belong to later stages.
+D0 must decide whether a canonical order-execution scope/intent semantic is required and what business distinctions it must preserve. Exact ERP order types, operation codes, document models, field mappings, API calls and routing mechanics belong to later stages.
 
-Subsequent ERP-independent dimensions to test include order execution scope and fiscal/invoicing scope. D0 must not assume these are identical to Selling Entity, Inventory Source or Fulfillment Node before each need is proven.
+A later ERP-independent dimension still to test is fiscal/invoicing scope. D0 must not assume order execution, Selling Entity, Inventory Source, Fulfillment Node or invoicing semantics are identical merely because the first ERP may bind them together.
 
 Other findings discovered during D0.7 are classified as MUST DECIDE NOW, SHOULD DECIDE NOW or CAN DEFER SAFELY. D0 closes only when no material Product 1.0 semantic is being left for implementation to invent.
 
@@ -612,14 +648,16 @@ It should conclude:
 - D0.7c is accepted: marketplace availability is maintained automatically from governing authoritative stock/rules/policies when sufficiently known, while uncertainty/failure becomes explicit work and MPC does not become physical-stock authority;
 - D0.7d is accepted: one MPC organization may own/control one or more marketplace installations, even if Product 1.0 is initially proven with one Mercado Livre account;
 - D0.7e is accepted: canonical MPC business semantics are defined from marketplace-operating needs before ERP-specific mapping; ERP integration semantically translates rather than dictating the MPC domain;
-- D0.7e.1 is accepted: `Selling Entity` is a canonical MPC business dimension for the acting business/legal/fiscal entity, independent from ERP company identifiers, marketplace installation, Inventory Source, Fulfillment Node and costing scope unless explicit business rules relate them;
+- D0.7e.1 is accepted: `Selling Entity` is a canonical MPC business dimension for the acting business/legal/fiscal entity, independent from ERP company identifiers, marketplace installation, Inventory Source, Fulfillment Node and Cost Basis unless explicit business rules relate them;
 - D0.7e.2 is accepted: `Inventory Source` identifies business-recognized inventory sources, `Inventory Scope` explicitly governs which sources may contribute to an offer, and Sellable Availability is derived from eligible sources plus authoritative facts/rules rather than copied from an external stock field;
 - D0.7e.2a records the Product 1.0 requirement for configurable MPC-owned availability-allocation policy, including percentage-style allocation such as `70%`, while the exact policy catalog/scopes/arithmetic are intentionally deferred;
 - D0.7e.3 is accepted: `Fulfillment Node` identifies a recognized physical-fulfillment execution point/capability, `Fulfillment Scope` governs which nodes are eligible, and fulfillment semantics remain distinct from inventory promise, Selling Entity and provider-native locations;
+- D0.7e.4 is accepted: `Cost Observation` preserves cost meaning/value/time-context/provenance, `Cost Basis` explicitly selects the economically appropriate cost semantic, and ERP-native cost types cannot become silent MPC defaults/fallbacks;
+- historical/realized economics must not silently use current cost as a substitute, and cost remains distinct from other economic components such as marketplace fees, freight and taxes;
 - organization identity must not be collapsed into marketplace seller-account or Selling Entity identity;
-- Sankhya-native concepts such as `CODEMP`, `CODLOC` and cost variants are integration evidence, not automatically canonical MPC concepts;
+- Sankhya-native concepts such as `CODEMP`, `CODLOC`, TOPs and cost variants are integration evidence, not automatically canonical MPC concepts;
 - MPC uses **OWN / ORCHESTRATE / OBSERVE-DERIVE** and owns the marketplace operating model without taking ownership of external facts merely because it consumes or causes them;
 - Sankhya API availability for writes is evidence to carry into D4, not a D0 transport decision;
 - business rules/policies may be MPC-owned, externally governed or derived, and later stages must preserve that provenance;
 - no D1+ target architecture may be invented yet;
-- the exact next work is **D0.7e — define ERP-independent Cost Semantics / Cost Basis needed by MPC**.
+- the exact next work is **D0.7e — define ERP-independent Order Execution Scope semantics needed by MPC**.
