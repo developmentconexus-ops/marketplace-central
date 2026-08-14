@@ -25,7 +25,10 @@
     "commit_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
     "branch": { "type": "string", "minLength": 1 },
     "dirty": { "type": "boolean" },
-    "acceptance_link": { "type": "string", "pattern": "^(unaccepted|F-[0-9]{2}@[0-9a-f]{40})$" },
+    "acceptance_link": {
+      "type": "string",
+      "pattern": "^(?:unaccepted|[A-Za-z0-9][A-Za-z0-9._/-]*@[0-9a-f]{40})$"
+    },
     "risk": { "type": "string", "enum": ["L0", "L1", "L2", "L3"] },
     "changed_paths": {
       "type": "array",
