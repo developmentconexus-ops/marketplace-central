@@ -1,4 +1,4 @@
-# The fast lane. Design and reasoning: docs/engineering/repo-audit-2026-08-07/GATE-DESIGN.md
+# Repository CI. Lane implementation and measurement live in scripts/gate.ps1.
 #
 # Rules this file exists to obey, each one paid for somewhere:
 #
@@ -13,12 +13,12 @@
 #     exits non-zero. Skipped and green are otherwise byte-identical.
 #   - No lane logic lives in this file. Every step below invokes
 #     `scripts/gate.ps1 -Lane <name>`, which is the same file `npm run gate`
-#     runs on a developer machine. This is issue #2's actual deliverable: the
-#     checks existed and were good, but which ones ran on a given change was a
-#     function of what someone remembered. A copy of the logic here and another
-#     one locally would reproduce that defect in a form that looks like a fix.
-#     `pwsh` is preinstalled on `ubuntu-latest`; the npm aliases are a
-#     convenience over the same script, never a second implementation.
+#     runs on a developer machine. The checks existed before this workflow, but
+#     which ones ran on a given change used to depend on operator memory. A copy
+#     of the logic here and another one locally would reproduce that defect in a
+#     form that looks like a fix. `pwsh` is preinstalled on `ubuntu-latest`; the
+#     npm aliases are a convenience over the same script, never a second
+#     implementation.
 #   - Toolchain versions are derived, never transcribed: Go from go.mod, Node
 #     from .node-version. A hand-copied version is one more enumeration to rot.
 #   - Cheap work gates expensive work through `needs:`, so a 20-second format
@@ -28,10 +28,9 @@
 #     including `npm ci`, which runs third-party lifecycle scripts. No step here
 #     runs an authenticated git command, and this repository is public.
 #
-# NOTHING HERE IS A REQUIRED CHECK YET. Promotion happens in issue #4, per check,
-# only after it has been observed red once and then green on several real PRs,
-# and only by reading the context string off `gh pr checks` -- never by predicting
-# what the string will be.
+# Branch-protection promotion is external repository configuration. This file
+# defines and proves the workflow topology; it does not act as a roadmap/status
+# document for when a check becomes required.
 
 name: ci
 
@@ -92,11 +91,11 @@ jobs:
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane gofmt
 
-      # Both halves of scripts/harness/Policy.psm1: the six registries against
-      # their schemas (blocks at zero -- a governance contract that stops
+      # Both halves of scripts/harness/Policy.psm1: the governance registries
+      # against their schemas (blocks at zero -- a governance contract that stops
       # parsing has no transitional state) and the semantic drift walk of the
-      # tree against them, ratcheted at 58. In this job because it needs only
-      # pwsh and git, no toolchain.
+      # tree against them, ratcheted at the current measured baseline. In this
+      # job because it needs only pwsh and git, no toolchain.
       #
       # GATE_BASE_SHA feeds exactly one check, API<->SDK atomicity, which is a
       # statement about a change and needs a base to diff against. On a PR that
@@ -142,7 +141,7 @@ jobs:
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane typecheck
 
-      # ESLint, type-aware, ratcheted at 26 findings over 220 sources.
+      # ESLint, type-aware, ratcheted at the current measured finding count.
       #
       # The lane asserts coverage before it asserts findings, and that order is
       # the point. `no-floating-promises`, `no-misused-promises` and
@@ -171,15 +170,14 @@ jobs:
         with:
           go-version-file: apps/server_core/go.mod
           cache-dependency-path: apps/server_core/go.sum
-      # HARNESS-PROFILE §11 defines the deterministic L0 lane as `go build ./...`
-      # AND `go vet ./...`, so the gate lane runs both. The test lane is not a
-      # substitute: `go test` with no -vet flag runs a curated subset of the vet
-      # checks (`go help testflag`), so a defect outside that subset -- and vet's
-      # own checks over non-test code -- would leave the aggregator green.
+      # The deterministic build lane is `go build ./...` AND `go vet ./...`, so
+      # the gate lane runs both. The test lane is not a substitute: `go test`
+      # with no -vet flag runs a curated subset of the vet checks (`go help
+      # testflag`), so a defect outside that subset -- and vet's own checks over
+      # non-test code -- would leave the aggregator green.
       #
-      # One job rather than two: L0 is one lane in the profile, and adding a job
-      # would move the `needs`/EXPECTED enumerations that the aggregator's
-      # topology step exists to keep equal.
+      # One job rather than two keeps the build/vet proof in one deterministic
+      # lane and avoids unnecessary topology duplication.
       - name: go build + go vet
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane build
@@ -187,19 +185,18 @@ jobs:
       # The architecture detectors -- the rules the compiler cannot express:
       # cross-context internal imports, float in contracts, vendor identity as
       # structure outside the vendor-aware layers, discarded fact booleans. In
-      # this job for the same cache reason as golangci-lint below. A ratchet at
-      # 6; the scanner had zero invokers until 2026-08-08 because it reported
-      # 483 findings of which 1 was real, and it was fixed before being wired.
+      # this job for the same cache reason as golangci-lint below. The detector's
+      # current baseline is a measured current-state constraint, not target-design
+      # authority.
       - name: archscan
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane arch
 
-      # TestModuleBoundaryADR023 as a ratchet at 234. The detector is red on
-      # main by design -- it is the RED that opens Onda 1 of the module-protocol
-      # plan -- so test-go-unit skips it and this step runs it, blocking on
-      # increase only: a new cross-module import past X/ports fails the PR that
-      # writes it, while the legacy 234 wait for their owner. In this job for
-      # the warm build cache; the test compiles the composition package.
+      # TestModuleBoundaryADR023 is held as a current-state ratchet. The detector
+      # is red on the inherited baseline by design, so test-go-unit skips it and
+      # this step runs it, blocking on increase only: a new cross-module import
+      # past X/ports fails the PR that writes it. D1 will re-adjudicate the target
+      # module boundaries; this gate merely prevents additional drift meantime.
       - name: module boundary (ADR-023)
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane boundary
@@ -209,10 +206,8 @@ jobs:
       # that `go build` just filled. Running it in lint-go would compile the
       # module twice per PR to keep a job name honest.
       #
-      # It is a ratchet, not a zero: 122 findings at the baseline commit, which
-      # is the first time this repository has ever been linted. It blocks on
-      # INCREASE. contracts/gate/baselines.json holds the numbers and the reason,
-      # including why the baseline is pinned to this runner's platform.
+      # It is a ratchet, not a zero. contracts/gate/baselines.json holds the
+      # measured numbers and reasons, including runner-platform assumptions.
       - name: golangci-lint
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane lint-go
@@ -265,12 +260,11 @@ jobs:
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane test-web
 
-  # GATE-TOPOLOGY §2.3's verify-full: the lanes whose cost is minutes. One job,
-  # sequential, because they share a checkout and the two toolchains, and the
-  # dominant term (integration, ~4-5 min of Docker Postgres) cannot be usefully
-  # parallelised against the others on one runner. Everything here is
-  # `scripts/gate.ps1 -Lane <name>` -- `npm run gate:full` is the same set
-  # locally, with test-go/test-web already covered by their own jobs above.
+  # Full verification adds the lanes whose cost is minutes. One job, sequential,
+  # because they share a checkout and the two toolchains, and the dominant term
+  # (integration, Docker Postgres) cannot be usefully parallelised against the
+  # others on one runner. Everything here is `scripts/gate.ps1 -Lane <name>`;
+  # `npm run gate:full` selects the same full lane set locally.
   verify-full:
     name: verify-full
     runs-on: ubuntu-latest
@@ -316,9 +310,9 @@ jobs:
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane selftest
 
-      # Issue #3: the guard inventory, each entry held to a fixture that must
-      # EXECUTE (go_tests run here; pwsh_files delegate to the selftest step
-      # above, verified by precondition + anchor).
+      # Guard inventory: each entry is held to a fixture that must EXECUTE
+      # (go_tests run here; pwsh_files delegate to the selftest step above,
+      # verified by precondition + anchor).
       - name: guards
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane guards
@@ -339,14 +333,14 @@ jobs:
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane integration
 
-      # Issue #1's PII deny fixture through real Caddy against stub upstreams,
-      # Docker only. The lane re-asserts the 17-assertion floor.
+      # PII deny fixture through real Caddy against stub upstreams, Docker only.
+      # The lane re-asserts the fixture assertion floor.
       - name: edge PII deny
         shell: pwsh
         run: ./scripts/gate.ps1 -Lane edge
 
   # ---------------------------------------------------------------------------
-  # The only job that issue #4 will make required.
+  # Single aggregator intended for branch protection.
   # ---------------------------------------------------------------------------
   required:
     name: required
