@@ -1,9 +1,11 @@
-// Command mlprobe runs the read-only ML API live-test round T1–T12 defined in
-// docs/design/ML-API-QUERY-CATALOG.md against the connected Mercado Livre account.
+// Command mlprobe runs read-only Mercado Livre API diagnostic rounds against
+// the connected account. The probe is supporting runtime evidence, not a
+// documentary/design authority.
 //
-// It is a throwaway diagnostic tool: it resolves the active credential the same
-// way the server does (Postgres + AES-GCM local key), performs only GET requests,
-// and writes one evidence JSON file per test to docs/design/evidence/ml-api/.
+// It resolves the active credential the same way the server does (Postgres +
+// AES-GCM local key), performs only GET requests, and writes generated evidence
+// JSON files under /workspace/output/ml-api/. `output/` is ignored by Git and is
+// deliberately outside the documentation authority tree.
 // The access token is never written to evidence or stdout; buyer PII is masked.
 //
 // Run inside the backend container:
@@ -32,7 +34,7 @@ import (
 
 const (
 	mlBase      = "https://api.mercadolibre.com"
-	evidenceDir = "/workspace/docs/design/evidence/ml-api"
+	evidenceDir = "/workspace/output/ml-api"
 	callDelay   = 200 * time.Millisecond
 )
 
@@ -337,7 +339,6 @@ func (p *probe) t1(ids []string) {
 		notes = append(notes, "ERR: "+err.Error())
 	}
 	parsed := parseBody(body)
-	// Field-presence summary for first successful item.
 	if arr, ok := parsed.([]any); ok && len(arr) > 0 {
 		if env, ok := arr[0].(map[string]any); ok {
 			if b, ok := env["body"].(map[string]any); ok {
@@ -358,8 +359,6 @@ func (p *probe) t1(ids []string) {
 	p.save("T1-items-multiget", "multiget /items devolve variations/tags/catalog_*/sold_quantity?", "GET", path, st, dur, h, parsed, notes...)
 }
 
-// t2t3t4 covers order detail (sale_fee semantics), pack shape, billing info.
-// Returns the raw orders list results for reuse by t5/t6.
 func (p *probe) t2t3t4(sellerID string) []map[string]any {
 	path := "/orders/search?seller=" + sellerID + "&sort=date_desc&limit=50"
 	st, h, body, dur, err := p.do(path, nil)
@@ -398,7 +397,6 @@ func (p *probe) t2t3t4(sellerID string) []map[string]any {
 		}
 	}
 
-	// T2: full order detail for a qty>1 order (fallback: any order).
 	target := multiQty
 	notes := []string{}
 	if target == nil {
@@ -417,12 +415,10 @@ func (p *probe) t2t3t4(sellerID string) []map[string]any {
 		}
 		p.save("T2-order-sale-fee", "sale_fee unidade vs linha (comparar sale_fee x unit_price x quantity)", "GET", opath, ost, odur, oh, parsed, notes...)
 
-		// discounts endpoint while here
 		dst, dh, dbody, ddur, _ := p.do("/orders/"+oid+"/discounts", nil)
 		p.save("T2b-order-discounts", "cupom/desconto endpoint separado", "GET", "/orders/"+oid+"/discounts", dst, ddur, dh, sanitize(parseBody(dbody)))
 	}
 
-	// T3: pack shape.
 	if packOrder != nil {
 		pid := fmt.Sprintf("%.0f", packOrder["pack_id"].(float64))
 		ppath := "/packs/" + pid
@@ -432,7 +428,6 @@ func (p *probe) t2t3t4(sellerID string) []map[string]any {
 		p.save("T3-pack", "shape de /packs/{id}", "GET", "/packs/{id}", 0, 0, nil, nil, "SKIP: no order with pack_id in last 50")
 	}
 
-	// T4: billing info (x-version: 2) for up to 2 orders.
 	for i, o := range orders {
 		if i >= 2 {
 			break
@@ -460,13 +455,11 @@ func (p *probe) t5t6(orders []map[string]any) {
 	}
 	hdr := map[string]string{"x-format-new": "true"}
 
-	// small multiget
 	n := min(len(shipIDs), 2)
 	path := "/shipments?ids=" + strings.Join(shipIDs[:n], ",")
 	st, h, body, dur, _ := p.do(path, hdr)
 	p.save("T5-shipments-multiget", "multiget shipments existe? shape com x-format-new", "GET", path, st, dur, h, sanitize(parseBody(body)), fmt.Sprintf("%d ids", n))
 
-	// limit probe: 21 ids (docs conflict 20 vs 50)
 	if len(shipIDs) >= 21 {
 		path21 := "/shipments?ids=" + strings.Join(shipIDs[:21], ",")
 		st21, h21, body21, dur21, _ := p.do(path21, hdr)
@@ -475,12 +468,10 @@ func (p *probe) t5t6(orders []map[string]any) {
 		p.save("T5b-shipments-multiget-21", "limite multiget: 21 ids passa?", "GET", "", 0, 0, nil, nil, fmt.Sprintf("SKIP: only %d shipment ids available", len(shipIDs)))
 	}
 
-	// T6: lead_time
 	lpath := "/shipments/" + shipIDs[0] + "/lead_time"
 	lst, lh, lbody, ldur, _ := p.do(lpath, hdr)
 	p.save("T6-lead-time", "estimated_handling_limit presente (fonte SLA da Fila)", "GET", lpath, lst, ldur, lh, sanitize(parseBody(lbody)))
 
-	// bonus: costs with X-Costs-New
 	cpath := "/shipments/" + shipIDs[0] + "/costs"
 	cst, ch, cbody, cdur, _ := p.do(cpath, map[string]string{"X-Costs-New": "true"})
 	p.save("T6b-shipment-costs", "costs com X-Costs-New: quem paga frete", "GET", cpath, cst, cdur, ch, sanitize(parseBody(cbody)))
@@ -496,7 +487,6 @@ func (p *probe) t7(sellerID string) {
 	if pg, ok := res["paging"].(map[string]any); ok {
 		notes = append(notes, fmt.Sprintf("paging.total=%v", pg["total"]))
 	}
-	// keep evidence small: paging + first result dates only
 	small := map[string]any{"paging": res["paging"]}
 	if rs, ok := res["results"].([]any); ok && len(rs) > 0 {
 		if o, ok := rs[0].(map[string]any); ok {
@@ -506,9 +496,7 @@ func (p *probe) t7(sellerID string) {
 	p.save("T7-orders-incremental-filter", "cursor incremental date_last_updated.from funciona?", "GET", path, st, dur, h, small, notes...)
 }
 
-// t8t9: competitor sold_quantity via catalog offers + public seller profile.
 func (p *probe) t8t9(ctx context.Context, pool *pgxpool.Pool, tenantID string, ourIDs []string) (categoryID string) {
-	// find a catalog_product_id from our items (hydrate a few)
 	var catalogProductID string
 	for _, id := range ourIDs {
 		if catalogProductID != "" {
@@ -573,7 +561,7 @@ func (p *probe) t8t9(ctx context.Context, pool *pgxpool.Pool, tenantID string, o
 
 func (p *probe) t10(categoryID string) {
 	if categoryID == "" {
-		categoryID = "MLB271599" // fallback: generic category; note in evidence
+		categoryID = "MLB271599"
 	}
 	type point struct {
 		Price      float64 `json:"price"`
@@ -648,8 +636,6 @@ func (p *probe) t12(ids []string) {
 		p.save("T12-429-behavior", "comportamento 429", "GET", "", 0, 0, nil, nil, "SKIP: no ids")
 		return
 	}
-	// Controlled burst: 100 lightweight GETs, 10 workers, no artificial delay.
-	// Not a stress test — stays far under documented per-minute limits.
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	counts := map[int]int{}
