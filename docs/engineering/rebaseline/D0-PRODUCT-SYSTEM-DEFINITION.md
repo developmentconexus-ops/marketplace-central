@@ -103,6 +103,8 @@ MPC must preserve provenance and must not silently convert an external rule into
 
 Where a policy is legitimately MPC-owned, Product 1.0 must allow organization-operable configuration without code edits. The policy model must support deterministic inherited/default policy plus explicit more-specific overrides where later-proven business scopes justify them; effective policy and provenance must be explainable. D0 does not mandate every candidate scope or create a generic speculative rules engine.
 
+This same rule applies to internal operational-time targets: an organization may deliberately choose a stricter target than a provider deadline, or define an internal target where no external deadline exists. Internal targets remain MPC-owned policy and never rewrite or relax an externally governed obligation.
+
 ---
 
 ## 4. Product 1.0 non-goals safe to defer
@@ -121,7 +123,7 @@ Unless later D0 evidence reopens them, Product 1.0 does not require:
 - a universal ERP model;
 - runtime dependency on marketplace hubs such as ANYMARKET or Magis5 merely to reach marketplaces MPC is intended to control directly.
 
-Essential shipment/delivery observation, cancellation/return/refund consequences, provider-requirement closure for claimed normal fulfillment paths, marketplace economic settlement and the cash evidence needed to close the marketplace economic chain are **not** deferred merely because their source systems are external.
+Essential shipment/delivery observation, cancellation/return/refund consequences, provider-requirement closure for claimed normal fulfillment paths, materially time-bound operational obligations, marketplace economic settlement and the cash evidence needed to close the marketplace economic chain are **not** deferred merely because their source systems are external.
 
 ---
 
@@ -150,6 +152,12 @@ Current provider and competitor research covers Mercado Livre, Amazon, Magalu, C
 ANYMARKET, Magis5 and similar marketplace hubs are benchmark/competitive evidence, not Product 1.0 runtime dependencies. Bling may only become a future business-system/ERP integration when used in that role; its marketplace-hub role is not a required dependency.
 
 This does not preclude future evidence from justifying an intermediary integration, but no intermediary abstraction or compatibility tax is authorized in the current target design.
+
+### 5.3 Time-bound obligation evidence
+
+Current provider research confirms that marketplace operations can expose authoritative deadlines, not merely descriptive timestamps. For example, Mercado Livre exposes a maximum shipment-dispatch date/time whose breach can affect reputation/visibility. External deadlines therefore have operational consequences and must remain distinguishable from internal organization targets.
+
+Mature reliability practice also supports keeping an internal target stricter than an external commitment to create operating safety margin. D0 adopts the business-semantic principle without importing SRE-specific implementation machinery.
 
 ---
 
@@ -199,13 +207,13 @@ Externally operated Fulfillment Nodes may prove readiness differently in later s
 
 ### Commercial / Marketplace Manager
 
-Ordinary authority over legitimate **MPC-owned** commercial policies: margin floors, price boundaries, approval thresholds, availability-allocation policy, bounded automation and commercial exceptions. This actor is not automatically authority over externally governed ERP/provider rules or integration/security administration.
+Ordinary authority over legitimate **MPC-owned** commercial policies: margin floors, price boundaries, approval thresholds, availability-allocation policy, bounded automation, internal operating targets and commercial exceptions. This actor is not automatically authority over externally governed ERP/provider rules or integration/security administration. Exact delegation over each policy class belongs later.
 
 ### Owner / Administrator / Policy Approver
 
 Governs organization-level access/integrations, exceptional authority above delegated commercial management, governance boundaries for automation/policy and emergency containment. It is not a routine commercial approval bottleneck.
 
-No actor may configure away mandatory audit/reconciliation/safety invariants or silently convert external rules into local mutable copies.
+No actor may configure away mandatory audit/reconciliation/safety invariants, externally governed obligations or silently convert external rules into local mutable copies.
 
 ---
 
@@ -236,6 +244,9 @@ No actor may configure away mandatory audit/reconciliation/safety invariants or 
 | Fulfillment Node / Fulfillment Scope / routing intent | **OWN / ORCHESTRATE**; native execution facts stay with their authority |
 | Effective provider capability/requirement interpretation for a claimed workflow | **OWN / DERIVE** from provider-native mode/state/contract evidence; provider remains authority for native capability/state/artifact semantics |
 | Provider-required native fulfillment prerequisites, acknowledgements, shipment readiness and artifacts | provider authoritative where native; MPC **OBSERVES / ORCHESTRATES / RECONCILES** closure inside claimed normal paths |
+| Externally governed operational deadline/window | provider/other external authority; MPC **OBSERVES** and preserves source/time evidence |
+| MPC-owned Internal Operational Target | **OWN** as organization policy; it may be stricter than an external obligation but cannot rewrite/relax it |
+| Operational urgency, remaining time, safety margin and breach/attention interpretation | **OWN / DERIVE** from authoritative obligation/target evidence and current workflow state |
 | Cost Observation | **OBSERVE / DERIVE** from attributable authoritative economics |
 | Cost Basis | **OWN** when MPC-governed; **OBSERVE / CONSUME** when externally governed |
 | Competitive/pricing/expected-profitability interpretation | **OWN / DERIVE** |
@@ -290,7 +301,11 @@ No actor may configure away mandatory audit/reconciliation/safety invariants or 
 33. **Unsupported/external-required provider work is explicit.** If a required step cannot be supported through the accepted integration, the workflow may be explicitly limited/exceptional but must not masquerade as fully MPC-executable.
 34. **Marketplace hubs are not Product 1.0 runtime dependencies by default.** ANYMARKET, Magis5 and similar systems are competitive/architectural evidence; no intermediary compatibility layer is introduced without new business evidence.
 35. **Shared provider technology does not change business-provider identity.** A future shared protocol/family implementation such as Mirakl may reuse technical infrastructure, but the marketplace/business provider remains the marketplace being operated.
-36. Provider/ERP/payment/bank transport mechanics remain later-stage responsibilities.
+36. **External obligation and internal target are different authorities.** An organization may choose an earlier/stricter Internal Operational Target, but that target cannot rewrite, waive or relax a provider/external obligation.
+37. **Relative time policy requires an explicit time anchor.** A rule such as “act within one hour of receipt” is only meaningful when the triggering event/time and provenance are known; unknown anchor/deadline is not equivalent to no deadline.
+38. **Internal-target breach and external-obligation breach are distinct states.** Missing an internal safety target must not be reported as provider breach; meeting an internal target does not by itself prove an external obligation was satisfied.
+39. **Time drives attention, not hidden background arithmetic.** Material remaining time, safety margin, risk and breach state must be available to operational prioritization rather than existing only as raw timestamps.
+40. Provider/ERP/payment/bank transport, timer and scheduler mechanics remain later-stage responsibilities.
 
 ---
 
@@ -311,17 +326,18 @@ Product 1.0 is complete only when MPC is demonstrably usable as the normal marke
 9. **Invoicing is readiness-gated and verifiable.** Invoicing Intent is emitted only after sufficient evidence; native result is observed/reconciled.
 10. **Provider requirements close inside claimed normal fulfillment paths.** MPC determines the effective provider requirements/capabilities for the supported operating context, surfaces or orchestrates required data/artifacts/acknowledgements and proves provider-specific readiness needed to reach dispatch handoff without hidden routine provider-UI work.
 11. **The normal sale lifecycle runs through MPC.** Order materialization → fulfillment/conference → invoicing → provider-requirement closure → packing/dispatch without hidden routine system hopping for responsibilities the product claims to control.
-12. **Shipment remains visible through terminal outcome.** Material delivery exceptions become explicit work.
-13. **Essential post-sale changes remain controlled.** Cancellation/return/refund and required fiscal/economic consequences remain orchestrated/reconciled.
-14. **Failures become explicit work.** Missing evidence, ambiguity, unsupported capability and divergence identify what is known/unknown and what action is required.
-15. **The economic evidence chain closes as far as authoritative evidence is available.** MPC preserves and compares Expected Economics → Order Economics → Marketplace Settlement → Cash Receipt evidence, without collapsing distinct stages into one opaque number.
-16. **Simulator drift becomes actionable learning.** Materially comparable simulation/order evidence can identify model/provider-rule drift and create calibration work; explainable input/context changes are classified separately.
-17. **Realized profitability is explainable.** The system can attribute material cost/fees/freight/tax/post-sale/settlement effects and distinguish unresolved economics instead of recomputing history from convenient current values.
-18. **Organizational governance is operable without code edits.** Legitimate MPC-owned authorities are configurable while external authority and mandatory safety/audit invariants remain protected.
+12. **Material time-bound obligations drive attention.** Provider/external deadlines and organization-owned internal targets remain distinguishable, relative targets have a known anchor, and operational attention can prioritize approaching/breached obligations rather than requiring operators to discover deadlines manually.
+13. **Shipment remains visible through terminal outcome.** Material delivery exceptions become explicit work.
+14. **Essential post-sale changes remain controlled.** Cancellation/return/refund and required fiscal/economic consequences remain orchestrated/reconciled.
+15. **Failures become explicit work.** Missing evidence, ambiguity, unsupported capability, deadline uncertainty/breach and divergence identify what is known/unknown and what action is required.
+16. **The economic evidence chain closes as far as authoritative evidence is available.** MPC preserves and compares Expected Economics → Order Economics → Marketplace Settlement → Cash Receipt evidence, without collapsing distinct stages into one opaque number.
+17. **Simulator drift becomes actionable learning.** Materially comparable simulation/order evidence can identify model/provider-rule drift and create calibration work; explainable input/context changes are classified separately.
+18. **Realized profitability is explainable.** The system can attribute material cost/fees/freight/tax/post-sale/settlement effects and distinguish unresolved economics instead of recomputing history from convenient current values.
+19. **Organizational governance is operable without code edits.** Legitimate MPC-owned authorities, including internal operating-target policy, are configurable while external authority and mandatory safety/audit invariants remain protected.
 
 Completion statement:
 
-> **A company can take internal products, determine marketplace readiness, publish and operate offers, maintain availability from explicit inventory scope/policy, monitor competition and profitability, make and execute controlled decisions, materialize marketplace sales in business/fiscal systems, fulfill them through explicit eligible nodes, close provider-required prerequisites/artifacts/readiness for the supported operating path, dispatch and observe delivery/post-sale consequences, preserve economic evidence from simulation through order/settlement/cash where available, reconcile divergence, learn when its own simulator is wrong, and explain realized economic outcome — using Marketplace Central as the normal marketplace operations control plane.**
+> **A company can take internal products, determine marketplace readiness, publish and operate offers, maintain availability from explicit inventory scope/policy, monitor competition and profitability, make and execute controlled decisions, materialize marketplace sales in business/fiscal systems, fulfill them through explicit eligible nodes, close provider-required prerequisites/artifacts/readiness for the supported operating path, prioritize and meet time-bound marketplace/business obligations under both external deadlines and organization-owned internal targets, dispatch and observe delivery/post-sale consequences, preserve economic evidence from simulation through order/settlement/cash where available, reconcile divergence, learn when its own simulator is wrong, and explain realized economic outcome — using Marketplace Central as the normal marketplace operations control plane.**
 
 ### 9.1 Normal-path rule
 
@@ -419,35 +435,69 @@ This closes the **marketplace operation's own economic lineage** without expandi
 
 Marketplace fulfillment/dispatch responsibility is not determined by marketplace brand alone. The effective operating contract can vary by marketplace installation, offer/order context and provider-native fulfillment/logistics mode. Product 1.0 must therefore reason from the **effective provider capabilities, authorities and requirements for the supported operating flow**, not from a universal assumption that every marketplace exposes the same workflow.
 
-For every marketplace operating flow Product 1.0 claims as an **MPC-controlled normal path**, MPC must:
+For every marketplace operating flow Product 1.0 claims as an **MPC-controlled normal path**, MPC must determine enough provider context to know seller/provider/MPC responsibility; surface, satisfy or orchestrate required prerequisites/data handoffs/artifacts; observe provider-specific readiness/acknowledgement; and turn missing capability/rejected handoff/non-convergence into explicit work.
 
-- determine enough of the effective provider capability/authority context to know what MPC/seller/provider is responsible for;
-- surface, satisfy or orchestrate provider-required prerequisites and data handoffs that are necessary to advance the workflow;
-- obtain/surface/orchestrate provider-required operational artifacts when they are necessary to perform the claimed workflow;
-- observe/verify the provider-specific readiness/acknowledgement needed to prove the sale reached a dispatch-ready/provider-accepted state;
-- turn missing capability, unsupported requirement, rejected handoff or non-convergent provider state into explicit work rather than hiding it behind a generic fulfillment status.
+Native labels, provider fiscal documents, shipment/fulfillment statuses, manifests, QR codes or analogous artifacts/states remain provider-native authority. D0 does not create universal provider artifact/status types merely because several providers expose analogous constructs.
 
-Native labels, provider fiscal documents, shipment/fulfillment statuses, manifests, QR codes or analogous artifacts/states remain provider-native authority. D0 does **not** create universal `Label`, `Invoice`, `ShipmentStatus` or `FulfillmentMode` domain types merely because several providers expose analogous constructs. D1/D4 later determine the smallest canonical requirement/readiness semantics and provider capability contracts needed by accepted workflows.
+A provider-required manual UI step may remain explicitly unsupported/external-required or exceptional, but cannot remain a hidden routine step in a flow claimed as fully executable through MPC.
 
-A provider-required manual UI step may remain an explicitly unsupported/external-required or exceptional path. It **cannot** remain a hidden routine step inside a flow the product claims is fully executable through MPC.
-
-Product 1.0 only needs end-to-end closure for the Mercado Livre operating mode(s) selected for the first real proof. It does not need to implement every logistics/fulfillment mode of Mercado Livre, Amazon, Magalu, Casas Bahia, Shopee or any other future provider merely to preserve the correct architecture.
+Product 1.0 only needs end-to-end closure for the Mercado Livre operating mode(s) selected for the first real proof; it does not implement every future marketplace mode merely to preserve architectural correctness.
 
 #### Direct marketplace target direction / competitor-hub boundary
 
-MPC is itself the marketplace operations/control-plane product. ANYMARKET, Magis5 and similar marketplace hubs are **benchmark/competitive evidence, not target runtime dependencies**. The accepted Product 1.0 direction is MPC-owned direct provider integration boundaries for the marketplaces it supports.
+MPC is itself the marketplace operations/control-plane product. ANYMARKET, Magis5 and similar marketplace hubs are **benchmark/competitive evidence, not target runtime dependencies**. The accepted direction is MPC-owned direct provider integration boundaries for marketplaces it supports. No generic intermediary compatibility layer is introduced without future independent business evidence.
 
-No generic intermediary/hub compatibility layer is introduced in D0/D4 without future independent business evidence. If a future provider family shares protocol infrastructure (for example marketplaces built on Mirakl), D4 may reuse technical transport/components without changing the business marketplace identity or pretending all marketplace contracts are identical.
+Shared provider technology such as Mirakl may later justify technical reuse without changing the business marketplace identity or pretending marketplace contracts are identical.
+
+### D0.7h — Time-bound operational obligations and organization-owned internal targets
+
+**Accepted by operator, including the organization-policy refinement.**
+
+For responsibilities Product 1.0 claims to control, materially time-bound marketplace/business obligations must participate explicitly in MPC operational semantics rather than remaining timestamps operators must discover manually in provider UIs.
+
+MPC distinguishes at least two authority classes:
+
+1. **External Operational Obligation** — a provider/contract/external-business deadline or permitted action window. Its deadline/window and source remain externally governed facts.
+2. **Internal Operational Target** — an MPC-owned organization policy expressing when the organization wants the operation completed or responded to. It may deliberately be stricter/earlier than the external obligation to create safety margin, and it may exist even when no external deadline exists.
+
+Example:
+
+```text
+provider obligation: dispatch within 2 days
+organization target: dispatch within 1 day
+```
+
+The internal target does not replace the provider deadline. MPC preserves both and derives the operational safety margin/attention state from them.
+
+Time policy may also be **relative to an explicit operational anchor**, for example:
+
+```text
+trigger/anchor: event received at 10:00
+organization policy: act within 1 hour
+internal target: 11:00
+```
+
+The exact event classes in scope are determined by accepted Product 1.0 workflows. The example does **not** reopen automated buyer chat/Q&A, which remains a non-goal unless separately re-adjudicated.
+
+Product-level requirements:
+
+- provider/external obligations and organization targets retain separate authority/provenance;
+- an Internal Operational Target may tighten an external obligation but cannot waive, overwrite or make a later external deadline acceptable;
+- internal policy may use organization defaults and later-proven more-specific scopes under the deterministic inheritance/override principles already accepted for MPC-owned policy;
+- a relative target requires an explicit, sufficiently trustworthy time anchor. Unknown trigger/deadline is explicit uncertainty, not `no deadline`;
+- MPC may derive remaining time, safety margin, urgency, risk, internal-target breach and external-obligation breach for portfolio attention;
+- missing an internal target and breaching an external obligation are different operational facts and must not be conflated;
+- exact provider deadline fields, timezones, calendars, cutoffs, timers, schedulers, notifications, escalation thresholds and UI countdown mechanics belong to D4/D6/D7.
+
+This is a cross-cutting control-plane property, not a separate business capability or a generic SLA engine.
 
 ### Next D0.7 question
 
-The next material product-completeness question is **time-bound marketplace obligations / operational deadlines**.
+The next material product-completeness question is **operational work ownership / assignment / escalation**.
 
-MPC is intended to be the normal marketplace operations control plane and to drive portfolio-level attention. D0 must decide whether provider/business deadlines that materially affect the lifecycle — for example action, invoicing, dispatch, delivery or post-sale obligations — must become explicit priority/attention semantics rather than remaining timestamps operators must discover manually in provider UIs.
+D0 already requires failures, approvals, ambiguities, calibration cases and approaching/breached obligations to become explicit work. A control plane can still fail if actionable work is visible but nobody is explicitly responsible for progressing it. D0 must therefore decide whether Product 1.0 needs explicit operational ownership/assignment and escalation semantics for actionable cases, while leaving queues, notification channels, routing algorithms and UI mechanics to later stages.
 
-This is a product responsibility question, not a scheduler/cron/SLA implementation decision. Exact provider deadline fields, clocks, escalation rules, timers, notifications and runtime mechanics belong to D4/D6/D7.
-
-Other remaining D0.7 findings will continue to be classified adversarially; D0 closes only when no material Product 1.0 semantic is left for implementation to invent.
+Other remaining D0.7 findings continue to be classified adversarially; D0 closes only when no material Product 1.0 semantic is left for implementation to invent.
 
 ---
 
@@ -458,21 +508,21 @@ A fresh session must read `AGENTS.md`, `docs/engineering/rebaseline/README.md`, 
 It should conclude:
 
 - D0 is OPEN and not yet accepted as a whole; implementation remains blocked until D9;
-- D0.1–D0.6 and D0.7a–D0.7g are operator-approved;
-- Product 1.0 is Marketplace Operations + Commercial Intelligence (A+), not an ERP/marketplace replacement;
+- D0.1–D0.6 and D0.7a–D0.7h are operator-approved;
+- Product 1.0 is Marketplace Operations + Commercial Intelligence (A+), not an ERP/marketplace/accounting replacement;
 - `Organization 1 → N Marketplace Installations` and `Organization 1 → N Selling Entities`; identities do not collapse;
 - canonical MPC semantics are defined before ERP/provider mapping;
 - Selling Entity, Inventory Source/Scope, Fulfillment Node/Scope, Cost Observation/Basis, Business Order Intent and Invoicing Intent are accepted semantics;
 - availability is derived from eligible authoritative inventory + rules + policy; routine known policy-valid sync is automatic; unknown is not zero;
 - MPC-owned allocation policy may intentionally expose less stock (e.g. 70%) with deterministic/explainable future scope/override semantics;
 - Business Order Intent and Invoicing Intent remain separate from native ERP TOP/document operations; ambiguous writes are not blindly retried;
-- the Economic Evidence Chain is accepted as `Simulation → Order Economics → Marketplace Settlement → Cash Receipt evidence where available`;
-- simulation/order variance is classified before creating a simulator-calibration defect;
-- marketplace/payment settlement and bank receipt are distinct evidence authorities; payouts are not assumed 1:1 with orders;
-- provider capability/authority depends on the effective operating context, not only marketplace brand;
-- claimed MPC-controlled fulfillment paths must close provider-required prerequisites/data/artifacts/readiness without hidden routine provider-UI work;
-- native provider artifacts/states retain provider authority and do not become universal MPC domain types by analogy;
-- ANYMARKET, Magis5 and similar marketplace hubs are benchmark/competitive evidence, not Product 1.0 runtime dependencies; the current target direction is MPC-owned direct marketplace integration boundaries;
+- the Economic Evidence Chain is `Simulation → Order Economics → Marketplace Settlement → Cash Receipt evidence where available`;
+- simulation/order variance is classified before creating a simulator-calibration defect; payout/cash matching is not assumed 1:1;
+- provider capability/authority depends on effective operating context; claimed MPC-controlled paths must close provider-required prerequisites/data/artifacts/readiness;
+- native provider artifacts/states remain provider-owned semantics rather than universal MPC types;
+- ANYMARKET, Magis5 and similar hubs are benchmark/competitive evidence, not Product 1.0 runtime dependencies; direct MPC-owned provider boundaries are the current target direction;
+- materially time-bound obligations are explicit: provider/external obligation and MPC-owned organization target remain separate, relative targets require explicit anchors, and time participates in portfolio attention/breach semantics;
+- an internal operating target may be stricter than a provider deadline but cannot relax or overwrite that external obligation;
 - current code/docs remain evidence, not target authority;
 - no D1+ target architecture may be invented yet;
-- the exact next work is **D0.7 Product completeness review — time-bound marketplace obligations / operational deadlines**.
+- the exact next work is **D0.7 Product completeness review — operational work ownership / assignment / escalation**.
