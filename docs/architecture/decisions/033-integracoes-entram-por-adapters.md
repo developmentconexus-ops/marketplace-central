@@ -19,11 +19,16 @@ measured its case is.
 `connectors` is a module under `apps/server_core/internal/modules/`, of the exact kind
 this plan's parent mission (the module-protocol work, ADR-023) is decomposing: private
 internals plus one published consumable, replaced context by context by
-`apps/server_core/internal/contexts/`. `docs/superpowers/specs/2026-08-06-protocolo-de-codigo-design.md`
-§1.2 lists `connectors` among the eight current modules that "deixam de ser módulos,"
-migrating to `adapters/marketplace/{mercadolivre,shopee,amazon}/`, and §2 puts the vendor
-boundary at the Go compiler's `internal/` rule (`adapters/marketplace/<vendor>/internal/api`),
-not at a module-naming convention.
+`apps/server_core/internal/contexts/`. The design spec of the day listed `connectors` among
+the eight current modules that would stop being modules, migrating to
+`adapters/marketplace/{mercadolivre,shopee,amazon}/`, and put the vendor boundary at the Go
+compiler's `internal/` rule (`adapters/marketplace/<vendor>/internal/api`) rather than at a
+module-naming convention.
+
+That spec has since been retired with the rest of the pre-rebaseline documentary tree, and
+ADR-023 is reopened for D1. The `modules`-versus-`contexts` layout and the destination
+directory are therefore historical context here, not target authority; what this ADR decides
+is only that vendor adapters implement consumer-owned ports.
 
 This plan's own tasks already demonstrate the mechanism the design relies on, applied to a
 context rather than a vendor: `apps/server_core/internal/contexts/catalog/module.go:23-38`
