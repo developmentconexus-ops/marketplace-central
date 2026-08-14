@@ -52,7 +52,8 @@ internal product
   → controlled decision / policy
   → marketplace action
   → sale / marketplace order
-  → ERP operation / invoicing
+  → business-order intent / ERP materialization
+  → invoicing
   → fulfillment / dispatch
   → shipment / delivery lifecycle
   → essential cancellation / return / refund lifecycle when applicable
@@ -68,7 +69,7 @@ The accepted Product 1.0 capabilities are:
 4. **Competitive Intelligence** — observe comparable market offers/prices, expose competitive position and meaningful changes, and represent insufficient comparison evidence honestly.
 5. **Pricing & Profitability Intelligence** — combine relevant internal economics under an explicit, explainable Cost Basis with market observations to calculate price scenarios, expected margin/profitability and decision-relevant trade-offs.
 6. **Decision & Policy Control** — translate observations/recommendations into permitted, approval-required or prohibited actions according to governing company rules/policies.
-7. **Order-to-ERP Operations** — receive/understand marketplace orders and coordinate corresponding operations in the participating ERP, including order creation and invoicing where authorized.
+7. **Order-to-Business-System Operations** — receive/understand marketplace orders, express the corresponding `Business Order Intent` in MPC semantics, cause the participating ERP/business system to materialize the appropriate native order operation, and verify/correlate the result without importing ERP-native order types into the canonical MPC domain.
 8. **Marketplace Fulfillment / Dispatch** — progress marketplace orders through eligible fulfillment execution, including physical separation, conference, invoicing trigger when applicable, packing and dispatch handoff, without becoming a company-wide WMS.
 9. **Shipment / Delivery Observation & Exceptions** — continue observing shipment after dispatch handoff until a relevant terminal outcome, surfacing delays, delivery failures, returns or other material exceptions without becoming a TMS/carrier platform.
 10. **Essential Post-Sale Operations** — control the operational response to marketplace cancellations, returns and refunds when they affect an MPC-controlled sale, coordinating consequences across marketplace/ERP/fulfillment/economic workflows without becoming general CRM/SAC.
@@ -145,7 +146,7 @@ Consequences for later design:
 - D4 must evaluate and ratify exact Sankhya read/write capability contracts and transport boundaries for the first ERP integration;
 - later stages must account for rules/policies whose authority remains in Sankhya/another ERP rather than duplicating them as MPC-owned configuration;
 - existing binding Oracle-read constraints are not silently reopened here;
-- Sankhya-specific constructs such as `CODEMP`, `CODLOC`, cost fields/types or other native identifiers are **integration evidence only** unless a later MPC-domain decision independently proves that an equivalent business concept belongs in the canonical product model.
+- Sankhya-specific constructs such as `CODEMP`, `CODLOC`, TOPs, cost fields/types or other native identifiers are **integration evidence only** unless a later MPC-domain decision independently proves that an equivalent business concept belongs in the canonical product model.
 
 ---
 
@@ -201,7 +202,7 @@ Owns physical fulfillment execution for marketplace orders when the selected Ful
 Accepted normal sequence for the internal-fulfillment path:
 
 ```text
-marketplace order / ERP order readiness
+marketplace order / business-order readiness
   → eligible / selected Fulfillment Node
   → fulfillment queue
   → physical separation
@@ -289,10 +290,12 @@ Governing principle:
 | MPC-owned marketplace commercial policies | **OWN** |
 | Marketplace account/installation membership under an MPC organization | **OWN** as MPC organization/control-plane configuration; provider account identity itself remains provider-owned |
 | MPC Selling Entity identity/membership and transaction attribution | **OWN** as MPC business/control-plane semantics; an ERP or legal registry may remain authoritative for corresponding external legal/company identities |
+| Marketplace-originated order facts | marketplace/provider authoritative; MPC **OBSERVES / ORCHESTRATES** their participation in the business-order workflow |
+| Business Order Intent, cross-system order correlation and materialization workflow | **OWN** as MPC control-plane semantics/workflow |
+| ERP-native order type/operation configuration used to materialize an intent | participating ERP/integration configuration remains native/integration-specific; MPC **ORCHESTRATES** through semantic mapping rather than importing it as canonical domain |
+| ERP-native order record/result | participating ERP authoritative; MPC **OBSERVES / ORCHESTRATES** and reconciles the result against the Business Order Intent |
 | Actual listing/channel state inherent in marketplace | provider authoritative; MPC **OBSERVES / ORCHESTRATES** |
 | Marketplace listing/price mutation intent | **OWN / ORCHESTRATE** |
-| Marketplace-originated order facts | marketplace/provider authoritative; MPC **ORCHESTRATES** |
-| ERP-native order/invoice/accounting facts | participating ERP authoritative; MPC **ORCHESTRATES** marketplace workflow around them |
 | Marketplace-order fulfillment workflow | **OWN**, while native ERP/WMS/provider/carrier execution facts retain their external authority where applicable |
 | Shipment/delivery state after dispatch | marketplace/carrier/provider authoritative; MPC **OBSERVES / ORCHESTRATES** exceptions/lifecycle closure |
 | Marketplace cancellation/return/refund facts | marketplace/provider authoritative; MPC **ORCHESTRATES** cross-system response |
@@ -328,7 +331,12 @@ Governing principle:
 24. **Missing or ambiguous cost does not silently fall back.** Unsupported basis, missing historical evidence or conflicting mappings become explicit uncertainty/configuration/exception state unless a later accepted policy explicitly authorizes a specific fallback semantic.
 25. **Current cost is not historical transaction cost by default.** Expected and realized profitability must preserve the temporal/economic evidence required by their respective use cases; recomputing a past sale using a convenient current cost without explicit semantics is prohibited.
 26. **Cost is not the entire sale economy.** Marketplace fees, freight effects, taxes, discounts, subsidies, reversals and other material economic components remain separately attributable facts/conclusions rather than being hidden inside an opaque “cost” number.
-27. Provider/ERP-specific mechanisms remain implementation concerns for later stages.
+27. **Business Order Intent is canonical MPC intent, not an ERP order type.** Sankhya TOPs, ERP document types, native operation codes and equivalent provider constructs remain integration/native semantics unless an independent MPC business distinction justifies a canonical concept.
+28. **Marketplace order and ERP-native order are not the same record/authority.** The marketplace owns the source order facts; MPC owns the intent/correlation/workflow; the ERP owns the native materialized order result.
+29. **Order materialization mapping must be explicit and semantically sufficient.** Missing or ambiguous mapping/configuration must become unsupported/configuration-required/exception state rather than causing an adapter to choose an arbitrary default ERP company/order type/operation.
+30. **Ambiguous order-write outcome is not blind retry.** If MPC cannot prove whether the ERP materialized the Business Order Intent, the workflow remains ambiguous until reconciled using later-accepted duplicate-protection/recovery semantics.
+31. No separate canonical `Order Execution Scope` is introduced in D0.7e.5. Material order-execution context belongs in the Business Order Intent plus explicit governing policies/integration mappings; a separate scope concept may only be added later if new evidence proves independent business semantics.
+32. Provider/ERP-specific mechanisms remain implementation concerns for later stages.
 
 ---
 
@@ -347,16 +355,17 @@ The acceptance bar is user-observable:
 5. **Decision closes into controlled action.** Authorized human or bounded policy-driven decisions can become external actions with policy enforcement, auditability, verification and reconciliation.
 6. **Material transaction context is explicit.** When a marketplace operation depends on which business/legal/fiscal entity is acting, MPC can attribute the workflow to the correct Selling Entity rather than relying on an implicit ERP/default-company assumption.
 7. **Fulfillment responsibility is explicit.** When fulfillment execution location/capability is material, MPC knows which Fulfillment Nodes are eligible and which node is responsible for the operation rather than relying on an implicit ERP warehouse/default shipping point.
-8. **A marketplace sale traverses the normal operating loop through MPC.** Order recognition, ERP operation, eligible/selected fulfillment, conference, invoicing trigger/verification when applicable, packing and dispatch do not require hidden manual system hopping as a normal step.
-9. **Delivery remains visible through terminal outcome.** After dispatch, MPC continues observing until delivered, returned, cancelled or equivalent terminal state; material delivery exceptions become explicit work.
-10. **Essential post-sale changes remain inside the controlled lifecycle.** Cancellation, return/refund effects can be progressed through necessary cross-system response/reconciliation without dropping normal operation back to manual system hopping.
-11. **Failures become explicit work.** Missing evidence, ambiguous external results, integration failures and physical/order/availability/fulfillment/delivery/post-sale divergences surface with what is known/unknown and what requires action.
-12. **The economic loop closes.** MPC compares expected versus realized profitability using attributable economic facts and explicit cost semantics appropriate to each temporal/transaction context, including material delivery/cancellation/return/refund effects, so the result can be explained rather than merely recomputed from current values.
-13. **Organizational governance is operable without code edits.** Actors can exercise legitimate MPC-owned authorities while externally governed rules remain externally governed and mandatory safety/audit invariants cannot be configured away.
+8. **A marketplace sale can become the correct business-system order through MPC.** MPC expresses a Business Order Intent with the material business context/provenance, causes the participating ERP/business system to materialize the corresponding native order through explicit semantic mapping, correlates the result to the marketplace sale and surfaces unsupported/ambiguous materialization rather than relying on hidden TOP/order-type/default-company behavior.
+9. **A marketplace sale traverses the normal operating loop through MPC.** Order recognition/materialization, eligible/selected fulfillment, conference, invoicing trigger/verification when applicable, packing and dispatch do not require hidden manual system hopping as a normal step.
+10. **Delivery remains visible through terminal outcome.** After dispatch, MPC continues observing until delivered, returned, cancelled or equivalent terminal state; material delivery exceptions become explicit work.
+11. **Essential post-sale changes remain inside the controlled lifecycle.** Cancellation, return/refund effects can be progressed through necessary cross-system response/reconciliation without dropping normal operation back to manual system hopping.
+12. **Failures become explicit work.** Missing evidence, ambiguous external results, integration failures and physical/order/availability/fulfillment/delivery/post-sale divergences surface with what is known/unknown and what requires action.
+13. **The economic loop closes.** MPC compares expected versus realized profitability using attributable economic facts and explicit cost semantics appropriate to each temporal/transaction context, including material delivery/cancellation/return/refund effects, so the result can be explained rather than merely recomputed from current values.
+14. **Organizational governance is operable without code edits.** Actors can exercise legitimate MPC-owned authorities while externally governed rules remain externally governed and mandatory safety/audit invariants cannot be configured away.
 
 Completion statement:
 
-> **A company can take its internal products, determine marketplace readiness, publish and operate offers, derive marketplace availability from explicitly eligible inventory sources, governing facts/rules and MPC-owned allocation policies, preserve the correct business entity context, route physical fulfillment through an eligible recognized fulfillment node, analyze price/profitability with explainable cost semantics and attributable economics, make and execute decisions under policy, receive sales, progress them through ERP and physical fulfillment, follow delivery to a terminal outcome, handle essential cancellation/return/refund consequences, surface/reconcile exceptions, and understand the realized economic result — using Marketplace Central as the normal marketplace operations control plane.**
+> **A company can take its internal products, determine marketplace readiness, publish and operate offers, derive marketplace availability from explicitly eligible inventory sources, governing facts/rules and MPC-owned allocation policies, preserve the correct business entity context, translate a marketplace sale into a correlated business-system order through explicit Business Order Intent semantics, route physical fulfillment through an eligible recognized fulfillment node, analyze price/profitability with explainable cost semantics and attributable economics, make and execute decisions under policy, follow delivery to a terminal outcome, handle essential cancellation/return/refund consequences, surface/reconcile exceptions, and understand the realized economic result — using Marketplace Central as the normal marketplace operations control plane.**
 
 ### D0.6a — Normal-path rule
 
@@ -619,17 +628,51 @@ Product-level requirements:
 
 Exact native cost mappings, source fields/APIs, cost taxonomy, calculation methods, effective-time lookup, currency handling, allowed fallback semantics, policy scopes and profitability formulas belong to later stages.
 
+#### D0.7e.5 — Business Order Intent
+
+**Accepted by operator.**
+
+`Business Order Intent` is the canonical MPC semantic for the intention to materialize a marketplace sale in the participating business/ERP system while preserving the business context and provenance required to perform and reconcile that operation correctly.
+
+It answers, in MPC language:
+
+> **What business order outcome must be materialized for this marketplace sale, under which material business context, without exposing an ERP-native order type as MPC domain semantics?**
+
+Conceptually:
+
+```text
+marketplace order / source facts
+  → MPC Business Order Intent
+      → material business context / provenance
+      → semantic integration mapping
+  → ERP/business-system native order operation
+  → observe / correlate / verify / reconcile
+```
+
+Product-level requirements:
+
+- the marketplace order remains an authoritative provider/source record; Business Order Intent is MPC-owned intent/workflow; the ERP-native order remains authoritative in the participating ERP/business system;
+- Business Order Intent must preserve the material business context required by the accepted workflow, including source marketplace/order provenance, marketplace installation, Selling Entity when material, products/quantities, commercial terms/values and fulfillment context when materially required;
+- Business Order Intent is **not** a renamed Sankhya TOP, ERP document type, native operation code or generic opaque `createOrder(payload)` wrapper;
+- ERP-native requirements such as TOP, company code, nature, negotiation type, native customer/partner mappings, document type or equivalent constructs belong to the semantic integration mapping/configuration unless an independent business need proves a canonical MPC concept;
+- a mapping may depend on explicit MPC business context/policy. That does not make the ERP-native mapping key a canonical MPC field;
+- the adapter must translate a Business Order Intent to the appropriate native operation and return enough evidence to correlate/verify the result; if the mapping is missing/ambiguous/unsupported, the workflow becomes explicit configuration-required/exception state instead of selecting a plausible default;
+- a timeout/ambiguous write result must not trigger blind duplicate creation. MPC must preserve the ambiguous outcome until later-accepted reconciliation/idempotency/recovery semantics prove whether the native order exists;
+- the first deployment may use one accepted native order mapping/profile in Sankhya if that satisfies the real business need, without hardcoding that mapping as the universal meaning of an MPC marketplace order.
+
+D0 explicitly does **not** introduce a separate canonical `Order Execution Scope`. The material execution context is carried by Business Order Intent and explicit governing policies/mappings. A separate scope concept should only be introduced later if independent business semantics are actually proven.
+
+Exact intent schema, ERP order/document types, TOPs/native codes, partner/customer mapping, API payloads, idempotency keys, duplicate detection, correlation identifiers, retry/recovery and adapter configuration belong to later stages.
+
 #### Next D0.7e decision
 
-Define the next ERP-independent business dimension: **Order Execution Scope**.
+Define the remaining ERP-independent business dimension to test: **Fiscal / Invoicing Semantics**.
 
-The question is not “which Sankhya TOP/company/fields create the order?”. The question is:
+The question is not “which Sankhya TOP faturates the order?” or “which native invoice endpoint do we call?”. The question is:
 
-> **What must MPC represent so a marketplace sale can be translated into the correct business-system order operation, with the right execution context and governing rules, without making an ERP-native order type/configuration part of the MPC canonical domain?**
+> **What must MPC mean when it decides that a marketplace sale is ready to be invoiced/fiscally materialized, which business/fiscal context and prerequisites must be preserved, and what outcome must be verified — without importing an ERP-native invoicing operation into the canonical domain?**
 
-D0 must decide whether a canonical order-execution scope/intent semantic is required and what business distinctions it must preserve. Exact ERP order types, operation codes, document models, field mappings, API calls and routing mechanics belong to later stages.
-
-A later ERP-independent dimension still to test is fiscal/invoicing scope. D0 must not assume order execution, Selling Entity, Inventory Source, Fulfillment Node or invoicing semantics are identical merely because the first ERP may bind them together.
+D0 must determine whether a canonical invoicing/fiscal intent semantic is required, whether it is distinct from Selling Entity and Business Order Intent, and which business distinctions the product must preserve. Exact fiscal rules, document models, tax calculations, ERP operation codes/endpoints and reversal mechanics belong to later stages.
 
 Other findings discovered during D0.7 are classified as MUST DECIDE NOW, SHOULD DECIDE NOW or CAN DEFER SAFELY. D0 closes only when no material Product 1.0 semantic is being left for implementation to invent.
 
@@ -653,6 +696,8 @@ It should conclude:
 - D0.7e.2a records the Product 1.0 requirement for configurable MPC-owned availability-allocation policy, including percentage-style allocation such as `70%`, while the exact policy catalog/scopes/arithmetic are intentionally deferred;
 - D0.7e.3 is accepted: `Fulfillment Node` identifies a recognized physical-fulfillment execution point/capability, `Fulfillment Scope` governs which nodes are eligible, and fulfillment semantics remain distinct from inventory promise, Selling Entity and provider-native locations;
 - D0.7e.4 is accepted: `Cost Observation` preserves cost meaning/value/time-context/provenance, `Cost Basis` explicitly selects the economically appropriate cost semantic, and ERP-native cost types cannot become silent MPC defaults/fallbacks;
+- D0.7e.5 is accepted: `Business Order Intent` is MPC-owned intent/correlation semantics for materializing a marketplace sale in a business system; ERP-native order types/TOPs remain integration details, and no separate `Order Execution Scope` is currently justified;
+- ambiguous order materialization cannot be blindly retried or silently treated as failure/success;
 - historical/realized economics must not silently use current cost as a substitute, and cost remains distinct from other economic components such as marketplace fees, freight and taxes;
 - organization identity must not be collapsed into marketplace seller-account or Selling Entity identity;
 - Sankhya-native concepts such as `CODEMP`, `CODLOC`, TOPs and cost variants are integration evidence, not automatically canonical MPC concepts;
@@ -660,4 +705,4 @@ It should conclude:
 - Sankhya API availability for writes is evidence to carry into D4, not a D0 transport decision;
 - business rules/policies may be MPC-owned, externally governed or derived, and later stages must preserve that provenance;
 - no D1+ target architecture may be invented yet;
-- the exact next work is **D0.7e — define ERP-independent Order Execution Scope semantics needed by MPC**.
+- the exact next work is **D0.7e — define ERP-independent Fiscal / Invoicing Semantics needed by MPC**.
