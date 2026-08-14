@@ -29,7 +29,7 @@ Its fundamental loop is:
 observe → understand → reconcile → decide/policy → execute → verify → audit/reconcile
 ```
 
-Marketplace Central is not merely an intelligence dashboard and is not a replacement ERP or marketplace platform. It can coordinate and execute operations on both sides of the boundary, including marketplace listing/price actions and marketplace-originated order/invoicing workflows in Sankhya through an accepted integration path.
+Marketplace Central is not merely an intelligence dashboard and is not a replacement ERP or marketplace platform. It can coordinate and execute operations on both sides of the boundary, including marketplace listing/price actions and marketplace-originated order/invoicing workflows through an accepted ERP integration path.
 
 External systems remain authorities for facts that inherently belong to them. MPC owns the cross-system operational control semantics: intent, policy application, workflow, correlation, controlled execution, operational state, divergence, audit and reconciliation.
 
@@ -68,14 +68,14 @@ The accepted Product 1.0 capabilities are:
 4. **Competitive Intelligence** — observe comparable market offers/prices, expose competitive position and meaningful changes, and represent insufficient comparison evidence honestly.
 5. **Pricing & Profitability Intelligence** — combine relevant internal economics and market observations to calculate price scenarios, expected margin/profitability and decision-relevant trade-offs.
 6. **Decision & Policy Control** — translate observations/recommendations into permitted, approval-required or prohibited actions according to governing company rules/policies.
-7. **Order-to-ERP Operations** — receive/understand marketplace orders and coordinate corresponding operations in Sankhya, including order creation and invoicing where authorized.
+7. **Order-to-ERP Operations** — receive/understand marketplace orders and coordinate corresponding operations in the participating ERP, including order creation and invoicing where authorized.
 8. **Marketplace Fulfillment / Dispatch** — progress marketplace orders through physical separation, conference, invoicing trigger, packing and dispatch handoff without becoming a company-wide WMS.
 9. **Shipment / Delivery Observation & Exceptions** — continue observing shipment after dispatch handoff until a relevant terminal outcome, surfacing delays, delivery failures, returns or other material exceptions without becoming a TMS/carrier platform.
 10. **Essential Post-Sale Operations** — control the operational response to marketplace cancellations, returns and refunds when they affect an MPC-controlled sale, coordinating consequences across marketplace/ERP/fulfillment/economic workflows without becoming general CRM/SAC.
 11. **Reconciliation & Exception Operations** — identify cases where an expected cross-system result cannot be proven or systems diverge, making them explicit work instead of silently assuming success.
 12. **Realized Profitability** — determine realized sale economics, including material delivery/post-sale reversals or adjustments, and compare expected versus realized results.
 
-The provider-independent requirement is to express these capabilities in business terms. Mercado Livre is the first provider used to prove them; provider-specific mechanics belong to D4.
+The provider-independent requirement is to express these capabilities in business terms. Mercado Livre and Sankhya are the first concrete systems used to prove relevant capabilities; provider-specific mechanics belong to D4.
 
 ### D0.3a — Action authority model
 
@@ -89,7 +89,7 @@ Product 1.0 supports:
 
 A fully autonomous repricing engine is not required as a launch gate. The product must nevertheless support explicit bounded automation without bypassing policy, audit or reconciliation.
 
-Marketplace availability synchronization is different from discretionary commercial repricing: routine stock/availability changes are expected to execute automatically when the governing facts/rules are sufficiently known and the action is valid. Human attention is concentrated on uncertainty, policy conflicts and failed/non-convergent updates.
+Marketplace availability synchronization is different from discretionary commercial repricing: routine stock/availability changes are expected to execute automatically when governing facts/rules are sufficiently known and the action is valid. Human attention is concentrated on uncertainty, policy conflicts and failed/non-convergent updates.
 
 ### D0.3b — Policy/rule provenance is explicit
 
@@ -100,7 +100,7 @@ Marketplace Central must not assume every business rule or commercial policy is 
 A governing rule used by MPC may be:
 
 - **MPC-owned** — intentionally defined and governed inside Marketplace Central;
-- **externally governed** — sourced from Sankhya/another ERP or another authoritative system and consumed by MPC;
+- **externally governed** — sourced from an ERP or another authoritative system and consumed by MPC;
 - **derived** — mechanically computed from authoritative facts/rules without becoming an independent source of truth.
 
 MPC must preserve enough provenance to distinguish these classes and must not silently turn an externally governed rule into an editable MPC-owned copy.
@@ -129,7 +129,7 @@ Essential cancellation/return/refund operations and shipment/delivery observatio
 
 ## 5. Operator-provided Sankhya evidence / constraint
 
-This is **D0/D4 evidence**, not a provider-transport decision made in D0.
+This is **D0/D4 evidence**, not a provider-transport decision and not a canonical MPC domain model.
 
 The operator reports an already-proven Sankhya application integration in another app using application credentials (`client id`, `client secret`, `X-Token`; no secret values are recorded here).
 
@@ -137,10 +137,11 @@ Operational writes such as order creation and invoicing can be performed through
 
 Consequences for later design:
 
-- D0 may require MPC to create/invoice orders in Sankhya without assuming direct database writes;
-- D4 must evaluate and ratify exact Sankhya read/write capability contracts and transport boundaries;
+- Product 1.0 may require MPC to create/invoice orders in the participating ERP without assuming direct database writes;
+- D4 must evaluate and ratify exact Sankhya read/write capability contracts and transport boundaries for the first ERP integration;
 - D2/D4 must account for rules/policies whose authority remains in Sankhya/another ERP rather than duplicating them as MPC-owned configuration;
-- existing binding Oracle-read constraints are not silently reopened here.
+- existing binding Oracle-read constraints are not silently reopened here;
+- Sankhya-specific constructs such as `CODEMP`, `CODLOC`, cost fields/types or other native identifiers are **integration evidence only** unless a later MPC-domain decision independently proves that an equivalent business concept belongs in the canonical product model.
 
 ---
 
@@ -201,7 +202,7 @@ marketplace order / ERP order readiness
   → physical separation
   → physical conference
   → if valid: operator triggers invoicing through MPC
-  → MPC causes Sankhya invoicing through the later-accepted integration boundary
+  → MPC causes ERP invoicing through the later-accepted integration boundary
   → invoicing result is verified
   → packing
   → dispatch handoff
@@ -260,7 +261,7 @@ Governing principle:
 |---|---|
 | Internal master product facts, ERP base cost/fiscal facts | **OBSERVE / DERIVE** |
 | ERP physical/on-hand/reserved/other stock facts | **OBSERVE / CONSUME** |
-| Business rules/policies whose authority remains in Sankhya/another system | **OBSERVE / CONSUME** |
+| Business rules/policies whose authority remains in an ERP/another system | **OBSERVE / CONSUME** |
 | Product ↔ marketplace linkage/evidence maintained by MPC | **OWN** |
 | Marketplace readiness/readiness assessment | **OWN / DERIVE** |
 | Sellable marketplace availability derived from authoritative stock/rules | **OWN / DERIVE** as an MPC operating conclusion; underlying stock facts/rules retain their source authority |
@@ -274,11 +275,11 @@ Governing principle:
 | Actual listing/channel state inherent in marketplace | provider authoritative; MPC **OBSERVES / ORCHESTRATES** |
 | Marketplace listing/price mutation intent | **OWN / ORCHESTRATE** |
 | Marketplace-originated order facts | marketplace/provider authoritative; MPC **ORCHESTRATES** |
-| ERP order/invoice/accounting facts | Sankhya authoritative; MPC **ORCHESTRATES** marketplace workflow around them |
+| ERP-native order/invoice/accounting facts | participating ERP authoritative; MPC **ORCHESTRATES** marketplace workflow around them |
 | Marketplace-order fulfillment workflow | **OWN**, while underlying ERP/carrier facts retain external authority |
 | Shipment/delivery state after dispatch | marketplace/carrier/provider authoritative; MPC **OBSERVES / ORCHESTRATES** exceptions/lifecycle closure |
 | Marketplace cancellation/return/refund facts | marketplace/provider authoritative; MPC **ORCHESTRATES** cross-system response |
-| ERP reversal/credit/fiscal/accounting facts | ERP authoritative; MPC **ORCHESTRATES** post-sale workflow |
+| ERP-native reversal/credit/fiscal/accounting facts | participating ERP authoritative; MPC **ORCHESTRATES** post-sale workflow |
 | Realized profitability interpretation | **OWN / DERIVE** from authoritative realized facts, including material delivery/post-sale adjustments |
 | Audit/reconciliation records for MPC-controlled operations | **OWN** |
 
@@ -293,7 +294,9 @@ Governing principle:
 7. A routine policy-valid availability change does not require human approval merely because stock changed; failed/non-convergent/uncertain updates become exception work.
 8. An organization and a marketplace seller account/installation are not the same identity merely because the first deployment uses one account.
 9. Any listing/order/action/policy whose meaning depends on a marketplace installation must be attributable to the correct installation; no implicit “current seller account” may become product semantics.
-10. Provider/ERP-specific mechanisms remain implementation concerns for later stages.
+10. **MPC canonical business semantics are defined from marketplace-operating needs, not copied from an ERP ontology.** Native ERP identifiers, tables, fields and taxonomies remain at the integration boundary unless the MPC domain independently requires an equivalent concept.
+11. ERP integration is semantic translation, not merely field renaming: an adapter maps authoritative facts/capabilities/commands/results between the ERP’s native model and MPC semantics and must represent unsupported or uncertain mappings explicitly rather than inventing equivalence.
+12. Provider/ERP-specific mechanisms remain implementation concerns for later stages.
 
 ---
 
@@ -408,13 +411,47 @@ Product-level requirements:
 
 This decision establishes the correct cardinality without making multi-account feature breadth a launch blocker: Product 1.0 may initially operate one real account while retaining a model in which adding another installation does not require redefining what an organization, listing or order means.
 
-### Next D0.7 question
+### D0.7e — ERP-agnostic business semantics before ERP mapping
 
-The review continues. The next material product-cardinality question is **ERP company / branch multiplicity inside one MPC organization**.
+**Accepted by operator.**
 
-D0 must decide whether Product 1.0 may need to operate against more than one ERP company/branch/legal/operational unit within the same organization, or whether the product contract intentionally assumes exactly one ERP company per organization. This affects downstream stock/cost selection, order creation, invoicing, policy provenance, profitability and reconciliation and therefore must not be left for D2/D4 to guess.
+Marketplace Central must define the business concepts it needs from **marketplace-operating semantics first**, independently of how Sankhya or any future ERP happens to represent them.
 
-This is a product-cardinality/operational-boundary decision only. Exact ERP identifiers, company-routing rules, schemas, credentials and integration contracts belong to D2/D4.
+The governing direction is:
+
+```text
+business / MPC need
+  → canonical MPC semantic concept or capability
+  → integration contract
+  → ERP-specific semantic mapping
+      ├── Sankhya representation
+      └── another ERP representation
+```
+
+The reverse direction is prohibited as a design shortcut:
+
+```text
+ERP has field/entity X
+  → therefore MPC must have canonical concept X
+```
+
+ERP integration is therefore a **semantic translation boundary**, not a database-field mirroring exercise. The adapter may need to combine several ERP-native structures to satisfy one MPC concept, or map one ERP structure into several MPC-relevant facts. If an ERP cannot provide a required MPC semantic reliably, the integration must expose unsupported/incomplete/unknown evidence rather than inventing an equivalence.
+
+Examples such as Sankhya `CODEMP`, `CODLOC`, native cost variants, stock structures and fiscal constructs are evidence D2/D4 may inspect; they are not the vocabulary from which D0/D1 define the MPC domain.
+
+This principle does **not** require building a speculative universal ERP abstraction. MPC should define only the business semantics actually required by accepted marketplace workflows.
+
+#### Next D0.7e decision
+
+Identify the first ERP-independent business dimension MPC actually needs: **enterprise / legal / fiscal operating scope**.
+
+The question is not “what maps to `CODEMP`?”. The question is:
+
+> When a marketplace operation depends on *which business/legal/fiscal entity is acting*, what distinction must MPC be able to express and preserve?
+
+This decision must be made in MPC/business language. Only later D2/D4 decide whether Sankhya `CODEMP`, another ERP company/site/legal-entity construct, or a combination of native structures supplies that semantic.
+
+Subsequent ERP-independent dimensions to test include inventory source/scope, fulfillment source/location, cost semantics/scope, order execution scope and fiscal/invoicing scope. D0 must not assume these are identical entities or necessarily six separate entities before each need is proven.
 
 Other findings discovered during D0.7 are classified as MUST DECIDE NOW, SHOULD DECIDE NOW or CAN DEFER SAFELY. D0 closes only when no material Product 1.0 semantic is being left for implementation to invent.
 
@@ -432,9 +469,11 @@ It should conclude:
 - D0.7b is accepted: shipment/delivery remains visible through terminal outcome and material delivery exceptions become MPC operational work without turning MPC into a TMS;
 - D0.7c is accepted: marketplace availability is maintained automatically from governing authoritative stock/rules when sufficiently known, while uncertainty/failure becomes explicit work and MPC does not become physical-stock authority;
 - D0.7d is accepted: one MPC organization may own/control one or more marketplace installations, even if Product 1.0 is initially proven with one Mercado Livre account;
+- D0.7e is accepted: canonical MPC business semantics are defined from marketplace-operating needs before ERP-specific mapping; ERP integration semantically translates rather than dictating the MPC domain;
 - organization identity must not be collapsed into marketplace seller-account identity;
+- Sankhya-native concepts such as `CODEMP`, `CODLOC` and cost variants are integration evidence, not automatically canonical MPC concepts;
 - MPC uses **OWN / ORCHESTRATE / OBSERVE-DERIVE** and owns the marketplace operating model without taking ownership of external facts merely because it consumes or causes them;
 - Sankhya API availability for writes is evidence to carry into D4, not a D0 transport decision;
 - business rules/policies may be MPC-owned, externally governed or derived, and later D2/D4 must preserve that provenance;
 - no D1+ target architecture may be invented yet;
-- the exact next work is **D0.7 Product completeness review — ERP company / branch multiplicity inside one organization**.
+- the exact next work is **D0.7e — define the ERP-independent enterprise/legal/fiscal operating scope needed by MPC**.
