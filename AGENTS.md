@@ -6,13 +6,13 @@ Marketplace Central is in **Architecture Rebaseline / Technical System Design**.
 
 ### Immediate operating boundary
 
-The repository is currently finishing **documentary / governance authority cleanup** on PR #41 before deeper software-design discussion resumes.
+The repository is currently finishing **documentary / governance authority cleanup** on PR #41 before software-design discussion begins.
 
 Until that cleanup is explicitly closed:
 
-- change only documentation, documentation authority, governance metadata/schemas, gates/workflows/scripts where they consume retired documentary authority, and proof needed to verify that cleanup;
+- change only documentation, documentation authority, governance metadata/schemas, gates/workflows/scripts where they consume retired documentary authority, auxiliary tools where they recreate retired documentary trees, and proof needed to verify that cleanup;
 - do **not** redesign, refactor, delete or choose a target for legacy product code;
-- do **not** use the cleanup as an excuse to settle module/context, persistence, API, frontend, runtime or integration architecture;
+- do **not** use the cleanup as an excuse to settle module/context, persistence, API, frontend, runtime, auth or integration architecture;
 - product/source findings discovered while inspecting cleanup are evidence only and are carried into the relevant D-stage;
 - legacy source disposition is adjudicated **stage by stage across D0–D9** and implemented only after the corresponding architecture/cutover decision is accepted. It is not part of the current documentary cleanup.
 
@@ -21,13 +21,13 @@ The current cleanup ends when retired documentary authorities and their active c
 Start every session in this order:
 
 1. `AGENTS.md`
-2. `docs/engineering/rebaseline/README.md` — current stage, status, exact next action
+2. `docs/engineering/rebaseline/README.md` — current phase, status, exact next action
 3. `docs/engineering/rebaseline/TMP-SESSION-HANDOFF.md` **while the documentary cleanup remains open** — continuity only, never design authority
 4. `docs/engineering/standards/root-cause-global-maximum-method.md`
-5. `ARCHITECTURE.md` — only stable product-level constraints
+5. `ARCHITECTURE.md` — stable product/platform constraints only
 6. `docs/architecture/decisions/README.md` — ADR registry and current/reopened status
-7. the document for the active D-stage, if separate from the rebaseline README
-8. code/contracts/runtime evidence needed for that stage
+7. the artifact for the active D-stage, once design begins
+8. code/contracts/runtime evidence needed for the specific decision being made
 
 Do **not** reconstruct the roadmap from Git history, deleted plans, old handoffs or memory. Git history is evidence only when the current rebaseline explicitly asks for historical evidence.
 
@@ -35,7 +35,7 @@ Do **not** reconstruct the roadmap from Git history, deleted plans, old handoffs
 
 The governing sequence is:
 
-`documentary authority cleanup → D0 current state → D1 contexts → D2 identity/data → D3 communication/events → D4 external integrations → D5 API → D6 frontend → D7 runtime/transactions/outbox → D8 golden flows → D9 adversarial global-maximum review → implementation DAG → implementation plan → implementation`
+`documentary authority cleanup → D0 product/system definition → D1 domains/boundaries → D2 identity/tenant/data ownership → D3 communication/events → D4 external integrations → D5 API → D6 frontend → D7 runtime/jobs/transactions → D8 golden flows → D9 adversarial architecture review → implementation DAG/plan → implementation`
 
 Until D9 is accepted:
 
@@ -71,12 +71,12 @@ YAGNI removes speculative or redundant capability. It does not remove required i
 For **current target design**, use this order:
 
 1. operator-approved decisions recorded by the active rebaseline and current accepted ADRs;
-2. `ARCHITECTURE.md` stable product-level constraints;
+2. `ARCHITECTURE.md` stable product/platform constraints;
 3. accepted D-stage design outputs;
 4. OpenAPI/governance/runtime code as current-state evidence for what exists today;
 5. tests/builds/commits as execution evidence.
 
-Current code shape is evidence about the present system, **not an argument that the target must preserve that shape**. A prior ADR that `docs/architecture/decisions/README.md` marks `reopened by ADR-035` is historical evidence, not target authority until the named D-stage re-adjudicates it.
+Current code shape is evidence about the present system, **not an argument that the target must preserve that shape**. A prior ADR that `docs/architecture/decisions/README.md` marks reopened is historical evidence, not target authority until the named D-stage re-adjudicates it.
 
 When architecture, contract, runtime, ownership or verification evidence conflicts, stop the local conclusion and classify the conflict. Do not silently pick a side.
 
@@ -107,14 +107,13 @@ Rules:
 - A mock/fake proves local contract behavior; it does not prove a real external integration.
 - Claims about Oracle, Mercado Livre, Postgres deployment state or browser behavior require the appropriate real-environment proof when the claim depends on that environment.
 
-The current gate contains legacy ratchets anchored to `internal/modules`. During D0/D1 they are evidence and transitional controls; do not mistake their current scope for target architecture.
+Current gates may contain legacy ratchets anchored to current code layout. During the rebaseline they are transitional controls/evidence, not proof of target architecture. They are changed only when the D-stage that owns the affected software boundary makes that decision, except for references whose only purpose is retired documentary authority.
 
 ## Architecture safety rules that remain binding during the rebaseline
 
-- Mercado Livre is the first operational marketplace control plane.
-- Oracle/Sankhya is an external source behind MPC-owned adapter boundaries; raw Oracle/driver knowledge does not belong in business contexts.
-- Marketplace provider integration enters through `internal/adapters/marketplace/<vendor>` and implements ports owned by consuming contexts (ADR-033).
-- Provider wire DTOs and provider-specific protocol knowledge remain inside their adapter tree.
+- Mercado Livre is the first operational marketplace control plane unless explicitly reopened by the accepted design process.
+- Oracle/Sankhya is an external source behind MPC-owned adapter boundaries; raw Oracle/driver knowledge does not belong in business policy.
+- Provider wire DTOs and provider-specific protocol knowledge remain at provider boundaries.
 - Unknown business/operational facts never become plausible zero/default values.
 - External writes are never blindly retried after an ambiguous outcome and must be auditable/reconcilable.
 - Raw provider PII is not retained merely for convenience.
@@ -138,7 +137,7 @@ The active repository intentionally does **not** retain an `old/`, archive wiki,
 - Git history is the archive.
 - `docs/engineering/rebaseline/README.md` is the sole current progress/router document.
 - Accepted durable decisions live in ADRs or `ARCHITECTURE.md`.
-- Stage evidence/design lives in the current D-stage document.
+- Stage evidence/design lives in the current D-stage artifact.
 - Supporting references must be explicitly labeled non-authoritative.
 - A superseded roadmap/spec/handoff is deleted after any still-valid decision has been absorbed into the current authority.
 - `TMP-SESSION-HANDOFF.md` is allowed only while the current documentary cleanup is unfinished; delete it after the canonical topology passes the fresh-session test.
