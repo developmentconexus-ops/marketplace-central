@@ -5,13 +5,15 @@
 > **Authority:** operator-approved D0 decisions recorded here; later D-stages own technical realization  
 > **Last updated:** 2026-08-14
 
-## 1. Purpose
+## 1. Purpose and boundary
 
 D0 defines what Marketplace Central is, who it serves, which problems and outcomes belong to Product 1.0, and where the product boundary ends.
 
-D0 does **not** decide target contexts/modules, identity model, database schema, API shape, frontend topology, runtime/jobs, or provider-specific transport. Those belong to D1–D7.
+D0 does **not** decide target contexts/modules, canonical identity keys, database schema, API shape, frontend topology, runtime/jobs, event/outbox mechanics or provider-specific transport. Those belong to D1–D7.
 
 Current code, schemas, APIs and historical ADRs are evidence only unless the active rebaseline marks a constraint binding.
+
+---
 
 ## 2. D0.1 — Product mission
 
@@ -30,6 +32,8 @@ observe → understand → reconcile → decide/policy → execute → verify �
 Marketplace Central is not merely an intelligence dashboard and is not a replacement ERP or marketplace platform. It can coordinate and execute operations on both sides of the boundary, including marketplace listing/price actions and marketplace-originated order/invoicing workflows in Sankhya through an accepted integration path.
 
 External systems remain authorities for facts that inherently belong to them. MPC owns the cross-system operational control semantics: intent, policy application, workflow, correlation, controlled execution, operational state, divergence, audit and reconciliation.
+
+---
 
 ## 3. D0.2 / D0.3 — Product 1.0 scope and capability boundary
 
@@ -103,6 +107,8 @@ MPC must preserve enough provenance to distinguish these classes and must not si
 
 The exact ownership matrix, synchronization mechanism, conflict semantics, freshness rules and provider contracts are deferred to D2/D4.
 
+---
+
 ## 4. Product 1.0 non-goals currently safe to defer
 
 The following are not required to call Product 1.0 complete unless later D0 evidence reopens them:
@@ -119,6 +125,8 @@ The following are not required to call Product 1.0 complete unless later D0 evid
 
 Essential cancellation/return/refund operations and shipment/delivery observation tied to an MPC-controlled marketplace sale are **not** deferred.
 
+---
+
 ## 5. Operator-provided Sankhya evidence / constraint
 
 This is **D0/D4 evidence**, not a provider-transport decision made in D0.
@@ -134,6 +142,8 @@ Consequences for later design:
 - D2/D4 must account for rules/policies whose authority remains in Sankhya/another ERP rather than duplicating them as MPC-owned configuration;
 - existing binding Oracle-read constraints are not silently reopened here.
 
+---
+
 ## 6. Stable constraints carried into D0
 
 D0 remains constrained by current accepted repository authority, including:
@@ -148,6 +158,8 @@ D0 remains constrained by current accepted repository authority, including:
 - ambiguous external-write outcomes are not blindly retried;
 - provider PII is minimized;
 - provider-specific protocol details remain behind provider boundaries.
+
+---
 
 ## 7. D0.4 — Actors / operational users
 
@@ -226,6 +238,8 @@ The Owner/Admin is not intended to approve routine commercial changes merely to 
 
 No actor may disable mandatory audit/reconciliation/safety invariants or silently convert externally governed rules into local editable copies.
 
+---
+
 ## 8. D0.5 — System boundary / authority classes
 
 **Accepted by operator.**
@@ -256,6 +270,7 @@ Governing principle:
 | Competitive intelligence / comparable-market interpretation | **OWN / DERIVE** |
 | Pricing scenarios / expected profitability | **OWN / DERIVE** |
 | MPC-owned marketplace commercial policies | **OWN** |
+| Marketplace account/installation membership under an MPC organization | **OWN** as MPC organization/control-plane configuration; provider account identity itself remains provider-owned |
 | Actual listing/channel state inherent in marketplace | provider authoritative; MPC **OBSERVES / ORCHESTRATES** |
 | Marketplace listing/price mutation intent | **OWN / ORCHESTRATE** |
 | Marketplace-originated order facts | marketplace/provider authoritative; MPC **ORCHESTRATES** |
@@ -276,7 +291,11 @@ Governing principle:
 5. MPC-owned workflow state is not replaced by guessing from one provider response; ambiguous/divergent outcomes remain explicit until reconciled.
 6. **Unknown availability is not zero.** If MPC cannot determine sellable availability with sufficient confidence, it must not invent a plausible quantity merely to continue synchronization; uncertainty becomes explicit operational state.
 7. A routine policy-valid availability change does not require human approval merely because stock changed; failed/non-convergent/uncertain updates become exception work.
-8. Provider/ERP-specific mechanisms remain implementation concerns for later stages.
+8. An organization and a marketplace seller account/installation are not the same identity merely because the first deployment uses one account.
+9. Any listing/order/action/policy whose meaning depends on a marketplace installation must be attributable to the correct installation; no implicit “current seller account” may become product semantics.
+10. Provider/ERP-specific mechanisms remain implementation concerns for later stages.
+
+---
 
 ## 9. D0.6 — Product 1.0 completion / user-observable outcomes
 
@@ -315,6 +334,8 @@ Direct use of Mercado Livre, Sankhya or another participating external system re
 Direct external-system hopping must **not** be a hidden required step in an otherwise claimed MPC normal workflow.
 
 Detailed end-to-end proof scenarios remain a D8 responsibility; D0 defines the outcomes D8 must eventually prove.
+
+---
 
 ## 10. D0.7 — Product completeness / contradiction review
 
@@ -355,23 +376,49 @@ authoritative stock facts / reservations / governing rules
   → success or explicit exception
 ```
 
-MPC does not become the owner of physical stock merely because it controls marketplace availability. Stock, reservation and other source facts remain owned by their authoritative system; some availability rules may be ERP-governed, some MPC-owned, and some availability values derived.
+MPC does not become owner of physical stock merely because it controls marketplace availability. Stock, reservation and other source facts remain owned by their authoritative system; some availability rules may be ERP-governed, some MPC-owned, and some values derived.
 
 Routine, sufficiently-known and policy-valid stock/availability changes do not require human approval per change. Human intervention is for uncertainty, conflict, policy violation, failed update or non-convergence.
 
-**Unknown availability must not silently become zero or another plausible quantity.** If the governing facts/rules are insufficient, MPC must represent the uncertainty explicitly and follow the later-accepted safety/reconciliation policy rather than inventing availability.
+**Unknown availability must not silently become zero or another plausible quantity.** If governing facts/rules are insufficient, MPC must represent uncertainty explicitly rather than inventing availability.
 
 Exact stock authority, reservation semantics, buffers, source reads, event/sync strategy and provider update mechanisms belong to D2–D4/D7.
 
+### D0.7d — Marketplace account / installation multiplicity
+
+**Accepted by operator.**
+
+A Marketplace Central organization may operate **one or more marketplace seller accounts/installations** under the same control plane.
+
+Product-level cardinality is therefore:
+
+```text
+Organization 1 → N Marketplace Installations
+```
+
+The first real deployment may validate Product 1.0 using only one Mercado Livre seller account. That does **not** authorize collapsing organization identity into marketplace-account identity or hardcoding single-account semantics into the target model.
+
+Product-level requirements:
+
+- listings, orders, external actions, reconciliation and other channel facts/workflows whose meaning depends on the seller account must be attributable to the correct marketplace installation;
+- policies may later be scoped at organization level, installation level or another explicitly accepted scope; D0 does not invent the exact hierarchy;
+- consolidated organization-level views may combine multiple installations without erasing their source/account provenance;
+- installation/account membership is an MPC organization/control-plane concern, while the provider remains authoritative for its native seller-account identity and state;
+- exact identity keys, credential storage, connection lifecycle, routing and isolation mechanisms belong to D2/D4.
+
+This decision establishes the correct cardinality without making multi-account feature breadth a launch blocker: Product 1.0 may initially operate one real account while retaining a model in which adding another installation does not require redefining what an organization, listing or order means.
+
 ### Next D0.7 question
 
-The review continues. The next material product-boundary question is **marketplace account / installation multiplicity inside one organization**.
+The review continues. The next material product-cardinality question is **ERP company / branch multiplicity inside one MPC organization**.
 
-D0 must decide whether Product 1.0 is conceptually limited to one Mercado Livre seller account/installation per organization or whether one organization may operate multiple seller accounts/installations under the same MPC control plane. This affects downstream identity, policy scope, linkage, order attribution, integration ownership and data isolation, so it must not be invented locally in D2/D4.
+D0 must decide whether Product 1.0 may need to operate against more than one ERP company/branch/legal/operational unit within the same organization, or whether the product contract intentionally assumes exactly one ERP company per organization. This affects downstream stock/cost selection, order creation, invoicing, policy provenance, profitability and reconciliation and therefore must not be left for D2/D4 to guess.
 
-This is a product cardinality decision only. Exact identity keys, tenant schema, credentials, connection models and routing belong to D2/D4.
+This is a product-cardinality/operational-boundary decision only. Exact ERP identifiers, company-routing rules, schemas, credentials and integration contracts belong to D2/D4.
 
 Other findings discovered during D0.7 are classified as MUST DECIDE NOW, SHOULD DECIDE NOW or CAN DEFER SAFELY. D0 closes only when no material Product 1.0 semantic is being left for implementation to invent.
+
+---
 
 ## 11. Resume contract for a fresh session
 
@@ -384,8 +431,10 @@ It should conclude:
 - D0.7a is accepted: essential cancellation/return/refund operations remain inside the controlled sale lifecycle without expanding Product 1.0 into general CRM/SAC;
 - D0.7b is accepted: shipment/delivery remains visible through terminal outcome and material delivery exceptions become MPC operational work without turning MPC into a TMS;
 - D0.7c is accepted: marketplace availability is maintained automatically from governing authoritative stock/rules when sufficiently known, while uncertainty/failure becomes explicit work and MPC does not become physical-stock authority;
+- D0.7d is accepted: one MPC organization may own/control one or more marketplace installations, even if Product 1.0 is initially proven with one Mercado Livre account;
+- organization identity must not be collapsed into marketplace seller-account identity;
 - MPC uses **OWN / ORCHESTRATE / OBSERVE-DERIVE** and owns the marketplace operating model without taking ownership of external facts merely because it consumes or causes them;
 - Sankhya API availability for writes is evidence to carry into D4, not a D0 transport decision;
 - business rules/policies may be MPC-owned, externally governed or derived, and later D2/D4 must preserve that provenance;
 - no D1+ target architecture may be invented yet;
-- the exact next work is **D0.7 Product completeness review — marketplace account / installation multiplicity inside one organization**.
+- the exact next work is **D0.7 Product completeness review — ERP company / branch multiplicity inside one organization**.
