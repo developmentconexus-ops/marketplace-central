@@ -139,17 +139,31 @@ D0 remains constrained by current accepted repository authority, including:
 
 ### D0.4 — Actors / operational users
 
-**Next exact decision with the operator:** identify the real actors who operate or govern Marketplace Central and the decisions each actor must be able to make.
+**Partially accepted by operator; responsibility/authority boundaries remain open.**
 
-This is a product/workflow decision only. Do not define JWT roles, permission tables or auth implementation in D0.
+D0 distinguishes human actors by the operational responsibility they carry. "Operator" is an umbrella description, not a single undifferentiated persona.
 
-Candidate actors are evidence to discuss, not accepted yet, for example:
+The actor classes accepted so far are:
 
-- marketplace operator;
-- commercial/marketplace manager;
-- owner/administrator or policy approver.
+1. **Marketplace Operations Operator** — performs day-to-day channel operations around products, listings, prices, marketplace state, orders, divergences and operational exceptions within permitted authority.
+2. **Fulfillment / Dispatch Operator** — owns the physical execution step after an order is ready for fulfillment: identifying work to prepare, packing the correct items, preparing the shipment/dispatch handoff, reporting completion/problems and progressing the order through the physical dispatch workflow exposed by MPC.
+3. **Commercial / Marketplace Manager** — governs or approves commercial decisions such as price/margin boundaries, higher-impact changes, exception decisions and bounded automation policies.
+4. **Owner / Administrator / Policy Approver** — governs system-level configuration, integrations, users and exceptional/high-impact policy authority where that responsibility is not delegated elsewhere.
 
-D0.4 should establish whether these actor classes are sufficient and where approval/accountability differs between them.
+This actor model does **not** define JWT roles, permission tables or technical authorization implementation. Those are later-stage concerns.
+
+The Fulfillment / Dispatch Operator makes an important product-boundary distinction: MPC Product 1.0 includes the marketplace-order fulfillment workflow needed to move a marketplace sale from ERP/order readiness through packing and dispatch handoff. This does **not** make MPC a company-wide WMS or logistics platform.
+
+#### Next exact D0.4 decision
+
+For each accepted actor, define the business decisions/actions they must be able to perform and which actions:
+
+- are routine within their own authority;
+- require another actor's approval;
+- must be escalated as an exception;
+- are outside their responsibility.
+
+Do this at product/workflow level only; do not design permissions/auth implementation yet.
 
 ## 7. Resume contract for a fresh session
 
@@ -159,6 +173,8 @@ It should conclude:
 
 - D0 is open and not yet accepted as a whole;
 - D0.1–D0.3a above are operator-approved decisions;
+- D0.4 has four accepted actor classes so far: Marketplace Operations Operator, Fulfillment / Dispatch Operator, Commercial / Marketplace Manager, and Owner / Administrator / Policy Approver;
+- D0.4 remains open only for responsibility/approval/accountability boundaries between those actors;
 - no D1+ target architecture may be invented yet;
 - Sankhya API availability for writes is evidence to carry into D4, not a D0 transport decision;
-- the exact next decision is **D0.4 — Actors / operational users**.
+- the exact next work is to define actor responsibilities and approval boundaries inside **D0.4 — Actors / operational users**.
