@@ -9,7 +9,7 @@
     {
       "id": "arch-float-in-contracts",
       "package": "./internal/arch",
-      "test": "TestFloatInContractsFiresOnStringLiteral"
+      "test": "TestFloatInContractsFiresOnFixture"
     },
     {
       "id": "arch-vendor-token",
