@@ -64,7 +64,7 @@ The accepted Product 1.0 capabilities are:
 
 1. **Product & Channel Readiness** — determine which internal products can operate in a marketplace, their linkage/readiness, and missing/conflicting conditions.
 2. **Marketplace Listing Operations** — create, inspect and control listings and material channel state, then verify whether requested changes converged.
-3. **Marketplace Availability Control** — keep published marketplace availability coherently aligned with sellable availability derived from authoritative stock facts/rules, automatically on the normal path and with explicit exceptions when evidence or convergence is uncertain.
+3. **Marketplace Availability Control** — keep published marketplace availability coherently aligned with sellable availability derived from authoritative stock facts/rules and applicable MPC-owned allocation policy, automatically on the normal path and with explicit exceptions when evidence or convergence is uncertain.
 4. **Competitive Intelligence** — observe comparable market offers/prices, expose competitive position and meaningful changes, and represent insufficient comparison evidence honestly.
 5. **Pricing & Profitability Intelligence** — combine relevant internal economics and market observations to calculate price scenarios, expected margin/profitability and decision-relevant trade-offs.
 6. **Decision & Policy Control** — translate observations/recommendations into permitted, approval-required or prohibited actions according to governing company rules/policies.
@@ -105,7 +105,11 @@ A governing rule used by MPC may be:
 
 MPC must preserve enough provenance to distinguish these classes and must not silently turn an externally governed rule into an editable MPC-owned copy.
 
-The exact ownership matrix, synchronization mechanism, conflict semantics, freshness rules and provider contracts are deferred to D2/D4.
+For policy classes that are legitimately MPC-owned, Product 1.0 must support organization-operable configuration without requiring code edits. The policy model must be capable of inherited/default policy plus explicit more-specific overrides where a later accepted business scope requires them. The effective policy and its provenance must be explainable; precedence must not depend on hidden evaluation order.
+
+D0 does **not** enumerate every future policy or mandate every conceivable scope. Candidate scopes such as organization/default, marketplace installation, product group/category, product and offer are carried forward for later adjudication and are only implemented when a real business need justifies them.
+
+The exact ownership matrix, policy schemas/scope hierarchy, synchronization mechanism, conflict semantics, freshness rules and provider contracts are deferred to later stages.
 
 ---
 
@@ -139,7 +143,7 @@ Consequences for later design:
 
 - Product 1.0 may require MPC to create/invoice orders in the participating ERP without assuming direct database writes;
 - D4 must evaluate and ratify exact Sankhya read/write capability contracts and transport boundaries for the first ERP integration;
-- D2/D4 must account for rules/policies whose authority remains in Sankhya/another ERP rather than duplicating them as MPC-owned configuration;
+- later stages must account for rules/policies whose authority remains in Sankhya/another ERP rather than duplicating them as MPC-owned configuration;
 - existing binding Oracle-read constraints are not silently reopened here;
 - Sankhya-specific constructs such as `CODEMP`, `CODLOC`, cost fields/types or other native identifiers are **integration evidence only** unless a later MPC-domain decision independently proves that an equivalent business concept belongs in the canonical product model.
 
@@ -216,6 +220,7 @@ marketplace order / ERP order readiness
 Is the ordinary commercial authority for the marketplace operation, but only over policies/decisions actually within that actor’s authority. This actor may:
 
 - define/change **MPC-owned** margin floors, price boundaries, approval thresholds and marketplace commercial policies;
+- define/change MPC-owned marketplace availability-allocation policies within delegated authority, including policies that intentionally expose only a bounded share of otherwise eligible stock;
 - approve/reject commercial exceptions;
 - authorize higher-impact actions when policy requires review;
 - define bounded automation classes and their commercial constraints;
@@ -264,8 +269,10 @@ Governing principle:
 | Business rules/policies whose authority remains in an ERP/another system | **OBSERVE / CONSUME** |
 | Product ↔ marketplace linkage/evidence maintained by MPC | **OWN** |
 | Marketplace readiness/readiness assessment | **OWN / DERIVE** |
-| MPC Inventory Source identity/membership and Inventory Scope eligibility | **OWN** as MPC operating semantics/configuration; each external system remains authoritative for its native stock-source identity and stock facts |
-| Sellable marketplace availability derived from eligible Inventory Sources plus authoritative stock/rules | **OWN / DERIVE** as an MPC operating conclusion; underlying stock facts/rules retain their source authority |
+| MPC Inventory Source identity/membership | **OWN** as MPC inventory semantics/configuration; native source identities and stock facts retain their external authority |
+| Inventory Scope / source eligibility for an offer or policy context | **OWN** as MPC operating policy/configuration |
+| MPC-owned availability-allocation policy | **OWN** |
+| Sellable marketplace availability derived from eligible sources, authoritative stock/rules and applicable MPC-owned allocation policy | **OWN / DERIVE** as an MPC operating conclusion; underlying stock facts/rules retain their source authority |
 | Intent to publish/update marketplace quantity/availability | **OWN / ORCHESTRATE** |
 | Actual marketplace quantity/availability state | provider authoritative; MPC **OBSERVES / ORCHESTRATES** convergence |
 | Cross-system intent, workflow, correlation, divergence and exception state | **OWN** |
@@ -303,7 +310,9 @@ Governing principle:
 14. **Inventory Source is a canonical MPC inventory-origin concept, not an alias for ERP warehouse/location/company.** One MPC Inventory Source may require one or many native external structures to represent it, and one native external structure may contribute to multiple MPC-relevant semantics when justified.
 15. **Inventory Scope is explicit eligibility, not “all stock we can find”.** Only Inventory Sources allowed by the offer’s governing scope/policy may contribute to Sellable Availability; stock outside that scope must not leak into marketplace availability merely because it exists.
 16. Inventory Source must not be silently collapsed with Selling Entity or Fulfillment Location. Their relationships are explicit business rules/configuration unless a later accepted decision proves stronger identity.
-17. Provider/ERP-specific mechanisms remain implementation concerns for later stages.
+17. **Availability Allocation Policy changes allocation, not stock truth.** An MPC-owned policy may intentionally expose less than full eligible availability — for example a percentage, reserve or cap — without rewriting authoritative inventory facts.
+18. MPC-owned policy defaults/overrides must resolve deterministically and retain visible provenance. Conflicting or ambiguous effective policy becomes explicit configuration/exception state rather than hidden ordering behavior.
+19. Provider/ERP-specific mechanisms remain implementation concerns for later stages.
 
 ---
 
@@ -317,7 +326,7 @@ The acceptance bar is user-observable:
 
 1. **Attention is portfolio-driven, not manual-search driven.** Operators can see what is healthy, changed, divergent, blocked, approval-required or otherwise actionable without inspecting products/external systems one by one.
 2. **An eligible internal product can reach a verified marketplace state through MPC.** The normal path covers readiness/linkage, commercial analysis, creation/publication and observation of the real channel state.
-3. **Inventory eligibility is explicit and marketplace availability remains operationally coherent without per-change manual work.** MPC knows which Inventory Sources may contribute to an offer; when governing stock/rules change and Sellable Availability is known, it updates marketplace availability and verifies convergence. Uncertainty, missing source mapping or failure becomes explicit work rather than guessed quantity, unintended stock aggregation or silent drift.
+3. **Inventory eligibility and allocation are explicit and marketplace availability remains operationally coherent without per-change manual work.** MPC knows which Inventory Sources may contribute to an offer, applies authoritative rules and applicable MPC-owned allocation policy, derives Sellable Availability, updates the marketplace and verifies convergence. Uncertainty, missing mapping, policy ambiguity or failure becomes explicit work rather than guessed quantity, unintended stock aggregation or silent drift.
 4. **Competitive/pricing intelligence replaces major manual analysis.** MPC exposes grounded comparable-market position, relevant internal economics, price scenarios, expected profitability and insufficient-evidence cases at portfolio and product level.
 5. **Decision closes into controlled action.** Authorized human or bounded policy-driven decisions can become external actions with policy enforcement, auditability, verification and reconciliation.
 6. **Material transaction context is explicit.** When a marketplace operation depends on which business/legal/fiscal entity is acting, MPC can attribute the workflow to the correct Selling Entity rather than relying on an implicit ERP/default-company assumption.
@@ -330,7 +339,7 @@ The acceptance bar is user-observable:
 
 Completion statement:
 
-> **A company can take its internal products, determine marketplace readiness, publish and operate offers, derive marketplace availability from explicitly eligible inventory sources and governing rules, preserve the correct business entity context for material marketplace transactions, monitor market position and profitability at portfolio scale, make and execute decisions under policy, receive sales, progress them through ERP and physical fulfillment, follow delivery to a terminal outcome, handle essential cancellation/return/refund consequences, surface/reconcile exceptions, and understand the realized economic result — using Marketplace Central as the normal marketplace operations control plane.**
+> **A company can take its internal products, determine marketplace readiness, publish and operate offers, derive marketplace availability from explicitly eligible inventory sources, governing facts/rules and MPC-owned allocation policies, preserve the correct business entity context for material marketplace transactions, monitor market position and profitability at portfolio scale, make and execute decisions under policy, receive sales, progress them through ERP and physical fulfillment, follow delivery to a terminal outcome, handle essential cancellation/return/refund consequences, surface/reconcile exceptions, and understand the realized economic result — using Marketplace Central as the normal marketplace operations control plane.**
 
 ### D0.6a — Normal-path rule
 
@@ -374,26 +383,28 @@ This does not make Product 1.0 a carrier, route planner, fleet system, company-w
 
 **Accepted by operator.**
 
-Product 1.0 is responsible for **maintaining marketplace availability coherently with sellable availability derived from the authoritative stock facts and governing rules applicable to that offer**.
+Product 1.0 is responsible for **maintaining marketplace availability coherently with Sellable Availability derived from authoritative stock facts, governing rules and applicable MPC-owned allocation policy**.
 
 The normal path is automatic:
 
 ```text
 authoritative stock facts / reservations / governing rules
-  → derive sellable marketplace availability
+  → Inventory Scope / eligible Inventory Sources
+  → applicable MPC-owned allocation policy
+  → derive Sellable Availability
   → policy-valid MPC intent
   → update marketplace availability
   → observe / verify convergence
   → success or explicit exception
 ```
 
-MPC does not become owner of physical stock merely because it controls marketplace availability. Stock, reservation and other source facts remain owned by their authoritative system; some availability rules may be ERP-governed, some MPC-owned, and some values derived.
+MPC does not become owner of physical stock merely because it controls marketplace availability. Stock, reservation and other source facts remain owned by their authoritative system; some rules may be externally governed, some MPC-owned, and some values derived.
 
 Routine, sufficiently-known and policy-valid stock/availability changes do not require human approval per change. Human intervention is for uncertainty, conflict, policy violation, failed update or non-convergence.
 
 **Unknown availability must not silently become zero or another plausible quantity.** If governing facts/rules are insufficient, MPC must represent uncertainty explicitly rather than inventing availability.
 
-Exact stock authority, reservation semantics, buffers, source reads, event/sync strategy and provider update mechanisms belong to D2–D4/D7.
+Exact stock authority, reservation semantics, allocation arithmetic/rounding, buffers, source reads, event/sync strategy and provider update mechanisms belong to later stages.
 
 ### D0.7d — Marketplace account / installation multiplicity
 
@@ -445,7 +456,7 @@ ERP has field/entity X
 
 ERP integration is therefore a **semantic translation boundary**, not a database-field mirroring exercise. The adapter may need to combine several ERP-native structures to satisfy one MPC concept, or map one ERP structure into several MPC-relevant facts. If an ERP cannot provide a required MPC semantic reliably, the integration must expose unsupported/incomplete/unknown evidence rather than inventing an equivalence.
 
-Examples such as Sankhya `CODEMP`, `CODLOC`, native cost variants, stock structures and fiscal constructs are evidence D2/D4 may inspect; they are not the vocabulary from which D0/D1 define the MPC domain.
+Examples such as Sankhya `CODEMP`, `CODLOC`, native cost variants, stock structures and fiscal constructs are evidence later stages may inspect; they are not the vocabulary from which D0/D1 define the MPC domain.
 
 This principle does **not** require building a speculative universal ERP abstraction. MPC should define only the business semantics actually required by accepted marketplace workflows.
 
@@ -505,6 +516,33 @@ Product-level requirements:
 
 Exact source identities, native ERP/WMS mappings, stock ledger semantics, reservations, aggregation formulas, source precedence, buffers and synchronization/event mechanics belong to D2/D4/D7.
 
+##### D0.7e.2a — Availability Allocation Policy
+
+**Accepted as a D0 product requirement from operator-provided use case; detailed policy catalog deferred.**
+
+MPC must support configurable **MPC-owned availability-allocation policies** that intentionally expose less than the full otherwise-eligible availability when the organization chooses to reserve capacity/stock for other channels or operational needs.
+
+Representative use case:
+
+```text
+eligible availability = 100
+MPC marketplace allocation policy = 70%
+→ marketplace allocation is derived from 70% of eligible availability
+```
+
+The example establishes the policy class, **not** the final arithmetic contract. Rounding, minimum/maximum caps, fixed reserves, safety stock, sequencing with other rules and other allocation forms remain later design decisions.
+
+Product-level requirements:
+
+- allocation policy modifies the MPC marketplace-allocation conclusion; it never rewrites the authoritative stock fact;
+- MPC-owned allocation policy is organization-operable without code changes;
+- the eventual policy model must support inherited/default configuration and explicit more-specific overrides where justified by real business scope;
+- the effective policy, its source/provenance and why a more-specific override won must be observable;
+- D0 does not freeze every supported scope. Candidate scopes include organization/default, marketplace installation, product group/category, product and offer; later stages determine the minimal justified set rather than implementing all speculatively;
+- conflicts or ambiguity in effective policy become explicit configuration/exception state rather than being resolved by hidden ordering.
+
+This is intentionally narrower than defining a generic rules engine. Product 1.0 needs configurable policy for accepted marketplace-operating semantics; later stages design the smallest policy model that satisfies those concrete needs.
+
 #### Next D0.7e decision
 
 Define the next ERP-independent business dimension: **Fulfillment Location / Fulfillment Scope**.
@@ -531,15 +569,16 @@ It should conclude:
 - D0.1–D0.6 are operator-approved product decisions;
 - D0.7a is accepted: essential cancellation/return/refund operations remain inside the controlled sale lifecycle without expanding Product 1.0 into general CRM/SAC;
 - D0.7b is accepted: shipment/delivery remains visible through terminal outcome and material delivery exceptions become MPC operational work without turning MPC into a TMS;
-- D0.7c is accepted: marketplace availability is maintained automatically from governing authoritative stock/rules when sufficiently known, while uncertainty/failure becomes explicit work and MPC does not become physical-stock authority;
+- D0.7c is accepted: marketplace availability is maintained automatically from governing authoritative stock/rules/policies when sufficiently known, while uncertainty/failure becomes explicit work and MPC does not become physical-stock authority;
 - D0.7d is accepted: one MPC organization may own/control one or more marketplace installations, even if Product 1.0 is initially proven with one Mercado Livre account;
 - D0.7e is accepted: canonical MPC business semantics are defined from marketplace-operating needs before ERP-specific mapping; ERP integration semantically translates rather than dictating the MPC domain;
 - D0.7e.1 is accepted: `Selling Entity` is a canonical MPC business dimension for the acting business/legal/fiscal entity, independent from ERP company identifiers, marketplace installation, inventory source, fulfillment location and costing scope unless explicit business rules relate them;
 - D0.7e.2 is accepted: `Inventory Source` identifies business-recognized inventory sources, `Inventory Scope` explicitly governs which sources may contribute to an offer, and Sellable Availability is derived from eligible sources plus authoritative facts/rules rather than copied from an external stock field;
+- D0.7e.2a records the Product 1.0 requirement for configurable MPC-owned availability-allocation policy, including percentage-style allocation such as `70%`, while the exact policy catalog/scopes/arithmetic are intentionally deferred;
 - organization identity must not be collapsed into marketplace seller-account or Selling Entity identity;
 - Sankhya-native concepts such as `CODEMP`, `CODLOC` and cost variants are integration evidence, not automatically canonical MPC concepts;
 - MPC uses **OWN / ORCHESTRATE / OBSERVE-DERIVE** and owns the marketplace operating model without taking ownership of external facts merely because it consumes or causes them;
 - Sankhya API availability for writes is evidence to carry into D4, not a D0 transport decision;
-- business rules/policies may be MPC-owned, externally governed or derived, and later D2/D4 must preserve that provenance;
+- business rules/policies may be MPC-owned, externally governed or derived, and later stages must preserve that provenance;
 - no D1+ target architecture may be invented yet;
 - the exact next work is **D0.7e — define ERP-independent Fulfillment Location / Fulfillment Scope semantics needed by MPC**.
