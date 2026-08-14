@@ -33,7 +33,7 @@ Marketplace Central is not merely an intelligence dashboard and is not a replace
 
 It can coordinate and execute operations on both sides of the boundary. Examples include creating/changing marketplace listings and prices, and causing marketplace-originated orders to be created and invoiced in Sankhya through an accepted integration path.
 
-External systems remain authorities for facts that inherently belong to them; the exact data/identity/write ownership matrix is deferred to D2/D4. MPC owns the cross-system operational control semantics: intent, policy, workflow, correlation, controlled execution, operational state, divergence, audit and reconciliation.
+External systems remain authorities for facts that inherently belong to them; the exact data/identity/write ownership matrix is deferred to D2/D4. MPC owns the cross-system operational control semantics: intent, policy application, workflow, correlation, controlled execution, operational state, divergence, audit and reconciliation.
 
 ### D0.2 — Product 1.0 scope: Operations + Commercial Intelligence (A+)
 
@@ -53,6 +53,7 @@ internal product
   → marketplace action
   → sale / marketplace order
   → ERP operation / invoicing
+  → fulfillment / dispatch
   → realized economics
   → reconciliation / exception handling
 ```
@@ -69,12 +70,13 @@ Product 1.0 includes these product capabilities:
 2. **Marketplace Listing Operations** — create, inspect and control listings and material operational state such as price/availability, then verify whether requested changes converged.
 3. **Competitive Intelligence** — observe comparable market offers/prices, expose competitive position and meaningful changes, and represent insufficient comparison evidence honestly.
 4. **Pricing & Profitability Intelligence** — combine relevant internal economics and market observations to calculate price scenarios, expected margin/profitability and decision-relevant trade-offs.
-5. **Decision & Policy Control** — translate observations/recommendations into permitted, approval-required or prohibited actions according to company policy.
+5. **Decision & Policy Control** — translate observations/recommendations into permitted, approval-required or prohibited actions according to governing company rules/policies.
 6. **Order-to-ERP Operations** — receive/understand marketplace orders and coordinate the corresponding business operations in Sankhya, including order creation and invoicing where authorized.
-7. **Reconciliation & Exception Operations** — identify cases where an expected cross-system result cannot be proven or systems diverge, and make them actionable instead of silently assuming success.
-8. **Realized Profitability** — determine realized sale economics and compare expected versus realized results so material variance can be explained.
+7. **Marketplace Fulfillment / Dispatch** — progress marketplace orders through physical separation, conference, invoicing trigger, packing and dispatch handoff without becoming a company-wide WMS.
+8. **Reconciliation & Exception Operations** — identify cases where an expected cross-system result cannot be proven or systems diverge, and make them actionable instead of silently assuming success.
+9. **Realized Profitability** — determine realized sale economics and compare expected versus realized results so material variance can be explained.
 
-Automation/human approval is a cross-cutting control-plane property, not a ninth product capability.
+Automation/human approval is a cross-cutting control-plane property, not a separate business capability.
 
 ### D0.3a — Action authority model
 
@@ -87,6 +89,24 @@ Product 1.0 supports:
 - **human review for exceptions, uncertainty, low confidence or policy violations.**
 
 A fully autonomous repricing system is not required as a launch gate. The product must, however, have the semantics necessary to support explicit bounded automation without bypassing policy, audit or reconciliation.
+
+### D0.3b — Policy/rule provenance is explicit
+
+**Accepted by operator.**
+
+Marketplace Central must not assume that every business rule or commercial policy is authored inside MPC.
+
+A governing rule used by MPC may be:
+
+- **MPC-owned** — intentionally defined and governed inside Marketplace Central;
+- **externally governed** — sourced from Sankhya/another ERP or another authoritative system and consumed by MPC;
+- **derived** — mechanically computed from authoritative facts/rules without becoming an independent source of truth.
+
+The product-level invariant is that MPC must know enough provenance to distinguish these classes and must not silently turn an externally governed rule into an editable MPC-owned copy.
+
+A Commercial / Marketplace Manager may define or change **MPC-owned** commercial policies within their authority, but cannot override an externally authoritative ERP/system rule merely because MPC consumes it. If business requirements need that external rule changed, the change must occur through the system/authority that owns it or through an explicitly accepted cross-system workflow.
+
+The exact ownership matrix, synchronization mechanism, conflict semantics, freshness rules and provider contracts are deferred to D2/D4.
 
 ## 3. Product 1.0 non-goals currently safe to defer
 
@@ -116,9 +136,10 @@ The environment also has DB Explorer access for database inspection.
 
 Consequences for later design:
 
-- D0 may require MPC to create/invoice orders in Sankhya without assuming direct database writes.
-- D4 must evaluate and ratify the exact Sankhya read/write capability contracts and transport boundaries.
-- Existing binding Oracle-read constraints are not silently reopened here; the target read path and any need for direct Oracle access are adjudicated only by the stage that owns that decision.
+- D0 may require MPC to create/invoice orders in Sankhya without assuming direct database writes;
+- D4 must evaluate and ratify the exact Sankhya read/write capability contracts and transport boundaries;
+- D2/D4 must account for business rules/policies whose authority remains in Sankhya/another ERP rather than duplicating them as MPC-owned configuration;
+- existing binding Oracle-read constraints are not silently reopened here; the target read path and any need for direct Oracle access are adjudicated only by the stage that owns that decision.
 
 ## 5. Stable constraints carried into D0
 
@@ -135,26 +156,22 @@ D0 remains constrained by current accepted repository authority, including:
 - provider PII is minimized;
 - provider-specific protocol details remain behind provider boundaries.
 
-## 6. Current open D0 decision
+## 6. D0.4 — Actors / operational users
 
-### D0.4 — Actors / operational users
-
-**Partially accepted by operator; responsibility/authority boundaries remain open.**
+**Accepted by operator.**
 
 D0 distinguishes human actors by the operational responsibility they carry. "Operator" is an umbrella description, not a single undifferentiated persona.
 
-The actor classes accepted so far are:
+The accepted actor classes are:
 
-1. **Marketplace Operations Operator** — performs day-to-day channel operations around products, listings, prices, marketplace state, orders, divergences and operational exceptions within permitted authority.
-2. **Fulfillment / Dispatch Operator** — owns the physical fulfillment execution for marketplace orders: identifying work to prepare, separating and physically checking the correct items, progressing valid orders into invoicing, packing, preparing the shipment/dispatch handoff, reporting completion/problems and progressing the order through the physical dispatch workflow exposed by MPC.
-3. **Commercial / Marketplace Manager** — governs or approves commercial decisions such as price/margin boundaries, higher-impact changes, exception decisions and bounded automation policies.
-4. **Owner / Administrator / Policy Approver** — governs system-level configuration, integrations, users and exceptional/high-impact policy authority where that responsibility is not delegated elsewhere.
+1. **Marketplace Operations Operator** — day-to-day channel operations around products, listings, prices, marketplace state, orders, divergences and operational exceptions within permitted authority.
+2. **Fulfillment / Dispatch Operator** — physical fulfillment execution for marketplace orders: work queue, separation/conference, invoicing trigger when valid, packing, dispatch handoff and exception reporting.
+3. **Commercial / Marketplace Manager** — commercial authority for MPC-owned marketplace policies, pricing/margin boundaries, higher-impact approvals, exception decisions and bounded automation policies.
+4. **Owner / Administrator / Policy Approver** — system/organization governance: integrations, users, exceptional/high-impact authority and controls that must remain above ordinary commercial operation.
 
 This actor model does **not** define JWT roles, permission tables or technical authorization implementation. Those are later-stage concerns.
 
-The Fulfillment / Dispatch Operator makes an important product-boundary distinction: MPC Product 1.0 includes the marketplace-order fulfillment workflow needed to move a marketplace sale from ERP/order readiness through physical separation, invoicing, packing and dispatch handoff. This does **not** make MPC a company-wide WMS or logistics platform.
-
-#### D0.4a — Fulfillment / Dispatch Operator authority
+### D0.4a — Fulfillment / Dispatch Operator authority
 
 **Accepted by operator.**
 
@@ -173,60 +190,106 @@ marketplace order / ERP order readiness
   → completion or exception
 ```
 
-The Fulfillment / Dispatch Operator is therefore not limited to packing already-invoiced orders. Within the accepted fulfillment workflow, this actor has business authority to confirm that the physical order is correct and then request/trigger invoicing.
-
 The target property is that **an order is not intentionally invoiced through the normal fulfillment path before the operator has physically confirmed that the correct items are available and separated**.
 
-If the operator finds missing stock, wrong item, damaged material, quantity divergence or another physical inconsistency, the normal invoicing transition is blocked and the order becomes an operational exception requiring resolution rather than being invoiced optimistically.
+If the operator finds missing stock, wrong item, damaged material, quantity divergence or another physical inconsistency, normal invoicing is blocked and the order becomes an operational exception requiring resolution.
 
-D0 does not decide how this authority is represented in permissions, how the workflow state is persisted, or how the Sankhya call is implemented. Those belong to later stages.
+D0 does not decide permission representation, workflow persistence or Sankhya transport.
 
-#### D0.4b — Marketplace Operations Operator authority
+### D0.4b — Marketplace Operations Operator authority
 
 **Accepted by operator.**
 
-The Marketplace Operations Operator owns routine day-to-day marketplace control within company policy. At product/workflow level this actor may:
+The Marketplace Operations Operator owns routine marketplace control within governing policy. At product/workflow level this actor may:
 
-- prepare and correct product/channel readiness information and operational linkage where the underlying evidence is sufficient;
-- create and publish a new marketplace listing when the product is fully ready and the action satisfies all current policies and required conditions;
-- inspect and edit listings and their permitted operational state;
+- prepare/correct product-channel readiness and linkage where evidence is sufficient;
+- create and publish a new listing when the product is fully ready and all governing conditions are satisfied;
+- inspect/edit listings and permitted operational state;
 - analyze competitive position, price scenarios and expected profitability;
-- execute price changes and other bounded marketplace actions when they remain inside accepted commercial policies;
-- pause/reactivate or correct marketplace operational state when the action is policy-compliant;
-- investigate and progress ordinary marketplace divergences/exceptions that are within the actor's operational authority.
+- execute price changes and other bounded marketplace actions inside policy;
+- pause/reactivate or correct marketplace operational state when policy-compliant;
+- investigate and progress ordinary divergences/exceptions inside operational authority.
 
-The actor does **not** own the commercial policies themselves. It cannot redefine margin floors, price boundaries, approval thresholds or automation authority merely to make an action permissible.
-
-The product decision rule is:
+The actor does not own the policies/rules themselves and cannot redefine a boundary merely to make an action permissible.
 
 ```text
-fully ready + inside accepted policy
+fully ready + inside governing policy
   → Marketplace Operations Operator may decide/execute
 
 outside policy / insufficient evidence / higher-impact exception
   → Commercial / Marketplace Manager review or other explicit escalation
 ```
 
-Initial listing creation is therefore **not approval-gated merely because it is the first publication**. If the product is fully ready and all governing policies are satisfied, the Marketplace Operations Operator can create/publish it directly through MPC. The exact readiness criteria, policy representation and authorization mechanism are later-stage decisions.
+Initial listing creation is not approval-gated merely because it is the first publication.
 
-#### Next exact D0.4 decision
+### D0.4c — Commercial / Marketplace Manager authority
 
-Define the responsibility/authority boundary of the **Commercial / Marketplace Manager**, especially what this actor may approve, which commercial policies it may define/change, and what remains reserved for Owner / Administrator / Policy Approver.
+**Accepted by operator, with policy-provenance constraint.**
 
-Do this at product/workflow level only; do not design permissions/auth implementation yet.
+The Commercial / Marketplace Manager is the ordinary commercial authority for the marketplace operation, but only over policies and decisions that are actually within the manager's authority.
 
-## 7. Resume contract for a fresh session
+This actor may, at product/workflow level:
+
+- define/change **MPC-owned** margin floors, price boundaries, approval thresholds and other marketplace commercial policies;
+- approve/reject commercial exceptions escalated by Marketplace Operations Operators;
+- authorize higher-impact price/listing actions when policy requires review;
+- define which bounded action classes may execute automatically and the commercial constraints around that automation;
+- review commercial/competitive/profitability intelligence at managerial scope and convert accepted strategy into MPC-owned operating policy;
+- suspend or narrow an MPC-owned automation/policy when commercial risk requires intervention.
+
+This actor is **not automatically the authority over rules sourced from Sankhya/another ERP or another governing system**. Externally governed rules remain externally governed unless a later accepted ownership decision explicitly transfers authority.
+
+The manager also does not administer integration credentials, security controls, users, structural tenant/organization settings or bypass audit/reconciliation controls merely because they affect commercial operations.
+
+Ordinary commercial policy should not require Owner approval by default. Escalation to Owner/Admin is reserved for organization/system governance or explicitly high-impact exceptional authority.
+
+### D0.4d — Owner / Administrator / Policy Approver authority
+
+**Accepted by operator.**
+
+The Owner / Administrator / Policy Approver governs concerns that sit above routine marketplace commercial operation, including at product/workflow level:
+
+- integration/connection administration and organization-level system configuration;
+- user/access governance at an organizational level (technical realization deferred);
+- exceptional/high-impact authority not delegated to the Commercial / Marketplace Manager;
+- governance boundaries around who may define policies or authorize automation;
+- emergency suspension/containment of risky external actions or automation when organizational control requires it;
+- resolution/escalation when a policy or integration authority conflict cannot be settled inside normal marketplace operations.
+
+The Owner/Admin is **not** intended to approve routine commercial changes merely to create a longer approval chain. Commercial decisions inside delegated authority terminate at the Commercial / Marketplace Manager.
+
+No actor may use its authority to disable mandatory audit/reconciliation/safety invariants or silently convert externally governed business rules into local editable copies.
+
+## 7. Current open D0 decision
+
+### D0.5 — System boundary / authority classes
+
+**Next exact decision with the operator.**
+
+Now that Product 1.0 capabilities and actors are defined, establish the product boundary without prematurely doing D1/D2/D4 implementation design.
+
+For each major concern, classify Marketplace Central at product level as one of:
+
+- **OWN** — MPC is the business authority for the concern/state;
+- **ORCHESTRATE** — another system remains authoritative for the underlying business fact/process, but MPC owns the cross-system operational workflow/intent/control around it;
+- **OBSERVE / DERIVE** — MPC consumes authoritative external facts and may derive decision-support information without becoming the source of truth for the underlying fact.
+
+D0.5 must answer where MPC begins/ends for the Product 1.0 loop while deferring exact identities, tables, schemas, ports, synchronization and API mechanics to D1–D4.
+
+## 8. Resume contract for a fresh session
 
 A fresh session must read `AGENTS.md`, `docs/engineering/rebaseline/README.md`, the canonical engineering method, `ARCHITECTURE.md`, the ADR registry, and then this D0 artifact.
 
 It should conclude:
 
 - D0 is open and not yet accepted as a whole;
-- D0.1–D0.3a above are operator-approved decisions;
-- D0.4 has four accepted actor classes: Marketplace Operations Operator, Fulfillment / Dispatch Operator, Commercial / Marketplace Manager, and Owner / Administrator / Policy Approver;
-- D0.4a is accepted: the fulfillment operator physically separates/checks the order and, when valid, triggers invoicing through MPC before packing/dispatch; physical inconsistencies block normal invoicing and become exceptions;
-- D0.4b is accepted: the marketplace operator controls routine marketplace operations within policy and may create/publish a new listing without separate commercial approval when the product is fully ready and policy-compliant;
-- D0.4 remains open for the responsibility/approval/accountability boundaries of Commercial / Marketplace Manager and Owner / Administrator / Policy Approver;
-- no D1+ target architecture may be invented yet;
+- D0.1–D0.3b are operator-approved product decisions;
+- D0.4 is accepted with four actors and explicit responsibility/authority boundaries;
+- Fulfillment / Dispatch physically separates/conferences before triggering invoicing; physical inconsistency blocks normal invoicing;
+- Marketplace Operations Operator may create/publish and perform routine actions when fully ready and policy-compliant;
+- Commercial / Marketplace Manager governs ordinary **MPC-owned** commercial policy, approvals and bounded automation, but does not silently override externally governed ERP/system rules;
+- Owner / Administrator governs system/organization-level controls and exceptional authority without becoming a routine commercial approval bottleneck;
 - Sankhya API availability for writes is evidence to carry into D4, not a D0 transport decision;
-- the exact next work is the **Commercial / Marketplace Manager** authority boundary inside D0.4.
+- business rules/policies may be MPC-owned, externally governed or derived, and later D2/D4 must preserve that provenance;
+- no D1+ target architecture may be invented yet;
+- the exact next work is **D0.5 — System boundary / authority classes**.
