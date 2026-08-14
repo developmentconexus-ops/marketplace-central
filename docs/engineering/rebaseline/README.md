@@ -199,13 +199,13 @@ Any additional codebase measurement is performed when a D-stage decision require
 
 ## 10. Exact next action
 
-**Continue D0 with the operator: decide D0.6 — Product 1.0 completion / user-observable outcomes.**
+**Continue D0 with the operator: D0.7 — Product completeness / contradiction review, beginning with the post-sale lifecycle decision.**
 
-Accepted D0.1–D0.5 decisions, policy/rule provenance, actor authority and the system-boundary authority map are recorded in `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`.
+Accepted D0.1–D0.6 decisions, policy/rule provenance, actor authority, the system-boundary authority map and the Product 1.0 completion bar are recorded in `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`.
 
 Nothing else is authorized. In particular: do not start product implementation, do not begin D1–D9 before D0 is accepted, and do not reopen the documentary cleanup.
 
-D0 remains open until its product/system definition is complete, internally coherent, reviewed with the operator, and explicitly accepted as a whole.
+D0 remains open until its product/system definition is complete, internally coherent, adversarially reviewed with the operator, and explicitly accepted as a whole.
 
 ## 11. Fresh-session success test
 
@@ -213,11 +213,12 @@ A fresh session should be able to read `AGENTS.md`, this file and the current D0
 
 - documentary/governance cleanup is DONE;
 - D0 Product / System Definition is OPEN and not yet accepted as a whole;
-- D0.1–D0.5 recorded in the D0 artifact are operator-approved decisions;
+- D0.1–D0.6 recorded in the D0 artifact are operator-approved decisions;
 - MPC owns the marketplace operating model while external systems retain authority for facts/processes that inherently belong to them;
 - rules/policies may be MPC-owned, externally governed or derived; MPC must preserve that provenance rather than silently duplicating authority;
+- Product 1.0 requires its claimed normal operational path to be executable through MPC rather than relying on hidden routine manual system hopping;
 - historical code/docs are evidence, not target authority;
 - implementation remains blocked until D9 is accepted;
-- the exact next decision is **D0.6 — Product 1.0 completion / user-observable outcomes**.
+- the exact next work is **D0.7 — Product completeness / contradiction review**, starting with the unresolved post-sale lifecycle boundary.
 
 If it cannot, the current authority path is incomplete or contradictory.
