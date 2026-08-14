@@ -199,17 +199,13 @@ Any additional codebase measurement is performed when a D-stage decision require
 
 ## 10. Exact next action
 
-**Continue D0 with the operator: D0.7e — define ERP-independent Fiscal / Invoicing Semantics needed by MPC.**
+**Continue D0 with the operator: D0.7 Product completeness / contradiction review — decide marketplace financial settlement / payout reconciliation.**
 
-Accepted D0.1–D0.6 decisions plus D0.7a essential post-sale, D0.7b shipment/delivery lifecycle, D0.7c automatic marketplace availability control, D0.7d `Organization 1 → N Marketplace Installations`, D0.7e's ERP-agnostic semantic-translation principle, D0.7e.1 `Selling Entity`, D0.7e.2 `Inventory Source / Inventory Scope`, D0.7e.2a availability-allocation policy requirement, D0.7e.3 `Fulfillment Node / Fulfillment Scope`, D0.7e.4 `Cost Observation / Cost Basis`, and D0.7e.5 `Business Order Intent` are recorded in `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`.
+Accepted D0.1–D0.6 decisions plus D0.7a–D0.7d and the ERP-agnostic semantic pass D0.7e.1–D0.7e.6 are recorded in `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`.
 
-`Business Order Intent` is the MPC-owned semantic intent to materialize a marketplace sale in the participating business/ERP system while preserving material business context and source provenance. ERP-native order types/TOPs/document codes remain integration/native semantics; the ERP owns the native order record, while MPC owns the intent, correlation and materialization workflow. Missing/ambiguous mapping becomes explicit configuration/exception state, and ambiguous write outcomes are not blindly retried.
+The ERP-agnostic pass now includes `Selling Entity`, `Inventory Source / Inventory Scope`, MPC-owned availability-allocation policy, `Fulfillment Node / Fulfillment Scope`, `Cost Observation / Cost Basis`, `Business Order Intent` and `Invoicing Intent`. ERP-native identifiers, TOPs, order/fiscal document types and cost variants remain semantic-integration evidence/configuration rather than canonical MPC concepts unless an independent business need proves otherwise.
 
-D0.7e.5 intentionally **does not introduce a separate canonical `Order Execution Scope`**. Material order execution context is carried by Business Order Intent plus explicit governing policies/integration mappings; a new scope concept would require independent business evidence later.
-
-The availability-policy requirement remains intentionally scoped at D0 to the existence of configurable MPC-owned allocation policy. Exact policy catalog, scope hierarchy, override precedence details and arithmetic remain explicitly deferred for later adjudication rather than forgotten.
-
-D0.7e continues to prohibit designing the MPC canonical domain by copying Sankhya-native constructs such as `CODEMP`, `CODLOC`, TOPs, cost variants or other ERP-specific structures. First define the business semantic MPC needs; later D2/D4 map Sankhya or another ERP into that semantic.
+`Invoicing Intent` is readiness-gated: order existence alone is not readiness, unknown prerequisites cannot silently become ready, the native fiscal result remains externally authoritative, and ambiguous invoicing outcomes are not blindly retried. No separate canonical `Fiscal Scope` is currently justified.
 
 Nothing else is authorized. In particular: do not start product implementation, do not begin D1–D9 before D0 is accepted, and do not reopen the documentary cleanup.
 
@@ -221,26 +217,23 @@ A fresh session should be able to read `AGENTS.md`, this file and the current D0
 
 - documentary/governance cleanup is DONE;
 - D0 Product / System Definition is OPEN and not yet accepted as a whole;
-- D0.1–D0.6 and D0.7a–D0.7e.5 recorded in the D0 artifact are operator-approved decisions/principles/requirements;
-- essential cancellation/return/refund operations remain inside the controlled sale lifecycle without expanding Product 1.0 into general CRM/SAC;
+- D0.1–D0.6 and D0.7a–D0.7e.6 recorded in the D0 artifact are operator-approved decisions/principles/requirements;
+- essential cancellation/return/refund and material fiscal consequences remain inside the controlled sale lifecycle without expanding Product 1.0 into general CRM/SAC;
 - shipment/delivery remains visible through a terminal outcome without turning MPC into a TMS;
 - marketplace availability is automatically maintained from governing authoritative stock/rules/policies when sufficiently known; uncertainty/failure becomes explicit work and MPC does not become physical-stock authority;
 - one MPC organization may control one or more marketplace installations, even if the first deployment uses one Mercado Livre seller account; organization identity is not marketplace-account identity;
 - canonical MPC business semantics come from marketplace-operating needs, not from Sankhya/another ERP ontology;
 - ERP integration is semantic translation; unsupported/incomplete mappings become explicit rather than guessed equivalence;
-- `Selling Entity` is the canonical MPC concept for the acting business/legal/fiscal entity when material, independent from ERP-native company identifiers and from inventory/fulfillment/cost dimensions unless explicit business rules relate them;
-- `Inventory Source` and `Inventory Scope` are canonical MPC inventory semantics; stock outside the governing scope does not contribute to Sellable Availability merely because it exists;
+- `Selling Entity`, `Inventory Source / Inventory Scope`, `Fulfillment Node / Fulfillment Scope`, `Cost Observation / Cost Basis`, `Business Order Intent` and `Invoicing Intent` have the meanings recorded in the D0 artifact and remain distinct unless explicit accepted business semantics relate them;
 - MPC-owned availability-allocation policy may intentionally reserve/expose only part of eligible stock, including percentage-style use cases such as `70%`; exact policy catalog/scopes/arithmetic remain for later adjudication;
-- `Fulfillment Node` and `Fulfillment Scope` are canonical MPC fulfillment semantics; node eligibility/responsibility is explicit and is not inferred from an ERP warehouse or Inventory Source;
-- `Cost Observation` and `Cost Basis` are canonical MPC economic semantics; cost meaning/time-context/provenance must be explicit, ERP cost variants are integration evidence only, and unsupported/ambiguous cost does not silently fall back;
-- `Business Order Intent` is canonical MPC intent/correlation semantics; ERP-native order types/TOPs stay behind the semantic integration boundary, and no separate `Order Execution Scope` is currently justified;
-- ambiguous order materialization cannot be blindly retried or silently treated as failure/success;
+- ERP-native order/invoicing types, TOPs, company/location identifiers and cost variants remain behind the semantic integration boundary rather than becoming canonical MPC defaults;
+- ambiguous order or invoicing materialization cannot be blindly retried or silently treated as failure/success;
 - historical/realized economics must not silently use current cost as a substitute, and cost remains distinct from marketplace fees, freight, taxes and other economic components;
 - MPC owns the marketplace operating model while external systems retain authority for facts/processes that inherently belong to them;
 - rules/policies may be MPC-owned, externally governed or derived; MPC must preserve that provenance rather than silently duplicating authority;
 - Product 1.0 requires its claimed normal operational path to be executable through MPC rather than relying on hidden routine manual system hopping;
 - historical code/docs are evidence, not target authority;
 - implementation remains blocked until D9 is accepted;
-- the exact next work is **D0.7e — define ERP-independent Fiscal / Invoicing Semantics needed by MPC**.
+- the exact next work is **D0.7 Product completeness review — marketplace financial settlement / payout reconciliation**.
 
 If it cannot, the current authority path is incomplete or contradictory.
