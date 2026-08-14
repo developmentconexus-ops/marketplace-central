@@ -66,7 +66,7 @@ Worked example, now discharged: `apps/server_core/cmd/mlprobe` referenced retire
 The documentary cleanup was DONE only when all of the following held. Each row records the criterion and the evidence that closed it, so a later session can re-check the claim instead of trusting it.
 
 | # | Criterion | Discharged by |
-|---|---|
+|---|---|---|
 | 1 | no retired document competes as architecture/program authority | the retired trees (`.mnfs/`, `docs/superpowers/`, `docs/design/`, `docs/HARNESS-PROFILE.md`, `docs/engineering/repo-audit-2026-08-07/`) are deleted from the repository; `docs/README.md` carries the removal record. A checkout that predates the removal can still hold gitignored leftovers under those paths on disk — they are untracked local residue, never authority, and `git ls-files` is the check that settles it |
 | 2 | no active governance registry points to deleted authority as current authority | governance exceptions carry `re_adjudicate_in: D<N>` instead of milestone/feature `removal_owner`; `scripts/tests/governance-contracts.tests.ps1` asserts that field and fails if either side is absent |
 | 3 | gates/workflows/scripts do not depend conceptually on retired documentary authority | every `HARNESS-PROFILE` / `GATE-TOPOLOGY` / `docs/superpowers` citation in `scripts/`, `.github/`, `eslint.config.mjs`, `.golangci.yml`, `vitest.config.ts`, `contracts/gate/baselines.json` and `deploy/` was replaced by the rule itself or retargeted to the owning D-stage |
@@ -193,30 +193,23 @@ Historical plans/specs/handoffs/wikis do not become target authority because the
 
 ## 9. Current supporting evidence
 
-`docs/engineering/rebaseline/EVIDENCE-REGISTER.md` contains already-collected facts worth carrying forward. They are supporting evidence, not prerequisites that must all be exhaustively reproduced before D0 continues.
+`docs/engineering/rebaseline/EVIDENCE-REGISTER.md` contains already-collected facts worth carrying forward. Provider/competitor evidence now includes Mercado Livre, Amazon, Magalu, Casas Bahia, Leroy/Mirakl, Shopee, MadeiraMadeira, ANYMARKET, Magis5 and Bling. These are evidence, not target provider abstractions.
 
-Any additional codebase measurement is performed when a D-stage decision requires it.
+Any additional codebase/provider measurement is performed when a D-stage decision requires it.
 
 ## 10. Exact next action
 
-**Continue D0 with the operator: D0.7 Product completeness / contradiction review — fulfillment execution prerequisites and provider-required handoff artifacts/data.**
+**Continue D0 with the operator: D0.7 Product completeness / contradiction review — time-bound marketplace obligations / operational deadlines.**
 
-Accepted D0.1–D0.6 plus D0.7a–D0.7f are recorded in `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`.
+Accepted D0.1–D0.6 plus D0.7a–D0.7g are recorded in `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`.
 
-The accepted ERP-agnostic semantics include `Selling Entity`, `Inventory Source / Inventory Scope`, MPC-owned availability-allocation policy, `Fulfillment Node / Fulfillment Scope`, `Cost Observation / Cost Basis`, `Business Order Intent` and `Invoicing Intent`. Native ERP identifiers, TOPs, document types, cost variants and provider-specific mechanics remain semantic-integration evidence/configuration rather than canonical MPC concepts unless an independent business need proves otherwise.
+The accepted D0 semantics include `Selling Entity`, `Inventory Source / Inventory Scope`, MPC-owned availability-allocation policy, `Fulfillment Node / Fulfillment Scope`, `Cost Observation / Cost Basis`, `Business Order Intent`, `Invoicing Intent`, the Economic Evidence Chain, and D0.7g's context-sensitive provider capability / `Provider Requirement Closure` rule.
 
-D0.7f adds the **Economic Evidence Chain**:
+D0.7g establishes that marketplace brand alone does not determine capability/authority. For each supported operating flow claimed as MPC-controlled, MPC must identify enough provider context to know its obligations and must surface/satisfy/orchestrate required provider data, artifacts, acknowledgements and readiness without hidden routine provider-UI hopping. Native provider artifacts/states remain provider-native rather than becoming universal MPC concepts.
 
-```text
-Simulation / Expected Economics
-  → Order Economics
-  → Marketplace / payment-account Settlement
-  → Bank Cash Receipt evidence, when available
-```
+The product direction is MPC-owned direct marketplace provider integration boundaries for marketplaces it supports. ANYMARKET, Magis5 and similar hubs remain benchmark/competitive evidence, not Product 1.0 runtime dependencies; no intermediary compatibility layer is authorized without future independent business evidence. Shared provider technology such as Mirakl may later justify technical reuse without changing business marketplace identity.
 
-The layers remain distinct/provenanced. Simulation-to-order variance is classified before becoming a simulator-calibration defect; marketplace settlement is not bank receipt; payout/cash matching is not assumed one-order-to-one-bank-transaction; unattributable movements remain unresolved rather than being fabricated. This closes marketplace economic lineage without expanding MPC into company-wide accounting/treasury.
-
-The next contradiction is the normal-path rule: Product 1.0 claims fulfillment/dispatch can be operated through MPC, so D0 must decide whether marketplace/provider-required artifacts and handoffs needed for that controlled flow — labels, required fiscal/billing data, invoice handoff, dispatch documents or equivalent prerequisites — must be surfaced/orchestrated inside MPC rather than requiring routine provider-UI hopping. Provider-specific endpoints/formats/printers remain later-stage concerns.
+The next product gap is time: an operations control plane can still fail operationally if it knows **what** must be done but does not make materially time-bound obligations visible/actionable. D0 must decide whether provider/business deadlines that affect order, invoicing, dispatch, delivery or post-sale lifecycle belong to MPC attention semantics. Exact timers, scheduler jobs, fields, notifications and escalation mechanics belong to D4/D6/D7.
 
 Nothing else is authorized. In particular: do not start product implementation, do not begin D1–D9 before D0 is accepted, and do not reopen documentary cleanup.
 
@@ -228,7 +221,7 @@ A fresh session should be able to read `AGENTS.md`, this file and the current D0
 
 - documentary/governance cleanup is DONE;
 - D0 Product / System Definition is OPEN and not yet accepted as a whole;
-- D0.1–D0.6 and D0.7a–D0.7f are operator-approved;
+- D0.1–D0.6 and D0.7a–D0.7g are operator-approved;
 - Product 1.0 is Marketplace Operations + Commercial Intelligence (A+), not an ERP/marketplace/accounting replacement;
 - shipment/delivery and essential cancellation/return/refund/fiscal consequences remain inside the controlled marketplace-sale lifecycle;
 - marketplace availability is derived from explicit eligible inventory + rules + MPC policy; known policy-valid sync is automatic and unknown is not zero;
@@ -238,13 +231,12 @@ A fresh session should be able to read `AGENTS.md`, this file and the current D0
 - ERP-native company/location/order/invoicing/cost constructs remain behind semantic integration boundaries unless independent business semantics justify otherwise;
 - ambiguous order/invoicing writes are not blindly retried;
 - the Economic Evidence Chain is `Simulation → Order Economics → Marketplace Settlement → Cash Receipt evidence where available`;
-- simulation variance is classified before creating simulator-calibration work;
-- marketplace/payment settlement and bank receipt are distinct evidence authorities;
-- payouts are not assumed 1:1 with orders and unattributable financial movement is never invented;
-- the economic chain is marketplace-scoped and does not make MPC general finance/accounting/treasury;
-- Product 1.0 normal-path responsibilities must be executable through MPC rather than hidden routine external-system hopping;
+- simulation variance is classified before creating simulator-calibration work; payouts are not assumed 1:1 with orders;
+- provider capabilities/authorities are context-sensitive, and claimed MPC-controlled fulfillment paths must close provider-required prerequisites/data/artifacts/readiness;
+- native provider artifacts/states do not become universal MPC domain types merely by analogy;
+- ANYMARKET, Magis5 and similar hubs are benchmark/competitive evidence, not Product 1.0 runtime dependencies; direct MPC-owned provider boundaries are the current target direction;
 - historical code/docs remain evidence, not target authority;
 - implementation remains blocked until D9;
-- the exact next work is **D0.7 Product completeness review — fulfillment execution prerequisites and provider-required handoff artifacts/data**.
+- the exact next work is **D0.7 Product completeness review — time-bound marketplace obligations / operational deadlines**.
 
 If it cannot, the current authority path is incomplete or contradictory.
