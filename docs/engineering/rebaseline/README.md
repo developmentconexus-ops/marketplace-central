@@ -201,9 +201,9 @@ Any additional codebase measurement is performed when a D-stage decision require
 
 **Continue D0 with the operator: D0.7e — define ERP-independent Fulfillment Location / Fulfillment Scope semantics needed by MPC.**
 
-Accepted D0.1–D0.6 decisions plus D0.7a essential post-sale, D0.7b shipment/delivery lifecycle, D0.7c automatic marketplace availability control, D0.7d `Organization 1 → N Marketplace Installations`, D0.7e's ERP-agnostic semantic-translation principle, D0.7e.1 `Selling Entity`, and D0.7e.2 `Inventory Source / Inventory Scope` are recorded in `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`.
+Accepted D0.1–D0.6 decisions plus D0.7a essential post-sale, D0.7b shipment/delivery lifecycle, D0.7c automatic marketplace availability control, D0.7d `Organization 1 → N Marketplace Installations`, D0.7e's ERP-agnostic semantic-translation principle, D0.7e.1 `Selling Entity`, D0.7e.2 `Inventory Source / Inventory Scope`, and D0.7e.2a availability-allocation policy requirement are recorded in `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`.
 
-`Inventory Source` is the MPC concept for a business-recognized inventory source/pool whose authoritative facts may be eligible for marketplace availability. `Inventory Scope` explicitly governs which sources may contribute to an offer; Sellable Availability is derived from eligible sources plus authoritative facts/rules rather than copied from an ERP stock field. Inventory Source is not implicitly Selling Entity or Fulfillment Location.
+`Inventory Source` is the MPC concept for a business-recognized inventory source/pool whose authoritative facts may be eligible for marketplace availability. `Inventory Scope` explicitly governs which sources may contribute to an offer. An MPC-owned availability-allocation policy may intentionally expose less than the full eligible stock — for example `70%` — without changing the authoritative stock fact. Exact policy types, scope hierarchy and arithmetic remain deliberately deferred to later stages rather than being forgotten or hardcoded now.
 
 D0.7e continues to prohibit designing the MPC canonical domain by copying Sankhya-native constructs such as `CODEMP`, `CODLOC`, cost variants or other ERP-specific structures. First define the business semantic MPC needs; later D2/D4 map Sankhya or another ERP into that semantic.
 
@@ -217,15 +217,16 @@ A fresh session should be able to read `AGENTS.md`, this file and the current D0
 
 - documentary/governance cleanup is DONE;
 - D0 Product / System Definition is OPEN and not yet accepted as a whole;
-- D0.1–D0.6 and D0.7a–D0.7e.2 recorded in the D0 artifact are operator-approved decisions/principles;
+- D0.1–D0.6 and D0.7a–D0.7e.2a recorded in the D0 artifact are operator-approved decisions/principles/requirements;
 - essential cancellation/return/refund operations remain inside the controlled sale lifecycle without expanding Product 1.0 into general CRM/SAC;
 - shipment/delivery remains visible through a terminal outcome without turning MPC into a TMS;
-- marketplace availability is automatically maintained from governing authoritative stock/rules when sufficiently known; uncertainty/failure becomes explicit work and MPC does not become physical-stock authority;
+- marketplace availability is automatically maintained from governing authoritative stock/rules/policies when sufficiently known; uncertainty/failure becomes explicit work and MPC does not become physical-stock authority;
 - one MPC organization may control one or more marketplace installations, even if the first deployment uses one Mercado Livre seller account; organization identity is not marketplace-account identity;
 - canonical MPC business semantics come from marketplace-operating needs, not from Sankhya/another ERP ontology;
 - ERP integration is semantic translation; unsupported/incomplete mappings become explicit rather than guessed equivalence;
 - `Selling Entity` is the canonical MPC concept for the acting business/legal/fiscal entity when material, independent from ERP-native company identifiers and from inventory/fulfillment/cost dimensions unless explicit business rules relate them;
 - `Inventory Source` and `Inventory Scope` are canonical MPC inventory semantics; stock outside the governing scope does not contribute to Sellable Availability merely because it exists;
+- MPC-owned availability-allocation policy may intentionally reserve/expose only part of eligible stock, including percentage-style use cases such as `70%`; exact policy catalog/scopes/arithmetic remain for later adjudication;
 - MPC owns the marketplace operating model while external systems retain authority for facts/processes that inherently belong to them;
 - rules/policies may be MPC-owned, externally governed or derived; MPC must preserve that provenance rather than silently duplicating authority;
 - Product 1.0 requires its claimed normal operational path to be executable through MPC rather than relying on hidden routine manual system hopping;
