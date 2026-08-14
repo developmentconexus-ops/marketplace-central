@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -44,7 +43,7 @@ var contractFetchedAt = func() time.Time {
 }()
 
 func TestXLSXReaderSubstitutabilityContract(t *testing.T) {
-	fixtures := contractFixturesDir(t)
+	fixtures := t.TempDir()
 	writeContractFixtures(t, fixtures)
 
 	exampleData, err := os.ReadFile(filepath.Join(fixtures, "example-erp.xlsx"))
@@ -570,25 +569,10 @@ func acceptedRowByID(rows []erpdomain.NormalizedRow, id string) *erpdomain.Norma
 	return nil
 }
 
-func contractFixturesDir(t *testing.T) string {
-	t.Helper()
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
-	dir := filepath.Dir(file)
-	for {
-		if _, err := os.Stat(filepath.Join(dir, ".mnfs")); err == nil {
-			return filepath.Join(dir, ".mnfs", "MIS-004-mvp-demo", "M-01-erp-xlsx-identity", "fixtures")
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			t.Fatal("could not locate repository .mnfs directory")
-		}
-		dir = parent
-	}
-}
-
+// writeContractFixtures synthesizes both workbooks the contract reads. Every byte is
+// generated here, so the fixtures are test output rather than repository data and belong
+// in a per-run temp dir — writing them into the tree left untracked files behind and, when
+// the anchor directory they used was retired, failed the test outright.
 func writeContractFixtures(t *testing.T, dir string) {
 	t.Helper()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
