@@ -66,7 +66,7 @@ Worked example, now discharged: `apps/server_core/cmd/mlprobe` referenced retire
 The documentary cleanup was DONE only when all of the following held. Each row records the criterion and the evidence that closed it, so a later session can re-check the claim instead of trusting it.
 
 | # | Criterion | Discharged by |
-|---|---|---|
+|---|---|
 | 1 | no retired document competes as architecture/program authority | the retired trees (`.mnfs/`, `docs/superpowers/`, `docs/design/`, `docs/HARNESS-PROFILE.md`, `docs/engineering/repo-audit-2026-08-07/`) are deleted from the repository; `docs/README.md` carries the removal record. A checkout that predates the removal can still hold gitignored leftovers under those paths on disk — they are untracked local residue, never authority, and `git ls-files` is the check that settles it |
 | 2 | no active governance registry points to deleted authority as current authority | governance exceptions carry `re_adjudicate_in: D<N>` instead of milestone/feature `removal_owner`; `scripts/tests/governance-contracts.tests.ps1` asserts that field and fails if either side is absent |
 | 3 | gates/workflows/scripts do not depend conceptually on retired documentary authority | every `HARNESS-PROFILE` / `GATE-TOPOLOGY` / `docs/superpowers` citation in `scripts/`, `.github/`, `eslint.config.mjs`, `.golangci.yml`, `vitest.config.ts`, `contracts/gate/baselines.json` and `deploy/` was replaced by the rule itself or retargeted to the owning D-stage |
@@ -199,17 +199,28 @@ Any additional codebase measurement is performed when a D-stage decision require
 
 ## 10. Exact next action
 
-**Continue D0 with the operator: D0.7 Product completeness / contradiction review — decide marketplace financial settlement / payout reconciliation.**
+**Continue D0 with the operator: D0.7 Product completeness / contradiction review — fulfillment execution prerequisites and provider-required handoff artifacts/data.**
 
-Accepted D0.1–D0.6 decisions plus D0.7a–D0.7d and the ERP-agnostic semantic pass D0.7e.1–D0.7e.6 are recorded in `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`.
+Accepted D0.1–D0.6 plus D0.7a–D0.7f are recorded in `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`.
 
-The ERP-agnostic pass now includes `Selling Entity`, `Inventory Source / Inventory Scope`, MPC-owned availability-allocation policy, `Fulfillment Node / Fulfillment Scope`, `Cost Observation / Cost Basis`, `Business Order Intent` and `Invoicing Intent`. ERP-native identifiers, TOPs, order/fiscal document types and cost variants remain semantic-integration evidence/configuration rather than canonical MPC concepts unless an independent business need proves otherwise.
+The accepted ERP-agnostic semantics include `Selling Entity`, `Inventory Source / Inventory Scope`, MPC-owned availability-allocation policy, `Fulfillment Node / Fulfillment Scope`, `Cost Observation / Cost Basis`, `Business Order Intent` and `Invoicing Intent`. Native ERP identifiers, TOPs, document types, cost variants and provider-specific mechanics remain semantic-integration evidence/configuration rather than canonical MPC concepts unless an independent business need proves otherwise.
 
-`Invoicing Intent` is readiness-gated: order existence alone is not readiness, unknown prerequisites cannot silently become ready, the native fiscal result remains externally authoritative, and ambiguous invoicing outcomes are not blindly retried. No separate canonical `Fiscal Scope` is currently justified.
+D0.7f adds the **Economic Evidence Chain**:
 
-Nothing else is authorized. In particular: do not start product implementation, do not begin D1–D9 before D0 is accepted, and do not reopen the documentary cleanup.
+```text
+Simulation / Expected Economics
+  → Order Economics
+  → Marketplace / payment-account Settlement
+  → Bank Cash Receipt evidence, when available
+```
 
-D0 remains open until its product/system definition is complete, internally coherent, adversarially reviewed with the operator, and explicitly accepted as a whole.
+The layers remain distinct/provenanced. Simulation-to-order variance is classified before becoming a simulator-calibration defect; marketplace settlement is not bank receipt; payout/cash matching is not assumed one-order-to-one-bank-transaction; unattributable movements remain unresolved rather than being fabricated. This closes marketplace economic lineage without expanding MPC into company-wide accounting/treasury.
+
+The next contradiction is the normal-path rule: Product 1.0 claims fulfillment/dispatch can be operated through MPC, so D0 must decide whether marketplace/provider-required artifacts and handoffs needed for that controlled flow — labels, required fiscal/billing data, invoice handoff, dispatch documents or equivalent prerequisites — must be surfaced/orchestrated inside MPC rather than requiring routine provider-UI hopping. Provider-specific endpoints/formats/printers remain later-stage concerns.
+
+Nothing else is authorized. In particular: do not start product implementation, do not begin D1–D9 before D0 is accepted, and do not reopen documentary cleanup.
+
+D0 remains open until its product/system definition is complete, internally coherent, adversarially reviewed with the operator and explicitly accepted as a whole.
 
 ## 11. Fresh-session success test
 
@@ -217,23 +228,23 @@ A fresh session should be able to read `AGENTS.md`, this file and the current D0
 
 - documentary/governance cleanup is DONE;
 - D0 Product / System Definition is OPEN and not yet accepted as a whole;
-- D0.1–D0.6 and D0.7a–D0.7e.6 recorded in the D0 artifact are operator-approved decisions/principles/requirements;
-- essential cancellation/return/refund and material fiscal consequences remain inside the controlled sale lifecycle without expanding Product 1.0 into general CRM/SAC;
-- shipment/delivery remains visible through a terminal outcome without turning MPC into a TMS;
-- marketplace availability is automatically maintained from governing authoritative stock/rules/policies when sufficiently known; uncertainty/failure becomes explicit work and MPC does not become physical-stock authority;
-- one MPC organization may control one or more marketplace installations, even if the first deployment uses one Mercado Livre seller account; organization identity is not marketplace-account identity;
-- canonical MPC business semantics come from marketplace-operating needs, not from Sankhya/another ERP ontology;
-- ERP integration is semantic translation; unsupported/incomplete mappings become explicit rather than guessed equivalence;
-- `Selling Entity`, `Inventory Source / Inventory Scope`, `Fulfillment Node / Fulfillment Scope`, `Cost Observation / Cost Basis`, `Business Order Intent` and `Invoicing Intent` have the meanings recorded in the D0 artifact and remain distinct unless explicit accepted business semantics relate them;
-- MPC-owned availability-allocation policy may intentionally reserve/expose only part of eligible stock, including percentage-style use cases such as `70%`; exact policy catalog/scopes/arithmetic remain for later adjudication;
-- ERP-native order/invoicing types, TOPs, company/location identifiers and cost variants remain behind the semantic integration boundary rather than becoming canonical MPC defaults;
-- ambiguous order or invoicing materialization cannot be blindly retried or silently treated as failure/success;
-- historical/realized economics must not silently use current cost as a substitute, and cost remains distinct from marketplace fees, freight, taxes and other economic components;
-- MPC owns the marketplace operating model while external systems retain authority for facts/processes that inherently belong to them;
-- rules/policies may be MPC-owned, externally governed or derived; MPC must preserve that provenance rather than silently duplicating authority;
-- Product 1.0 requires its claimed normal operational path to be executable through MPC rather than relying on hidden routine manual system hopping;
-- historical code/docs are evidence, not target authority;
-- implementation remains blocked until D9 is accepted;
-- the exact next work is **D0.7 Product completeness review — marketplace financial settlement / payout reconciliation**.
+- D0.1–D0.6 and D0.7a–D0.7f are operator-approved;
+- Product 1.0 is Marketplace Operations + Commercial Intelligence (A+), not an ERP/marketplace/accounting replacement;
+- shipment/delivery and essential cancellation/return/refund/fiscal consequences remain inside the controlled marketplace-sale lifecycle;
+- marketplace availability is derived from explicit eligible inventory + rules + MPC policy; known policy-valid sync is automatic and unknown is not zero;
+- one MPC organization may control multiple Marketplace Installations and Selling Entities without identity collapse;
+- canonical MPC semantics come from marketplace-operating needs before ERP/provider mapping;
+- `Selling Entity`, `Inventory Source / Inventory Scope`, `Fulfillment Node / Fulfillment Scope`, `Cost Observation / Cost Basis`, `Business Order Intent` and `Invoicing Intent` remain distinct according to the D0 artifact;
+- ERP-native company/location/order/invoicing/cost constructs remain behind semantic integration boundaries unless independent business semantics justify otherwise;
+- ambiguous order/invoicing writes are not blindly retried;
+- the Economic Evidence Chain is `Simulation → Order Economics → Marketplace Settlement → Cash Receipt evidence where available`;
+- simulation variance is classified before creating simulator-calibration work;
+- marketplace/payment settlement and bank receipt are distinct evidence authorities;
+- payouts are not assumed 1:1 with orders and unattributable financial movement is never invented;
+- the economic chain is marketplace-scoped and does not make MPC general finance/accounting/treasury;
+- Product 1.0 normal-path responsibilities must be executable through MPC rather than hidden routine external-system hopping;
+- historical code/docs remain evidence, not target authority;
+- implementation remains blocked until D9;
+- the exact next work is **D0.7 Product completeness review — fulfillment execution prerequisites and provider-required handoff artifacts/data**.
 
 If it cannot, the current authority path is incomplete or contradictory.
