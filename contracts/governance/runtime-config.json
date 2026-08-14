@@ -45,12 +45,7 @@
           "kind": "typed",
           "status": "approved"
         },
-        { "path": "scripts/lib/dev-local-runtime.ps1", "kind": "edge", "status": "approved" },
-        {
-          "path": "docs/research/probes/run_ml_official_durable_price_probe.ps1",
-          "kind": "edge",
-          "status": "approved"
-        }
+        { "path": "scripts/lib/dev-local-runtime.ps1", "kind": "edge", "status": "approved" }
       ]
     },
     {
@@ -486,12 +481,7 @@
           "status": "temporary_exception",
           "exception_id": "direct-reader-ml-client-id"
         },
-        { "path": "scripts/harness/Environment.psm1", "kind": "registry", "status": "approved" },
-        {
-          "path": "docs/research/probes/ml_official_durable_price_probe_test.go",
-          "kind": "test",
-          "status": "approved"
-        }
+        { "path": "scripts/harness/Environment.psm1", "kind": "registry", "status": "approved" }
       ]
     },
     {
@@ -507,12 +497,7 @@
           "status": "temporary_exception",
           "exception_id": "direct-reader-ml-client-secret"
         },
-        { "path": "scripts/harness/Environment.psm1", "kind": "registry", "status": "approved" },
-        {
-          "path": "docs/research/probes/ml_official_durable_price_probe_test.go",
-          "kind": "test",
-          "status": "approved"
-        }
+        { "path": "scripts/harness/Environment.psm1", "kind": "registry", "status": "approved" }
       ]
     },
     {
@@ -960,8 +945,8 @@
       "rule_id": "runtime-direct-reader",
       "key": "MPC_ORACLE_LIVE_TEST",
       "path": "apps/server_core/internal/modules/internal_read/adapters/oracle/reader_live_test.go",
-      "reason": "Oracle live test currently reads its execution gate directly; F-04 owns the executable live gate and evidence boundary.",
-      "removal_owner": "M-08/F-04"
+      "reason": "Oracle live test currently reads its execution gate directly; target handling is not decided by this cleanup.",
+      "re_adjudicate_in": "D7"
     },
     {
       "id": "direct-reader-ml-client-id",
@@ -969,7 +954,7 @@
       "key": "MPC_PROVIDER_MERCADOLIVRE_CLIENT_ID",
       "path": "apps/server_core/internal/modules/integrations/adapters/mercadolivre/auth_adapter.go",
       "reason": "Mercado Livre adapter currently reads provider configuration directly.",
-      "removal_owner": "M-10"
+      "re_adjudicate_in": "D4"
     },
     {
       "id": "direct-reader-ml-client-secret",
@@ -977,7 +962,7 @@
       "key": "MPC_PROVIDER_MERCADOLIVRE_CLIENT_SECRET",
       "path": "apps/server_core/internal/modules/integrations/adapters/mercadolivre/auth_adapter.go",
       "reason": "Mercado Livre adapter currently reads provider configuration directly.",
-      "removal_owner": "M-10"
+      "re_adjudicate_in": "D4"
     },
     {
       "id": "direct-reader-magalu-client-id",
@@ -985,7 +970,7 @@
       "key": "MPC_PROVIDER_MAGALU_CLIENT_ID",
       "path": "apps/server_core/internal/modules/integrations/adapters/magalu/auth_adapter.go",
       "reason": "Magalu adapter currently reads provider configuration directly.",
-      "removal_owner": "M-10"
+      "re_adjudicate_in": "D4"
     },
     {
       "id": "direct-reader-magalu-client-secret",
@@ -993,7 +978,7 @@
       "key": "MPC_PROVIDER_MAGALU_CLIENT_SECRET",
       "path": "apps/server_core/internal/modules/integrations/adapters/magalu/auth_adapter.go",
       "reason": "Magalu adapter currently reads provider configuration directly.",
-      "removal_owner": "M-10"
+      "re_adjudicate_in": "D4"
     },
     {
       "id": "direct-reader-amazon-application-id",
@@ -1001,7 +986,7 @@
       "key": "MPC_PROVIDER_AMAZON_APPLICATION_ID",
       "path": "apps/server_core/internal/modules/integrations/adapters/amazon/auth_adapter.go",
       "reason": "Amazon adapter currently reads provider configuration directly.",
-      "removal_owner": "M-10"
+      "re_adjudicate_in": "D4"
     },
     {
       "id": "direct-reader-amazon-client-id",
@@ -1009,7 +994,7 @@
       "key": "MPC_PROVIDER_AMAZON_CLIENT_ID",
       "path": "apps/server_core/internal/modules/integrations/adapters/amazon/auth_adapter.go",
       "reason": "Amazon adapter currently reads provider configuration directly.",
-      "removal_owner": "M-10"
+      "re_adjudicate_in": "D4"
     },
     {
       "id": "direct-reader-amazon-client-secret",
@@ -1017,7 +1002,7 @@
       "key": "MPC_PROVIDER_AMAZON_CLIENT_SECRET",
       "path": "apps/server_core/internal/modules/integrations/adapters/amazon/auth_adapter.go",
       "reason": "Amazon adapter currently reads provider configuration directly.",
-      "removal_owner": "M-10"
+      "re_adjudicate_in": "D4"
     },
     {
       "id": "direct-reader-amazon-auth-version",
@@ -1025,7 +1010,7 @@
       "key": "MPC_PROVIDER_AMAZON_AUTH_VERSION",
       "path": "apps/server_core/internal/modules/integrations/adapters/amazon/auth_adapter.go",
       "reason": "Amazon adapter currently reads provider configuration directly.",
-      "removal_owner": "M-10"
+      "re_adjudicate_in": "D4"
     },
     {
       "id": "direct-reader-shopee-partner-id",
@@ -1033,7 +1018,7 @@
       "key": "MPC_PROVIDER_SHOPEE_PARTNER_ID",
       "path": "apps/server_core/internal/modules/integrations/adapters/shopee/auth_adapter.go",
       "reason": "Shopee adapter currently reads provider configuration directly.",
-      "removal_owner": "M-10"
+      "re_adjudicate_in": "D4"
     },
     {
       "id": "direct-reader-shopee-partner-key",
@@ -1041,7 +1026,7 @@
       "key": "MPC_PROVIDER_SHOPEE_PARTNER_KEY",
       "path": "apps/server_core/internal/modules/integrations/adapters/shopee/auth_adapter.go",
       "reason": "Shopee adapter currently reads provider configuration directly.",
-      "removal_owner": "M-10"
+      "re_adjudicate_in": "D4"
     },
     {
       "id": "direct-reader-shopee-base-url",
@@ -1049,7 +1034,7 @@
       "key": "MPC_PROVIDER_SHOPEE_BASE_URL",
       "path": "apps/server_core/internal/modules/integrations/adapters/shopee/auth_adapter.go",
       "reason": "Shopee adapter currently reads provider configuration directly.",
-      "removal_owner": "M-10"
+      "re_adjudicate_in": "D4"
     },
     {
       "id": "direct-reader-oauth-redirect",
@@ -1057,7 +1042,7 @@
       "key": "MPC_OAUTH_REDIRECT_URI",
       "path": "apps/server_core/internal/modules/integrations/transport/auth_handler.go",
       "reason": "OAuth transport currently reads redirect configuration directly.",
-      "removal_owner": "M-10"
+      "re_adjudicate_in": "D4"
     },
     {
       "id": "direct-reader-web-origin",
@@ -1065,7 +1050,7 @@
       "key": "MPC_WEB_ORIGIN",
       "path": "apps/server_core/internal/modules/integrations/transport/auth_handler.go",
       "reason": "OAuth transport currently reads web-origin configuration directly.",
-      "removal_owner": "M-10"
+      "re_adjudicate_in": "D4"
     },
     {
       "id": "direct-reader-me-client-id",
@@ -1073,7 +1058,7 @@
       "key": "ME_CLIENT_ID",
       "path": "apps/server_core/internal/modules/connectors/adapters/melhorenvio/oauth.go",
       "reason": "Melhor Envio adapter currently reads provider configuration directly.",
-      "removal_owner": "M-10"
+      "re_adjudicate_in": "D4"
     },
     {
       "id": "direct-reader-me-client-secret",
@@ -1081,7 +1066,7 @@
       "key": "ME_CLIENT_SECRET",
       "path": "apps/server_core/internal/modules/connectors/adapters/melhorenvio/oauth.go",
       "reason": "Melhor Envio adapter currently reads provider configuration directly.",
-      "removal_owner": "M-10"
+      "re_adjudicate_in": "D4"
     },
     {
       "id": "direct-reader-me-redirect",
@@ -1089,7 +1074,7 @@
       "key": "ME_REDIRECT_URI",
       "path": "apps/server_core/internal/modules/connectors/adapters/melhorenvio/oauth.go",
       "reason": "Melhor Envio adapter currently reads provider configuration directly.",
-      "removal_owner": "M-10"
+      "re_adjudicate_in": "D4"
     }
   ]
 }
