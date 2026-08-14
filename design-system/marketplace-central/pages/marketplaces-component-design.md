@@ -1,7 +1,8 @@
 # Marketplaces Page — Component Design Guide
 
 > Implementation-ready design. Every Tailwind class, CSS value, and interaction is specified.
-> Source of truth: spec at `docs/superpowers/specs/2026-04-09-marketplaces-redesign-design.md`
+> Status: historical design record. The spec it was written against has been retired with the
+> rest of the pre-rebaseline documentary tree; frontend topology is decided at D6 (ADR-035).
 > Design system: `design-system/marketplace-central/MASTER.md`
 
 ---

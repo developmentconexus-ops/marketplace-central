@@ -1,289 +1,133 @@
 # Marketplace Central Architecture
 
-## Status
+> **Status:** stable product-level constraints during Architecture Rebaseline  
+> **Detailed target architecture:** intentionally under D0–D9 design; see `docs/engineering/rebaseline/README.md`  
+> **Last updated:** 2026-08-13
 
-This architecture is approved as the official foundation of the repository. Frozen decisions below must not be rediscussed without an explicit ADR.
+## Purpose
 
-Accepted architecture decisions are indexed in [`docs/architecture/decisions/`](docs/architecture/decisions/README.md).
+This file contains only architecture constraints that remain stable while the detailed system is re-adjudicated.
 
-## Reference baseline
+It is deliberately **not** a catalog of current modules, tables, routes, frontend packages or processes. Those are current-state evidence in D0 and target-design questions in D1–D9.
 
-This repository mirrors the structural discipline of MetalShopping Final and adopts the operating rigor proven in MetalDocs:
+A new structural decision becomes durable only after the relevant D-stage is accepted and, when appropriate, an ADR records it.
 
-- GitHub: https://github.com/leandrotcawork/MetalShopping_Final
-- The engineering bar, module pattern, and platform conventions are inherited from MetalShopping
-- Runtime truth, contract truth, wiki truth, and verification truth must stay aligned
-- Architecture contradictions stop local feature work until classified and resolved
+## Product North Star
 
-## North Star
+Marketplace Central is an internal operations and intelligence system for marketplace commerce, initially Mercado Livre, backed by real Sankhya/Oracle operational facts.
 
-Marketplace Central is an internal Mercado Livre operations and intelligence cockpit:
+It must support trustworthy flows for:
 
-- Independent monorepo, architecturally compatible with future MetalShopping integration
-- Server-first: all business logic lives in Go
-- Modular monolith core with explicit module boundaries
-- PostgreSQL as the only canonical state
-- Thin web client consuming SDK-generated methods
-- Oracle-backed ERP data is the internal source of truth for products, stock, price, cost, taxes, and sales history
-- Mercado Livre is the first operational marketplace control plane for listings, stock, price, orders, fees, and questions
-- MPC handles intelligence and guardrails: stock reconciliation, price simulation, order profitability, alerts, and action audit
+- internal product identity and source observations;
+- marketplace listings/variations and channel observations;
+- product↔listing linkage with explicit evidence;
+- stock/cost/tax/price semantics;
+- safe external actions with preview/policy/audit/reconciliation;
+- marketplace orders and realized profitability;
+- operational views whose freshness/completeness is honest.
 
-## Frozen decisions
+## Stable platform constraints
 
-1. Independent monorepo — merge into MetalShopping is a future module migration, not a rewrite
-2. Go `apps/server_core` is the canonical backend
-3. `apps/web` is a thin React client — no business logic
-4. PostgreSQL is the only canonical persistence — no SQLite, no localStorage as source of truth
-5. Single-tenant operation, but every business table carries `tenant_id` (tenant-ready by design)
-6. Stable API routes without `/v1` prefix in URLs — versioning is in the OpenAPI document
-7. External marketplace integrations enter through `adapters/marketplace/<vendor>`, implementing ports owned by the consuming context — see [ADR-033](docs/architecture/decisions/033-integracoes-entram-por-adapters.md). `connectors` (`apps/server_core/internal/modules/connectors/`) continues to serve Mercado Livre during the migration and receives no new marketplace code.
-8. Mercado Livre is the first operational control plane; VTEX is legacy and must not receive new feature work
-9. Scheduler-based polling is acceptable initially; webhook/notification support may be added where Mercado Livre provides reliable event topics
-10. Frontend consumes only `packages/sdk-runtime` — never calls backend directly
-11. Global-maximum design beats local patches: do not extend legacy VTEX abstractions to solve Mercado Livre problems
-12. Internal ERP reads happen through MPC-owned ports implemented by Oracle adapters inside `apps/server_core`; no legacy `MS_DATABASE_URL` read path remains in the target architecture
+1. **Independent monorepo.** Marketplace Central remains its own repository/application. Future integration into a broader product does not justify coupling current domain boundaries to another repository.
+2. **Go backend is canonical business execution.** `apps/server_core` is the server-side application. Business policy is not duplicated in React.
+3. **React frontend is a client, not a second domain authority.** Server state is managed through TanStack Query (ADR-021) unless a material finding explicitly reopens that decision.
+4. **PostgreSQL stores MPC-owned canonical state.** External systems are sources/dependencies, not alternate writable application stores.
+5. **Sankhya/Oracle is external to MPC.** Oracle reads are behind MPC-owned adapter boundaries (ADR-006); the current canonical driver/runtime is godror/OCI (ADR-007).
+6. **Mercado Livre first.** Other marketplace providers are deferred until the Mercado Livre operating loop is coherent and the adapter protocol is proven (ADR-005).
+7. **Marketplace provider boundary.** Provider integrations enter through `internal/adapters/marketplace/<vendor>` and implement ports owned by consuming business contexts (ADR-033). Provider wire DTO/protocol knowledge stays inside that vendor tree.
+8. **Honest absence.** Unknown facts do not become plausible zero/default values. `internal/kernel/fact` is an accepted primitive for uncertainty where semantically appropriate (ADR-034); D2 decides its correct scope rather than forcing it onto every value.
+9. **Exactness where the domain requires it.** Money/tax/cost/pricing values must not lose correctness through floating-point convenience. D2 decides the exact shared/domain representation.
+10. **Tenant-ready data isolation is a real invariant.** The exact tenant identity/runtime/RLS model is under D2/D7, but tenant isolation may not depend solely on developers remembering predicates.
+11. **External writes are controlled.** A provider write has explicit authority/policy, duplicate protection, auditability and reconciliation. An ambiguous outcome is not blindly retried (ADR-029).
+12. **Provider PII is minimized.** Raw external PII is not retained merely because a payload contains it (ADR-025).
+13. **Partial observations are honest.** Absence from a partial provider pull does not prove closure/deletion (ADR-027).
+14. **No compatibility tax without a consumer.** There are no production users requiring current route/schema/package compatibility; hard cutover is allowed under ADR-035.
+15. **Git history is history.** Active source/document trees do not keep `old/` copies or parallel legacy roadmaps.
 
-## Layout
+## Architecture Rebaseline authority
 
-```
-apps/
-  server_core/          # Go backend — canonical business logic
-    cmd/
-      server/           # HTTP server entrypoint
-      migrate/          # Migration runner
-    internal/
-      composition/      # Module registration and dependency injection
-      modules/
-        catalog/        # Product entities for pricing simulation
-        marketplaces/   # Marketplace accounts and pricing policies
-        pricing/        # Price simulation engine
-        messaging/      # [planned] Centralized customer messages from all marketplaces
-        orders/         # [implemented; M-06 milestone blocked] Order tracking with SLA monitoring
-        alerts/         # [planned] SLA guardrails and notifications
-        connectors/     # Marketplace API adapters (Mercado Livre first; legacy adapters inventoried before deletion)
-        integrations/   # Integration lifecycle (install/auth/credential/fee-sync operations)
-      platform/
-        config/         # Environment configuration
-        httpx/          # HTTP helpers (JSON writer, router)
-        logging/        # Structured logger
-        pgdb/           # PostgreSQL pool, tenant helpers
-    migrations/         # Sequential SQL migrations
-    tests/
-      unit/             # Unit tests with stub repositories
+ADR-035 governs detailed target-design authority during D0–D9.
 
-  web/                  # Thin React client (Vite + React Router)
-    src/
-      app/              # Route definitions
-      main.tsx          # Entry point
+The following are **not currently frozen target decisions** even if old code/ADRs once specified them:
 
-contracts/
-  api/                  # OpenAPI spec — source of truth for HTTP behavior
-  events/               # [reserved] Async event contracts
-  governance/           # [reserved] Runtime governance schemas
+- exact context/module set;
+- whether `costing`, `tax`, `profitability`, `intelligence`, `account`, `changecontrol` or other candidates are separate contexts;
+- exact database schemas/tables/FKs/migration strategy;
+- whether the database is migrated or reset to a clean baseline;
+- exact sync/event/projection graph;
+- exact scheduler/process/worker topology;
+- exact HTTP path namespace and operation set;
+- generated server/client technology choice;
+- frontend feature/package topology;
+- exact transaction/outbox implementation;
+- old `connectors`, `integrations`, `marketplaces`, `mutations`, `sync`, `internal_read`, `dashboard` or other legacy module responsibilities;
+- old manual SDK or proxy-table synchronization mechanisms.
 
-packages/
-  sdk-runtime/          # TypeScript client for web-to-core communication
-  ui/                   # Shared UI primitives (Button, SurfaceCard, etc.)
-  web-query/            # Shared web data-query layer
-  feature-classifications/ # Classifications workspace screens
-  feature-connectors/   # Connectors workspace screens
-  feature-inventory/    # Inventory workspace screens
-  feature-orders/       # Orders workspace screens
-  feature-products/     # Products workspace screens
-  feature-simulator/    # Pricing simulator page
+A future session must not infer target architecture from those existing artifacts before their D-stage is accepted.
 
-docs/
-  marketplaces/         # Per-marketplace API reference docs (ML, Magalu, Amazon, etc.)
-  IMPLEMENTATION_PLAN.md
+## Target reasoning shape
+
+The rebaseline is testing — not blindly accepting — a top-level shape with:
+
+```text
+apps/server_core/internal/
+  contexts/       business authorities
+  adapters/       external-system translations
+  kernel/         tiny shared value semantics only
+  platform/       technical runtime mechanisms without business policy
+  composition/    final assembly only
+  views/          rebuildable read projections when justified
 ```
 
-## Module responsibilities
+The exact context set and allowed edges are D1 outcomes. Current `internal/modules` and the two existing contexts are D0 evidence.
 
-### `catalog` (implemented — foundation)
+## Communication principles under evaluation
 
-Product entities used by pricing, product linking, and future Mercado Livre listing operations.
+D3 will make the full matrix, but these meanings are stable:
 
-Scope: product CRUD, SKU/EAN management, cost tracking.
+- **synchronous capability/query:** caller needs the answer to complete its current decision;
+- **event:** another component reacts to a fact that has already committed;
+- **projection/view:** multiple authorities are combined for reading without becoming a new business authority.
 
-### `marketplaces` (implemented — foundation)
+Cross-context SQL and importing another context’s private implementation are not accepted as unnamed communication mechanisms.
 
-Marketplace account configuration and pricing policies (commission, fixed fees, freight, SLA thresholds).
+## External-integration principles
 
-Scope: account registration, policy management, connection status tracking.
+D4 maps each Mercado Livre/Sankhya capability in detail. Until then:
 
-### `pricing` (implemented — foundation)
+- consumer context owns the port;
+- adapter owns provider/driver protocol;
+- provider DTOs/errors/auth/pagination stay at the provider boundary;
+- current provider/reference behavior must be verified against current official behavior when materially unstable;
+- live integration claims require real-dependency evidence, not only mocks.
 
-Price simulation engine. Calculates margin, commission impact, freight cost, and viability per product per marketplace.
+## API and frontend
 
-Scope: simulation execution, snapshot persistence, manual price overrides, margin alerts.
+The current OpenAPI/SDK/routes are **current runtime contract evidence**, not an obligation to preserve every operation.
 
-### `product_links` (active validated foundation — Mercado Livre first)
+D5 may delete/redesign legacy operations because there is no external-client compatibility requirement. It will also decide the generator/validation authority.
 
-Maps internal products/SKUs to Mercado Livre listing and variation identifiers.
+D6 maps every target screen to explicit API/query/mutation ownership and decides whether current `packages/feature-*` organization is worth retaining.
 
-Scope: link creation, confidence/state tracking, duplicate detection, audit trail.
+## Runtime and persistence
 
-### `internal_read` (active foundation — Oracle first)
+D7 decides serving/worker/scheduler/outbox/transaction topology. Do not preserve a dedicated executable or poller because it exists today.
 
-Owns MPC's read contracts and Oracle adapters for internal ERP facts.
+D2 classifies persistent state and decides the clean-baseline vs migration strategy. Historical migrations do not automatically define the target model.
 
-Scope: product, stock, price, cost, tax, and sales-history reads through MPC-owned ports and typed domain models.
+## Proof bar
 
-Rules:
-- Application/domain code depends on MPC-owned read contracts, never on Oracle SQL or driver types.
-- Oracle mapping and query semantics live only in `adapters/oracle`.
-- Missing or ambiguous source facts surface as explicit quality states, never silent zero/default values.
-- Read access is global-maximum and contract-first: no ad hoc SQL from downstream modules.
+A structural rule should, where reasonable, fail at the strongest available boundary:
 
-### `inventory` (active validated foundation — Mercado Livre first)
+- illegal private import → compile failure;
+- invalid value combination → type/constructor/schema failure;
+- foreign/unowned write → structurally unavailable or mechanically blocked;
+- contract drift → generation/validation red;
+- RLS bypass → boot/integration failure;
+- custom guard → negative fixture proves it fires.
 
-Compares internal ERP stock with Mercado Livre announced stock and proposes or applies safe stock actions.
+A green artifact that did not execute the relevant subject is no proof.
 
-Scope: stock snapshots, safety buffers, divergence detection, manual approval, action audit.
+## Current stage
 
-Reads from: internal stock views via ports.
-Writes to: Mercado Livre only through connector capabilities after policy checks.
-
-### `orders` (implemented — M-06 milestone blocked)
-
-Order monitoring and reconciliation for Mercado Livre. Tracks order lifecycle, items, fees, shipping, cancellation reasons, and internal product links.
-
-Scope: order polling/notifications, status tracking, cancellation analysis, dispatch guardrails.
-
-Reads from: Mercado Livre APIs via `connectors` adapters and internal product/cost providers.
-
-### `profitability` (implemented — M-06 milestone blocked)
-
-Calculates per-order and per-item contribution using Mercado Livre revenue/fees/freight and internal ERP cost/tax inputs.
-
-Scope: margin snapshots, manual cost adjustments, data quality flags, profitability alerts.
-
-### `messaging` (planned)
-
-Centralizes Mercado Livre questions/messages first. Multi-marketplace inbox is deferred until the Mercado Livre workflow is stable.
-
-Scope: message polling from marketplace APIs, unified thread view, reply dispatch, response time tracking.
-
-Read from: marketplace APIs via `connectors` adapters.
-Write to: marketplace APIs (reply only) via `connectors` adapters.
-
-### `alerts` (planned — phase 2)
-
-SLA guardrails and notification engine. Monitors messaging response times, order dispatch deadlines, and pricing thresholds.
-
-Scope: deadline calculation, alert generation, notification dispatch (initially in-app, future email/webhook).
-
-Reads from: `messaging` and `orders` modules for SLA data.
-
-### `connectors` (implemented foundation)
-
-Marketplace API adapters. Mercado Livre is the first target for live operations. Legacy VTEX surfaces are not part of the target architecture.
-Other marketplaces (Magalu, Amazon, Shopee, etc.) are future, capability-driven additions only after Mercado Livre operations are reliable.
-
-Scope: authentication management, API request/response mapping, rate limiting, error handling.
-
-Pattern: one adapter package per marketplace under `connectors/adapters/`. The module owns the port interfaces; adapters implement them.
-
-Current connector baseline: integrations framework, Mercado Livre OAuth, seeded fee baseline, and live listing/order read capabilities used by validated product-link, inventory, and M-06 evidence. No live provider stock mutation is claimed; stock writes remain policy-gated and were validated without executing a real mutation.
-
-### `integrations` (implemented foundation)
-
-Integration lifecycle module for provider definitions, installation records, auth flows,
-credential lifecycle, and fee-sync operation tracking.
-
-Scope: provider registry, installation draft/connection states, OAuth/API-key auth flow,
-credential rotation, operation runs, capability state transitions, and scheduled refresh/cleanup jobs.
-
-## Internal ERP Access
-
-Marketplace Central reads internal operational facts directly from Oracle through adapters inside `apps/server_core`.
-
-Design rules:
-
-- Oracle is an external dependency behind module-owned ports, not a second business store.
-- `internal_read` owns the read contracts used by `product_links`, `inventory`, `orders`, and `profitability`.
-- SQL/query knowledge stays inside Oracle adapters and helper packages owned by that boundary.
-- PostgreSQL stores only MPC-owned operational state, audit, projections, and snapshots.
-- Removing or changing an Oracle query shape must not force business-module rewrites; only adapter implementations should move.
-- `godror` with ODPI-C/Oracle Instant Client is the single canonical driver; no Python sidecar or dual-driver fallback is part of the runtime.
-- Oracle connections use explicit bounded pool, connect, bootstrap, session-lifetime, and call timeouts; raw credential-bearing driver errors are never exposed.
-- The governed live-Oracle lane is read-only, capability-reduced, time-bounded, and must terminate its process tree on timeout.
-
-## Platform packages
-
-Located in `apps/server_core/internal/platform/`:
-
-- `config/` — environment variable loading
-- `httpx/` — JSON response writer, router factory, middleware
-- `logging/` — structured logger
-- `pgdb/` — PostgreSQL pool creation, tenant context helpers
-
-These are shared infrastructure — not business logic. They mirror MetalShopping's `internal/platform/` structure.
-
-## Communication flow
-
-### Current (foundation)
-
-```
-web → sdk-runtime → server_core HTTP handlers → application services → postgres
-```
-
-### Target (phase 2+)
-
-```
-web → sdk-runtime → server_core HTTP handlers → application services → postgres
-                                                       ↓
-                                              scheduler jobs / webhooks
-                                                       ↓
-                                              connectors adapters → Mercado Livre APIs
-                                                       ↓
-                                              inventory/orders/profitability/messaging modules → postgres
-                                                       ↓
-                                              alerts module → notifications
-```
-
-### Rules
-
-- Web client never calls marketplace APIs directly
-- Connectors never own business state — they fetch and deliver to domain modules
-- Scheduler runs polling jobs at configured intervals; Mercado Livre notifications may later reduce polling where reliable
-- Synchronous HTTP requests from web never depend on connector availability
-
-## Database
-
-- Engine: PostgreSQL for MPC-owned state
-- All business tables carry `tenant_id` as part of the primary key or with NOT NULL constraint
-- Migrations are sequential files in `apps/server_core/migrations/`
-- Naming: `NNNN_description.sql`
-- No down migrations — forward-only
-
-## External Data Sources
-
-- Oracle ERP: source of truth for internal product, stock, price, cost, tax, and sales inputs, consumed through `internal_read` ports/adapters
-- Mercado Livre APIs: source of truth for marketplace listing, order, fee, and question state, consumed through `connectors` adapters
-
-Legacy note:
-- `MS_DATABASE_URL` and direct MetalShopping/Postgres internal-read assumptions are no longer part of the target architecture.
-
-## Future MetalShopping integration
-
-When the time comes to merge MPC into MetalShopping:
-
-1. Move `apps/server_core/internal/modules/*` into MetalShopping's module directory
-2. Register modules in MetalShopping's composition root
-3. Migrate database tables (add to MetalShopping's migration sequence)
-4. Move `packages/feature-*` into MetalShopping's frontend packages
-5. Point SDK methods to MetalShopping's API routes
-
-The merge should be a module migration, not a rewrite. This is why structure compatibility matters now.
-
-## Related documents
-
-- `AGENTS.md` — daily operational rules
-- `docs/architecture/decisions/README.md` — accepted architecture decisions
-- `.mnfs/MIS-001-mercado-livre-operating-cockpit/mission.md` — current execution truth
-- `IMPLEMENTATION_PLAN.md` — historical reconciliation only
-- `contracts/api/marketplace-central.openapi.yaml` — API source of truth
-- `docs/marketplaces/*.md` — per-marketplace API reference
-
-
+Read `docs/engineering/rebaseline/README.md` for the sole current status and exact next action.

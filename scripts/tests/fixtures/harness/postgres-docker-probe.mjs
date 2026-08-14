@@ -197,7 +197,7 @@ if (operation === "tests") {
   const count = Number.parseInt(process.env.HARNESS_POSTGRES_PROBE_TEST_COUNT ?? "2", 10);
   // Skips are their own shape: `=== RUN` is printed, then `--- SKIP` instead of
   // `--- PASS`. A suite where every test skipped still exits 0, which is the
-  // vacuous green HARNESS-PROFILE.md records as RUN 27 / PASS 1 / SKIP 26.
+  // vacuous green this repository measured as RUN 27 / PASS 1 / SKIP 26.
   const skipped = Number.parseInt(process.env.HARNESS_POSTGRES_PROBE_TEST_SKIPPED ?? "0", 10);
   for (let index = 1; index <= count; index += 1) {
     const verdict = index <= skipped ? "SKIP" : "PASS";

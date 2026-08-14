@@ -104,9 +104,11 @@ comment citing a decision number.
 - The citation count — 1.378, as harvested for ADR-017 on 2026-08-05 — is not
   re-harvested by this ADR; it is quoted as the historical figure that motivated moving
   enforcement into a type, not as a current live count.
-- `fact.Fact[T]`'s arithmetic (`Map`, `Combine2` in `internal/kernel/fact/combine.go`) is
-  addressed separately by the amendment to Regra 4.4 of
-  `docs/superpowers/specs/2026-08-06-protocolo-de-codigo-design.md`, not by this ADR.
+- `fact.Fact[T]`'s arithmetic (`Map`, `Combine2` in `internal/kernel/fact/combine.go`) is not
+  addressed by this ADR. The design spec that was going to carry it has been retired with the
+  rest of the pre-rebaseline documentary tree, so the question is open and belongs to D2 —
+  which ADR-035 and the ADR registry already name as the owner of this primitive's
+  application scope.
 
 ## Alternatives Considered
 

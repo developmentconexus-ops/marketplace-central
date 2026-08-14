@@ -75,8 +75,8 @@
         "apps/server_core/migrations/0021_integrations_provider_auth_strategy_shopee_partner.sql"
       ],
       "occurrences": [],
-      "reason": "Two current migrations use numeric prefix 0021.",
-      "removal_owner": "M-08/F-03"
+      "reason": "Two current migrations use numeric prefix 0021. This is current-state evidence; cleanup does not choose the target migration disposition.",
+      "re_adjudicate_in": "D7"
     },
     {
       "id": "postgres-driver-erp-import-database-sql",
@@ -87,8 +87,8 @@
         "apps/server_core/internal/modules/erp_import/adapters/postgres/mirror_repository.go"
       ],
       "occurrences": [],
-      "reason": "erp_import postgres adapters import database/sql only for driver-neutral scan helpers (sql.NullString/sql.NullTime) over pgx connections; no database/sql driver is opened. Migrating the scans to pgx-native types is the removal path.",
-      "removal_owner": "F-01"
+      "reason": "erp_import postgres adapters currently import database/sql for driver-neutral scan helpers over pgx connections. This records current-state evidence; target persistence/runtime handling is re-adjudicated later.",
+      "re_adjudicate_in": "D7"
     }
   ]
 }

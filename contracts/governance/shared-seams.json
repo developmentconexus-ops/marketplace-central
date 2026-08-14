@@ -21,12 +21,7 @@
     { "id": "architecture-decisions", "exclusive_paths": ["docs/architecture/decisions"] },
     {
       "id": "harness-control",
-      "exclusive_paths": [
-        "scripts/harness",
-        "scripts/harness.ps1",
-        "contracts/governance",
-        "docs/HARNESS-PROFILE.md"
-      ]
+      "exclusive_paths": ["scripts/harness", "scripts/harness.ps1", "contracts/governance"]
     },
     {
       "id": "provider-capability-contract",

@@ -24,9 +24,10 @@
 	# (internal/composition/root.go:994 is CORSMiddleware(apierror.Recover(mux))).
 	#
 	# This credential is therefore the ONLY control on the route, and it is not a
-	# temporary one: GATE-TOPOLOGY.md L2-c — the boot assertion that would have
-	# retired it — is deferred along with authentication (operator decision
-	# 2026-08-07). Treat it as load-bearing, not as a placeholder.
+	# temporary one: the boot assertion that would have retired it is deferred
+	# along with authentication (operator decision 2026-08-07), and the
+	# rebaseline decides authentication at D2 (ADR-035). Treat it as
+	# load-bearing, not as a placeholder.
 	#
 	# Only the JSON surface is guarded. A hard-nav to /orders sends
 	# Accept: text/html, does not match @orders_api, and still gets the SPA from

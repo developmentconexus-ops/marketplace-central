@@ -22,7 +22,7 @@ function Measure-GateGoTest {
     otherwise measure as a handful of parents.
 
     SKIP is counted separately and never folded into PASS. A suite where every
-    test skipped prints `ok` and exits 0 -- HARNESS-PROFILE.md records exactly
+    test skipped prints `ok` and exits 0 -- this repository measured exactly
     that shape as RUN 27 / PASS 1 / SKIP 26, with the slice's whole reason to
     exist among the skips.
   #>

@@ -27,7 +27,7 @@
           "kind": {
             "type": "string",
             "enum": ["module", "context"],
-            "description": "Absent means module, so the existing entries need no edit. A context lives under internal/contexts and follows ADR-023 as amended: its layers sit under internal/, so the boundary is the compiler and not a convention. Uniqueness is on the pair (kind, id) because internal/modules/catalog and internal/contexts/catalog coexist for the whole migration."
+            "description": "Absent means module. Registry entries describe current-state structure for governance measurement; they do not select the D1 target boundary. Uniqueness is on the pair (kind, id) while multiple generations coexist."
           },
           "root": { "$ref": "#/$defs/path" },
           "code_owner_path": { "$ref": "#/$defs/path" },
@@ -60,7 +60,7 @@
           "path",
           "import_path",
           "reason",
-          "removal_owner"
+          "re_adjudicate_in"
         ],
         "properties": {
           "id": { "$ref": "#/$defs/id" },
@@ -74,13 +74,14 @@
             "pattern": "^marketplace-central/apps/server_core/internal/modules/[a-z0-9_/-]+$"
           },
           "reason": { "type": "string", "minLength": 1 },
-          "removal_owner": { "type": "string", "pattern": "^M-[0-9]{2}(?:/F-[0-9]{2})?$" }
+          "re_adjudicate_in": { "$ref": "#/$defs/design_stage" }
         }
       }
     }
   },
   "$defs": {
     "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "design_stage": { "enum": ["D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9"] },
     "path": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$" }
   }
 }

@@ -10,19 +10,19 @@
         {
           "path": "scripts/harness.ps1",
           "selector": "command dispatcher",
-          "reason": "stable verification-lane entrypoint (unit/integration/live/governance/pg-session)",
+          "reason": "current harness entrypoint",
           "estimated_tokens": 200
         },
         {
           "path": "scripts/harness/Postgres.psm1",
           "selector": "session and lifecycle exports",
-          "reason": "integration lane: session container reuse, per-run database, migration idempotence",
+          "reason": "current Postgres integration helper",
           "estimated_tokens": 260
         },
         {
           "path": "scripts/tests/harness-orchestration.tests.ps1",
           "selector": "fixtures",
-          "reason": "doctrine markers and worker-skill pin proof",
+          "reason": "current harness behavior tests",
           "estimated_tokens": 120
         }
       ]
@@ -34,34 +34,46 @@
       "selectors": [
         {
           "path": "AGENTS.md",
-          "selector": "Agent Bootstrap",
-          "reason": "durable entry policy; how work lands (branch/PR/CI), verification, truth order, architecture and operational rules",
-          "estimated_tokens": 220
+          "selector": "Current program and read order",
+          "reason": "single session bootstrap",
+          "estimated_tokens": 320
         },
         {
-          "path": "docs/HARNESS-PROFILE.md",
-          "selector": "repo bindings: commands, seams, collision axes, non-negotiables, human gates, denylist",
-          "reason": "the only in-repo doctrine layer (repo-specific); binding method lives in the harness@mnfs-harness plugin",
+          "path": "docs/engineering/rebaseline/README.md",
+          "selector": "current phase and exact next action",
+          "reason": "sole current-program status authority",
           "estimated_tokens": 900
+        },
+        {
+          "path": "docs/engineering/standards/root-cause-global-maximum-method.md",
+          "selector": "engineering decision method",
+          "reason": "canonical root-cause and global-maximum method",
+          "estimated_tokens": 700
         }
       ]
     },
     {
       "id": "portfolio-core",
       "module_id": "repository",
-      "concerns": ["portfolio", "architecture", "mission"],
+      "concerns": ["portfolio", "architecture", "evidence"],
       "selectors": [
         {
           "path": "ARCHITECTURE.md",
-          "selector": "Current Architecture and module boundaries",
-          "reason": "repository architecture authority",
+          "selector": "stable product-level constraints",
+          "reason": "architecture constitution during D0-D9",
           "estimated_tokens": 420
         },
         {
-          "path": "wiki/README.md",
-          "selector": "knowledge routes",
-          "reason": "module and operating knowledge index",
-          "estimated_tokens": 180
+          "path": "docs/architecture/decisions/README.md",
+          "selector": "ADR status registry",
+          "reason": "current binding, reopened and superseded decision status",
+          "estimated_tokens": 280
+        },
+        {
+          "path": "docs/engineering/rebaseline/EVIDENCE-REGISTER.md",
+          "selector": "supporting current-state and historical evidence",
+          "reason": "non-authoritative evidence consulted on demand by D-stages",
+          "estimated_tokens": 600
         }
       ]
     },
@@ -71,45 +83,39 @@
       "concerns": ["orders", "profitability", "product-links"],
       "selectors": [
         {
-          "path": "wiki/modules/orders.md",
-          "selector": "module contract",
-          "reason": "orders ownership and operating semantics",
-          "estimated_tokens": 220
-        },
-        {
-          "path": "wiki/modules/profitability.md",
-          "selector": "module contract",
-          "reason": "margin ownership and unknown-state semantics",
-          "estimated_tokens": 240
+          "path": "docs/engineering/rebaseline/EVIDENCE-REGISTER.md",
+          "selector": "supporting domain evidence",
+          "reason": "historical facts retained without target-authority status",
+          "estimated_tokens": 320
         },
         {
           "path": "apps/server_core/internal/modules/orders/ports/link_reader.go",
           "selector": "interfaces",
-          "reason": "orders to product-link boundary",
+          "reason": "current-state orders to product-link boundary",
           "estimated_tokens": 100
         },
         {
           "path": "apps/server_core/internal/modules/profitability/ports/order_reader.go",
           "selector": "interfaces",
-          "reason": "profitability-owned order facts boundary",
+          "reason": "current-state profitability order boundary",
           "estimated_tokens": 120
         },
         {
           "path": "apps/server_core/internal/modules/profitability/ports/internal_read.go",
           "selector": "interfaces",
-          "reason": "Oracle-backed cost and tax boundary",
+          "reason": "current-state cost and tax boundary",
           "estimated_tokens": 120
         },
         {
           "path": "contracts/api/marketplace-central.openapi.yaml",
           "selector": "orders and profitability paths/schemas",
-          "reason": "HTTP contract authority paired with SDK",
+          "reason": "current HTTP contract evidence until D5",
           "estimated_tokens": 420
         },
         {
           "path": "packages/sdk-runtime/src/index.ts",
           "selector": "orders and profitability methods/types",
-          "reason": "frontend runtime contract paired with OpenAPI",
+          "reason": "current frontend contract evidence until D5",
           "estimated_tokens": 300
         }
       ]

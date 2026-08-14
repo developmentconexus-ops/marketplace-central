@@ -4,8 +4,9 @@
 # (internal/modules/orders/transport/http_handler.go:608-618) and the composed
 # middleware chain has no identity check at all
 # (internal/composition/root.go:994). The edge is therefore the only control on
-# that route, and GATE-TOPOLOGY.md L2-c — the boot assertion that was supposed to
-# retire it — is deferred with authentication. So "the door is closed" is a claim
+# that route, and the boot assertion that was supposed to retire it is deferred
+# along with authentication, which the rebaseline decides at D2 (ADR-035). So
+# "the door is closed" is a claim
 # about two config files nobody re-reads, unless something re-reads them. This is
 # that something.
 #
@@ -208,7 +209,7 @@ try {
   Assert-Status -Response (Get-EdgeResponse -Port $oauthPort -Path '/integrations' -Accept 'text/html') -Expected 200 -Because 'tunnel-answers-the-callback-landing-in-place'
 
   # Anti-vacuity: a run that asserted nothing is byte-identical to a green run
-  # without it (GATE-TOPOLOGY.md §2.3, count assertion).
+  # without it, unless the count itself is asserted.
   if ($assertions -lt 17) { throw "failure_token=test=assertion-count-too-low assertions=$assertions expected_min=17" }
   Write-Output "assertions=$assertions"
   Write-Output "PASS edge PII deny run_id=$runId prod_port=$prodPort oauth_port=$oauthPort assertions=$assertions"

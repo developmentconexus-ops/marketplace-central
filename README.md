@@ -1,36 +1,39 @@
 # Marketplace Central
 
-Marketplace Central is a MetalShopping-style monorepo for pricing simulation and marketplace configuration.
+Marketplace Central is an internal marketplace operations and intelligence system, initially Mercado Livre, backed by real Sankhya/Oracle operational facts.
 
-## Apps
+## Current status
 
-- `apps/server_core`: canonical Go backend
-- `apps/web`: thin React client
+**Architecture Rebaseline / Technical System Design is in progress. Product implementation is intentionally paused until the D0–D9 design program is accepted.**
 
-## Packages
+Start here:
 
-- `packages/sdk-runtime`: runtime client for the web app
-- `packages/ui`: shared UI primitives
-- `packages/web-query`: shared web data-query layer
-- `packages/feature-*`: per-workspace React screens — `feature-classifications`, `feature-connectors`, `feature-inventory`, `feature-orders`, `feature-products`, `feature-simulator`
+1. [`AGENTS.md`](AGENTS.md)
+2. [`docs/engineering/rebaseline/README.md`](docs/engineering/rebaseline/README.md)
+3. [`docs/README.md`](docs/README.md)
 
-## Docker Dev Environment
+Do not use historical Git plans/handoffs as the current roadmap.
 
-The repo includes a Docker Compose dev setup for backend, frontend, Postgres, and optional ngrok OAuth callback tunneling.
+## Applications
 
-Daily local dev:
+- `apps/server_core` — canonical Go backend/current runtime
+- `apps/web` — React client
 
-```powershell
-npm run docker:dev
-```
+The detailed target context, API, database, frontend and runtime topology is **not yet frozen**; the current repository contains both legacy modules and emerging contexts and is being mapped before implementation continues.
 
-OAuth dev with the Mercado Livre callback URL already registered in the app:
+## Development verification
 
 ```powershell
-$env:NGROK_AUTHTOKEN = "your-ngrok-token"
-npm run docker:oauth
+npm run gate
+npm run gate:full
 ```
 
-Open the web app at `http://localhost:5174`. The backend is exposed at `http://localhost:8080`, and the optional ngrok inspector is exposed at `http://localhost:4040`.
+The same gate implementation is used by CI. Operational/local commands in the repository describe the current runtime only; target runtime/deployment is a D7 decision.
 
-Details live in [docker/dev/README.md](docker/dev/README.md).
+## External systems
+
+- Mercado Livre — first marketplace control plane
+- Sankhya/Oracle — internal operational source behind MPC-owned adapters
+- PostgreSQL — MPC-owned application state
+
+See `ARCHITECTURE.md` and the ADR registry for stable constraints; see the rebaseline README for current design status.

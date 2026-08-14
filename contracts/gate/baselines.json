@@ -1,7 +1,7 @@
 {
   "$comment": [
     "Ratchet baselines. Each entry is a violation count that is allowed to shrink and never to grow.",
-    "GATE-TOPOLOGY.md §2.3a: these instruments have never run on this repository, so their first run",
+    "These instruments had never run on this repository, so their first run",
     "produces findings in the hundreds. Paying them down as a precondition would stall issue #2 behind",
     "unrelated work; running them non-blocking would make them annotation, which is level 5 with a",
     "config file on. So they block on INCREASE from the day they land.",
@@ -150,9 +150,9 @@
     "measured_note": [
       "234 cross-module imports that reach past X/ports, the only public surface ADR-023 section 2",
       "allows, broken down by the layer the import originates from. The detector is red on main by",
-      "design -- it is the RED that opens Onda 1 of the module-protocol plan",
-      "(docs/superpowers/plans/2026-08-05-arquitetura-protocolo-de-modulo-plan.md), whose tasks own",
-      "paying this down. Until then the test-go lane skips the test and the boundary lane ratchets",
+      "design. ADR-023 is reopened for D1 in docs/architecture/decisions/README.md, so paying this",
+      "down is a D1 decision and has no owning task today. Until then the test-go lane skips the",
+      "test and the boundary lane ratchets",
       "it: the debt may shrink and may not grow, and a new module reaching into a sibling's domain",
       "blocks the PR that writes it.",
       "",

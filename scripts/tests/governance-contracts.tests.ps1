@@ -77,33 +77,6 @@ try {
 
   $contextSchema = Join-Path $schemaRoot 'context-pack.schema.json'
   Assert-True (Test-Path -LiteralPath $contextSchema -PathType Leaf) 'missing schema: contracts/governance/schemas/context-pack.schema.json'
-  $workContractSchema = Join-Path $schemaRoot 'feature-work-contract.schema.json'
-  $currentWorkContract = @{
-    schema_version='1.0'; feature_id='F-10'; required_sources=@('scripts/harness.ps1'); allowed_paths=@('scripts/harness.ps1'); forbidden_paths=@('apps/**')
-    side_effects=@{allowed=@('repository-write');forbidden=@('provider-write')}; commands=@(@{id='impact-probe-one';command_id='impact-probe-one';lane_id='unit';expected_exit_code=0})
-    criteria=@(@{id='F10-AC01';milestone_criterion_id='M-08-C17';command_ids=@('impact-probe-one')}); stop_conditions=@(@{code='impact-stop';condition='stop'}) ; retry_budget=@{max_correction_attempts=1}; handoff_fields=@('status')
-  }
-  $currentWorkContractPath = Join-Path ([IO.Path]::GetTempPath()) "feature-work-contract-current-$([guid]::NewGuid().ToString('N')).json"
-  try { $currentWorkContract | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $currentWorkContractPath -Encoding utf8; Assert-True (Test-Json -LiteralPath $currentWorkContractPath -SchemaFile $workContractSchema -ErrorAction Stop) 'work contract schema rejected registered command ID' }
-  finally { Remove-Item -LiteralPath $currentWorkContractPath -Force -ErrorAction SilentlyContinue }
-  Assert-True (Test-Path -LiteralPath $workContractSchema -PathType Leaf) 'missing schema: contracts/governance/schemas/feature-work-contract.schema.json'
-  $f10PlanPath = Join-Path $repositoryRoot '.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-10-pragmatic-harness-cutover/plan.md'
-  $f10Plan = Get-Content -Raw -LiteralPath $f10PlanPath
-  $workContractBlocks = @([regex]::Matches($f10Plan, '(?ms)^## Machine Work Contract\s*\r?\n\s*```json\s*\r?\n(?<json>.*?)\r?\n```\s*$'))
-  Assert-True ($workContractBlocks.Count -eq 1) 'F-10 plan must contain exactly one machine work contract JSON block'
-  $workContractPath = Join-Path ([IO.Path]::GetTempPath()) "feature-work-contract-$([guid]::NewGuid().ToString('N')).json"
-  try {
-    Set-Content -LiteralPath $workContractPath -Value $workContractBlocks[0].Groups['json'].Value -Encoding utf8
-    Assert-True (Test-Json -LiteralPath $workContractPath -SchemaFile $workContractSchema -ErrorAction Stop) 'F-10 machine work contract failed schema validation'
-    $invalidWorkContract = Get-Content -Raw -LiteralPath $workContractPath | ConvertFrom-Json -AsHashtable
-    $invalidWorkContract.unknown_contract_property = $true
-    $invalidWorkContract | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $workContractPath -Encoding utf8
-    Assert-True (-not (Test-Json -LiteralPath $workContractPath -SchemaFile $workContractSchema -ErrorAction SilentlyContinue)) 'work contract schema accepted an unknown root property'
-  }
-  finally {
-    Remove-Item -LiteralPath $workContractPath -Force -ErrorAction SilentlyContinue
-  }
-
   # The registry key is the pair (kind, id): a module and a context may share an
   # id (catalog does). The honest count is the tree itself -- every directory
   # under internal/modules and internal/contexts has exactly one entry of its
@@ -212,7 +185,7 @@ try {
     @{ key='SANKHYA_ORACLE_SERVICE_NAME'; path='docker/dev/backend-entrypoint.sh'; kind='edge'; status='approved' },
     @{ key='MPC_OAUTH_REDIRECT_URI'; path='docker/dev/ngrok-entrypoint.sh'; kind='edge'; status='approved' },
     @{ key='MPC_TEST_DATABASE_URL'; path='apps/server_core/internal/testsupport/postgres/target.go'; kind='typed'; status='approved' },
-    @{ key='MPC_ORACLE_LIVE_TEST'; path='apps/server_core/internal/modules/internal_read/adapters/oracle/reader_live_test.go'; kind='test'; status='temporary_exception'; owner='M-08/F-04' }
+    @{ key='MPC_ORACLE_LIVE_TEST'; path='apps/server_core/internal/modules/internal_read/adapters/oracle/reader_live_test.go'; kind='test'; status='temporary_exception'; re_adjudicate='D7' }
   )
   foreach ($expected in $expectedReaders) {
     $keyRecord = @($runtime.keys | Where-Object key -eq $expected.key)[0]
@@ -222,7 +195,11 @@ try {
       $exception = @($runtime.temporary_exceptions | Where-Object id -eq $reader[0].exception_id)
       Assert-True ($exception.Count -eq 1) "runtime reader exception missing: $($expected.key):$($expected.path)"
       Assert-True ($exception[0].key -eq $expected.key -and $exception[0].path -eq $expected.path) "runtime reader exception is not exact: $($expected.key):$($expected.path)"
-      Assert-True ($exception[0].removal_owner -eq $expected.owner) "runtime reader exception owner mismatch: $($expected.key):$($expected.path)"
+      # Both sides must name a field that exists. Dropping `owner` from the row above
+      # and leaving this comparing $null to $null would keep the assertion in the file
+      # and take the control out of it.
+      Assert-True ($null -ne $expected.re_adjudicate -and $exception[0].re_adjudicate_in -eq $expected.re_adjudicate) `
+        "runtime reader exception re-adjudication stage mismatch: $($expected.key):$($expected.path)"
     }
   }
 
@@ -253,17 +230,17 @@ try {
 
   $invariantIds = @($invariants.invariants.id)
   foreach ($exception in @($modules.temporary_exceptions)) {
-    Assert-ExactProperties $exception @('id','rule_id','source_module','target_module','target_layer','path','import_path','reason','removal_owner') "module exception $($exception.id)"
+    Assert-ExactProperties $exception @('id','rule_id','source_module','target_module','target_layer','path','import_path','reason','re_adjudicate_in') "module exception $($exception.id)"
     Assert-True ($exception.rule_id -in $invariantIds) "module exception $($exception.id) references unknown invariant"
     Assert-True (($exception.path + $exception.import_path) -notmatch '[*?\[]') "module exception $($exception.id) is not exact"
   }
   foreach ($exception in @($runtime.temporary_exceptions)) {
-    Assert-ExactProperties $exception @('id','rule_id','key','path','reason','removal_owner') "runtime exception $($exception.id)"
+    Assert-ExactProperties $exception @('id','rule_id','key','path','reason','re_adjudicate_in') "runtime exception $($exception.id)"
     Assert-True ($exception.key -in @($runtime.keys.key)) "runtime exception $($exception.id) references unknown key"
     Assert-True ($exception.path -notmatch '[*?\[]') "runtime exception $($exception.id) is not exact"
   }
   foreach ($exception in @($invariants.temporary_exceptions)) {
-    Assert-ExactProperties $exception @('id','rule_id','paths','occurrences','reason','removal_owner') "invariant exception $($exception.id)"
+    Assert-ExactProperties $exception @('id','rule_id','paths','occurrences','reason','re_adjudicate_in') "invariant exception $($exception.id)"
     Assert-True ($exception.rule_id -in $invariantIds) "invariant exception $($exception.id) references unknown invariant"
     Assert-True (@($exception.paths | Where-Object { $_ -match '[*?\[]' }).Count -eq 0) "invariant exception $($exception.id) is not exact"
   }
@@ -278,14 +255,18 @@ try {
   Assert-True (@($invariants.temporary_exceptions | Where-Object { @($_.occurrences).Count -gt 0 }).Count -eq 0) `
     'an invariant exception carries occurrences; the occurrence-exactness assertions were removed with production-panic and would not cover it'
 
+  # A context pack names the work by path and each criterion by the decision that
+  # ordered it -- no feature or milestone identity, which is what the schema stopped
+  # carrying. Positive control first, then the unknown-root-property control: a
+  # schema that accepts anything would pass the positive half on its own.
   $contextFixture = @{
     schema_version = '1.0'
-    context_id = 'ctx-f07-contract'
-    feature_path = '.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-07-governance-context-compiler'
+    context_id = 'ctx-governance-contract'
+    work_path = 'contracts/governance'
     base_sha = ('a' * 40)
     objective = 'Create executable governance contracts.'
     observable_done = @('Registries validate.')
-    criteria = @(@{ id = 'F07-AC01'; milestone_id = 'M-08-C09'; proof_commands = @('pwsh governance-contracts.tests.ps1') })
+    criteria = @(@{ id = 'ac01-registries-validate'; decision_ref = 'ADR-035'; proof_commands = @('pwsh governance-contracts.tests.ps1') })
     sources = @(@{ path = 'contracts/governance/README.md'; sha256 = ('b' * 64); selector = 'governance overview'; reason = 'fixture source'; estimated_tokens = 120 })
     risk = @{ level = 'L2'; review_policy = 'exclusive-seam-review'; advisory_model = 'none' }
     paths = @{ allowed = @('contracts/governance'); forbidden = @('apps/server_core/internal/modules') }
@@ -294,13 +275,16 @@ try {
     commands = @(@{ id = 'governance-contracts'; command_id = 'governance-contracts'; target_label = 'fake'; evidence_type = 'ran' })
     stop_conditions = @('source-hash-mismatch')
     retry_budget = 1
-    handoff = @{ target = 'Milestone Orchestrator'; reason = 'Phase complete.' }
+    handoff = @{ target = 'D-stage decision owner'; reason = 'Phase complete.' }
     estimated_input_tokens = 500
   }
   $contextPath = Join-Path ([IO.Path]::GetTempPath()) "governance-context-$([guid]::NewGuid().ToString('N')).json"
   try {
     $contextFixture | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $contextPath -Encoding utf8
     Assert-True (Test-Json -LiteralPath $contextPath -SchemaFile $contextSchema -ErrorAction Stop) 'context fixture failed schema validation'
+    $contextFixture.unknown_contract_property = $true
+    $contextFixture | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $contextPath -Encoding utf8
+    Assert-True (-not (Test-Json -LiteralPath $contextPath -SchemaFile $contextSchema -ErrorAction SilentlyContinue)) 'context pack schema accepted an unknown root property'
   }
   finally {
     Remove-Item -LiteralPath $contextPath -Force -ErrorAction SilentlyContinue

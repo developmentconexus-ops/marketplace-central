@@ -212,8 +212,8 @@
       "target_layer": "adapters",
       "path": "apps/server_core/internal/modules/connectors/adapters/magalu/fee_seed.go",
       "import_path": "marketplace-central/apps/server_core/internal/modules/integrations/adapters/providers",
-      "reason": "Current connector fee seed imports the integration provider adapter registry.",
-      "removal_owner": "M-10"
+      "reason": "Current connector fee seed imports the integration provider adapter registry; this records current-state evidence only.",
+      "re_adjudicate_in": "D1"
     },
     {
       "id": "module-edge-connectors-mercado-livre-integrations-adapter",
@@ -223,8 +223,8 @@
       "target_layer": "adapters",
       "path": "apps/server_core/internal/modules/connectors/adapters/mercado_livre/fee_sync.go",
       "import_path": "marketplace-central/apps/server_core/internal/modules/integrations/adapters/providers",
-      "reason": "Current connector fee sync imports the integration provider adapter registry.",
-      "removal_owner": "M-10"
+      "reason": "Current connector fee sync imports the integration provider adapter registry; this records current-state evidence only.",
+      "re_adjudicate_in": "D1"
     },
     {
       "id": "module-edge-connectors-shopee-integrations-adapter",
@@ -234,8 +234,8 @@
       "target_layer": "adapters",
       "path": "apps/server_core/internal/modules/connectors/adapters/shopee/fee_seed.go",
       "import_path": "marketplace-central/apps/server_core/internal/modules/integrations/adapters/providers",
-      "reason": "Current connector fee seed imports the integration provider adapter registry.",
-      "removal_owner": "M-10"
+      "reason": "Current connector fee seed imports the integration provider adapter registry; this records current-state evidence only.",
+      "re_adjudicate_in": "D1"
     },
     {
       "id": "module-edge-integrations-feesync-marketplaces-registry",
@@ -245,8 +245,8 @@
       "target_layer": "registry",
       "path": "apps/server_core/internal/modules/integrations/adapters/feesync/marketplace_executor.go",
       "import_path": "marketplace-central/apps/server_core/internal/modules/marketplaces/registry",
-      "reason": "Current fee-sync adapter imports the marketplace registry implementation.",
-      "removal_owner": "M-10"
+      "reason": "Current fee-sync adapter imports the marketplace registry implementation; this records current-state evidence only.",
+      "re_adjudicate_in": "D1"
     },
     {
       "id": "module-edge-tenant-config-erp-import-adapter",
@@ -256,8 +256,8 @@
       "target_layer": "adapters",
       "path": "apps/server_core/internal/modules/tenant_config/active_source.go",
       "import_path": "marketplace-central/apps/server_core/internal/modules/erp_import/adapters/internalread",
-      "reason": "active_source.go republishes exactly one symbol from erp_import's adapters layer: var ErrUnknownActiveSource = internalread.ErrUnknownActiveSource. Measured, not assumed — the entry trades GOV_MODULE_COVERAGE tenant_config for this one named edge (main tip baseline 55 violations, this tree 54 — strict subset, zero new). The sentinel belongs in a shared errors seam; until the error surface is unified it lives where the reader can reach it. Unification work is queued as CHIP-ERROR-UNIFY.",
-      "removal_owner": "M-10"
+      "reason": "Current tenant_config code republishes a sentinel from erp_import's adapter layer. This is current-state evidence; D1 will decide the target ownership/boundary rather than inheriting the historical CHIP/M-milestone plan.",
+      "re_adjudicate_in": "D1"
     }
   ]
 }

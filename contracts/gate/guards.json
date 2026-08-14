@@ -1,5 +1,5 @@
 {
-  "$comment": "Issue #3: every guard the delivery path relies on, keyed to the fixture that proves it can fail. go_tests are EXECUTED by the guards lane (proof = '--- PASS: <test>' from a targeted -run). pwsh_files are ALSO executed directly by the guards lane (proof = a per-guard 'guard_ran=<id>' token, written by Write-Output immediately after that fixture's own assertions pass -- not unconditionally, so a removed or skipped fixture cannot still print it); the file is also required to sit inside the selftest lane's discovery glob, so it is proved to run there too. presence_only entries state why execution cannot be asserted here.",
+  "$comment": "Every repository-local guard the delivery path relies on, keyed to the fixture that proves it can fail. go_tests are EXECUTED by the guards lane (proof = '--- PASS: <test>' from a targeted -run). pwsh_files are ALSO executed directly by the guards lane (proof = a per-guard 'guard_ran=<id>' token, written only after that fixture's own assertions pass); each file is also required to sit inside the selftest lane's discovery glob. presence_only entries are limited to repository-local controls whose execution cannot be asserted by this lane. GitHub-side branch/ruleset configuration is external state and is not represented by a documentary placeholder here.",
   "go_tests": [
     {
       "id": "arch-cross-context-internal",
@@ -105,12 +105,6 @@
       "file": ".github/workflows/ci.yml",
       "anchor": "guard self-test",
       "why": "executes inside the required job itself on every PR; its five jq scenarios are the execution evidence"
-    },
-    {
-      "id": "main-ruleset",
-      "file": "docs/HARNESS-PROFILE.md",
-      "anchor": "landing path",
-      "why": "GitHub-side control; must-fail run 2026-08-09 (GH013), recorded in issue #4's closing comment"
     }
   ]
 }

@@ -101,10 +101,10 @@ function Invoke-Live {
 }
 
 function Invoke-Edge {
-  # Issue #1 negative fixture. Drives deploy/Caddyfile and
+  # Negative PII fixture. Drives deploy/Caddyfile and
   # docker/dev/oauth-edge.Caddyfile through real Caddy against stub upstreams.
   # Docker only — no ERP, no dev stack, no provider credentials, no secrets,
-  # which is why this lane is CI-able (GATE-TOPOLOGY.md §5).
+  # which keeps this lane hermetic and CI-able.
   Write-Output 'target=edge-caddy'; Write-Output 'postgres=disabled'; Write-Output 'oracle=disabled'; Write-Output 'provider_network=disabled'
   if ($PreflightOnly) { Write-Summary -TargetType 'edge-caddy' -Status 'ready'; return }
   $pwshPath = Resolve-HarnessApplication -Name 'pwsh'
@@ -118,7 +118,7 @@ function Invoke-Edge {
 }
 
 function Invoke-Browser { Write-Output 'target=browser'; Write-Output 'provider_network=disabled'; if (-not $PreflightOnly) { throw 'browser runner is not configured; use browser automation as an explicit lane' }; Write-Summary -TargetType 'browser' -Status 'ready' }
-function Invoke-ProviderWrite { Write-Output 'target=live-provider'; if ([string]::IsNullOrWhiteSpace($Provider)) { throw 'provider is required' }; if ([string]::IsNullOrWhiteSpace($Actor) -or [string]::IsNullOrWhiteSpace($IdempotencyKey)) { throw 'provider write requires actor and idempotency_key' }; if (-not $Execute) { throw 'explicit -Execute is required before network' }; throw 'provider write adapter is intentionally outside F-02; no network was invoked' }
+function Invoke-ProviderWrite { Write-Output 'target=live-provider'; if ([string]::IsNullOrWhiteSpace($Provider)) { throw 'provider is required' }; if ([string]::IsNullOrWhiteSpace($Actor) -or [string]::IsNullOrWhiteSpace($IdempotencyKey)) { throw 'provider write requires actor and idempotency_key' }; if (-not $Execute) { throw 'explicit -Execute is required before network' }; throw 'provider write adapter is intentionally unavailable in the current harness; no network was invoked' }
 
 function Write-GovernanceResult {
   param([object]$Result)

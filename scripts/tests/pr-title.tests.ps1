@@ -24,7 +24,7 @@ foreach ($title in $accepted) {
   if ((Invoke-TitleCheck $title) -ne 0) { throw "conventional title rejected: $title" }
 }
 
-# GATE-TOPOLOGY §2.3a names 'wip' as the negative fixture; the rest are the
+# 'wip' is the negative fixture; the rest are the
 # near-misses that make the regex load-bearing -- capitalized type, missing
 # space, empty scope, empty subject, bare sentence.
 $rejected = @(
