@@ -124,9 +124,9 @@ Additional codebase/provider measurement is performed only when a D-stage decisi
 
 ## 10. Exact next action
 
-**Continue D0 with the operator: D0.7 Product completeness / contradiction review — operational evidence freshness / staleness.**
+**Continue D0 with the operator: D0.7 Product completeness / contradiction review — observation coverage / completeness uncertainty.**
 
-Accepted D0.1–D0.6 plus D0.7a–D0.7i are recorded in `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`.
+Accepted D0.1–D0.6 plus D0.7a–D0.7j are recorded in `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`.
 
 Important accepted decisions now include:
 
@@ -136,11 +136,12 @@ Important accepted decisions now include:
 - provider capabilities/authorities are context-sensitive and any claimed MPC-controlled path must close provider-required prerequisites/data/artifacts/readiness;
 - ANYMARKET, Magis5 and similar hubs are benchmark/competitive evidence, not Product 1.0 runtime dependencies; target direction is MPC-owned direct provider boundaries;
 - provider/external time obligations remain external authority, organization-owned Internal Operational Targets remain MPC policy, relative targets require an explicit time anchor, and internal targets may tighten but never relax external obligations;
-- actionable operational work has a durable owning role/responsibility; individual assignment is optional/distinct, assignment never grants authority, automation failure may create human-owned work, escalation means increased/different responsibility/attention/authority, and material closure requires accepted resolution evidence rather than arbitrary dismissal.
+- actionable operational work has a durable owning role/responsibility; individual assignment is optional/distinct, assignment never grants authority, automation failure may create human-owned work, escalation means increased/different responsibility/attention/authority, and material closure requires accepted resolution evidence rather than arbitrary dismissal;
+- material evidence freshness is explicit and use-sensitive: stale/unknown-freshness evidence cannot masquerade as current truth, failed acquisition attempts matter, and unsafe normal actions may be blocked or degraded when sufficiently current evidence is required.
 
-The next contradiction is freshness. MPC can still produce a confident but wrong decision if the underlying marketplace/ERP/provider evidence is stale while presented as current. D0 must decide whether material evidence freshness/observation age must explicitly influence readiness, decision safety and portfolio attention rather than remain a hidden integration/cache detail.
+The next contradiction is **coverage**, not freshness. A source can return fresh records while still omitting part of the population because of pagination, filtering, missed callbacks, limited query windows, provider partial views or an incomplete backfill. D0 must decide whether MPC may call a portfolio/flow healthy, absent or reconciled when coverage of the relevant source population is partial or unknown.
 
-Polling intervals, TTLs, cache design, source-specific cadence, webhook/polling mechanics and scheduler implementation belong to D2/D3/D4/D7.
+Pagination, watermarks/checkpoints, backfill, enumeration strategy, callback recovery, polling mechanics and source-specific completeness proofs belong to D2/D3/D4/D7.
 
 Nothing else is authorized. In particular: do not start product implementation, do not begin D1–D9 before D0 is accepted, and do not reopen documentary cleanup.
 
@@ -152,7 +153,7 @@ A fresh session should conclude correctly that:
 
 - documentary/governance cleanup is DONE;
 - D0 is OPEN and not accepted as a whole;
-- D0.1–D0.6 and D0.7a–D0.7i are operator-approved;
+- D0.1–D0.6 and D0.7a–D0.7j are operator-approved;
 - Product 1.0 is Marketplace Operations + Commercial Intelligence (A+), not an ERP/marketplace/accounting/task-management replacement;
 - marketplace availability uses explicit eligible inventory + rules + MPC policy; known policy-valid sync is automatic and unknown is not zero;
 - organization, Marketplace Installation and Selling Entity identities do not collapse;
@@ -166,7 +167,8 @@ A fresh session should conclude correctly that:
 - external time obligations and MPC-owned Internal Operational Targets are separate authorities; relative targets require explicit anchors and internal policy cannot relax external obligations;
 - time participates in attention, safety-margin and breach semantics;
 - actionable work has explicit role responsibility; assignment is distinct from authorization; escalation changes required attention/responsibility/authority; material work closes through resolution evidence;
+- material evidence is freshness-aware: stale/unknown-freshness evidence cannot masquerade as current truth and failed refresh/acquisition affects operational confidence;
 - implementation remains blocked until D9;
-- the exact next work is **D0.7 Product completeness review — operational evidence freshness / staleness**.
+- the exact next work is **D0.7 Product completeness review — observation coverage / completeness uncertainty**.
 
 If it cannot, the current authority path is incomplete or contradictory.
