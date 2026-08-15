@@ -6,17 +6,19 @@ Marketplace Central is in **Architecture Rebaseline / Technical System Design**.
 
 ### Immediate operating boundary
 
-The **documentary / governance authority cleanup is closed** (PR #41). **D0 — Product / System Definition is OPEN and is in bounded closure review.** Operator-approved D0 decisions are recorded in `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`; the exact current status/action lives only in `docs/engineering/rebaseline/README.md`.
+The **documentary / governance authority cleanup is closed** (PR #41). **D0 — Product / System Definition is CLOSED / ACCEPTED AS A WHOLE.** The exact current status/action lives only in `docs/engineering/rebaseline/README.md`.
 
-Until D0 is explicitly accepted as a whole:
+The exact next stage is **D1 — Domains / Boundaries**. D0 acceptance authorizes opening D1; it does **not** pre-authorize a context/module layout or any D2–D9 target design.
 
-- no D1–D9 target design or product implementation is authorized;
+Until the owning D-stage accepts a decision:
+
+- no product implementation is authorized;
 - no software design change is authorized merely from a historical plan — not module/context layout, persistence, API, frontend, runtime, auth or integration architecture;
 - do **not** redesign, refactor, delete or choose a target for legacy product code before the owning D-stage accepts that decision;
-- product/source findings are evidence only unless D0 or another accepted D-stage records the target semantic;
-- do not open new D0 microtopics speculatively: the active D0 artifact defines a stop rule and closure criteria.
+- product/source findings are evidence only unless an accepted D-stage records the target semantic;
+- D0 truth/action-safety invariants are cross-cutting properties and must not be turned into standalone contexts/frameworks without independent business evidence.
 
-Do not reopen the documentary cleanup to keep working. It ended on a measured condition: retired documentary authorities and their active consumers removed or retargeted, current governance self-contained, verification green without weakening controls or raising ratchets, and a fresh session able to identify one authority path and one exact next action. `docs/engineering/rebaseline/README.md` records the current state after that cleanup.
+Do not reopen the documentary cleanup or D0 merely to keep working. D0 may be reopened only by a new material finding/changed constraint that satisfies the accepted stop rule.
 
 Start every session in this order:
 
@@ -25,7 +27,7 @@ Start every session in this order:
 3. `docs/engineering/standards/root-cause-global-maximum-method.md`
 4. `ARCHITECTURE.md` — stable product/platform constraints only
 5. `docs/architecture/decisions/README.md` — ADR registry and current/reopened status
-6. the artifact for the active D-stage
+6. accepted D0 artifact plus the artifact for the active D-stage once opened
 7. code/contracts/runtime evidence needed for the specific decision being made
 
 Do **not** reconstruct the roadmap from Git history, deleted plans, old handoffs or memory. Git history is evidence only when the current rebaseline explicitly asks for historical evidence.
@@ -35,6 +37,8 @@ Do **not** reconstruct the roadmap from Git history, deleted plans, old handoffs
 The governing sequence is:
 
 `documentary authority cleanup → D0 product/system definition → D1 domains/boundaries → D2 identity/tenant/data ownership → D3 communication/events → D4 external integrations → D5 API → D6 frontend → D7 runtime/jobs/transactions → D8 golden flows → D9 adversarial architecture review → implementation DAG/plan → implementation`
+
+Current position: **D0 accepted; D1 next.**
 
 Until D9 is accepted:
 
@@ -117,8 +121,12 @@ Current gates may contain legacy ratchets anchored to current code layout. Durin
 - External writes are never blindly retried after an ambiguous outcome and must be auditable/reconcilable.
 - Raw provider PII is not retained merely for convenience.
 - Frontend is not a second business-logic authority.
+- D0 accepted one-Organization launch proof without collapsing Organization as an identity; Multi-Organization/SaaS operation is not a launch gate.
+- D0 accepted composite-offer honesty without making provider-native composite support a launch gate by default.
+- D0 accepted Marketplace Installation health/reputation as observable attention evidence, not a reputation-management/SAC product.
+- D0 accepted L0–L2 as the core marketplace economic chain; bank cash evidence is an optional L3 extension, not a launch gate.
 
-Anything more specific than these may be under D0–D9 re-adjudication; check the ADR registry and rebaseline status before relying on an older rule.
+Anything more specific may be under D1–D9 adjudication; check the ADR registry and rebaseline status before relying on an older rule.
 
 ## Operational rules
 
@@ -136,7 +144,7 @@ The active repository intentionally does **not** retain an `old/`, archive wiki,
 - Git history is the archive.
 - `docs/engineering/rebaseline/README.md` is the sole current progress/router document.
 - Accepted durable decisions live in ADRs or `ARCHITECTURE.md`.
-- Stage evidence/design lives in the current D-stage artifact.
+- Stage evidence/design lives in the current/accepted D-stage artifacts.
 - Supporting references must be explicitly labeled non-authoritative.
 - A superseded roadmap/spec/handoff is deleted after any still-valid decision has been absorbed into the current authority.
 - A temporary session-handoff file is allowed only while a cleanup is unfinished, and is deleted as soon as the canonical topology passes the fresh-session test on its own.
