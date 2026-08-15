@@ -106,9 +106,9 @@ Additional measurement is performed only when a D-stage decision requires it.
 
 ## 8. Exact next action
 
-**Continue D0 with the operator: D0.7 Product completeness / contradiction review — decision/action evidence lineage and reproducibility.**
+**Continue D0 with the operator: D0.7 Product completeness / contradiction review — multi-target action scope / blast radius / partial-result semantics.**
 
-Accepted D0.1–D0.6 plus D0.7a–D0.7k are recorded in `D0-PRODUCT-SYSTEM-DEFINITION.md`.
+Accepted D0.1–D0.6 plus D0.7a–D0.7l are recorded in `D0-PRODUCT-SYSTEM-DEFINITION.md`.
 
 Important accepted decisions include:
 
@@ -121,12 +121,12 @@ Important accepted decisions include:
 - ANYMARKET, Magis5 and similar hubs are benchmark/competitive evidence, not Product 1.0 runtime dependencies; direct MPC-owned provider boundaries are the target direction;
 - External Operational Obligations and MPC-owned Internal Operational Targets are distinct; relative targets require explicit anchors and internal policy may tighten but never relax external obligations;
 - actionable work has durable role ownership; individual assignment is distinct from authorization; escalation changes responsibility/attention/authority; material work closes through accepted resolution evidence;
-- material evidence is freshness-aware and use-sensitive; stale/unknown-freshness evidence and failed acquisition cannot masquerade as current truth;
-- observation coverage is explicit and scoped: **fresh is not complete**, **not observed is not does-not-exist**, callback receipt is not automatic completeness proof, and portfolio health/absence/reconciliation closure require sufficient coverage for the claimed universe.
+- material evidence is freshness-aware and coverage-aware: stale/unknown-freshness evidence cannot masquerade as current truth, fresh is not complete, not-observed is not does-not-exist, callback receipt is not automatic completeness proof, and portfolio health/absence/reconciliation closure require sufficient coverage for the claimed universe;
+- material recommendations/approvals/actions preserve enough decision-time lineage to explain their evidence, policy/rule provenance, authority/approval, uncertainty and correlated result without reconstructing history from mutable current state; D0 does not mandate event sourcing or universal snapshots.
 
-The next contradiction is historical explainability. Even if evidence was fresh and sufficiently covered at decision time, current source state and MPC-owned policy may later change. D0 must decide whether material recommendations/approvals/actions retain enough decision-time facts, policy/rule provenance, authority/approval and uncertainty context to explain **why that historical action was permitted/recommended/executed**, instead of reconstructing history from current values.
+The next contradiction is blast radius and partial outcome. A bulk/operator/policy action may target many offers/listings whose eligibility/authority differ, while the provider may accept some targets and reject/timeout others. D0 must decide whether Product 1.0 requires explicit intended target scope and sufficiently granular outcome semantics so partial success/ambiguity cannot masquerade as one atomic success or cause blind whole-batch retry.
 
-This is a product auditability/explainability question. Snapshot/reference/hash/event-log/retention implementation belongs to D2/D3/D7.
+This is a product safety/reconciliation question. Batch APIs, queues, transactions, concurrency, compensation, retry orchestration and UI mechanics belong to D5/D6/D7.
 
 Nothing else is authorized: do not start product implementation, do not begin D1–D9 before D0 is accepted, and do not reopen documentary cleanup.
 
@@ -138,14 +138,14 @@ A fresh session should conclude correctly that:
 
 - cleanup is DONE;
 - D0 is OPEN and not accepted as a whole;
-- D0.1–D0.6 and D0.7a–D0.7k are operator-approved;
+- D0.1–D0.6 and D0.7a–D0.7l are operator-approved;
 - implementation remains blocked until D9;
 - Product 1.0 is Marketplace Operations + Commercial Intelligence (A+), not an ERP/marketplace/accounting/task-management replacement;
 - canonical MPC semantics precede ERP/provider mapping and native provider/ERP constructs do not become canonical by existence alone;
 - ambiguous external writes are not blindly retried;
-- provider requirements, time obligations, work ownership, freshness and coverage all participate in truthful operational control;
+- provider requirements, time obligations, work ownership, freshness, coverage and historical decision lineage all participate in truthful operational control;
 - marketplace hubs remain benchmark/competitive evidence, not target runtime dependencies;
 - current code/docs remain evidence, not target authority;
-- the exact next work is **D0.7 Product completeness review — decision/action evidence lineage and reproducibility**.
+- the exact next work is **D0.7 Product completeness review — multi-target action scope / blast radius / partial-result semantics**.
 
 If it cannot, the current authority path is incomplete or contradictory.
