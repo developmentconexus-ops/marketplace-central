@@ -1,7 +1,7 @@
 # Marketplace Central — Architecture Rebaseline
 
 > **Role:** sole current-program status / router after `AGENTS.md`  
-> **Current phase:** D0 — PRODUCT / SYSTEM DEFINITION — OPEN; working, not yet accepted as a whole.  
+> **Current phase:** D0 — PRODUCT / SYSTEM DEFINITION — OPEN; bounded closure review completed, awaiting explicit whole-stage acceptance  
 > **Implementation:** BLOCKED until D9 is accepted  
 > **Evidence baseline:** `main@de1dc88bcef5a6ed5515378e7c646682c0bc15d2`  
 > **Last updated:** 2026-08-15
@@ -23,7 +23,7 @@ That cleanup did **not** decide target domains, identity/tenant model, database 
 ```text
 DOCUMENTARY / GOVERNANCE AUTHORITY CLEANUP — DONE
   ↓
-D0 — Product / System Definition — OPEN
+D0 — Product / System Definition — OPEN / READY FOR OPERATOR ACCEPTANCE
   ↓
 D1 — Domains / Boundaries
   ↓
@@ -48,7 +48,7 @@ Implementation DAG / Plan
 Implementation
 ```
 
-Product implementation remains blocked until D9 is accepted.
+Product implementation remains blocked until D9 is accepted. D1 is not authorized until D0 receives explicit whole-stage operator acceptance.
 
 ## 4. D-stage decision method
 
@@ -67,6 +67,8 @@ needed evidence
 ```
 
 Use `docs/engineering/standards/root-cause-global-maximum-method.md`. Classify questions as MUST DECIDE NOW, SHOULD DECIDE NOW or CAN DEFER SAFELY. Later stages may explicitly reopen earlier decisions when new evidence creates a material contradiction; silent contradiction is prohibited.
+
+Global Maximum is **not** permission for infinite review or maximum abstraction. D0 now has an explicit stop rule: no new microtopic is opened unless a new real/reachable finding changes Product 1.0 meaning/authority/boundary, would otherwise force an implementer to invent business semantics, and does not clearly belong to D1–D7.
 
 ## 5. D0–D9 core questions
 
@@ -100,54 +102,101 @@ Historical plans/specs/handoffs/wikis do not become target authority merely beca
 
 ## 7. Current supporting evidence
 
-`EVIDENCE-REGISTER.md` contains provider/competitor evidence for Mercado Livre, Amazon, Magalu, Casas Bahia, Leroy/Mirakl, Shopee, MadeiraMadeira, ANYMARKET, Magis5 and Bling, plus Sankhya and repository evidence. These sources inform decisions but do not create target abstractions by themselves.
+`EVIDENCE-REGISTER.md` contains provider/competitor evidence for Mercado Livre, Amazon, Magalu, Casas Bahia, Leroy/Mirakl, Shopee, MadeiraMadeira, ANYMARKET, Magis5 and Bling, plus Sankhya and repository evidence. It also records current evidence for asynchronous/partial provider outcomes, price approval/safety controls and duplicate/out-of-order event delivery.
 
-Additional measurement is performed only when a D-stage decision requires it.
+These sources inform decisions but do not create target abstractions by themselves. Additional measurement is performed only when a D-stage decision requires it.
 
-## 8. Exact next action
+## 8. D0 bounded closure review — COMPLETED, no product blocker found
 
-**Continue D0 with the operator: D0.7 Product completeness / contradiction review — decision/approval validity at execution time.**
+The closure review was adversarial and subtractive rather than another open-ended discovery round.
 
-Accepted D0.1–D0.6 plus D0.7a–D0.7m are recorded in `D0-PRODUCT-SYSTEM-DEFINITION.md`.
+### 8.1 Lifecycle / product-boundary coverage
 
-Important accepted decisions include:
+No material Product 1.0 lifecycle responsibility remains ownerless or semantically undefined at D0 altitude:
+
+- product/channel readiness and listing operation;
+- availability from explicit eligible inventory + governing facts/rules/policy;
+- competitive/pricing/profitability intelligence;
+- controlled decision/policy and external action;
+- Business Order Intent and business-system materialization;
+- Invoicing Intent and readiness-gated fiscal materialization;
+- fulfillment/provider-requirement closure/dispatch;
+- shipment/delivery terminal observation;
+- essential cancellation/return/refund consequences;
+- marketplace settlement, cash evidence where available and realized economics;
+- reconciliation/exception work, deadlines/internal targets and operational ownership.
+
+### 8.2 Stable-authority contradiction check
+
+The accepted D0 direction is consistent with `ARCHITECTURE.md` and the binding ADR registry constraints: Mercado Livre first, Sankhya/Oracle external, provider protocol behind adapter boundaries, honest unknown/partial observations, controlled auditable/reconcilable writes, no blind retry, provider PII minimization, PostgreSQL for MPC-owned canonical state, Go backend business authority and React not a second policy authority.
+
+One **documentary** contradiction was found during closure: `AGENTS.md` still stated that D0 had not opened. It was corrected on this branch. No product-semantic contradiction was found from that issue.
+
+### 8.3 Explicit safe defers — not D0 blockers
+
+The following are intentionally left to their owning stages rather than pulled into D0:
+
+- **D1:** final contexts/boundaries and legacy-module disposition;
+- **D2:** canonical identities, tenant/isolation model, persistence ownership and exact value/time/evidence representations;
+- **D3:** event/synchronous/projection matrix, webhook/event semantics and outbox decisions;
+- **D4:** exact Mercado Livre/Sankhya/payment/bank contracts, provider capability profiles, native fields/statuses/artifacts and source-specific completeness/freshness evidence;
+- **D5:** HTTP/API shape, bulk contracts, version/precondition/idempotency contract surface;
+- **D6:** portfolio/attention/work inbox, approvals, countdowns, notifications and other UI topology;
+- **D7:** schedulers, workers, queues, polling, retries, locks/versioning, transactions, compensation, timing and deployment topology;
+- **D8:** end-to-end proof of the accepted Product 1.0 flows;
+- **D9:** final adversarial architecture review.
+
+### 8.4 Explicit Product 1.0 non-goals / safe scope subtraction
+
+Current Product 1.0 does not need campaign/discount-campaign authoring as a separate control surface, paid ads/media, buyer chat/Q&A, general CRM/SAC, company-wide WMS/TMS/reverse logistics, company-wide accounting/treasury, broad demand forecasting/purchasing, every future marketplace, a universal ERP framework, a generic marketplace-hub compatibility layer or unrestricted autonomous AI decisions.
+
+Promotion/discount effects that materially affect price/order/economics remain observable/attributable facts even though campaign authoring itself is deferred.
+
+### 8.5 Anti-overengineering result
+
+D0.7j–D0.7n are **cross-cutting truth/action-safety properties**, not an instruction to create one context/module/framework per property. In particular, D1 must not infer standalone `Freshness`, `Coverage`, `DecisionLineage`, `BulkEngine` or `ApprovalRevalidation` domains merely because D0 names those invariants. Later stages should implement the smallest mechanisms inside the real owning capabilities/boundaries.
+
+This is a binding interpretation of the D0/YAGNI intent unless later material evidence proves an independent business domain actually exists.
+
+### 8.6 Closure conclusion
+
+**No material D0 blocker remains after the bounded review.** No additional D0.7 microtopic is currently justified under the stop rule.
+
+D0 is therefore **ready for explicit operator acceptance as a whole**, but remains OPEN until that acceptance is given.
+
+## 9. Exact next action
+
+**Operator decision: accept D0 — Product / System Definition as a whole, or identify a concrete material contradiction/blocker.**
+
+Accepted decisions currently include D0.1–D0.6 and D0.7a–D0.7n. Important consequences include:
 
 - MPC is Marketplace Operations + Commercial Intelligence (A+) and owns the marketplace operating model, not external native facts;
 - canonical MPC semantics precede ERP/provider mapping;
-- `Selling Entity`, `Inventory Source / Inventory Scope`, MPC-owned availability-allocation policy, `Fulfillment Node / Fulfillment Scope`, `Cost Observation / Cost Basis`, `Business Order Intent` and `Invoicing Intent` are distinct accepted semantics;
-- availability uses explicit eligible authoritative inventory + rules + MPC policy; routine known policy-valid synchronization is automatic; unknown is not zero;
-- the Economic Evidence Chain is `Simulation → Order Economics → Marketplace Settlement → Cash Receipt evidence where available`; stages remain distinct, simulator calibration is evidence-driven and payout/order attribution is never fabricated;
-- provider capabilities/authorities are context-sensitive and every flow claimed as MPC-controlled must close provider-required prerequisites/data/artifacts/readiness;
-- ANYMARKET, Magis5 and similar hubs are benchmark/competitive evidence, not Product 1.0 runtime dependencies; direct MPC-owned provider boundaries are the target direction;
-- External Operational Obligations and MPC-owned Internal Operational Targets are distinct; relative targets require explicit anchors and internal policy may tighten but never relax external obligations;
-- actionable work has durable role ownership; individual assignment is distinct from authorization; escalation changes responsibility/attention/authority; material work closes through accepted resolution evidence;
-- material evidence is freshness-aware and coverage-aware: stale/unknown-freshness evidence cannot masquerade as current truth, fresh is not complete, not-observed is not does-not-exist, callback receipt is not automatic completeness proof, and portfolio health/absence/reconciliation closure require sufficient coverage for the claimed universe;
-- material recommendations/approvals/actions preserve enough decision-time lineage to explain their evidence, policy/rule provenance, authority/approval, uncertainty and correlated result without reconstructing history from mutable current state; D0 does not mandate event sourcing or universal snapshots;
-- material multi-target actions preserve their intended target scope/blast radius and sufficiently granular outcomes; target-level authority/readiness differences remain meaningful, partial success is explicit, provider non-atomicity is not hidden, and an ambiguous/failed member never makes blind retry of the entire target set safe.
+- `Selling Entity`, `Inventory Source / Inventory Scope`, availability-allocation policy, `Fulfillment Node / Fulfillment Scope`, `Cost Observation / Cost Basis`, `Business Order Intent` and `Invoicing Intent` are distinct accepted semantics;
+- Economic Evidence Chain = `Simulation → Order Economics → Marketplace Settlement → Cash Receipt evidence where available`;
+- provider capabilities/authorities are context-sensitive and claimed MPC-controlled paths close provider requirements;
+- marketplace hubs such as ANYMARKET/Magis5 are benchmark/competitive evidence, not target runtime dependencies;
+- external obligations and MPC-owned internal targets remain distinct;
+- actionable work has role ownership, assignment is not authorization, escalation is not notification and material work closes through evidence;
+- evidence is freshness- and coverage-aware;
+- historical material actions remain explainable from decision-time lineage;
+- multi-target actions expose intended blast radius and partial/ambiguous results;
+- approval is not permanent permission: consequential execution revalidates only materially governing conditions, without treating irrelevant drift as automatic invalidation.
 
-The next contradiction is **time-of-execution validity**. A recommendation/approval may be valid when granted but materially invalid by the time execution starts because source facts, readiness, policy, coverage/freshness, provider capability or obligations changed. D0 must decide whether an earlier approval remains permanently sufficient or whether execution must still satisfy the material conditions/authority that make the action safe and permitted.
+Nothing else is authorized. In particular: **do not start D1 until the operator explicitly accepts D0 as a whole**, do not start product implementation, and do not reopen documentary cleanup.
 
-This is a product safety/authority question. Locking, optimistic-concurrency/version tokens, approval expiry, revalidation orchestration and reapproval UI belong to D2/D5/D6/D7.
-
-Nothing else is authorized: do not start product implementation, do not begin D1–D9 before D0 is accepted, and do not reopen documentary cleanup.
-
-D0 remains open until its product/system definition is complete, internally coherent, adversarially reviewed and explicitly accepted as a whole.
-
-## 9. Fresh-session success test
+## 10. Fresh-session success test
 
 A fresh session should conclude correctly that:
 
 - cleanup is DONE;
-- D0 is OPEN and not accepted as a whole;
-- D0.1–D0.6 and D0.7a–D0.7m are operator-approved;
+- D0 is OPEN but its bounded closure review is COMPLETE and found no material product blocker;
+- D0.1–D0.6 and D0.7a–D0.7n are operator-approved individually;
+- D0 as a whole still awaits explicit operator acceptance;
 - implementation remains blocked until D9;
-- Product 1.0 is Marketplace Operations + Commercial Intelligence (A+), not an ERP/marketplace/accounting/task-management replacement;
-- canonical MPC semantics precede ERP/provider mapping and native provider/ERP constructs do not become canonical by existence alone;
-- ambiguous external writes are not blindly retried;
-- provider requirements, time obligations, work ownership, freshness, coverage and historical decision lineage all participate in truthful operational control;
-- material multi-target actions expose intended blast radius and partial/ambiguous results rather than one opaque batch boolean, and whole-batch blind retry cannot erase already-confirmed effects;
-- marketplace hubs remain benchmark/competitive evidence, not target runtime dependencies;
+- no new D0 microtopic should be invented absent a new material finding satisfying the stop rule;
+- D0 truth/action-safety invariants are cross-cutting properties, not automatic future contexts/modules;
 - current code/docs remain evidence, not target authority;
-- the exact next work is **D0.7 Product completeness review — decision/approval validity at execution time**.
+- the exact next action is **operator acceptance of D0 as a whole or identification of a concrete material blocker**.
 
 If it cannot, the current authority path is incomplete or contradictory.
