@@ -169,7 +169,7 @@ Research source: Mercado Livre official developer documentation, shipping-manage
 
 ### Internal operating safety target
 
-Mature reliability guidance distinguishes external agreements/obligations from internal objectives and explicitly recommends a tighter internal objective/safety margin where appropriate, so teams can react before an external commitment is breached.
+Mature reliability guidance distinguishes external agreements/obligations from internal objectives and recommends a tighter internal objective/safety margin where appropriate, so teams can react before an external commitment is breached.
 
 D0 uses this only as supporting operating-pattern evidence: organization-owned MPC policy may establish an earlier/faster Internal Operational Target, but it must remain distinct from and cannot relax the provider/external obligation.
 
@@ -180,6 +180,72 @@ Research source: Google SRE official Service Level Objectives / Embracing Risk m
 The operator additionally identified a business-policy pattern such as “act within N time after event receipt.” Architectural implication: relative targets are meaningless unless the triggering event/time and provenance are explicit. Exact canonical timestamps/event semantics belong to D2/D4; timers/schedulers/notifications belong to D7/D6.
 
 This evidence does not reopen buyer Q&A/chat, which remains outside Product 1.0 unless separately re-adjudicated.
+
+## Action-safety / bulk / execution-time evidence — 2026-08-15
+
+### Amazon asynchronous listing/feed outcomes
+
+Current Amazon SP-API guidance distinguishes direct Listings Items operations from `JSON_LISTINGS_FEED` bulk submissions. Bulk submissions are queued/asynchronous and processing reports expose item issues. Amazon also documents that a feed can reach `FATAL` while some, none or all operations may already have completed, and that issues can arise after an initially accepted listings submission during downstream processing.
+
+Evidence carried into D0/D7:
+
+- submission/acceptance is not final convergence;
+- bulk work can have partial or later-discovered outcomes;
+- already-accepted work and unresolved work must not collapse into one boolean or blind whole-batch retry;
+- the concrete queue/report/retry mechanism belongs to D4/D7, not D0.
+
+Research sources: Amazon SP-API official Feeds/Listings workflow documentation (`developer-docs.amazon.com`).
+
+### Mirakl import tracking and price approval
+
+Current Mirakl offer APIs return an import identifier for offer updates so import status/errors can be tracked. Price imports with `Price Approval` enabled create/update **pending prices** while ongoing prices remain active until the approval process advances them.
+
+Evidence carried into D0/D4:
+
+- a proposed/approved commercial change is distinguishable from currently effective provider state;
+- import submission is not equivalent to final effective state;
+- approval is tied to the proposed change/context rather than a generic eternal permission to mutate any later price;
+- exact import/approval mechanics remain provider-specific D4/D7 design.
+
+Research source: Mirakl official seller/operator offer API (`developer.mirakl.com`).
+
+### ANYMARKET safety-limit blocking
+
+Current ANYMARKET monitoring documentation gives an explicit price-update example where the current price is `100`, proposed price is `150`, the configured safety limit is exceeded, and the listing is **not updated**; the operator must review the new price or safety limit.
+
+Evidence carried into D0:
+
+- mature marketplace hubs re-evaluate current safety constraints at action time rather than treating a previous intent as unconditional execution permission;
+- blocked external action becomes explicit operational work/monitoring rather than silent success;
+- the exact safety-limit/configuration implementation is competitor evidence, not an MPC architecture to copy.
+
+Research source: ANYMARKET official callback/monitoring documentation (`developers.anymarket.com.br`).
+
+### Bling webhook delivery semantics
+
+Current Bling documentation states the same webhook may be sent more than once and events are not guaranteed to arrive in generation order; the integration is expected to be idempotency-aware. Retrying delivery can continue for days and the webhook configuration may eventually be disabled after persistent failures.
+
+Evidence carried into D3/D7:
+
+- duplicate/out-of-order events are reachable real behavior, not hypothetical hardening;
+- event receipt does not by itself prove ordering/completeness/current authoritative state;
+- idempotency, ordering/re-read/recovery mechanics belong to D3/D7 rather than becoming another D0 business capability.
+
+Research source: Bling official webhook documentation (`developer.bling.com.br`).
+
+## D0 closure benchmark evidence — 2026-08-15
+
+ANYMARKET's current Backoffice API guide publicly groups its integration surface across catalog prerequisites, products/SKUs/images, stock/listings/prices, orders/returns/fiscal documents, callbacks/campaigns/monitoring/users/roles, plus pagination/rate-limit/error mechanics.
+
+Comparison outcome for D0 closure:
+
+- MPC Product 1.0 covers the material marketplace-operating lifecycle families: readiness/catalog linkage, listings, availability, pricing/intelligence, orders/fiscal materialization, fulfillment/shipment, post-sale, reconciliation/monitoring and economic outcome;
+- user/role authorization is represented at D0 actor/authority level while exact identities/permissions belong to D2/D5;
+- callbacks/pagination/rate-limit/retry are technical mechanics for D3/D4/D7, not missing Product 1.0 capabilities;
+- marketplace campaign authoring/discount-campaign management is not required as a Product 1.0 control surface; however observed promotion/discount economic effects remain attributable evidence where they materially affect price/order/realized economics;
+- competitor domain breadth does not justify copying every domain as an MPC module/context.
+
+Research source: ANYMARKET official Backoffice API Guide (`developers.anymarket.com.br`).
 
 ## Durable uncertainty/safety properties
 
