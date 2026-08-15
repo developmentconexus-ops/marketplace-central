@@ -227,6 +227,7 @@ No actor may configure away mandatory audit/reconciliation/safety invariants, ex
 | Observation/acquisition time and provenance for external facts | source/provider owns native fact time where supplied; MPC **RECORDS** observation provenance and **DERIVES** freshness-for-use |
 | Observation coverage/completeness conclusion | **OWN / DERIVE** from source enumeration/observation evidence; underlying facts remain externally authoritative |
 | Material decision/action lineage and historical explanation | **OWN** as MPC audit/control semantics, built from decision-time evidence/provenance, governing policy/rules, authority/approval context, uncertainty and correlated action/result evidence |
+| Multi-target intended action scope and aggregate/granular execution outcome | **OWN** as MPC control/reconciliation semantics; each provider-native result remains authoritative in its source system |
 | Cost Observation | **OBSERVE / DERIVE** from attributable authoritative economics |
 | Cost Basis | **OWN** when MPC-governed; **OBSERVE / CONSUME** when externally governed |
 | Competitive/pricing/expected-profitability interpretation | **OWN / DERIVE** |
@@ -306,7 +307,14 @@ No actor may configure away mandatory audit/reconciliation/safety invariants, ex
 58. **Re-running a current calculation is not reproducing a historical calculation.** Simulator, cost, fee, rule or policy changes must not rewrite the meaning of a prior decision.
 59. **Material external action remains correlatable to intent + authority + decision-time evidence + result.** The explanation must survive later mutation of current state.
 60. D0 does not require event sourcing, universal snapshots or copying every source fact. D2/D3/D7 later choose the smallest retention/reference/snapshot mechanism that satisfies accepted historical explainability.
-61. Provider/ERP/payment/bank transport, timer, scheduler, polling, webhook, TTL/cache, freshness threshold, pagination, checkpoint, backfill, coverage-proof and decision-record storage mechanics remain later-stage responsibilities.
+61. **Multi-target action is not one opaque boolean result.** A material action affecting multiple targets preserves an intended target scope and sufficiently granular outcomes to distinguish confirmed, rejected, ambiguous and not-executed members where those distinctions are material.
+62. **Intended target scope is not reconstructed from mutable current filters.** Historical blast radius must remain explainable from the target universe intended/authorized for that action, even if current eligibility/filter membership changes later.
+63. **Batch-level authorization does not erase target-level authority/readiness differences.** A collective decision cannot silently authorize a member that independently requires different authority, approval, evidence or readiness.
+64. **Partial success is neither total success nor total failure.** Confirmed effects remain confirmed while rejected/ambiguous/not-executed members remain independently visible/reconcilable.
+65. **An ambiguous member does not make whole-batch retry safe.** MPC must not blindly retry already-confirmed members merely because other members failed or became uncertain.
+66. **MPC does not invent cross-provider atomicity.** Unless an accepted provider contract proves atomic behavior, external multi-target effects may be partial and Product 1.0 must remain correct under partial outcomes.
+67. **Automation at scale does not hide blast radius.** Policy-driven mass effects remain observable/reconcilable even when no per-target human approval is required.
+68. Provider/ERP/payment/bank transport, timer, scheduler, polling, webhook, TTL/cache, freshness threshold, pagination, checkpoint, backfill, coverage-proof, decision-record, batch API, queue, concurrency, compensation and retry-orchestration mechanics remain later-stage responsibilities.
 
 ---
 
@@ -333,17 +341,18 @@ Product 1.0 is complete only when MPC is demonstrably usable as the normal marke
 15. **Material evidence is freshness-aware.** Stale/unknown-freshness evidence and degraded acquisition affect confidence/attention and can block unsafe normal action.
 16. **Portfolio/absence/reconciliation claims are coverage-aware.** MPC distinguishes sufficiently-covered, partial and unknown coverage for the relevant population; `no issues`, terminal absence and reconciliation closure require enough coverage evidence for the claim being made.
 17. **Material historical decisions/actions remain explainable.** MPC can explain why a consequential recommendation/approval/action was permitted or executed using decision-time evidence, governing policy/rule provenance, authority/approval and known uncertainty rather than reconstructing history from mutable current state.
-18. **Shipment remains visible through terminal outcome.** Material delivery exceptions become explicit work.
-19. **Essential post-sale changes remain controlled.** Cancellation/return/refund and required fiscal/economic consequences remain orchestrated/reconciled.
-20. **Failures become explicit work.** Missing evidence, ambiguity, unsupported capability, deadline uncertainty/breach, stale evidence, partial/unknown coverage and divergence identify what is known/unknown, who is responsible and what action/authority is required.
-21. **The economic evidence chain closes as far as authoritative evidence is available.** Expected Economics → Order Economics → Marketplace Settlement → Cash Receipt evidence remain distinct.
-22. **Simulator drift becomes actionable learning** only after materially comparable historical evidence isolates model/provider-rule drift.
-23. **Realized profitability is explainable** from attributable economic evidence rather than convenient current values.
-24. **Organizational governance is operable without code edits** while external authority and mandatory safety/audit invariants remain protected.
+18. **Material multi-target actions expose blast radius and partial outcomes.** MPC preserves the intended target scope and can distinguish confirmed, rejected, ambiguous and not-executed effects sufficiently to reconcile partial execution without pretending the whole operation was atomically successful/failed.
+19. **Shipment remains visible through terminal outcome.** Material delivery exceptions become explicit work.
+20. **Essential post-sale changes remain controlled.** Cancellation/return/refund and required fiscal/economic consequences remain orchestrated/reconciled.
+21. **Failures become explicit work.** Missing evidence, ambiguity, unsupported capability, deadline uncertainty/breach, stale evidence, partial/unknown coverage, partial action outcome and divergence identify what is known/unknown, who is responsible and what action/authority is required.
+22. **The economic evidence chain closes as far as authoritative evidence is available.** Expected Economics → Order Economics → Marketplace Settlement → Cash Receipt evidence remain distinct.
+23. **Simulator drift becomes actionable learning** only after materially comparable historical evidence isolates model/provider-rule drift.
+24. **Realized profitability is explainable** from attributable economic evidence rather than convenient current values.
+25. **Organizational governance is operable without code edits** while external authority and mandatory safety/audit invariants remain protected.
 
 Completion statement:
 
-> **A company can take internal products, determine marketplace readiness, publish and operate offers, maintain availability from explicit inventory scope/policy, monitor competition and profitability, make controlled decisions from sufficiently current and sufficiently covered evidence, retain enough decision-time lineage to explain material historical actions, materialize sales in business/fiscal systems, fulfill them through eligible nodes, close provider requirements, prioritize time-bound obligations, route actionable work to explicit owners, close work through evidence, dispatch and observe delivery/post-sale consequences, preserve economic evidence through settlement/cash where available, reconcile divergence without mistaking partial observation for completeness, learn when its own simulator is wrong, and explain realized economic outcome — using Marketplace Central as the normal marketplace operations control plane.**
+> **A company can take internal products, determine marketplace readiness, publish and operate offers, maintain availability from explicit inventory scope/policy, monitor competition and profitability, make controlled decisions from sufficiently current and sufficiently covered evidence, retain enough decision-time lineage to explain material historical actions, execute at scale without hiding blast radius or partial outcomes, materialize sales in business/fiscal systems, fulfill them through eligible nodes, close provider requirements, prioritize time-bound obligations, route actionable work to explicit owners, close work through evidence, dispatch and observe delivery/post-sale consequences, preserve economic evidence through settlement/cash where available, reconcile divergence without mistaking partial observation or partial execution for closure, learn when its own simulator is wrong, and explain realized economic outcome — using Marketplace Central as the normal marketplace operations control plane.**
 
 ### 9.1 Normal-path rule
 
@@ -447,30 +456,34 @@ MPC targets direct provider boundaries. ANYMARKET, Magis5 and similar hubs are b
 
 ### D0.7l — Decision/action evidence lineage and historical reproducibility
 
+**Accepted.** For material recommendations, approvals, decisions and externally consequential actions, Product 1.0 preserves enough decision-time lineage to explain why the action was recommended, permitted and/or executed without reconstructing the past from mutable current state. Material intent, governing evidence/provenance, effective policy/rules, actor/automation authority/approval, freshness/coverage/uncertainty and correlated result remain explainable. D0 does not mandate event sourcing, universal snapshots or a canonical `DecisionRecord`; D1/D2/D3/D7 choose the smallest sufficient mechanism.
+
+### D0.7m — Multi-target action scope / blast radius / partial-result semantics
+
 **Accepted by operator.**
 
-For material recommendations, approvals, decisions and externally consequential actions, Product 1.0 preserves enough **decision-time lineage** to explain why the action was recommended, permitted and/or executed without reconstructing the past from mutable current state.
+For material operator- or policy-driven actions that affect multiple marketplace targets, Product 1.0 preserves an explicit **intended target scope / blast radius** and sufficiently granular execution outcome semantics so differences and partial effects remain observable/reconcilable rather than being collapsed into one opaque batch status.
 
 Product-level requirements:
 
-- the historical explanation identifies the material business intent/action and the evidence that actually governed it at decision time;
-- enough provenance is retained to identify which source facts/observations, Cost Basis or other relevant economic inputs, provider/business context and known uncertainty participated materially in the decision;
-- governing MPC-owned policy/rule provenance/effective meaning at decision time remains distinguishable from the policy/rule that happens to be current later;
-- actor/automation identity, authority and approval context remain distinguishable: `who acted` is not by itself `why the action was authorized`;
-- freshness/coverage/sufficiency or other accepted uncertainty state that materially affected the decision remains explainable rather than being recomputed from later acquisition state;
-- material external action/result remains correlatable back to its intent and governing decision context so verification/reconciliation and post-incident review can explain the full chain;
-- historical simulator calibration or profitability analysis must use the original material inputs/rules/evidence, not merely rerun the current simulator/current-cost/current-policy model and call that a reproduction;
-- D0 does **not** require copying every source object, universal immutable snapshots, event sourcing, or a canonical `DecisionRecord` entity. References to sufficiently durable observations, targeted snapshots, hashes or another later mechanism are all possible if they satisfy the accepted property.
+- the action's intended target universe is attributable to the decision/authorization that created it; later changes in filters, eligibility, policy membership or current state must not silently redefine what that historical action intended to affect;
+- collective/batch authorization does not erase material target-level differences in authority, policy, evidence sufficiency, readiness or provider capability;
+- the execution/reconciliation view can distinguish, where material, targets/effects that are **confirmed**, **rejected/failed**, **ambiguous/unknown outcome** and **not executed/not attempted**;
+- confirmed target effects remain confirmed even when other members fail; partial success is neither total success nor total failure;
+- ambiguous or failed members do not make blind retry of the whole intended set safe because already-confirmed targets may otherwise be duplicated/reapplied;
+- MPC does not promise cross-target/provider all-or-nothing atomicity unless a later verified provider contract actually guarantees it;
+- policy-driven automation that affects many targets is subject to the same blast-radius/outcome observability and reconciliation property even when routine policy-valid execution does not require per-target human approval;
+- D0 does not mandate a `BatchJob`/`BulkOperation` entity, per-target database row, saga, compensation engine, chunking, worker pool, progress UI or a specific retry algorithm.
 
-This is a product auditability/explainability property. D1/D2/D3/D7 later choose the smallest model, retention and reference/snapshot mechanisms that preserve accepted material lineage.
+This is a product safety/reconciliation property. D5/D6/D7 later choose the smallest bulk-action contract, execution and presentation mechanics that preserve scope, authority and partial outcomes.
 
 ### Next D0.7 question
 
-The next material product-completeness question is **multi-target action scope / blast radius / partial-result semantics**.
+The next material product-completeness question is **decision/approval validity at execution time**.
 
-MPC will permit operator- and policy-driven external actions such as listing, price or availability changes. A control plane can still be unsafe if an action intended for many offers/listings is represented as one opaque success/failure even though target eligibility/authority can differ and external providers may accept only part of the work.
+D0 now preserves decision-time lineage and multi-target blast radius, but a consequential action may execute after the recommendation/approval that authorized it. Between approval and execution, authoritative facts, provider capability/readiness, evidence freshness/coverage, MPC-owned policy or an external obligation may materially change.
 
-D0 must decide whether material multi-target actions require an explicit intended target scope/blast radius and per-target or sufficiently granular outcome semantics so partial acceptance/failure/ambiguity cannot masquerade as one atomic success or trigger blind whole-batch retry. This is a product safety/reconciliation question, not a batch API, transaction, queue, concurrency or compensation implementation decision. Exact bulk-operation mechanics belong to D5/D6/D7.
+D0 must decide whether Product 1.0 treats an earlier approval/decision as permanently valid, or requires material execution-time preconditions/authority to remain valid enough for the action actually being executed. The likely target property is that approval is authorization under a decision context—not an eternal waiver of later-invalidated safety/policy conditions. This is a product safety/authority question, not a locking, optimistic-concurrency, version token or reapproval UI decision. Exact revalidation/versioning mechanics belong to D2/D5/D6/D7.
 
 Other remaining D0.7 findings continue to be classified adversarially; D0 closes only when no material Product 1.0 semantic is left for implementation to invent.
 
@@ -483,7 +496,7 @@ A fresh session must read `AGENTS.md`, `docs/engineering/rebaseline/README.md`, 
 It should conclude:
 
 - D0 is OPEN and not yet accepted as a whole; implementation remains blocked until D9;
-- D0.1–D0.6 and D0.7a–D0.7l are operator-approved;
+- D0.1–D0.6 and D0.7a–D0.7m are operator-approved;
 - Product 1.0 is Marketplace Operations + Commercial Intelligence (A+), not an ERP/marketplace/accounting/task-management replacement;
 - organization, Marketplace Installation and Selling Entity identities do not collapse;
 - canonical MPC semantics precede ERP/provider mapping;
@@ -496,6 +509,7 @@ It should conclude:
 - actionable work has explicit role ownership; assignment is distinct from authorization; escalation changes required attention/responsibility/authority; material work closes through evidence;
 - material evidence is freshness-aware and coverage-aware: stale/unknown-freshness evidence cannot masquerade as current truth, fresh is not complete, and portfolio/absence/reconciliation claims require sufficient coverage;
 - material historical recommendations/approvals/actions preserve enough decision-time lineage to explain their evidence, policy/rule provenance, authority/approval and uncertainty without relying on mutable current state;
+- material multi-target actions preserve their intended blast radius and sufficiently granular partial/ambiguous outcomes; batch-level success/failure or whole-batch blind retry cannot erase already-confirmed or unresolved members;
 - current code/docs remain evidence, not target authority;
 - no D1+ target architecture may be invented yet;
-- the exact next work is **D0.7 Product completeness review — multi-target action scope / blast radius / partial-result semantics**.
+- the exact next work is **D0.7 Product completeness review — decision/approval validity at execution time**.
