@@ -1,6 +1,6 @@
 # D0 — Product / System Definition
 
-> **Status:** WORKING — D0 OPEN, FINAL CORRECTIONS APPLIED; PENDING FINAL COLD REVIEW  
+> **Status:** ACCEPTED AS A WHOLE — D0 CLOSED  
 > **Program:** Architecture Rebaseline / Technical System Design  
 > **Authority:** operator-approved D0 decisions recorded here; later D-stages own technical realization  
 > **Last updated:** 2026-08-15
@@ -597,7 +597,7 @@ The bounded closure review plus independent adversarial review found no remainin
 
 A fresh session must read `AGENTS.md`, `docs/engineering/rebaseline/README.md`, `docs/engineering/standards/root-cause-global-maximum-method.md`, `ARCHITECTURE.md`, the ADR registry and then this artifact.
 
-Before D0 is finally marked closed, the cold review must confirm:
+The final cold review confirmed:
 
 - the authority documents agree on D0 status and exact next action;
 - Product 1.0 remains Marketplace Operations + Commercial Intelligence, not an ERP/marketplace/accounting/task-management/reputation-management replacement;
@@ -619,4 +619,4 @@ Before D0 is finally marked closed, the cold review must confirm:
 - current code/docs remain evidence, not target authority;
 - no D1+ target architecture is invented inside D0.
 
-If those checks pass, D0 is ready to be recorded **ACCEPTED AS A WHOLE / CLOSED**, and the exact next stage is **D1 — Domains / Boundaries**. No product implementation is authorized before D9.
+Those checks passed. D0 is therefore **ACCEPTED AS A WHOLE / CLOSED**. The exact next stage is **D1 — Domains / Boundaries**. No product implementation is authorized before D9.
