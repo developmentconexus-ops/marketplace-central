@@ -121,10 +121,9 @@ Unless later D0 evidence reopens them, Product 1.0 does not require:
 - unrestricted AI/autonomous commercial action without explicit policy;
 - a generic integration framework for speculative providers;
 - a universal ERP model;
-- runtime dependency on marketplace hubs such as ANYMARKET or Magis5 merely to reach marketplaces MPC is intended to control directly;
-- a generic project/task-management or workflow-builder product merely because MPC needs operational work ownership.
+- runtime dependency on marketplace hubs such as ANYMARKET or Magis5 merely to reach marketplaces MPC is intended to control directly.
 
-Essential shipment/delivery observation, cancellation/return/refund consequences, provider-requirement closure for claimed normal fulfillment paths, materially time-bound operational obligations, explicit ownership of actionable operational work, marketplace economic settlement and the cash evidence needed to close the marketplace economic chain are **not** deferred merely because their source systems are external.
+Essential shipment/delivery observation, cancellation/return/refund consequences, provider-requirement closure for claimed normal fulfillment paths, materially time-bound operational obligations, marketplace economic settlement and the cash evidence needed to close the marketplace economic chain are **not** deferred merely because their source systems are external.
 
 ---
 
@@ -156,7 +155,7 @@ This does not preclude future evidence from justifying an intermediary integrati
 
 ### 5.3 Time-bound obligation evidence
 
-Current provider research confirms that marketplace operations can expose authoritative deadlines, not merely descriptive timestamps. For example, Mercado Livre exposes a maximum shipment-dispatch date/time whose breach can affect reputation/visibility. External deadlines therefore have operational consequences and must remain distinguishable from internal organization targets.
+Current provider research confirms that marketplace operations can expose authoritative deadlines, not merely descriptive timestamps. External deadlines can have operational consequences and must remain distinguishable from internal organization targets.
 
 Mature reliability practice also supports keeping an internal target stricter than an external commitment to create operating safety margin. D0 adopts the business-semantic principle without importing SRE-specific implementation machinery.
 
@@ -248,8 +247,8 @@ No actor may configure away mandatory audit/reconciliation/safety invariants, ex
 | Externally governed operational deadline/window | provider/other external authority; MPC **OBSERVES** and preserves source/time evidence |
 | MPC-owned Internal Operational Target | **OWN** as organization policy; it may be stricter than an external obligation but cannot rewrite/relax it |
 | Operational urgency, remaining time, safety margin and breach/attention interpretation | **OWN / DERIVE** from authoritative obligation/target evidence and current workflow state |
-| Operational work responsibility, assignment, escalation and resolution state | **OWN** as MPC control-plane semantics; assignment does not grant business authorization |
-| Resolution evidence originating in an external system | external source remains authoritative; MPC **OBSERVES / DERIVES / RECONCILES** whether the work outcome is actually satisfied |
+| Actionable-work owning role, assignment/escalation state and accepted resolution state | **OWN** as MPC operational-control semantics; actor/policy authorization remains separately governed |
+| Observation timestamp/source/acquisition evidence for external facts | source/provider owns native fact time when supplied; MPC **OBSERVES / RECORDS** acquisition/provenance and **DERIVES** freshness-for-use conclusions |
 | Cost Observation | **OBSERVE / DERIVE** from attributable authoritative economics |
 | Cost Basis | **OWN** when MPC-governed; **OBSERVE / CONSUME** when externally governed |
 | Competitive/pricing/expected-profitability interpretation | **OWN / DERIVE** |
@@ -308,13 +307,16 @@ No actor may configure away mandatory audit/reconciliation/safety invariants, ex
 37. **Relative time policy requires an explicit time anchor.** A rule such as “act within one hour of receipt” is only meaningful when the triggering event/time and provenance are known; unknown anchor/deadline is not equivalent to no deadline.
 38. **Internal-target breach and external-obligation breach are distinct states.** Missing an internal safety target must not be reported as provider breach; meeting an internal target does not by itself prove an external obligation was satisfied.
 39. **Time drives attention, not hidden background arithmetic.** Material remaining time, safety margin, risk and breach state must be available to operational prioritization rather than existing only as raw timestamps.
-40. **Actionable work must have explicit operational responsibility.** A work item may be unassigned to an individual, but the responsible role/function must not be unknowable for normal actionable work.
-41. **Owning role and individual assignee are different semantics.** A durable responsibility may exist without a named person; changing personnel must not redefine which function owns the work.
-42. **Assignment does not grant authorization.** Being responsible for progressing a case never expands the actor's policy/business authority; escalation is required when additional authority is needed.
-43. **Automation may own normal execution; failure may transfer work to humans.** A policy-driven automated path can be the active executor until failure/ambiguity creates human-owned actionable work.
-44. **Escalation is not merely notification.** It represents an increase/change in required responsibility, attention or authority because the case cannot safely progress under its current ownership/state.
-45. **Material work closes through an accepted resolution outcome/evidence, not arbitrary dismissal.** The exact resolution taxonomy belongs later, but a click alone cannot make unresolved external/business divergence true.
-46. Provider/ERP/payment/bank transport, timer, scheduler, queue, assignment-routing and notification mechanics remain later-stage responsibilities.
+40. **Actionable work is not operationally ownerless.** A material case has a known owning role/responsibility even when no individual is assigned.
+41. **Assignment is not authorization.** Assigning a case to a person does not grant permissions/policy authority that actor does not otherwise possess.
+42. **Escalation is not notification.** Escalation means greater/different responsibility, attention or authority is required; notification is only a possible mechanism.
+43. **Material work does not close by arbitrary dismissal.** Closure requires accepted resolution outcome/evidence coherent with the underlying business/external state.
+44. **Freshness is use-sensitive.** Evidence can be sufficiently current for one use and insufficient for a more consequential decision; D0 does not define a universal age threshold.
+45. **Stale evidence is not false evidence.** An old last-known value is not rewritten to zero/false, but neither may it masquerade as current truth.
+46. **Unknown freshness is not current.** If MPC cannot establish enough observation-time/provenance to judge material evidence, that uncertainty remains explicit.
+47. **Acquisition failure affects operational confidence.** A last-known value must remain distinguishable from repeated failed attempts to refresh/observe the authority.
+48. **Unsafe action may be blocked by insufficient freshness.** Where a decision/readiness/automation/external write materially depends on current evidence, insufficient freshness must degrade confidence, create work or block the normal action as appropriate rather than silently proceeding.
+49. Provider/ERP/payment/bank transport, timer, scheduler, polling, webhook, TTL/cache and freshness-threshold mechanics remain later-stage responsibilities.
 
 ---
 
@@ -338,17 +340,18 @@ Product 1.0 is complete only when MPC is demonstrably usable as the normal marke
 12. **Material time-bound obligations drive attention.** Provider/external deadlines and organization-owned internal targets remain distinguishable, relative targets have a known anchor, and operational attention can prioritize approaching/breached obligations rather than requiring operators to discover deadlines manually.
 13. **Actionable work has an owner and can progress/escalate.** Material exceptions, approvals, ambiguities, calibration cases and deadline risks have explicit operational responsibility; individual assignment is supported when useful, escalation can request greater attention/authority, and assignment never bypasses authorization.
 14. **Work closes through evidence.** A material actionable case can be shown as resolved only through an accepted resolution outcome/evidence consistent with the underlying business/external state; unresolved divergence cannot disappear through arbitrary dismissal.
-15. **Shipment remains visible through terminal outcome.** Material delivery exceptions become explicit work.
-16. **Essential post-sale changes remain controlled.** Cancellation/return/refund and required fiscal/economic consequences remain orchestrated/reconciled.
-17. **Failures become explicit work.** Missing evidence, ambiguity, unsupported capability, deadline uncertainty/breach and divergence identify what is known/unknown, who is responsible and what action/authority is required.
-18. **The economic evidence chain closes as far as authoritative evidence is available.** MPC preserves and compares Expected Economics → Order Economics → Marketplace Settlement → Cash Receipt evidence, without collapsing distinct stages into one opaque number.
-19. **Simulator drift becomes actionable learning.** Materially comparable simulation/order evidence can identify model/provider-rule drift and create calibration work; explainable input/context changes are classified separately.
-20. **Realized profitability is explainable.** The system can attribute material cost/fees/freight/tax/post-sale/settlement effects and distinguish unresolved economics instead of recomputing history from convenient current values.
-21. **Organizational governance is operable without code edits.** Legitimate MPC-owned authorities, including internal operating-target policy, are configurable while external authority and mandatory safety/audit invariants remain protected.
+15. **Material evidence is freshness-aware.** When a decision, readiness state, automation or external action depends on current external/business evidence, MPC can distinguish sufficiently-current, stale/insufficient and unknown-freshness evidence; degraded acquisition/freshness becomes explicit attention or blocks unsafe normal action when necessary.
+16. **Shipment remains visible through terminal outcome.** Material delivery exceptions become explicit work.
+17. **Essential post-sale changes remain controlled.** Cancellation/return/refund and required fiscal/economic consequences remain orchestrated/reconciled.
+18. **Failures become explicit work.** Missing evidence, ambiguity, unsupported capability, deadline uncertainty/breach, stale/unknown-freshness evidence and divergence identify what is known/unknown, who is responsible and what action/authority is required.
+19. **The economic evidence chain closes as far as authoritative evidence is available.** MPC preserves and compares Expected Economics → Order Economics → Marketplace Settlement → Cash Receipt evidence, without collapsing distinct stages into one opaque number.
+20. **Simulator drift becomes actionable learning.** Materially comparable simulation/order evidence can identify model/provider-rule drift and create calibration work; explainable input/context changes are classified separately.
+21. **Realized profitability is explainable.** The system can attribute material cost/fees/freight/tax/post-sale/settlement effects and distinguish unresolved economics instead of recomputing history from convenient current values.
+22. **Organizational governance is operable without code edits.** Legitimate MPC-owned authorities, including internal operating-target policy, are configurable while external authority and mandatory safety/audit invariants remain protected.
 
 Completion statement:
 
-> **A company can take internal products, determine marketplace readiness, publish and operate offers, maintain availability from explicit inventory scope/policy, monitor competition and profitability, make and execute controlled decisions, materialize marketplace sales in business/fiscal systems, fulfill them through explicit eligible nodes, close provider-required prerequisites/artifacts/readiness for the supported operating path, prioritize time-bound obligations under both external deadlines and organization-owned internal targets, route actionable work to explicit operational owners and escalate it when greater authority/attention is required, close work through evidence, dispatch and observe delivery/post-sale consequences, preserve economic evidence from simulation through order/settlement/cash where available, reconcile divergence, learn when its own simulator is wrong, and explain realized economic outcome — using Marketplace Central as the normal marketplace operations control plane.**
+> **A company can take internal products, determine marketplace readiness, publish and operate offers, maintain availability from explicit inventory scope/policy, monitor competition and profitability, make and execute controlled decisions from sufficiently trustworthy/current evidence, materialize marketplace sales in business/fiscal systems, fulfill them through explicit eligible nodes, close provider-required prerequisites/artifacts/readiness for the supported operating path, prioritize time-bound obligations under both external deadlines and organization-owned internal targets, route actionable work to explicit operational owners and escalate it when greater authority/attention is required, close work through evidence, dispatch and observe delivery/post-sale consequences, preserve economic evidence from simulation through order/settlement/cash where available, reconcile divergence, learn when its own simulator is wrong, and explain realized economic outcome — using Marketplace Central as the normal marketplace operations control plane.**
 
 ### 9.1 Normal-path rule
 
@@ -471,36 +474,13 @@ MPC distinguishes at least two authority classes:
 1. **External Operational Obligation** — a provider/contract/external-business deadline or permitted action window. Its deadline/window and source remain externally governed facts.
 2. **Internal Operational Target** — an MPC-owned organization policy expressing when the organization wants the operation completed or responded to. It may deliberately be stricter/earlier than the external obligation to create safety margin, and it may exist even when no external deadline exists.
 
-Example:
-
-```text
-provider obligation: dispatch within 2 days
-organization target: dispatch within 1 day
-```
-
 The internal target does not replace the provider deadline. MPC preserves both and derives the operational safety margin/attention state from them.
 
-Time policy may also be **relative to an explicit operational anchor**, for example:
+Time policy may also be **relative to an explicit operational anchor**. The exact event classes in scope are determined by accepted Product 1.0 workflows; this does not reopen automated buyer chat/Q&A.
 
-```text
-trigger/anchor: event received at 10:00
-organization policy: act within 1 hour
-internal target: 11:00
-```
+Provider/external obligations and organization targets retain separate provenance. Internal policy may tighten but cannot waive/overwrite an external obligation. Relative targets require explicit trustworthy anchors. Missing internal target and external breach are different facts. Exact clocks/calendars/timers/schedulers/notifications belong later.
 
-The exact event classes in scope are determined by accepted Product 1.0 workflows. The example does **not** reopen automated buyer chat/Q&A, which remains a non-goal unless separately re-adjudicated.
-
-Product-level requirements:
-
-- provider/external obligations and organization targets retain separate authority/provenance;
-- an Internal Operational Target may tighten an external obligation but cannot waive, overwrite or make a later external deadline acceptable;
-- internal policy may use organization defaults and later-proven more-specific scopes under the deterministic inheritance/override principles already accepted for MPC-owned policy;
-- a relative target requires an explicit, sufficiently trustworthy time anchor. Unknown trigger/deadline is explicit uncertainty, not `no deadline`;
-- MPC may derive remaining time, safety margin, urgency, risk, internal-target breach and external-obligation breach for portfolio attention;
-- missing an internal target and breaching an external obligation are different operational facts and must not be conflated;
-- exact provider deadline fields, timezones, calendars, cutoffs, timers, schedulers, notifications, escalation thresholds and UI countdown mechanics belong to D4/D6/D7.
-
-This is a cross-cutting control-plane property, not a separate business capability or a generic SLA engine.
+This is a cross-cutting control-plane property, not a generic SLA engine.
 
 ### D0.7i — Operational work ownership, assignment, escalation and evidence-based closure
 
@@ -521,13 +501,33 @@ Product-level semantics:
 
 Exact concepts/names (`Work`, `Case`, `Exception`), queues, teams, users, assignment algorithms, substitutions, inbox UI, notification channels, escalation timers, resolution taxonomy, persistence/history and runtime mechanics belong to D1/D2/D6/D7.
 
+### D0.7j — Operational evidence freshness / staleness
+
+**Accepted by operator.**
+
+Product 1.0 must not present materially stale external/business evidence as if it were current truth when that evidence participates in decision, readiness, automation or an externally consequential action.
+
+Freshness is **use-sensitive**, not a universal TTL. Evidence may be sufficiently current for a low-consequence analysis but insufficient for a high-consequence action. Product-level requirements:
+
+- material external/business evidence preserves enough observation/acquisition time and provenance for MPC to judge whether it is sufficiently current for the intended use;
+- a stale last-known value remains a last-known value; it does not become `false`, `zero` or another invented value, but it also cannot masquerade as current reality;
+- unknown observation age/provenance remains **freshness unknown**, not implicitly current;
+- failed refresh/acquisition attempts are operationally meaningful: MPC must distinguish `last successful observation` from subsequent failed attempts rather than continuing to present the old value without qualification;
+- where current evidence is materially required, insufficient freshness may reduce confidence, block the normal automated/external action, require re-observation, or create explicit actionable work according to risk/materiality;
+- portfolio attention may surface stale/unknown-freshness evidence and degraded acquisition when they materially endanger an accepted workflow or obligation;
+- D0 does not choose source-specific freshness thresholds, polling intervals, TTLs, caches, webhooks, refresh controls or scheduling/retry mechanics.
+
+This is a product truthfulness/safety property. D2/D3/D4/D7 later define the smallest freshness/provenance contracts and acquisition mechanisms needed per accepted source/use.
+
 ### Next D0.7 question
 
-The next material product-completeness question is **operational evidence freshness / staleness**.
+The next material product-completeness question is **observation coverage / completeness uncertainty**.
 
-MPC can have the correct authority model, owner, policy and deadline and still make a bad decision if the underlying marketplace/ERP/provider evidence is materially stale while being presented as current. D0 must decide whether Product 1.0 requires freshness/observation-age uncertainty to participate explicitly in decision, readiness and attention semantics rather than remaining a hidden integration/cache detail.
+Fresh evidence can still be incomplete. MPC might have just synchronized ten orders correctly while an upstream pagination/filter/callback failure caused an eleventh order never to enter the observed set. Likewise, a partial listing/settlement/shipment pull may be fresh for what it returned while being incomplete for the population the product claims to control.
 
-This is a product-truthfulness/safety question, not a polling interval, TTL, cache or scheduler decision. Exact freshness contracts, source-specific cadence, timestamps, stale thresholds, polling/webhook strategy and runtime mechanics belong to D2/D3/D4/D7.
+D0 must therefore decide whether Product 1.0 needs the ability to distinguish **complete-enough observed coverage** from partial/unknown coverage before presenting portfolio health, absence or reconciliation closure as trustworthy. This is distinct from freshness: `recent` does not imply `complete`.
+
+This is a product truthfulness/reconciliation question, not a pagination, backfill, checkpoint, watermark, polling or provider-enumeration implementation decision. Exact coverage proofs and source mechanics belong to D2/D3/D4/D7.
 
 Other remaining D0.7 findings continue to be classified adversarially; D0 closes only when no material Product 1.0 semantic is left for implementation to invent.
 
@@ -540,13 +540,13 @@ A fresh session must read `AGENTS.md`, `docs/engineering/rebaseline/README.md`, 
 It should conclude:
 
 - D0 is OPEN and not yet accepted as a whole; implementation remains blocked until D9;
-- D0.1–D0.6 and D0.7a–D0.7i are operator-approved;
+- D0.1–D0.6 and D0.7a–D0.7j are operator-approved;
 - Product 1.0 is Marketplace Operations + Commercial Intelligence (A+), not an ERP/marketplace/accounting/task-management replacement;
 - `Organization 1 → N Marketplace Installations` and `Organization 1 → N Selling Entities`; identities do not collapse;
 - canonical MPC semantics are defined before ERP/provider mapping;
 - Selling Entity, Inventory Source/Scope, Fulfillment Node/Scope, Cost Observation/Basis, Business Order Intent and Invoicing Intent are accepted semantics;
 - availability is derived from eligible authoritative inventory + rules + policy; routine known policy-valid sync is automatic; unknown is not zero;
-- MPC-owned allocation policy may intentionally expose less stock (e.g. 70%) with deterministic/explainable future scope/override semantics;
+- MPC-owned allocation policy may intentionally expose less stock with deterministic/explainable later scope/override semantics;
 - Business Order Intent and Invoicing Intent remain separate from native ERP TOP/document operations; ambiguous writes are not blindly retried;
 - the Economic Evidence Chain is `Simulation → Order Economics → Marketplace Settlement → Cash Receipt evidence where available`;
 - simulation/order variance is classified before creating a simulator-calibration defect; payout/cash matching is not assumed 1:1;
@@ -555,6 +555,7 @@ It should conclude:
 - ANYMARKET, Magis5 and similar hubs are benchmark/competitive evidence, not Product 1.0 runtime dependencies; direct MPC-owned provider boundaries are the current target direction;
 - materially time-bound obligations are explicit: provider/external obligation and MPC-owned organization target remain separate, relative targets require explicit anchors, and time participates in portfolio attention/breach semantics;
 - actionable work has an explicit owning role; individual assignment is optional/distinct, assignment never grants authority, escalation represents greater/different responsibility/attention/authority, and material closure requires resolution evidence;
+- materially used external/business evidence is freshness-aware: stale/unknown-freshness evidence cannot masquerade as current truth, failed acquisition matters, and unsafe actions may be blocked when current evidence is required;
 - current code/docs remain evidence, not target authority;
 - no D1+ target architecture may be invented yet;
-- the exact next work is **D0.7 Product completeness review — operational evidence freshness / staleness**.
+- the exact next work is **D0.7 Product completeness review — observation coverage / completeness uncertainty**.
