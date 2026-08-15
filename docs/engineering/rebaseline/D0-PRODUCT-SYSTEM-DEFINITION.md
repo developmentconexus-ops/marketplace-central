@@ -226,6 +226,7 @@ No actor may configure away mandatory audit/reconciliation/safety invariants, ex
 | Actionable-work ownership/assignment/escalation/resolution state | **OWN** as MPC operational-control semantics; actor/policy authorization remains separate |
 | Observation/acquisition time and provenance for external facts | source/provider owns native fact time where supplied; MPC **RECORDS** observation provenance and **DERIVES** freshness-for-use |
 | Observation coverage/completeness conclusion | **OWN / DERIVE** from source enumeration/observation evidence; underlying facts remain externally authoritative |
+| Material decision/action lineage and historical explanation | **OWN** as MPC audit/control semantics, built from decision-time evidence/provenance, governing policy/rules, authority/approval context, uncertainty and correlated action/result evidence |
 | Cost Observation | **OBSERVE / DERIVE** from attributable authoritative economics |
 | Cost Basis | **OWN** when MPC-governed; **OBSERVE / CONSUME** when externally governed |
 | Competitive/pricing/expected-profitability interpretation | **OWN / DERIVE** |
@@ -299,7 +300,13 @@ No actor may configure away mandatory audit/reconciliation/safety invariants, ex
 52. **Individual observed facts do not prove population completeness.** A fact can be valid while portfolio-level coverage remains partial/unknown.
 53. **Portfolio health and reconciliation closure require sufficient coverage for the claimed universe.** Partial/unknown coverage cannot truthfully produce `no issues`, `nothing missing` or `reconciled` merely because observed subsets agree.
 54. **Webhook/callback receipt is not completeness proof.** Notification delivery may contribute evidence but cannot alone prove every relevant change/record was observed unless the provider contract independently guarantees that property and D4 verifies it.
-55. Provider/ERP/payment/bank transport, timer, scheduler, polling, webhook, TTL/cache, freshness threshold, pagination, checkpoint, backfill and coverage-proof mechanics remain later-stage responsibilities.
+55. **Current state is not historical decision basis.** Material historical explanation must use decision-time evidence/provenance rather than mutable current values.
+56. **Current policy is not necessarily the policy that governed a historical action.** Historical explanation preserves the governing policy/rule meaning/provenance effective for that decision.
+57. **Action audit is not decision explanation.** Knowing who/what invoked an action is insufficient without enough evidence, authority/approval and uncertainty context to explain why it was permitted/recommended/executed.
+58. **Re-running a current calculation is not reproducing a historical calculation.** Simulator, cost, fee, rule or policy changes must not rewrite the meaning of a prior decision.
+59. **Material external action remains correlatable to intent + authority + decision-time evidence + result.** The explanation must survive later mutation of current state.
+60. D0 does not require event sourcing, universal snapshots or copying every source fact. D2/D3/D7 later choose the smallest retention/reference/snapshot mechanism that satisfies accepted historical explainability.
+61. Provider/ERP/payment/bank transport, timer, scheduler, polling, webhook, TTL/cache, freshness threshold, pagination, checkpoint, backfill, coverage-proof and decision-record storage mechanics remain later-stage responsibilities.
 
 ---
 
@@ -325,17 +332,18 @@ Product 1.0 is complete only when MPC is demonstrably usable as the normal marke
 14. **Work closes through evidence.** Material unresolved divergence cannot disappear through arbitrary dismissal.
 15. **Material evidence is freshness-aware.** Stale/unknown-freshness evidence and degraded acquisition affect confidence/attention and can block unsafe normal action.
 16. **Portfolio/absence/reconciliation claims are coverage-aware.** MPC distinguishes sufficiently-covered, partial and unknown coverage for the relevant population; `no issues`, terminal absence and reconciliation closure require enough coverage evidence for the claim being made.
-17. **Shipment remains visible through terminal outcome.** Material delivery exceptions become explicit work.
-18. **Essential post-sale changes remain controlled.** Cancellation/return/refund and required fiscal/economic consequences remain orchestrated/reconciled.
-19. **Failures become explicit work.** Missing evidence, ambiguity, unsupported capability, deadline uncertainty/breach, stale evidence, partial/unknown coverage and divergence identify what is known/unknown, who is responsible and what action/authority is required.
-20. **The economic evidence chain closes as far as authoritative evidence is available.** Expected Economics → Order Economics → Marketplace Settlement → Cash Receipt evidence remain distinct.
-21. **Simulator drift becomes actionable learning** only after materially comparable evidence isolates model/provider-rule drift.
-22. **Realized profitability is explainable** from attributable economic evidence rather than convenient current values.
-23. **Organizational governance is operable without code edits** while external authority and mandatory safety/audit invariants remain protected.
+17. **Material historical decisions/actions remain explainable.** MPC can explain why a consequential recommendation/approval/action was permitted or executed using decision-time evidence, governing policy/rule provenance, authority/approval and known uncertainty rather than reconstructing history from mutable current state.
+18. **Shipment remains visible through terminal outcome.** Material delivery exceptions become explicit work.
+19. **Essential post-sale changes remain controlled.** Cancellation/return/refund and required fiscal/economic consequences remain orchestrated/reconciled.
+20. **Failures become explicit work.** Missing evidence, ambiguity, unsupported capability, deadline uncertainty/breach, stale evidence, partial/unknown coverage and divergence identify what is known/unknown, who is responsible and what action/authority is required.
+21. **The economic evidence chain closes as far as authoritative evidence is available.** Expected Economics → Order Economics → Marketplace Settlement → Cash Receipt evidence remain distinct.
+22. **Simulator drift becomes actionable learning** only after materially comparable historical evidence isolates model/provider-rule drift.
+23. **Realized profitability is explainable** from attributable economic evidence rather than convenient current values.
+24. **Organizational governance is operable without code edits** while external authority and mandatory safety/audit invariants remain protected.
 
 Completion statement:
 
-> **A company can take internal products, determine marketplace readiness, publish and operate offers, maintain availability from explicit inventory scope/policy, monitor competition and profitability, make controlled decisions from sufficiently current and sufficiently covered evidence, materialize sales in business/fiscal systems, fulfill them through eligible nodes, close provider requirements, prioritize time-bound obligations, route actionable work to explicit owners, close work through evidence, dispatch and observe delivery/post-sale consequences, preserve economic evidence through settlement/cash where available, reconcile divergence without mistaking partial observation for completeness, learn when its own simulator is wrong, and explain realized economic outcome — using Marketplace Central as the normal marketplace operations control plane.**
+> **A company can take internal products, determine marketplace readiness, publish and operate offers, maintain availability from explicit inventory scope/policy, monitor competition and profitability, make controlled decisions from sufficiently current and sufficiently covered evidence, retain enough decision-time lineage to explain material historical actions, materialize sales in business/fiscal systems, fulfill them through eligible nodes, close provider requirements, prioritize time-bound obligations, route actionable work to explicit owners, close work through evidence, dispatch and observe delivery/post-sale consequences, preserve economic evidence through settlement/cash where available, reconcile divergence without mistaking partial observation for completeness, learn when its own simulator is wrong, and explain realized economic outcome — using Marketplace Central as the normal marketplace operations control plane.**
 
 ### 9.1 Normal-path rule
 
@@ -435,30 +443,34 @@ MPC targets direct provider boundaries. ANYMARKET, Magis5 and similar hubs are b
 
 ### D0.7k — Observation coverage / completeness uncertainty
 
+**Accepted.** Product 1.0 distinguishes observed facts from evidence that the relevant source population was observed completely enough for a conclusion. Coverage is scoped to an explicit universe. Fresh is not complete; not-observed is not does-not-exist; individual facts do not prove population completeness; portfolio health, terminal absence and reconciliation closure require sufficient coverage; webhook/callback receipt is not automatic completeness proof. Exact pagination/backfill/checkpoint mechanics belong later.
+
+### D0.7l — Decision/action evidence lineage and historical reproducibility
+
 **Accepted by operator.**
 
-Product 1.0 distinguishes **observed facts** from evidence that the relevant source population was observed completely enough for a particular conclusion. Freshness and coverage are independent: a source can return very recent records while still omitting part of the population.
+For material recommendations, approvals, decisions and externally consequential actions, Product 1.0 preserves enough **decision-time lineage** to explain why the action was recommended, permitted and/or executed without reconstructing the past from mutable current state.
 
 Product-level requirements:
 
-- coverage/completeness is always evaluated relative to a relevant universe, such as a marketplace installation, scoped portfolio, time interval, payout, shipment set or reconciliation population;
-- MPC may preserve a valid individual observed fact even when coverage of the larger population is partial/unknown;
-- absence from a partial/unknown-coverage observation does not prove non-existence, deletion, terminal state or closure;
-- portfolio statements such as `no orders need attention`, `nothing missing` or equivalent healthy/empty conclusions require sufficient coverage evidence for the population being claimed;
-- reconciliation cannot be called closed merely because two observed subsets match if either side lacks sufficient coverage for the reconciliation universe;
-- callback/webhook receipt may contribute observations but is not automatically proof that every relevant change/record was received;
-- partial/unknown coverage that materially threatens a claimed workflow, obligation, portfolio-health conclusion or reconciliation becomes explicit uncertainty/actionable work rather than silent health;
-- D0 does not choose pagination exhaustion, cursors, checkpoints, watermarks, provider totals, backfills, full scans, callback recovery, polling or coverage-storage mechanics.
+- the historical explanation identifies the material business intent/action and the evidence that actually governed it at decision time;
+- enough provenance is retained to identify which source facts/observations, Cost Basis or other relevant economic inputs, provider/business context and known uncertainty participated materially in the decision;
+- governing MPC-owned policy/rule provenance/effective meaning at decision time remains distinguishable from the policy/rule that happens to be current later;
+- actor/automation identity, authority and approval context remain distinguishable: `who acted` is not by itself `why the action was authorized`;
+- freshness/coverage/sufficiency or other accepted uncertainty state that materially affected the decision remains explainable rather than being recomputed from later acquisition state;
+- material external action/result remains correlatable back to its intent and governing decision context so verification/reconciliation and post-incident review can explain the full chain;
+- historical simulator calibration or profitability analysis must use the original material inputs/rules/evidence, not merely rerun the current simulator/current-cost/current-policy model and call that a reproduction;
+- D0 does **not** require copying every source object, universal immutable snapshots, event sourcing, or a canonical `DecisionRecord` entity. References to sufficiently durable observations, targeted snapshots, hashes or another later mechanism are all possible if they satisfy the accepted property.
 
-This is a product truthfulness/reconciliation property. D2/D3/D4/D7 later define the smallest source-specific completeness proofs needed by each accepted claim/workflow.
+This is a product auditability/explainability property. D1/D2/D3/D7 later choose the smallest model, retention and reference/snapshot mechanisms that preserve accepted material lineage.
 
 ### Next D0.7 question
 
-The next material product-completeness question is **decision/action evidence lineage and reproducibility**.
+The next material product-completeness question is **multi-target action scope / blast radius / partial-result semantics**.
 
-Even if evidence was fresh and sufficiently covered when MPC acted, later source state and MPC-owned policy can change. A control plane that cannot explain **which facts, policy/rule provenance, approvals and uncertainty state actually governed a material historical decision/action** risks becoming unauditable and makes simulator calibration, exception review and post-incident analysis unreliable.
+MPC will permit operator- and policy-driven external actions such as listing, price or availability changes. A control plane can still be unsafe if an action intended for many offers/listings is represented as one opaque success/failure even though target eligibility/authority can differ and external providers may accept only part of the work.
 
-D0 must decide whether Product 1.0 requires material decisions/actions to retain enough decision-time evidence/provenance to explain why the action was permitted/recommended/executed without requiring current values/policies to reconstruct the past. This is a product auditability/explainability question, not a schema/event-sourcing/log-storage implementation decision. Exact snapshots, references, hashes, immutable records and retention mechanics belong to D2/D3/D7.
+D0 must decide whether material multi-target actions require an explicit intended target scope/blast radius and per-target or sufficiently granular outcome semantics so partial acceptance/failure/ambiguity cannot masquerade as one atomic success or trigger blind whole-batch retry. This is a product safety/reconciliation question, not a batch API, transaction, queue, concurrency or compensation implementation decision. Exact bulk-operation mechanics belong to D5/D6/D7.
 
 Other remaining D0.7 findings continue to be classified adversarially; D0 closes only when no material Product 1.0 semantic is left for implementation to invent.
 
@@ -471,7 +483,7 @@ A fresh session must read `AGENTS.md`, `docs/engineering/rebaseline/README.md`, 
 It should conclude:
 
 - D0 is OPEN and not yet accepted as a whole; implementation remains blocked until D9;
-- D0.1–D0.6 and D0.7a–D0.7k are operator-approved;
+- D0.1–D0.6 and D0.7a–D0.7l are operator-approved;
 - Product 1.0 is Marketplace Operations + Commercial Intelligence (A+), not an ERP/marketplace/accounting/task-management replacement;
 - organization, Marketplace Installation and Selling Entity identities do not collapse;
 - canonical MPC semantics precede ERP/provider mapping;
@@ -482,8 +494,8 @@ It should conclude:
 - marketplace hubs remain benchmark/competitive evidence, not target runtime dependencies;
 - external time obligations and MPC-owned Internal Operational Targets are distinct; relative targets require explicit anchors and internal policy cannot relax external obligations;
 - actionable work has explicit role ownership; assignment is distinct from authorization; escalation changes required attention/responsibility/authority; material work closes through evidence;
-- material evidence is freshness-aware: stale/unknown-freshness evidence cannot masquerade as current truth and failed acquisition affects confidence;
-- observation coverage is explicit and scoped: fresh is not complete, not-observed is not does-not-exist, and portfolio health/absence/reconciliation closure require sufficient coverage for the claimed universe;
+- material evidence is freshness-aware and coverage-aware: stale/unknown-freshness evidence cannot masquerade as current truth, fresh is not complete, and portfolio/absence/reconciliation claims require sufficient coverage;
+- material historical recommendations/approvals/actions preserve enough decision-time lineage to explain their evidence, policy/rule provenance, authority/approval and uncertainty without relying on mutable current state;
 - current code/docs remain evidence, not target authority;
 - no D1+ target architecture may be invented yet;
-- the exact next work is **D0.7 Product completeness review — decision/action evidence lineage and reproducibility**.
+- the exact next work is **D0.7 Product completeness review — multi-target action scope / blast radius / partial-result semantics**.
