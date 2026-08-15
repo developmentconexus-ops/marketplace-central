@@ -6,16 +6,17 @@ Marketplace Central is in **Architecture Rebaseline / Technical System Design**.
 
 ### Immediate operating boundary
 
-The **documentary / governance authority cleanup is closed** (PR #41). **D0 — Product / System Definition has not been opened with the operator yet.**
+The **documentary / governance authority cleanup is closed** (PR #41). **D0 — Product / System Definition is OPEN and is in bounded closure review.** Operator-approved D0 decisions are recorded in `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`; the exact current status/action lives only in `docs/engineering/rebaseline/README.md`.
 
-Until D0 is opened and produces an accepted decision:
+Until D0 is explicitly accepted as a whole:
 
-- no software design change is authorized — not module/context layout, persistence, API, frontend, runtime, auth or integration architecture;
-- do **not** redesign, refactor, delete or choose a target for legacy product code;
-- product/source findings are evidence only and are carried into the relevant D-stage;
-- legacy source disposition is adjudicated **stage by stage across D0–D9** and implemented only after the corresponding architecture/cutover decision is accepted.
+- no D1–D9 target design or product implementation is authorized;
+- no software design change is authorized merely from a historical plan — not module/context layout, persistence, API, frontend, runtime, auth or integration architecture;
+- do **not** redesign, refactor, delete or choose a target for legacy product code before the owning D-stage accepts that decision;
+- product/source findings are evidence only unless D0 or another accepted D-stage records the target semantic;
+- do not open new D0 microtopics speculatively: the active D0 artifact defines a stop rule and closure criteria.
 
-Do not reopen the documentary cleanup to keep working. It ended on a measured condition: retired documentary authorities and their active consumers removed or retargeted, current governance self-contained, verification green without weakening controls or raising ratchets, and a fresh session able to identify one authority path and one exact next action. `docs/engineering/rebaseline/README.md` records how each of those was discharged.
+Do not reopen the documentary cleanup to keep working. It ended on a measured condition: retired documentary authorities and their active consumers removed or retargeted, current governance self-contained, verification green without weakening controls or raising ratchets, and a fresh session able to identify one authority path and one exact next action. `docs/engineering/rebaseline/README.md` records the current state after that cleanup.
 
 Start every session in this order:
 
@@ -24,7 +25,7 @@ Start every session in this order:
 3. `docs/engineering/standards/root-cause-global-maximum-method.md`
 4. `ARCHITECTURE.md` — stable product/platform constraints only
 5. `docs/architecture/decisions/README.md` — ADR registry and current/reopened status
-6. the artifact for the active D-stage, once design begins
+6. the artifact for the active D-stage
 7. code/contracts/runtime evidence needed for the specific decision being made
 
 Do **not** reconstruct the roadmap from Git history, deleted plans, old handoffs or memory. Git history is evidence only when the current rebaseline explicitly asks for historical evidence.
