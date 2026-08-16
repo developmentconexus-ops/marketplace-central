@@ -1,8 +1,8 @@
 # D1 — Domains / Boundaries
 
-> **Status:** OPEN — INDEPENDENT REVIEW COMPLETE / PENDING FINAL GLOBAL REVIEW  
+> **Status:** CLOSED / ACCEPTED AS A WHOLE  
 > **Program:** Architecture Rebaseline / Technical System Design  
-> **Authority:** operator-approved D1 decisions plus adjudicated independent-review amendments consolidated here; D1 is not closed until final global review and explicit whole-stage approval complete  
+> **Authority:** operator-approved D1 decisions, adjudicated independent-review amendments and final global-review correction consolidated here  
 > **Parent authority:** `D0-PRODUCT-SYSTEM-DEFINITION.md`
 
 ## 1. Purpose and scope
@@ -36,7 +36,7 @@ Twelve business boundaries do **not** imply twelve services, databases, processe
 | **Controlled Action Governance** | Authorization delegation/grant semantics (who/what may authorize which action class/scope); authorization decision/context; authorized target-scope snapshot; authority context; decision state and provenance/correlation | Business thresholds that make an action permitted/approval-required/prohibited; other domains' policy semantics; readiness/economic/operational validity; business intent; intended target selection; execution; provider protocol |
 | **Marketplace Sales** | MPC interpretation/context/correlation of marketplace-originated sales; transaction-specific Selling Entity attribution; canonical sale meaning sufficient to feed downstream lifecycle | Business Order Intent/materialization; fulfillment; economics; post-sale resolution; universal provider `Order/Pack/Shipment` model |
 | **Business-System Materialization** | Business Order Intent and native-order materialization/correlation; invoicing readiness, Invoicing Intent and fiscal materialization/correlation | ERP-native TOP/document taxonomy as MPC semantics; physical fulfillment; general fiscal-policy domain |
-| **Fulfillment Lifecycle** | Physical fulfillment readiness/execution; Fulfillment Node eligibility/selection; separation/conference/packing/dispatch; relevant shipment/delivery observation through terminal outcome | Company-wide WMS/TMS; fiscal authority; post-sale consequence resolution |
+| **Fulfillment Lifecycle** | Physical fulfillment readiness/execution; Fulfillment Node eligibility/selection; separation/conference/packing/dispatch; provider-requirement closure for fulfillment paths MPC claims to control; relevant shipment/delivery observation through terminal outcome | Company-wide WMS/TMS; fiscal authority; post-sale consequence resolution; provider-native requirement/artifact truth or provider protocol |
 | **Post-Sale Resolution** | Coordination/correlation/closure of material cancellation/return/refund consequences across owning domains | Native refund/provider protocol itself; physical fulfillment semantics; economic calculation; ERP/fiscal semantics |
 | **Operational Work** | Lifecycle of material actionable work: role responsibility, optional assignment, escalation, work state and evidence-backed resolution/closure | Definition of originating business truth, policy, authorization, deadline breach, economic correctness or reconciliation semantics |
 
@@ -92,7 +92,7 @@ For material multi-target actions, three scopes remain distinguishable:
 
 Blind replay of a potentially accepted external write remains prohibited unless safe replay is established.
 
-### 4.6 Integration capability
+### 4.6 Integration capability and provider-requirement closure
 
 Use three levels:
 
@@ -101,6 +101,8 @@ Use three levels:
 3. **Effective Business Capability** — whether MPC can/should perform this action now; owned by the consuming business domain using support + provider evidence + domain state/policy/validity.
 
 No universal marketplace business interface owns all three.
+
+For fulfillment paths MPC claims to control, **Fulfillment Lifecycle owns provider-requirement closure semantics**: from provider-effective requirement evidence, it determines which prerequisites/data/artifacts/acknowledgements are material to that path, orchestrates/reconciles their satisfaction and owns the MPC conclusion that the path is sufficiently provider-ready/closed. Provider-native requirements, states and artifacts remain provider-authoritative; D4 owns protocol translation. If an accepted integration cannot satisfy a required operation, the path is explicit `unsupported` / `external-required` rather than presented as fully MPC-controlled.
 
 ## 5. Semantic authority edges
 
@@ -124,6 +126,8 @@ Accepted baseline:
 - **Controlled Action Governance ⇄ action-owning domains:** the domain supplies intended action/scope and effective disposition; Governance applies authorization-specific delegation/grant semantics and returns the authorization decision/context. Governance preserves authorized scope as a snapshot/constrained form of the domain-owned intent; execution-time domain validity remains with the action owner.
 - **Operational Work ⇄ domains with actionable work:** source domain defines the issue and semantic closure requirement; Work owns responsibility/assignment/escalation/work state; source domain determines whether resolution evidence actually closes the originating condition.
 
+External-system evidence enters through D4 adapters/consumer-owned ports without transferring semantic authority. In particular, provider requirement/artifact evidence feeds Fulfillment Lifecycle, which owns the business closure conclusion for its claimed path.
+
 A provider API that combines multiple fields/actions does not merge their business authorities.
 
 ## 6. Forbidden boundary violations
@@ -143,7 +147,8 @@ Unless D1 is explicitly reopened, the target must not introduce:
 - downstream domains independently inferring Selling Entity transaction attribution;
 - Commercial Economics performing marketplace price writes;
 - Offering owning Sellable Availability semantics;
-- Marketplace Sales absorbing ERP materialization, fulfillment, economics or post-sale semantics.
+- Marketplace Sales absorbing ERP materialization, fulfillment, economics or post-sale semantics;
+- D4/integration code becoming authority for fulfillment provider-requirement closure.
 
 D3 may choose communication mechanisms **only inside the D1 semantic edge set**. If D3 discovers a genuinely necessary new semantic dependency, D1 must be reopened rather than hiding that dependency in an event, API, queue, database or projection.
 
@@ -229,6 +234,7 @@ The operator-approved D1 decisions consolidated here are:
 - **D1.16:** final catalog ratified at 12 business boundaries.
 - **D1.17:** legacy semantic disposition approved.
 - **D1.18:** semantic authority edges and forbidden boundary violations approved.
+- **D1.G1:** final global review assigns provider-requirement closure for claimed fulfillment paths to Fulfillment Lifecycle while provider-native truth/protocol remain external/D4 concerns.
 
 ## 11. Independent review adjudication
 
@@ -245,19 +251,43 @@ The operator approved adjudication of six amendments:
 
 These amendments clarify ownership and legal semantic edges while preserving the 12-boundary structure.
 
-## 12. Closure gate
+## 12. Final global review
 
-D1 remains **OPEN — PENDING FINAL GLOBAL REVIEW**.
+The final internal **Global Coherence + YAGNI / Overengineering / Future-Cost** review re-tested capability coverage, duplicate/missing authority, God Context risk, excessive fragmentation, cross-boundary cycles, legacy disposition, D2–D7 leakage and foreseeable evolution.
 
-Completed:
+It found one final material gap: provider-requirement closure for fulfillment paths was required by D0 but only implicit in the D1 contract. The operator approved the minimal D1.G1 correction recorded above.
 
-1. independent adversarial review of the complete D1 contract;
-2. adjudication and operator approval of every material independent-review finding.
+After D1.G1, the review found no remaining material contradiction:
 
-Required before closure:
+- all Product 1.0 responsibilities have an honest semantic owner or explicit external authority/defer;
+- no duplicate business authority remains unresolved;
+- no additional business domain/framework is justified;
+- the 12 boundaries remain independently meaningful without implying runtime fragmentation;
+- legacy modules remain evidence rather than target authority;
+- D2–D7 retain their intended mechanics/design responsibilities;
+- multiple marketplaces, another participating business system and future multi-Organization operation remain additive seams rather than reasons to prebuild speculative frameworks.
 
-1. final internal **Global Coherence + YAGNI / Overengineering / Future-Cost** review of this corrected contract;
-2. explicit operator approval of D1 as a whole;
-3. router/status update marking D1 **CLOSED / ACCEPTED** and D2 the exact next stage.
+## 13. Closure
 
-Until then, D2 target design and product implementation remain blocked.
+D1 is **CLOSED / ACCEPTED AS A WHOLE**.
+
+The accepted target contains exactly these 12 business boundaries at D1 altitude:
+
+1. Marketplace Portfolio
+2. Product & Channel Readiness
+3. Marketplace Offering Operations
+4. Availability Control
+5. Market Intelligence
+6. Commercial Economics
+7. Controlled Action Governance
+8. Marketplace Sales
+9. Business-System Materialization
+10. Fulfillment Lifecycle
+11. Post-Sale Resolution
+12. Operational Work
+
+No Product 1.0 semantic remains for D2–D7 to invent at domain/boundary altitude. New material evidence may reopen D1 only through the triggers above.
+
+**Exact next stage:** D2 — Identity / Tenant / Data Ownership.
+
+Product implementation remains blocked until D9 is accepted.
