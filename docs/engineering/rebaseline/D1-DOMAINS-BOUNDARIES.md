@@ -1,0 +1,229 @@
+# D1 — Domains / Boundaries
+
+> **Status:** PENDING INDEPENDENT REVIEW  
+> **Program:** Architecture Rebaseline / Technical System Design  
+> **Authority:** operator-approved D1 decisions consolidated here; D1 is not closed until independent review, adjudication and final global review complete  
+> **Parent authority:** `D0-PRODUCT-SYSTEM-DEFINITION.md`
+
+## 1. Purpose and scope
+
+D1 answers:
+
+> **Which real business domains exist in Marketplace Central, which responsibility/state does each own, and which semantic boundaries must exist between them?**
+
+D1 does **not** choose canonical IDs/schema (D2), communication mechanisms/events (D3), provider/ERP transport (D4), HTTP contracts (D5), frontend topology (D6), or workers/queues/transactions/deployment (D7).
+
+Current code, schemas, APIs, tests and historical modules are evidence only. A current package does not earn target authority by existing.
+
+## 2. D1 governing invariant
+
+> **Every material Product 1.0 business responsibility has one semantic authority. Shared correctness/runtime mechanisms do not acquire business authority. Boundaries follow independent meaning, lifecycle and decisions—not legacy modules, provider nouns or deployment topology.**
+
+And:
+
+> **Mechanism ≠ Authority.** Reusable mechanics may be centralized when this reduces accidental complexity, but business meaning remains with the domain that understands and owns it.
+
+Twelve business boundaries do **not** imply twelve services, databases, processes or deployments. D7 decides runtime materialization.
+
+## 3. Accepted business boundaries
+
+| Boundary | Owns | Explicitly does not own |
+|---|---|---|
+| **Marketplace Portfolio** | Organization participation in marketplaces through Marketplace Installations; membership/lifecycle; organization-facing operational configuration; installation-level posture/attention derived from external evidence | Provider credentials/auth/protocol; technical integration registry; offer/sale state; other domains' policies |
+| **Product & Channel Readiness** | Product↔channel correspondence; requirements; supported/missing/conflicting/readiness conclusion | Product master; listing lifecycle; price; sellable availability; provider-native product/catalog ontology |
+| **Marketplace Offering Operations** | Marketplace offer/listing representation and lifecycle; listing intent; **price intent/mutation/convergence** | Sellable Availability; native inventory; economic calculation; provider protocol |
+| **Availability Control** | Inventory Source/Scope semantics; allocation policy; Sellable Availability; **availability intent/synchronization/convergence** | Native stock/reservation truth; listing/price lifecycle; provider protocol |
+| **Market Intelligence** | External comparable-market observations; comparability; competitive position/change; market-evidence sufficiency | Pricing/profitability authority; listing mutation; provider protocol |
+| **Commercial Economics** | Cost Basis; economic interpretation; pricing analysis; L0 Expected Economics; L1 Order Economics; L2 settlement/Realized Economics; variance/calibration | Listing/provider state; price actuation; bank/treasury operations; provider protocol |
+| **Controlled Action Governance** | Business authorization decision/context for controlled actions: who/what authorized, target scope, authority context, decision state and provenance/correlation | Domain policy semantics; readiness/economic/operational validity; business intent; execution; provider protocol |
+| **Marketplace Sales** | MPC interpretation/context/correlation of marketplace-originated sales sufficient to feed downstream lifecycle | Business Order Intent/materialization; fulfillment; economics; post-sale resolution; universal provider `Order/Pack/Shipment` model |
+| **Business-System Materialization** | Business Order Intent and native-order materialization/correlation; invoicing readiness, Invoicing Intent and fiscal materialization/correlation | ERP-native TOP/document taxonomy as MPC semantics; physical fulfillment; general fiscal-policy domain |
+| **Fulfillment Lifecycle** | Physical fulfillment readiness/execution; Fulfillment Node eligibility/selection; separation/conference/packing/dispatch; relevant shipment/delivery observation through terminal outcome | Company-wide WMS/TMS; fiscal authority; post-sale consequence resolution |
+| **Post-Sale Resolution** | Coordination/correlation/closure of material cancellation/return/refund consequences across owning domains | Native refund/provider protocol itself; physical fulfillment semantics; economic calculation; ERP/fiscal semantics |
+| **Operational Work** | Lifecycle of material actionable work: role responsibility, optional assignment, escalation, work state and evidence-backed resolution/closure | Definition of originating business truth, policy, authorization, deadline breach, economic correctness or reconciliation semantics |
+
+## 4. Important non-domains
+
+The following are real concepts/properties but **not independent D1 business domains**.
+
+### 4.1 Organization / Selling Entity / Product master
+
+- `Organization` and `Selling Entity` remain distinct real identities; D2 defines their exact identity/relationships.
+- Product master remains authoritative in the business system/source. MPC references source-qualified product identity; no PIM/MDM/Product Master domain is justified now.
+
+### 4.2 Policy
+
+Business-policy meaning belongs to the domain governed by the policy:
+
+- availability allocation → Availability Control;
+- margin/price boundaries → Commercial Economics;
+- internal operational targets → responsible operational domain.
+
+There is no generic `Policy` business domain or speculative rules engine. Shared default/inheritance/override/provenance mechanics may be decided later without acquiring policy meaning.
+
+### 4.3 Evidence / provenance / freshness / coverage / audit
+
+No `Evidence`, `Freshness`, `Coverage`, `Lineage` or `Audit` business domain exists.
+
+Shared knowledge/provenance/time primitives and audit mechanics may exist later. The consuming business domain remains authority for whether evidence is sufficiently known, current, complete and applicable for its decision. Audit/history composes domain-owned facts; it is not a second business truth.
+
+### 4.4 Time-bound obligations / SLA
+
+No generic SLA/Obligation domain exists.
+
+The domain responsible for satisfying an obligation owns completion semantics, internal target policy, urgency and breach interpretation. External deadlines/windows remain externally authoritative evidence. Operational Work owns escalation/work lifecycle only after actionable work exists. Shared clocks/timers/schedulers are D7 mechanics.
+
+### 4.5 External-action execution safety
+
+No `Mutation`/`Action` business domain exists.
+
+The action-owning domain retains intent, target selection, validity and convergence/reconciliation meaning. Governance owns authorization when required. Adapters own external protocol. Reusable attempt/correlation/idempotency/ambiguity/retry-safety mechanics may be centralized in D3/D7 without acquiring business authority.
+
+Blind replay of a potentially accepted external write remains prohibited unless safe replay is established.
+
+### 4.6 Integration capability
+
+Use three levels:
+
+1. **Integration Support / Descriptor** — what an MPC adapter implements; technical D4 concern.
+2. **Provider Effective Capability / Requirement** — what provider/installation/resource/operation actually allows/requires; provider-authoritative evidence translated by D4.
+3. **Effective Business Capability** — whether MPC can/should perform this action now; owned by the consuming business domain using support + provider evidence + domain state/policy/validity.
+
+No universal marketplace business interface owns all three.
+
+## 5. Semantic authority edges
+
+An allowed edge means semantic dependency is legitimate. It does **not** decide sync call, event, projection, queue or orchestration; D3 chooses the mechanism.
+
+> **A consumer may use another context's owned meaning only through an explicit public semantic boundary owned by the producer. Consumption never transfers authority.**
+
+Accepted baseline:
+
+- **Marketplace Portfolio → marketplace-facing domains:** installation participation/configuration/posture as required; Organization, Selling Entity and provider account never collapse by convenience.
+- **Readiness → Offering / Availability:** channel correspondence/readiness may govern whether a product can be operated; consumers do not silently recompute readiness.
+- **Offering → Availability:** Availability may consume the marketplace representation/target needed to synchronize availability; Offering does not compute Sellable Availability.
+- **Offering → Market Intelligence:** Market Intelligence may consume the organization's own offer state for competitive comparison while retaining comparability authority.
+- **Market Intelligence → Commercial Economics:** comparable-market evidence/interpretation feeds economic reasoning; Economics does not independently reinterpret provider competitor payloads when Market Intelligence owns that meaning.
+- **Commercial Economics → Offering:** economic conclusions/candidate price implications may inform price intent; Economics does not write marketplace price.
+- **Marketplace Sales → Materialization / Fulfillment / Economics / Post-Sale:** one canonical sale interpretation feeds downstream responsibilities; downstream domains do not each invent provider transaction semantics.
+- **Materialization ⇄ Fulfillment:** materialized business/fiscal outcomes may gate fulfillment; physical readiness/conference evidence may gate Invoicing Intent. This business workflow cycle must not become a private-code dependency cycle.
+- **Materialization → Commercial Economics:** attributable order/fiscal results may contribute economic evidence without transferring fiscal authority.
+- **Post-Sale Resolution ⇄ Sales / Materialization / Fulfillment / Economics:** Post-Sale coordinates consequences and observes closure; each owning domain executes/interprets its own semantics.
+- **Controlled Action Governance ⇄ action-owning domains:** domain supplies controlled action/authority context; Governance returns authorization context; execution-time domain validity remains with the action owner.
+- **Operational Work ⇄ domains with actionable work:** source domain defines the issue and semantic closure requirement; Work owns responsibility/assignment/escalation/work state; source domain determines whether resolution evidence actually closes the originating condition.
+
+A provider API that combines multiple fields/actions does not merge their business authorities.
+
+## 6. Forbidden boundary violations
+
+Unless D1 is explicitly reopened, the target must not introduce:
+
+- cross-context SQL/private-table access as unnamed communication;
+- import of another context's private implementation;
+- shared mutable business entities with ambiguous ownership;
+- reimplementation of another context's owned business rule/meaning;
+- consumer mutation of producer-owned state;
+- provider DTO/protocol types leaking across business contexts;
+- read projections/views becoming write authorities;
+- Governance becoming a generic rules engine or domain-validity authority;
+- Operational Work becoming a reconciliation/business-truth authority;
+- Marketplace Portfolio becoming the technical integration registry;
+- Commercial Economics performing marketplace price writes;
+- Offering owning Sellable Availability semantics;
+- Marketplace Sales absorbing ERP materialization, fulfillment, economics or post-sale semantics.
+
+D3 may choose communication mechanisms **only inside the D1 semantic edge set**. If D3 discovers a genuinely necessary new semantic dependency, D1 must be reopened rather than hiding that dependency in an event, API, queue, database or projection.
+
+## 7. Legacy semantic disposition
+
+Legacy modules have no right to survive as target authorities by name/history. Valid responsibilities move to the D1 authority that owns their meaning; technical mechanics move to later technical layers; obsolete/authority-less abstractions are retired.
+
+| Current module/context | D1 disposition |
+|---|---|
+| `catalog` / `contexts/catalog` | **RETIRE / SPLIT** — no MPC Product Master authority; useful primitives/contracts may be reassigned where justified |
+| `channelfees` | **ABSORB / SPLIT** — economic meaning → Commercial Economics; provider acquisition → D4 |
+| `classifications` | **RETIRE** — no independent Product 1.0 authority proven |
+| `connectors` | **TECHNICAL / SPLIT** — D4 adapters + consumer-owned ports |
+| `dashboard` | **TECHNICAL** — D6/views projection, not authority |
+| `divergences` | **SPLIT** — divergence/reconciliation meaning → originating domain; actionable lifecycle → Operational Work |
+| `erp_import` | **TECHNICAL** — D4 acquisition mechanism if still needed |
+| `integrations` | **SPLIT** — Marketplace Installation business meaning → Portfolio; credentials/auth/descriptor → D4; operation/runtime mechanics → D7 |
+| `internal_read` | **SPLIT / TECHNICAL** — business-system adapters → D4; consumer contracts distributed to Readiness/Availability/Economics/etc. |
+| `inventory` | **NUCLEUS** — target semantic authority is Availability Control |
+| `listings` / `contexts/listings` | **NUCLEUS + SPLIT** — target semantic authority is Offering; availability/provider-native/projection concerns leave it |
+| `market` | **NUCLEUS** — target semantic authority is Market Intelligence |
+| `marketplaces` | **SPLIT** — Portfolio + D4 technical concerns + domain-local policy/economic meaning where applicable |
+| `mutations` | **TECHNICAL / SPLIT** — intent returns to action owners; authorization → Governance; reusable execution safety → D3/D7; provider protocol → D4 |
+| `orders` | **SPLIT** — Marketplace Sales + Business-System Materialization + Fulfillment + other owning domains where responsibility actually belongs |
+| `pricing` | **ABSORB / SPLIT** — economic calculation → Commercial Economics; price actuation → Offering |
+| `product_links` | **NUCLEUS** — target semantic authority is Product & Channel Readiness; exact identity model deferred to D2 |
+| `profitability` | **ABSORB** — Commercial Economics, preserving L0/L1/L2 distinction |
+| `sourcekind` | **TECHNICAL PRIMITIVE** — D2/kernel or D4 only if genuinely universal |
+| `sync` | **TECHNICAL / SPLIT** — domain-specific completeness/freshness/convergence stay local; polling/cursor/scheduling/runtime → D4/D7 |
+| `tenant_config` | **SPLIT / TECHNICAL** — identity/isolation → D2; business config → owning domains; source/integration config → D4 |
+
+If a proven Product 1.0 responsibility cannot fit an accepted boundary without distorting its authority, **reopen D1**; never force-fit it into the nearest context.
+
+## 8. Explicit defers
+
+D1 intentionally does not decide:
+
+- **D2:** canonical IDs, Organization/Selling Entity/source-qualified product identity, persistence ownership, tenant/isolation model, exact money/evidence/time/value primitives;
+- **D3:** synchronous/event/projection matrix, event contracts, outbox/communication implementation, workflow-cycle realization;
+- **D4:** exact Mercado Livre/Sankhya/payment contracts, adapter DTOs, provider capability/requirement mappings, auth/credentials, pagination/webhook/polling/source completeness evidence;
+- **D5:** HTTP/OpenAPI/bulk/idempotency/precondition contracts;
+- **D6:** screens, portfolio views, work inbox, approvals/history/attention UX and projection topology;
+- **D7:** process topology, schedulers, workers, queues, retries, locks/versioning, transactions, execution-safety implementation, observability/deployment.
+
+No later stage may silently overturn D1 authority. New material evidence may explicitly reopen it.
+
+## 9. Reopen triggers
+
+Reopen a D1 decision only when new evidence materially changes an assumption, for example:
+
+- a proven Product 1.0 responsibility has no honest owner;
+- two accepted contexts demonstrably need to own the same business meaning;
+- a currently absorbed concept gains an independent business lifecycle/decision authority;
+- a second real source/master requires identity/mastering behavior not supported by the current boundary;
+- MPC becomes actual TMS/WMS/fiscal/settlement/obligation-management authority rather than orchestration/observation;
+- a new provider/business-system requirement cannot be represented without dismantling an accepted authority boundary;
+- D2–D7 discover a genuinely necessary semantic dependency not permitted here.
+
+Do not reopen for naming preference, framework fashion or hypothetical future capability alone.
+
+## 10. Decision lineage
+
+The accepted D1 decisions consolidated by this artifact are:
+
+- **D1.1:** Commercial Intelligence/Economics separate from operational actuation.
+- **D1.2:** Readiness, Offering and Availability are distinct responsibilities.
+- **D1.3:** policy meaning is domain-local; no central Policy domain.
+- **D1.4:** narrow Controlled Action Governance boundary.
+- **D1.5:** Business-System Materialization separate from Fulfillment; no separate Fiscal domain now.
+- **D1.6:** Fulfillment includes relevant shipment/delivery observation; Post-Sale Resolution separate; no Shipment/Delivery domain now.
+- **D1.7:** Operational Work independent; reconciliation semantics domain-owned.
+- **D1.8:** Market Intelligence separate from Commercial Economics.
+- **D1.9:** Marketplace Sales independent.
+- **D1.10:** Marketplace Portfolio independent; Organization/Selling Entity are identities, not separate domains.
+- **D1.11:** no MPC Product/Catalog master domain now.
+- **D1.12:** three-level capability model: integration support, provider-effective capability, effective business capability.
+- **D1.13:** evidence/provenance/freshness/coverage/audit are cross-cutting semantics/mechanics, not domains.
+- **D1.14:** time-bound obligation meaning is domain-owned; timers/schedulers are mechanics.
+- **D1.15:** external-action execution safety is shared mechanism, not business authority.
+- **D1.16:** final catalog ratified at 12 business boundaries.
+- **D1.17:** legacy semantic disposition approved.
+- **D1.18:** semantic authority edges and forbidden boundary violations approved.
+
+## 11. Closure gate
+
+D1 remains **OPEN / PENDING INDEPENDENT REVIEW**.
+
+Required before closure:
+
+1. independent adversarial Fable review of this complete D1 contract;
+2. adjudication of every material Fable finding under the repository method rather than by deference;
+3. final internal Global Coherence + YAGNI/overengineering/future-cost review;
+4. explicit operator approval of the corrected whole;
+5. router/status update marking D1 CLOSED / ACCEPTED and D2 exact next stage.
+
+Until then, D2 target design and product implementation remain blocked.
