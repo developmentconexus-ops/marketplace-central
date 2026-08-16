@@ -1,10 +1,11 @@
 # D2 — Identity / Tenant / Data Ownership
 
-> **Status:** CLOSURE CANDIDATE — B1+B2 consolidated; final Global Coherence completed; pending explicit operator ratification  
+> **Status:** CLOSED / ACCEPTED AS A WHOLE — B1+B2 consolidated; independent challenge and final Global Coherence completed; explicitly ratified by operator  
 > **Program:** Architecture Rebaseline / Technical System Design  
 > **Parent authorities:** `D0-PRODUCT-SYSTEM-DEFINITION.md`, `D1-DOMAINS-BOUNDARIES.md`  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
-> **Opened:** 2026-08-16
+> **Opened:** 2026-08-16  
+> **Accepted:** 2026-08-16
 
 ## 1. Purpose and boundary
 
@@ -723,10 +724,12 @@ The retained abstractions all have a concrete current consumer or protect an acc
 
 ---
 
-## 17. Current D2 state / exact next action
+## 17. D2 closure
 
-D2 is a **CLOSURE CANDIDATE**. B1+B2 are operator-approved, independently challenged and consolidated; the final Global Coherence + YAGNI / Overengineering / Future-Cost review completed with only the bounded corrections recorded in §16.
+D2 is **CLOSED / ACCEPTED AS A WHOLE** by explicit operator ratification on 2026-08-16.
 
-Next: **explicit operator ratification of D2 as a whole**.
+B1+B2 are consolidated above, independently challenged, and passed the final Global Coherence + YAGNI / Overengineering / Future-Cost review. Reopen only the specific D2 decision implicated by new material evidence under §15; do not re-run the stage for preference or hypothetical future scope.
 
-If ratified, update the router to `D2 — CLOSED / ACCEPTED` and make **D3 — Communication / Events** the exact next stage. Do not start product implementation before D9 is accepted.
+**Next stage:** D3 — Communication / Events.
+
+D3 owns the target communication/event/projection matrix and related semantics only within the D1 authority edges and D2 identity/ownership invariants. Product implementation remains blocked until D9 is accepted.
