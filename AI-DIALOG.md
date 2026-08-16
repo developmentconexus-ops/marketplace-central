@@ -164,3 +164,63 @@ Operator decision points:
 4. Authorize D2 artifact creation + router advance to file the accepted decisions.
 
 HANDOFF → OPERATOR. Nothing pending between reviewers for B1; next round opens on operator adjudication or a new batch.
+
+## FABLE — Round 3 (2026-08-16)
+
+**Subject:** Independent challenge of `docs/engineering/rebaseline/D2-B2-REVIEW-CANDIDATE.md`.
+**Head reviewed:** `4dcc6977` on `docs/global-methodology-alignment`.
+**Read independently:** full authority path including the now-canonical `D2-IDENTITY-TENANT-DATA-OWNERSHIP.md` and updated router, plus legacy ADR-011/012/022/028/031 full texts and ADR-034/017 as evidence for B2.9/B2.10.
+
+### VERDICT: REVISE — consolidation-level corrections only; no structural finding
+
+All ten B2 items are directionally correct, inside D2 altitude, and coherent with D0/D1/locked D2. The findings below are additive wording/disposition corrections that the canonical consolidation can absorb. None adds/removes/moves a boundary, none reopens a locked decision, none requires another review batch.
+
+### Material findings
+
+**B2-F1 — System/automation actor identity is missing (challenge #1/#2; the one real gap).** D2 §6.2 defines Principal broadly ("an actor participating in MPC state/history") but the only defined identity path is OIDC `(issuer, subject)` binding — an interactive human path. D0 §3.1 authorizes policy-driven automatic execution; D0 invariants 61–63/75 and D2 §5.7 require decision-actor attribution for automation decisions too. As written, a policy/automation actor has no representable identity, which D3 will need the moment events/decisions carry actor references. Corrected invariant:
+
+> Non-interactive system/automation actors are explicitly represented MPC-owned actor identities (Principal subtype or distinct system-actor identity, D2 closure choice). They require no OIDC binding, never authenticate through the interactive human path, and are never used to attribute a human's action. Historical attribution distinguishes human, delegated-automation and system action.
+
+This also rehomes ADR-028 §8's proven principle (system actor may only take the corroborated automatic path; operator-facing entry points refuse a machine) as target semantics instead of losing it with the legacy file.
+
+**B2-F2 — ADR-022 disposition: keep the pre-dispatch consistency principle, not just "superseded" (challenge #9).** Agreed that `SELLER_SKU == CODPROD` dies as canonical identity law. But ADR-022's underlying safety property is more general than its legacy shape: *identity-bearing fields in an outbound provider write must agree with the accepted correspondence before dispatch; a mismatch is rejected fail-closed with a typed, attributable failure — never corrected after the provider already applied it.* That is decision-time validity applied to identity fields, and nothing in the current target authority states it. Add that sentence to the B2.9 disposition; D4 then re-establishes the concrete Mercado Livre mapping under it.
+
+**B2-F3 — ADR-028 disposition: two operator-ratified principles must be named as preserved (challenge #9).** Beyond "weak evidence cannot fabricate correspondence", ADR-028 carries two rules the operator explicitly ratified (D-121-2 and follow-up) that generalize cleanly and are otherwise lost:
+1. **Corroboration bar for unattended action:** one matching field is coincidence; automatic correspondence requires independent concordant evidence with no contradicting hard signal. Home: Product & Channel Readiness matching policy (domain-owned policy per D1 §4.2).
+2. **Automation never overrides a standing human decision in its scope:** an operator-resolved/rejected case is settled; a later automatic run must not silently reopen or reverse it. Home: cross-cutting action-safety semantics under D0 §3.1/D0.7n; concretely restated in the owning domain's policy.
+
+ADR-011, ADR-012 and ADR-031 dispositions are **clean as written** — I attacked each clause: 011 §3 (no fabricated comparison premise) is covered by D2 §9.3/9.4 + D0 lineage invariants; 012 §2/§3 (unknown rate ≠ 0%; seed is not fiscal guidance) by D2 §9.2 + D0 §3.2 provenance classes; 031 §5/§6 (never-seen ≠ present-then-absent; empty read treated as acquisition failure, not mass-absence) by D0 invariants 51/53–58 and ADR-027's binding rule. No invariant lost there.
+
+**B2-F4 — B2.10 approved in principle; the rehoming checklist must be explicit (challenge #10).** The two-extremes framing is correct and the policy is executable without breaking the authority chain **only** with these four gates added:
+
+1. **Reopened-ADR gate:** a legacy ADR file marked `reopened — D<n>` may be deleted only after its owning D-stage has adjudicated it (as B2.9 does for the five D2 ones). Deleting earlier destroys the evidence its adjudicating stage still needs. D4 set (003/010/014/015/020/032), D3 set (018/019/024/026), D5 (016), D7 (008/030), D9 (003) wait for their stages.
+2. **Binding-constraint inventory:** each currently-binding ADR must be checked for a rehome before deletion. Most already have homes: 005/006/007/021/033/035 → `ARCHITECTURE.md` constraints; 025/027/029 → ARCHITECTURE 11–13 + D0 invariants; 009 → D2 §9.3; 013 → D0 §5.2 conclusions + invariant 58. ADR-035 cannot be deleted before the rebaseline program itself closes.
+3. **ADR-017/034 clause rehoming — the sharpest case:** ADR-034 deliberately preserved ADR-017's thirteen domain-judgment clauses (named-unknown components, opaque-stays-opaque, lenient ingestion, no-silent-cross-source-fallback…) because the `Fact<T>` type enforces shape, not judgment. D2 §9.2 rehomes the scope decision but **not** those clauses. Before deleting 017/034, the still-true judgment clauses must land in the new target ADR for the Fact primitive (or the owning D-stage artifacts). Deleting without this loses the reasoning ADR-034 explicitly refused to lose.
+4. **Numbering continuity:** the current registry rule is "numbers are never reused". A new baseline that restarts at 001 makes every historical citation ("ADR-005" in commits, evidence, memory) ambiguous between old and new. The new series must remain distinguishable — recommend continuing the sequence (036+) or a distinct prefix with its own registry; never a fresh 001 colliding with archived history.
+
+**B2-F5 (minor) — SourceInstance administration owner unnamed (challenge #3).** The namespace-vs-credentials lifecycle test is exactly right and no D4 configuration leaks into D2. One dangling thread: who creates/retires a SourceInstance. Recommend one sentence: SourceInstance registry administration is operator/administrative integration setup (technical configuration verified by D4), not a business-domain workflow; it carries no business decision authority. Prevents a repeat of the Selling-Entity dangling-owner gap at consolidation cost zero.
+
+**B2-F6 (minor) — Name Economic Attribution as the second expected local polymorphic subject (challenge #4).** B2.4's "principal accepted example" wording already permits others; make it concrete: Economic Attribution's attributable MPC scope (sale, resolution, installation-level, period aggregate…) is the second legitimate domain-local polymorphic subject. Naming it now prevents a future misreading that Work is the *only* licensed case, without opening a generic entity graph.
+
+### Answers to the remaining requested challenges
+
+- **#2 (issuer,subject)→Principal:** sufficient and correctly minimal. Binding→Principal is at-most-one while Principal may hold multiple bindings via explicit administration — the right cardinality for IdP replacement without designing IAM. No finding.
+- **#5 exact quantities:** justified (availability/stock counts are consequential state) and correctly bounded; refusing a Unit-of-Measure framework is correct YAGNI. No finding.
+- **#6 identity lifetime:** historical-safe without a universal soft-delete model; domain-owned deactivation is right. ADR-011's resolved-rows-stay-as-history becomes an instance of domain choice, not a global rule. No finding.
+- **#7 Roles/Permissions:** product-defined roles are the Product 1.0 Global Maximum. Custom-role designer/nested groups/ReBAC have no consumer; D0.6 #28 (governance operable without code edits) is satisfied by runtime-operable Membership/RoleAssignment. No finding.
+- **#8 evidence identity:** B2.8 is correct YAGNI; D1.13 already settled it. No finding.
+- **#11 stage leakage:** none found — B2.1 defers encoding, B2.3 defers verification to D4, B2.7 defers the catalog to D5; B2.10 is documentary program policy, not architecture mechanism.
+
+### Reopen triggers (additions to the D2 set)
+
+- A real flow requires automation to act where only human-attributable identity exists → close B2-F1 before D3 contracts, not after.
+- Legacy ADR deletion attempted while its owning D-stage has not adjudicated it → STOP (B2-F4 gate 1).
+- New-series ADR numbering collides with archived numbers → STOP, fix series identity (B2-F4 gate 4).
+
+### Challenge #12 — batch outlook
+
+No B3 is needed. With B1+B2 the D2 surface is complete: canonical + external identities, substrate + fence, isolation semantics, persistence classes + clean baseline, value/knowledge/time semantics, legacy-ADR disposition. Every finding above is absorbable during canonical consolidation of B2. Proceed directly to final D2 Global Coherence + YAGNI / Overengineering / Future-Cost review after consolidation.
+
+**READY FOR D2 GLOBAL COHERENCE: YES**
+
+HANDOFF → OPERATOR / GPT. Expected next: consolidate B2 + these corrections into the canonical D2 artifact, delete the review candidate, open the D2 Global Coherence + YAGNI review.
