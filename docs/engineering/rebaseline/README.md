@@ -1,7 +1,7 @@
 # Marketplace Central — Architecture Rebaseline
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
-> **Current phase:** **D2 — IDENTITY / TENANT / DATA OWNERSHIP — CLOSURE CANDIDATE / AWAITING OPERATOR RATIFICATION**  
+> **Current phase:** **D2 — IDENTITY / TENANT / DATA OWNERSHIP — CLOSED / ACCEPTED; D3 — COMMUNICATION / EVENTS is the exact next stage**  
 > **Implementation:** BLOCKED until D9 is accepted  
 > **Last updated:** 2026-08-16
 
@@ -17,8 +17,9 @@ A fresh session reads, in order:
 6. `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`
 7. `docs/engineering/rebaseline/D1-DOMAINS-BOUNDARIES.md`
 8. `docs/engineering/rebaseline/D2-IDENTITY-TENANT-DATA-OWNERSHIP.md`
-9. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
-10. code, OpenAPI, schemas, tests and runtime only as current-state evidence when needed
+9. active D3 artifact once D3 is opened
+10. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
+11. code, OpenAPI, schemas, tests and runtime only as current-state evidence when needed
 
 This file alone answers **where the program is and what happens next**. Stable architecture belongs in `ARCHITECTURE.md`; accepted/current stage semantics belong in D-stage artifacts; Git history is the archive.
 
@@ -33,9 +34,9 @@ D0 — Product / System Definition — CLOSED / ACCEPTED
   ↓
 D1 — Domains / Boundaries — CLOSED / ACCEPTED
   ↓
-D2 — Identity / Tenant / Data Ownership — CLOSURE CANDIDATE / AWAITING OPERATOR RATIFICATION
+D2 — Identity / Tenant / Data Ownership — CLOSED / ACCEPTED
   ↓
-D3 — Communication / Events — BLOCKED BY D2
+D3 — Communication / Events — NEXT, NOT YET OPENED
   ↓
 D4 — External Integrations
   ↓
@@ -56,7 +57,7 @@ Implementation
 
 Product implementation remains blocked until D9 is accepted.
 
-## 3. Accepted/current baseline
+## 3. Accepted baseline
 
 ### D0 — CLOSED
 
@@ -70,11 +71,11 @@ D0 authority and non-goals are defined only in `D0-PRODUCT-SYSTEM-DEFINITION.md`
 
 D1 closure included operator adjudication, independent Fable review and final Global Coherence + YAGNI / Overengineering / Future-Cost review. The 12 D1 business boundaries do **not** imply 12 services, databases, processes or deployments.
 
-### D2 — CLOSURE CANDIDATE
+### D2 — CLOSED
 
-`D2-IDENTITY-TENANT-DATA-OWNERSHIP.md` is the current D2 authority. B1+B2 are operator-approved and independently challenged. Final Global Coherence + YAGNI / Overengineering / Future-Cost review completed with only bounded consolidation corrections and no D0/D1 reopen, no B3 and no material contradiction.
+`D2-IDENTITY-TENANT-DATA-OWNERSHIP.md` is the accepted D2 authority. B1+B2 were operator-approved, independently challenged, consolidated and explicitly ratified as a whole after the final Global Coherence + YAGNI / Overengineering / Future-Cost review.
 
-Current locked D2 direction includes:
+Accepted D2 direction includes:
 
 - canonical identity follows semantic authority; MPC-owned IDs are opaque/stable/non-reusable;
 - MPC-owned Organization, Marketplace Installation, Selling Entity, Inventory Source, Fulfillment Node and human/automation/system Principal semantics;
@@ -87,7 +88,7 @@ Current locked D2 direction includes:
 - one D1 semantic write authority per canonical business meaning; typed references/snapshots/projections do not become current write authority;
 - exact Money/rate/material-quantity semantics, bounded `Fact<T>` scope, provenance and distinct material time meanings;
 - clean target persistence baseline with **no legacy-data migration or archival requirement** for the pre-rebaseline MPC database;
-- old ADR structures do not carry forward by inheritance; D2 has adjudicated ADR-011/012/022/028/031 and defines safe rehoming gates/new ADR-036+ transition.
+- old ADR structures do not carry forward by inheritance; D2 adjudicated ADR-011/012/022/028/031 and defined safe rehoming gates/new ADR-036+ transition.
 
 ## 4. Engineering method and repo lifecycle
 
@@ -97,45 +98,38 @@ This router defines the Marketplace Central D0–D9 status/lifecycle and allowed
 
 ## 5. What is prohibited now
 
-Until D2 is explicitly ratified as a whole:
+Until D3 is adjudicated:
 
-- do not begin D3–D9 target design prematurely;
+- do not begin D4–D9 target design prematurely;
 - do not implement product architecture/features;
-- do not let legacy IDs/tables/ADRs imply target identity, persistence ownership or architecture;
-- do not choose events/outbox/sync-vs-async communication;
+- do not let legacy IDs/tables/ADRs imply target identity, persistence ownership, communication architecture or target contracts;
+- do not silently alter accepted D0/D1/D2 authority while choosing D3 communication semantics;
 - do not choose provider/ERP transport contracts or credentials;
 - do not choose HTTP/frontend/runtime topology;
-- do not silently contradict accepted D0/D1 or locked D2 authority;
 - do not treat `AI-DIALOG.md` or reviewer/chat summaries as target authority.
 
 Existing code/module/context/schema shape remains current-state evidence only.
 
 ## 6. Exact next action
 
-**Operator ratifies or amends D2 as a whole.**
+**Open D3 — Communication / Events with the operator.**
 
-The complete D2 closure candidate is `docs/engineering/rebaseline/D2-IDENTITY-TENANT-DATA-OWNERSHIP.md`, including its final Global Coherence + YAGNI / Overengineering / Future-Cost review.
+D3 must decide the target synchronous capability/query, event and projection/read-model communication matrix inside the accepted D1 semantic edge set and D2 identity/ownership invariants. It must define event/communication semantics only to the depth required before D4–D7, without prematurely choosing provider transports, HTTP contracts, UI topology or runtime/deployment mechanisms.
 
-If the operator approves the corrected whole:
+If D3 discovers a genuinely necessary semantic dependency not allowed by D1, reopen only the implicated D1 decision rather than hiding the dependency in an event, queue, API, projection or database.
 
-1. mark D2 `CLOSED / ACCEPTED`;
-2. advance this router so **D3 — Communication / Events** is exact next stage;
-3. do not begin implementation; implementation remains blocked until D9.
-
-If the operator finds a material issue, reopen only the implicated D2 decision rather than re-running the whole stage.
+Do not advance D4 or product implementation before D3 is accepted.
 
 ## 7. Fresh-session success test
 
 A fresh session should conclude that:
 
-- D0 and D1 are **CLOSED / ACCEPTED**;
+- D0, D1 and D2 are **CLOSED / ACCEPTED**;
 - D1 defines exactly 12 semantic business boundaries but no runtime topology;
-- D2 is a **CLOSURE CANDIDATE / AWAITING OPERATOR RATIFICATION**;
-- B1+B2 are consolidated and independently challenged; no B3 is planned;
-- final D2 Global Coherence completed without a material contradiction;
+- D2 fixes canonical/external identities, tenant/isolation semantics, persistent ownership and shared value/knowledge/time semantics;
 - current modules/contexts/schema/legacy ADRs remain evidence, not target authority by inheritance;
 - implementation remains blocked until D9;
-- the exact next action is explicit operator ratification of D2 as a whole;
-- D3 remains blocked until that ratification.
+- the exact next stage is **D3 — Communication / Events**;
+- D4–D9 design is not yet authorized.
 
 If it cannot, the authority path is incomplete or contradictory.
