@@ -79,20 +79,11 @@ D1 closure included:
 
 The 12 D1 business boundaries do **not** imply 12 services, databases, processes or deployments.
 
-## 4. Engineering method
+## 4. Engineering method and repo lifecycle
 
-All material decisions follow:
+Engineering reasoning follows the **DevelopmentConexus Engineering Method** identified in `AGENTS.md`; the local file in this authority path is only the consumed context copy.
 
-`docs/engineering/standards/root-cause-global-maximum-method.md`
-
-Do not replace that method with local shorthand. In particular:
-
-- current implementation is evidence, not destiny;
-- solve root cause/defect class, not one symptom;
-- preserve essential complexity and remove accidental complexity;
-- YAGNI removes speculative capability, not correctness or justified future seams;
-- define proof before implementation;
-- accepted decisions reopen only on material new evidence.
+This router defines the Marketplace Central D0–D9 status/lifecycle and allowed work. That is **repo-specific specialization, not a second organizational engineering method**. If the lifecycle ever conflicts with the organizational method inside the method's scope, surface the conflict instead of reinterpreting either silently.
 
 ## 5. What is prohibited now
 
