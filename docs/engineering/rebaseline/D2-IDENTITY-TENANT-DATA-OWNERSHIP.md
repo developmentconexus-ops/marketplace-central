@@ -1,6 +1,6 @@
 # D2 — Identity / Tenant / Data Ownership
 
-> **Status:** OPEN / IN PROGRESS — operator-approved D2 decisions are binding; B1+B2 are consolidated; D2 is not yet closed as a whole  
+> **Status:** CLOSURE CANDIDATE — B1+B2 consolidated; final Global Coherence completed; pending explicit operator ratification  
 > **Program:** Architecture Rebaseline / Technical System Design  
 > **Parent authorities:** `D0-PRODUCT-SYSTEM-DEFINITION.md`, `D1-DOMAINS-BOUNDARIES.md`  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
@@ -161,9 +161,17 @@ No synthetic MPC Payment/Refund/Settlement identity is created merely for normal
 
 ## 5. MPC-owned intents, resolution, economics, work and governance — APPROVED
 
+### 5.0 Material domain-owned Business Intent
+
+A durable domain-owned intent that may be authorized, cause an external side effect, require convergence/reconciliation, or participate in material historical attribution has a stable **domain-local MPC-owned identity**.
+
+This includes, where material, Offering-owned Listing/Price Intents, Availability-owned Availability Intents, Materialization-owned Business Order/Invoicing Intents and durable Fulfillment routing/dispatch intents.
+
+The target does **not** introduce a generic `Action`, `Mutation`, `Command` or universal BusinessIntent business owner. Each action-owning domain owns its own intent meaning/lifecycle. Ephemeral calculations/recommendations do not gain canonical identity merely because they exist.
+
 ### 5.1 Business Order Intent / Invoicing Intent
 
-`Business Order Intent` and `Invoicing Intent` are MPC-owned canonical identities.
+`Business Order Intent` and `Invoicing Intent` are MPC-owned canonical identities under Business-System Materialization.
 
 - Native ERP/business-system order/fiscal/document results remain external/source-qualified.
 - Intent→native-result correlation is explicit.
@@ -217,6 +225,8 @@ Work owns responsibility, optional assignment, escalation, work-state and work-i
 
 This is a legitimate domain-local polymorphic subject, not permission to create a universal entity/reference graph.
 
+A Work responsibility/queue **role** is operational-work semantics, not an ordinary access `AccessRole`. Any future mapping between them must be explicit and does not transfer authority between Work and identity/access.
+
 Work references originating condition/evidence but does not replace or mutate source-domain truth. Closing Work alone does not declare the originating condition resolved.
 
 Read-only attention indicators are projections. Responsibility/assignment/hold/dismissal/escalation or independent work lifecycle belongs to Work.
@@ -225,7 +235,7 @@ Read-only attention indicators are projections. Responsibility/assignment/hold/d
 
 `Authorization Decision` is MPC-owned canonical decision occurrence under Controlled Action Governance.
 
-It is distinct from Authorization Grant/Delegation, Business Intent, Operational Work and Execution Outcome. A Decision preserves sufficient authority context, decision Principal, outcome and exact authorized target-scope snapshot for the concrete case.
+It is distinct from Authorization Grant/Delegation, domain Business Intent, Operational Work and Execution Outcome. A Decision preserves sufficient authority context, decision Principal, outcome and exact authorized target-scope snapshot for the concrete case.
 
 Later revocation/reapproval/rejection/invalidation does not erase prior decision history. Approval does not mutate Intent, prove execution, waive safety invariants or guarantee execution-time validity.
 
@@ -239,7 +249,20 @@ Grant is distinct from ordinary product access permission, business disposition,
 
 ## 6. Authentication and ordinary access — APPROVED
 
-### 6.1 Authentication boundary
+### 6.1 Identity/access state owner
+
+The non-domain D2 identity/access substrate owns the canonical state/lifecycle for:
+
+- Organization identity registry (without introducing SaaS tenant provisioning as a Product 1.0 requirement);
+- Principal;
+- external OIDC identity bindings;
+- Organization Membership;
+- product-defined ordinary-access `AccessRole` / Permission definitions;
+- RoleAssignment.
+
+It does **not** own Marketplace Installation/Selling Entity/Inventory Source/Fulfillment Node business lifecycles, action disposition, consequential authorization grants/decisions or marketplace business policy.
+
+### 6.2 Authentication boundary
 
 MPC does **not** own end-user credentials or interactive authentication-session authority.
 
@@ -250,13 +273,13 @@ Interactive human AuthN is delegated through a standards-based OpenID Connect bo
 - External human identity binding uses stable OIDC `(issuer, subject)`.
 - Keycloak remains the preferred first self-hosted candidate, while provider/deployment/realm topology are later technical choices.
 
-### 6.2 External identity binding
+### 6.3 External identity binding
 
 One OIDC `(issuer, subject)` binding maps to at most one MPC Principal. A Principal may hold multiple bindings only through explicit identity administration, for example during IdP replacement.
 
 Email/username matching never auto-merges Principals. Replacing the IdP must not rewrite historical Principal identity or past Work/Authorization/audit attribution.
 
-### 6.3 Membership, RoleAssignment, Role and Permission
+### 6.4 Membership, RoleAssignment, AccessRole and Permission
 
 The minimal ordinary-access kernel is:
 
@@ -264,26 +287,27 @@ The minimal ordinary-access kernel is:
 Principal
   → Organization Membership
   → RoleAssignment
-  → product-defined Role
+  → product-defined AccessRole
   → product-defined Permission
 ```
 
 - Membership and RoleAssignment are explicit durable/revocable MPC state.
 - Revocation changes future access but does not rewrite historical actor attribution.
-- Roles are product-defined bundles; Permissions are stable product capabilities.
+- AccessRoles are product-defined bundles; Permissions are stable ordinary-access capabilities.
 - Organization-specific mutable ordinary-access state is Membership/RoleAssignment, not a custom role designer.
-- Backend/business entry authorization consumes semantic Permissions rather than hard-coded role-name branching.
+- Backend/business entry access checks consume semantic Permissions rather than hard-coded role-name branching.
+- An ordinary Permission may allow a Principal to invoke/view a product capability; it does **not** itself prove business-action disposition, automation eligibility or consequential authorization authority. Those remain with the action-owning domain and Controlled Action Governance.
 - Product 1.0 does not require custom-role design, nested groups, generic ACL/ReBAC, explicit-deny policy engines, OpenFGA/SpiceDB or a generic IAM platform.
 - Exact permission→API-operation catalog may be completed in D5 without changing D2 ownership.
 
-### 6.4 Identity/access substrate fence
+### 6.5 Identity/access substrate fence
 
 The identity/access substrate is an important **non-domain D2 authority**, not a 13th D1 business domain.
 
 It may answer identity/membership/role-holding questions such as:
 
 - is Principal P a member of Organization O?;
-- does Principal P hold Role R?;
+- does Principal P hold AccessRole R?;
 - which ordinary product Permissions follow from an assignment?
 
 It MUST NOT answer a marketplace/business action's substantive permissibility, approval or execution validity.
@@ -301,7 +325,7 @@ Every organization-owned persistent business state or persisted external observa
 
 Organization scope is explicit and is not inferred from Marketplace Installation, Selling Entity, external account, IdP organization, source key or process-global default.
 
-Platform-owned definitions with no tenant-specific business meaning may remain platform-scoped, e.g. product Role/Permission definitions or provider descriptors where justified.
+Platform-owned definitions with no tenant-specific business meaning may remain platform-scoped, e.g. product AccessRole/Permission definitions or provider descriptors where justified.
 
 A realization where isolation depends only on developers remembering `WHERE organization_id = ?` is invalid. Exact enforcement mechanism — schema constraints, transaction context, RLS/runtime checks or combination — remains D7/runtime design.
 
@@ -342,7 +366,7 @@ Pending business intents are canonical durable state; transport/outbox/queue mec
 
 ### 8.5 Historical lineage without universal event sourcing
 
-Material Authorization Decisions, Business/Invoicing Intents, Post-Sale Resolutions, Economic Attribution/Reconciliation conclusions, Operational Work lifecycle and controlled-action lineage preserve enough historical state/evidence to explain material past decisions and outcomes.
+Material Authorization Decisions, domain Business Intents, Post-Sale Resolutions, Economic Attribution/Reconciliation conclusions, Operational Work lifecycle and controlled-action lineage preserve enough historical state/evidence to explain material past decisions and outcomes.
 
 The target does **not** require a universal event-sourced database/event store to satisfy this property.
 
@@ -572,10 +596,137 @@ Hypothetical future providers, SaaS packaging or preference changes alone do not
 
 ---
 
-## 16. Current D2 state / exact next action
+## 16. Final Global Coherence + YAGNI / Overengineering / Future-Cost review — COMPLETED
 
-D2 is **OPEN / IN PROGRESS**. B1+B2 are operator-approved, independently challenged and consolidated here. No B3 is required.
+**Outcome: CURRENT STRUCTURE CONFIRMED with bounded consolidation corrections. No B3, D0 reopen or D1 reopen is required.**
 
-Next: **Final D2 Global Coherence + YAGNI / Overengineering / Future-Cost review** across the complete D2 artifact against accepted D0/D1 and stable architecture constraints.
+The review checked the complete B1+B2 target against D0/D1/stable architecture and the DevelopmentConexus Engineering Method.
 
-If that review finds no material contradiction, D2 becomes a closure candidate for explicit operator ratification. Do not start D3 or product implementation until D2 is accepted as a whole and the router advances.
+### 16.1 Bounded corrections applied
+
+1. **Material intent identity completeness.** D1 already assigns listing/price/availability/materialization intent meaning to action-owning domains. D2 now states that a durable material intent participating in authorization/external effect/convergence/history has stable domain-local identity (§5.0), preventing Governance/D3 from referencing an unnamed generic action.
+2. **Identity/access ownership completeness.** The non-domain D2 substrate now explicitly owns Organization registry, Principal/bindings, Membership, ordinary AccessRole/Permission definitions and RoleAssignment (§6.1), while business identities stay with their D1 authorities.
+3. **Role/authority vocabulary fence.** Ordinary `AccessRole`/Permission is separated from Operational Work responsibility role and from consequential authorization Grant/Decision (§5.6, §6.4), preventing one IAM concept from silently becoming work-routing or business-approval authority.
+
+These corrections make already-accepted authority explicit; they do not add a business domain or new product capability.
+
+### 16.2 Duplicate/missing authority
+
+**PASS.**
+
+- Organization/Principal ordinary access → D2 identity/access substrate.
+- Marketplace Installation/Selling Entity → Marketplace Portfolio.
+- Inventory Source/Sellable Availability → Availability Control.
+- Fulfillment Node/physical execution → Fulfillment Lifecycle.
+- Product↔channel correspondence → Product & Channel Readiness.
+- Listing/Price intents → Marketplace Offering Operations.
+- Sale interpretation/entity attribution → Marketplace Sales.
+- Business/Invoicing Intents → Business-System Materialization.
+- Economics/Attribution/Reconciliation → Commercial Economics.
+- Post-Sale obligation → Post-Sale Resolution.
+- Consequential authorization Grant/Decision → Controlled Action Governance.
+- Actionable-work lifecycle → Operational Work.
+- External base facts/resources remain external/source-qualified.
+
+No current business meaning has two write authorities and no material D2 identity/state is left ownerless.
+
+### 16.3 Circular ownership / communication leakage
+
+**PASS.** D2 adds typed references and ownership but does not choose cross-boundary communication. The accepted Materialization⇄Fulfillment business workflow cycle remains semantic only; D3 must realize it without private-code/write-authority cycles.
+
+### 16.4 Trust / authorization layering
+
+**PASS.**
+
+```text
+Principal + Membership + AccessRole/Permission
+  → ordinary access capability
+
+action-owning domain
+  → business disposition / automation eligibility
+
+Controlled Action Governance
+  → consequential authorization Grant/Decision when required
+
+execution/runtime
+  → later revalidation + actual attempt/outcome
+```
+
+Possessing an ordinary Permission is never sufficient proof that an action is business-valid, automation-eligible or consequentially authorized. Human and non-human attribution remain distinguishable.
+
+### 16.5 External-authority preservation
+
+**PASS.** Product, provider Listing/Variation, Sale/Order, Shipment/Pack, native financial movements and ERP/fiscal results remain source-qualified external identities/facts. MPC owns correspondence, intents, interpretation, work, governance and reconciliation around them without becoming Product Master, provider truth or ERP replacement.
+
+### 16.6 Tenant/isolation coherence
+
+**PASS.** Organization is the only canonical business tenant root; Principal can participate through explicit Membership; external/source state persisted by MPC remains Organization-scoped. D7 still owes fail-closed enforcement, so D2 does not pretend a schema/runtime mechanism has already been chosen.
+
+### 16.7 Persistence/history coherence
+
+**PASS.** Clean reset of the pre-rebaseline database does not conflict with target historical-lineage requirements: old data is explicitly disposable; new target canonical decisions/intents/work/economic history becomes durable once the target operates. Projections remain rebuildable and never write authority.
+
+### 16.8 Value/evidence/time coherence
+
+**PASS.** Exact Money/rates/material quantities, bounded `Fact<T>`, provenance and distinct time meanings compose without requiring a universal evidence/time/unit framework. Unknown/absence semantics remain fail-honest.
+
+### 16.9 YAGNI / overengineering
+
+**PASS.** D2 explicitly rejects unsupported generic capability:
+
+- no MDM/Product Master;
+- no generic integration/source/entity registry;
+- no universal entity/reference graph;
+- no universal Evidence/Observation graph;
+- no event-sourcing requirement;
+- no generic IAM/ReBAC engine;
+- no custom-role designer;
+- no generic Unit-of-Measure engine;
+- no generic policy/action/workflow engine;
+- no speculative physical table/schema/process topology.
+
+The retained abstractions all have a concrete current consumer or protect an accepted invariant.
+
+### 16.10 Future-cost / seam review
+
+**PASS.** D2 prepares only justified seams:
+
+- opaque MPC identity decouples business identity from provider/ERP codes;
+- SourceInstance/Marketplace Installation keep external namespaces explicit;
+- OIDC binding decouples Principal from one IdP vendor;
+- Principal supports human/automation/system attribution without a second actor graph;
+- typed/domain-local references prevent a generic entity graph while allowing real polymorphic domains;
+- exact values/provenance/time prevent irreversible correctness loss;
+- clean legacy reset removes compatibility tax;
+- legacy ADR rehoming preserves useful reasoning without carrying obsolete architecture.
+
+### 16.11 Later-stage leakage
+
+**PASS.** Exact event/outbox contracts remain D3; provider/ERP contracts/credentials remain D4; endpoint/permission/error catalog remains D5; UX topology remains D6; RLS/transactions/workers/queues/deployment/identity encoding remain D7/implementation as applicable.
+
+### 16.12 Strongest counterexamples checked
+
+- Same `15723` in two business-system namespaces does not collide.
+- Same provider resource ID in two Organizations does not cross isolation.
+- Keycloak/email changes do not rewrite Principal/history.
+- Machine automation cannot impersonate a human actor.
+- AccessRole permitting an approval screen does not itself authorize the approval.
+- Price/availability/listing intent referenced by Governance has a domain-owned stable identity, not a generic Mutation row.
+- Closing Work does not close the source condition by itself.
+- Projection `OperationalStage` cannot trigger business writes by authority.
+- Provider write identity mismatch fails before external side effect.
+- Automatic matching cannot rest on one identifier or silently reverse a standing human resolution.
+- Legacy DB deletion does not remove required target history because the operator explicitly declared it disposable.
+- Legacy ADR deletion cannot remove the only active copy of a still-needed invariant because rehoming gates block that cleanup.
+
+**Conclusion:** no material contradiction, missing authority, hidden God component, speculative framework or later-stage mechanism leak remains in D2.
+
+---
+
+## 17. Current D2 state / exact next action
+
+D2 is a **CLOSURE CANDIDATE**. B1+B2 are operator-approved, independently challenged and consolidated; the final Global Coherence + YAGNI / Overengineering / Future-Cost review completed with only the bounded corrections recorded in §16.
+
+Next: **explicit operator ratification of D2 as a whole**.
+
+If ratified, update the router to `D2 — CLOSED / ACCEPTED` and make **D3 — Communication / Events** the exact next stage. Do not start product implementation before D9 is accepted.
