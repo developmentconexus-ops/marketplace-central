@@ -1,7 +1,7 @@
 # Marketplace Central — Architecture Rebaseline
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
-> **Current phase:** **D1 — DOMAINS / BOUNDARIES — OPEN / PENDING INDEPENDENT REVIEW**  
+> **Current phase:** **D1 — DOMAINS / BOUNDARIES — OPEN / PENDING FINAL GLOBAL REVIEW**  
 > **Implementation:** BLOCKED until D9 is accepted  
 > **Last updated:** 2026-08-16
 
@@ -30,7 +30,7 @@ Documentary / governance cleanup — DONE
   ↓
 D0 — Product / System Definition — CLOSED / ACCEPTED
   ↓
-D1 — Domains / Boundaries — OPEN / PENDING INDEPENDENT REVIEW
+D1 — Domains / Boundaries — OPEN / PENDING FINAL GLOBAL REVIEW
   ↓
 D2 — Identity / Tenant / Data Ownership
   ↓
@@ -63,18 +63,21 @@ Product 1.0 is **Marketplace Operations + Commercial Intelligence**. MPC is the 
 
 D0 authority and non-goals are defined only in `D0-PRODUCT-SYSTEM-DEFINITION.md`.
 
-### D1 — decisions complete; closure review pending
+### D1 — decisions + independent review complete; final closure review pending
 
-`D1-DOMAINS-BOUNDARIES.md` consolidates the operator-approved D1 decisions:
+`D1-DOMAINS-BOUNDARIES.md` now contains:
 
-- 12 business boundaries with explicit ownership/non-ownership;
+- 12 operator-approved business boundaries with explicit ownership/non-ownership;
 - `Mechanism ≠ Authority` as the cross-cutting boundary rule;
 - policy/evidence/time/audit/execution-safety/integration capability treatment;
 - semantic authority edges and forbidden boundary violations;
 - semantic disposition of all legacy modules/current contexts;
-- explicit D2–D7 defers and reopen triggers.
+- explicit D2–D7 defers and reopen triggers;
+- adjudicated amendments from the independent adversarial review.
 
-D1 is **not closed yet**. The current artifact is the candidate contract for independent review.
+The independent review returned **AMEND**, not `REOPEN`. Its six material findings were adjudicated and operator-approved without adding/removing/merging/splitting a boundary.
+
+D1 is **not closed yet**. The corrected artifact now awaits the final internal Global Coherence + YAGNI / Overengineering / Future-Cost review and explicit whole-stage approval.
 
 ## 4. Engineering method
 
@@ -112,25 +115,25 @@ Existing code/module/context shape remains current-state evidence only.
 
 Complete the D1 closure pipeline in this order:
 
-1. **Independent adversarial Fable review** of the complete `D1-DOMAINS-BOUNDARIES.md` contract.
-2. Adjudicate every material finding using the repository method rather than by deference.
-3. Run the final internal **Global Coherence + YAGNI / Overengineering / Future-Cost** review across corrected D1.
-4. Obtain explicit operator approval of D1 as a whole.
-5. Mark D1 **CLOSED / ACCEPTED** and make D2 the exact next stage.
+1. Run the final internal **Global Coherence + YAGNI / Overengineering / Future-Cost** review across the corrected `D1-DOMAINS-BOUNDARIES.md`.
+2. Adjudicate any material finding; if one changes an accepted authority, explicitly reopen the affected D1 decision.
+3. Obtain explicit operator approval of D1 as a whole.
+4. Mark D1 **CLOSED / ACCEPTED** and make D2 the exact next stage.
 
-Do **not** skip the independent review gate or perform the final global closure review before its findings are adjudicated.
+Do not advance D2 or implementation before D1 closure.
 
 ## 7. Fresh-session success test
 
 A fresh session should conclude that:
 
 - D0 is closed/accepted;
-- D1 decisions are consolidated but D1 remains open pending independent review;
-- `D1-DOMAINS-BOUNDARIES.md` is the candidate D1 contract;
+- D1 has 12 candidate business boundaries with ownership and semantic edges consolidated;
+- the independent Fable review is complete and its six material amendments are adjudicated/applied;
+- D1 remains open only for the final Global Coherence + YAGNI / Overengineering / Future-Cost review and whole-stage operator approval;
 - 12 business boundaries do not imply 12 services/databases/processes;
 - shared mechanisms do not acquire business authority by reuse;
 - current modules/contexts are evidence, not target authority;
 - D2–D9 and implementation remain blocked;
-- the exact next action is the **independent Fable review of D1**.
+- the exact next action is the **final global D1 review**.
 
 If it cannot, the authority path is incomplete or contradictory.
