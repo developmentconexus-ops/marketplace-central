@@ -1,31 +1,36 @@
 # Marketplace Central — Architecture Rebaseline
 
-> **Role:** sole current-program status / router after `AGENTS.md`  
-> **Current phase:** D0 — PRODUCT / SYSTEM DEFINITION — CLOSED / ACCEPTED AS A WHOLE; D1 — DOMAINS / BOUNDARIES is the exact next stage  
+> **Role:** sole current-program status/router after `AGENTS.md`  
+> **Current phase:** **D1 — DOMAINS / BOUNDARIES — OPEN / PENDING INDEPENDENT REVIEW**  
 > **Implementation:** BLOCKED until D9 is accepted  
-> **Evidence baseline:** `main@de1dc88bcef5a6ed5515378e7c646682c0bc15d2`  
-> **Last updated:** 2026-08-15
+> **Last updated:** 2026-08-16
 
-## 1. Why this file exists
+## 1. Authority path
 
-This is the one place a fresh session uses to determine where the program is, what is authoritative now, what is prohibited now, what the exact next action is, and when the current phase is finished.
+A fresh session reads, in order:
 
-There is deliberately no parallel roadmap, wiki progress page, permanent session-handoff tree or active legacy implementation plan. Git history is the archive.
+1. `AGENTS.md`
+2. this file
+3. `docs/engineering/standards/root-cause-global-maximum-method.md`
+4. `ARCHITECTURE.md`
+5. `docs/architecture/decisions/README.md`
+6. `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`
+7. `docs/engineering/rebaseline/D1-DOMAINS-BOUNDARIES.md`
+8. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
+9. code, OpenAPI, schemas, tests and runtime only as current-state evidence when needed
 
-## 2. Documentary / governance cleanup — DONE
+This file alone answers **where the program is and what happens next**. Stable architecture belongs in `ARCHITECTURE.md`; accepted stage semantics belong in D-stage artifacts; Git history is the archive.
 
-PR **#41** removed/retargeted retired authority, stopped tooling from recreating it, made the authority chain self-contained and closed `npm run gate:full` green without weakening controls/ratchets.
+Do not reconstruct target authority from memory, legacy package shape, historical plans or stale docs.
 
-That cleanup did **not** decide target domains, identity/tenant model, database schema, API/frontend/runtime topology, provider/ERP adapter design, auth/permissions or transaction/event/outbox architecture. Existing code, schema, OpenAPI, tests and runtime remain current-state evidence, not target authority.
-
-## 3. Current design program
+## 2. Program state
 
 ```text
-DOCUMENTARY / GOVERNANCE AUTHORITY CLEANUP — DONE
+Documentary / governance cleanup — DONE
   ↓
 D0 — Product / System Definition — CLOSED / ACCEPTED
   ↓
-D1 — Domains / Boundaries — NEXT, NOT YET OPENED
+D1 — Domains / Boundaries — OPEN / PENDING INDEPENDENT REVIEW
   ↓
 D2 — Identity / Tenant / Data Ownership
   ↓
@@ -48,163 +53,84 @@ Implementation DAG / Plan
 Implementation
 ```
 
-Product implementation remains blocked until D9 is accepted. D0 acceptance authorizes opening D1; it does not pre-authorize any particular D1 domain/context layout.
+Product implementation remains blocked until D9 is accepted.
 
-## 4. D-stage decision method
+## 3. Accepted baseline
 
-Each material decision follows:
+### D0 — CLOSED
 
-```text
-needed evidence
-  → alternatives
-  → mature patterns / current external facts
-  → trade-offs
-  → recommendation
-  → operator discussion
-  → explicit decision
-  → recorded contract
-  → implications for later stages
-```
+Product 1.0 is **Marketplace Operations + Commercial Intelligence**. MPC is the marketplace operations control plane: external systems retain authority for facts/processes inherently theirs while MPC owns the cross-system marketplace operating semantics needed to observe, understand, decide, execute, verify and reconcile.
 
-Use `docs/engineering/standards/root-cause-global-maximum-method.md`. Classify questions as MUST DECIDE NOW, SHOULD DECIDE NOW or CAN DEFER SAFELY. Later stages may explicitly reopen an earlier decision when new evidence creates a material contradiction; silent contradiction is prohibited.
+D0 authority and non-goals are defined only in `D0-PRODUCT-SYSTEM-DEFINITION.md`.
 
-Global Maximum is **not** permission for infinite review or maximum abstraction. YAGNI removes speculative capability/accidental complexity, not correctness or required invariants.
+### D1 — decisions complete; closure review pending
 
-## 5. D0–D9 core questions
+`D1-DOMAINS-BOUNDARIES.md` consolidates the operator-approved D1 decisions:
 
-| Stage | Core question |
-|---|---|
-| **D0** | What exactly are we building, for whom, what belongs inside/outside, and what is Product 1.0? — **ANSWERED / CLOSED** |
-| **D1** | Which capabilities/domains exist and who owns each responsibility/state? |
-| **D2** | Who/what are canonical identities and which authority owns each class of data? |
-| **D3** | How do components coordinate without duplicate authority? |
-| **D4** | How do marketplaces, Sankhya/Oracle, payment/bank and future external systems enter the product? |
-| **D5** | What contracts expose accepted capabilities/semantics? |
-| **D6** | How does the frontend represent workflows without duplicating business authority? |
-| **D7** | How are execution, scheduling, concurrency, retries, transactions and recovery handled? |
-| **D8** | Do important end-to-end flows remain coherent through success/failure/retry/reconciliation? |
-| **D9** | Where can the accepted design contradict itself, overbuild, under-specify or fail under real constraints? |
+- 12 business boundaries with explicit ownership/non-ownership;
+- `Mechanism ≠ Authority` as the cross-cutting boundary rule;
+- policy/evidence/time/audit/execution-safety/integration capability treatment;
+- semantic authority edges and forbidden boundary violations;
+- semantic disposition of all legacy modules/current contexts;
+- explicit D2–D7 defers and reopen triggers.
 
-## 6. Documentation authority
+D1 is **not closed yet**. The current artifact is the candidate contract for independent review.
 
-Read active authority in this order:
+## 4. Engineering method
 
-1. `AGENTS.md`;
-2. **this file**;
-3. `docs/engineering/standards/root-cause-global-maximum-method.md`;
-4. `ARCHITECTURE.md`;
-5. `docs/architecture/decisions/README.md`;
-6. `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md` — accepted D0 product/system authority;
-7. the active D1 artifact once D1 is opened;
-8. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md` — supporting evidence only;
-9. code, OpenAPI, schemas, tests and runtime — current-state evidence.
+All material decisions follow:
 
-Historical plans/specs/handoffs/wikis do not become target authority merely because they remain in Git history.
+`docs/engineering/standards/root-cause-global-maximum-method.md`
 
-## 7. D0 final disposition — ACCEPTED AS A WHOLE
+Do not replace that method with local shorthand. In particular:
 
-The operator accepted D0 after:
+- current implementation is evidence, not destiny;
+- unknown is not a plausible default;
+- solve root cause/defect class, not one symptom;
+- preserve essential complexity and remove accidental complexity;
+- YAGNI removes speculative capability, not correctness or justified future seams;
+- define proof before implementation;
+- accepted decisions reopen only on material new evidence.
 
-- iterative D0.1–D0.7n adjudication;
-- broad current provider/competitor research;
-- an explicit YAGNI/overengineering review;
-- a bounded subtractive closure review;
-- an independent adversarial Fable review;
-- adjudication of Fable findings under the repository method rather than by deference;
-- a final cold review of the corrected authority path.
+## 5. What is prohibited now
 
-No material Product 1.0 semantic remains for an implementer to invent at D0 altitude.
+Until D1 closes:
 
-### 7.1 Accepted product boundary
+- do not begin D2–D9 target design prematurely;
+- do not implement product architecture/features;
+- do not choose schema/IDs/persistence ownership;
+- do not choose events/outbox/sync-vs-async communication;
+- do not choose provider/ERP transport contracts;
+- do not choose HTTP/frontend/runtime topology;
+- do not preserve or reject a legacy module merely because it exists;
+- do not turn cross-cutting invariants into new contexts/frameworks without independent business authority;
+- do not silently contradict `D1-DOMAINS-BOUNDARIES.md`.
 
-Product 1.0 is **Marketplace Operations + Commercial Intelligence**.
+Existing code/module/context shape remains current-state evidence only.
 
-MPC owns the cross-system marketplace operating model/control semantics while external systems retain authority for facts/processes inherently theirs.
+## 6. Exact next action
 
-The accepted lifecycle covers:
+Complete the D1 closure pipeline in this order:
 
-- product/channel readiness and listing operation;
-- availability from explicit eligible inventory + rules/policy;
-- competitive/pricing/profitability intelligence;
-- controlled decision/policy and external action;
-- Business Order Intent and business-system materialization;
-- Invoicing Intent and readiness-gated fiscal materialization;
-- fulfillment/provider-requirement closure/dispatch;
-- shipment/delivery terminal observation;
-- essential cancellation/return/refund consequences;
-- marketplace/payment settlement and realized economics;
-- reconciliation/exception work, deadlines/internal targets and operational ownership.
+1. **Independent adversarial Fable review** of the complete `D1-DOMAINS-BOUNDARIES.md` contract.
+2. Adjudicate every material finding using the repository method rather than by deference.
+3. Run the final internal **Global Coherence + YAGNI / Overengineering / Future-Cost** review across corrected D1.
+4. Obtain explicit operator approval of D1 as a whole.
+5. Mark D1 **CLOSED / ACCEPTED** and make D2 the exact next stage.
 
-### 7.2 Final independent-review amendments
+Do **not** skip the independent review gate or perform the final global closure review before its findings are adjudicated.
 
-The final Fable review produced small boundary clarifications, not an architectural rebaseline:
+## 7. Fresh-session success test
 
-- **Composite offers/kits:** real component-dependent semantics may not be silently flattened; provider-native composite support is not a Product 1.0 launch gate unless the selected first Mercado Livre flow requires it.
-- **Organization posture:** first launch proof uses one Organization; Multi-Organization/SaaS operation is not a launch gate; Organization remains a real identity and tenant-ready isolation remains binding.
-- **Marketplace Installation health/reputation:** provider-authoritative health/reputation may feed portfolio attention as observed/derived evidence; reputation management/SAC remains outside.
-- **Economic Evidence Chain:** core Product 1.0 economic lineage closes through L2 Marketplace/Payment Settlement. L3 Bank Cash Receipt remains a semantically distinct optional extension and bank integration is not a launch gate.
-- **Self-containment:** `(A+)` was removed; buyer Q&A/chat scope was made unambiguous; authority-map combined notation was defined.
+A fresh session should conclude that:
 
-### 7.3 Cross-cutting truth/action-safety invariants
+- D0 is closed/accepted;
+- D1 decisions are consolidated but D1 remains open pending independent review;
+- `D1-DOMAINS-BOUNDARIES.md` is the candidate D1 contract;
+- 12 business boundaries do not imply 12 services/databases/processes;
+- shared mechanisms do not acquire business authority by reuse;
+- current modules/contexts are evidence, not target authority;
+- D2–D9 and implementation remain blocked;
+- the exact next action is the **independent Fable review of D1**.
 
-Accepted D0 truth/action-safety properties include:
-
-- unknown is not plausible zero/default;
-- freshness is use-sensitive;
-- fresh is not complete;
-- not observed is not does-not-exist;
-- provider success/submission is not automatically convergence;
-- ambiguous external writes are not blindly retried;
-- historical material decisions remain explainable from decision-time evidence/policy/authority;
-- multi-target actions preserve intended blast radius and partial/ambiguous outcomes;
-- approval is not permanent permission; materially governing conditions remain valid enough at execution time;
-- external obligations and MPC-owned internal targets are distinct;
-- actionable work has role ownership; assignment is not authorization; material closure requires evidence.
-
-These are **cross-cutting invariants, not automatic D1 contexts/modules/frameworks**. D1–D7 must implement the smallest mechanism inside real owning boundaries.
-
-## 8. Explicit safe defers — not D0 blockers
-
-The following remain intentionally owned by later stages:
-
-- **D1:** final domains/contexts/boundaries and legacy-module disposition;
-- **D2:** canonical identities, tenant/isolation model, persistence ownership and exact value/time/evidence representations;
-- **D3:** event/synchronous/projection matrix, webhook/event semantics and outbox decisions;
-- **D4:** exact Mercado Livre/Sankhya/payment/bank contracts, provider capability profiles, native fields/statuses/artifacts, composite/provider-mode support and source-specific completeness/freshness evidence;
-- **D5:** HTTP/API shape, bulk contracts, version/precondition/idempotency contract surface;
-- **D6:** portfolio/attention/work inbox, approvals, countdowns, notifications and other UI topology;
-- **D7:** schedulers, workers, queues, polling, retries, locks/versioning, transactions, compensation, timing and deployment topology;
-- **D8:** end-to-end proof of accepted Product 1.0 flows;
-- **D9:** final adversarial architecture review.
-
-Product 1.0 also intentionally does not require paid ads/media, buyer Q&A/chat, general CRM/SAC, campaign authoring, company-wide WMS/TMS/reverse logistics, company-wide accounting/treasury/bank reconciliation, broad demand forecasting/purchasing, Multi-Organization/SaaS operation, every future marketplace, a universal ERP framework, a marketplace-hub compatibility layer or unrestricted autonomous AI.
-
-## 9. Exact next action
-
-**Open D1 — Domains / Boundaries with the operator.**
-
-D1 must start from the accepted D0 semantics and independently determine the smallest real business domains/boundaries. It must **not** infer a standalone context/module for every named D0 invariant.
-
-In particular, do not begin D2–D9 target design prematurely and do not start product implementation. Existing code/module/context shape remains evidence, not target authority.
-
-## 10. Fresh-session success test
-
-A fresh session should conclude correctly that:
-
-- cleanup is DONE;
-- D0 is **CLOSED / ACCEPTED AS A WHOLE**;
-- Product 1.0 is Marketplace Operations + Commercial Intelligence;
-- the final Fable review was adjudicated and resulted in scope clarifications/subtractions, not new frameworks;
-- one Organization is enough for the launch proof, but Organization remains a real identity;
-- composite semantics are never silently flattened, but composite provider support is not a launch gate by default;
-- Marketplace Installation health/reputation can feed portfolio attention without becoming reputation management;
-- core economic lineage closes through L2 settlement; L3 bank cash evidence is optional;
-- canonical MPC semantics precede ERP/provider mapping;
-- provider capabilities/authorities are context-sensitive and claimed MPC-controlled paths close provider requirements;
-- D0 truth/action-safety properties are cross-cutting invariants, not automatic future contexts;
-- marketplace hubs remain benchmark/competitive evidence, not target runtime dependencies;
-- implementation remains blocked until D9;
-- current code/docs remain evidence, not target authority;
-- the exact next work is **D1 — Domains / Boundaries**.
-
-If it cannot, the current authority path is incomplete or contradictory.
+If it cannot, the authority path is incomplete or contradictory.
