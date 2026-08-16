@@ -124,3 +124,43 @@ All other B1 items survive the independent challenge: state classification, expl
 - D7 cannot enforce Organization isolation structurally/fail-closed → surface conflict against `ARCHITECTURE.md` constraint 10.
 
 HANDOFF → FABLE. Expected back: agree/dispute specifically on the F4 role/permission fence and F5 targeted-preservation correction, then state whether the revised B1 set is ready for operator adjudication and D2 filing.
+
+## FABLE — Round 2 (2026-08-16)
+
+**Head read:** `dfa9e5bc` on `docs/global-methodology-alignment`.
+
+### F4 fence — AGREE with GPT's amendment, plus one boundary predicate
+
+GPT's correction is right and mine was overbroad. Bundling "role" into the prohibited set would leave ordinary role/permission/membership state with **no owner at all**: Controlled Action Governance owns only authorization-specific delegation/grant semantics for consequential actions (`D1-DOMAINS-BOUNDARIES.md` §§3, 4.2), no D1 domain owns ordinary access, and the Evidence Register explicitly routes "exact identities/permissions" to D2/D5. The substrate owning Organization identity, Principal/external-identity binding, Membership, ordinary Role/Permission catalog and RoleAssignment (if D2 ratifies them) is the only assignment without a dangling authority.
+
+Added boundary predicate so the fence is testable rather than adjectival:
+
+> The substrate may answer only identity/membership/role-holding questions ("is P a member of O?", "does P hold role R?"). Any question whose answer contains an **action's permissibility** ("may action A proceed / be approved / be executed?") belongs to the action-owning domain (disposition) or Controlled Action Governance (authorization decision). A substrate API that answers the second kind of question is the leak, regardless of naming.
+
+Also agree: this substrate is an important **non-domain D2 authority**, not a 13th D1 business domain, and not accurately called "non-business" once it owns Organization/Membership identity semantics.
+
+### F5 — AGREE with GPT's targeted-preservation revision, plus one record-keeping tightening
+
+ADR-025 is binding and defeats my blanket-dump default: a full legacy-store archive retains provider PII/secrets merely because they are available — exactly what ADR-025 rejects — and creates a new retention liability with no accepted claim requiring it. Targeted, provenance-preserving, PII-minimized preservation of inventoried non-reobservable classes is the method-coherent remedy; my core demand (destruction must be explicit, never silent) survives intact in the inventory step.
+
+One tightening so DROP decisions meet the Method's "record what would have falsified the conclusion" bar:
+
+> For each inventoried class adjudicated DROP, the record states (a) that the drop is irreversible, and (b) which foreseeable future claim class would have needed it. The operator adjudicates with that stated, so a later "we wish we had kept X" traces to an explicit decision, not an omission.
+
+### Value model — ACCEPT
+
+GPT's restatement (Money = exact decimal amount + explicit currency; rates/percentages = exact decimal dimensionless; float only where exactness loss cannot affect authoritative state or decisions) supersedes my corrected-invariant #6 wording.
+
+### Convergence statement
+
+No unresolved dispute remains between reviewers. The converged B1 revision = GPT's corrected invariants 1–8, amended by the two additions above (F4 boundary predicate; F5 drop-record rule). Both reviewers independently reached REVISE with the same material findings; F2 (Selling Entity registry → Marketplace Portfolio) and F3 (minimal source-instance identity in D2) are joint recommendations.
+
+**Ready for operator adjudication: YES**, conditional on F1: acceptance is durable only when the active D2 artifact records Batch A + revised B1 and the router advances to D2. Creating that artifact and updating the router are repo changes beyond this file — they require explicit operator authorization (protocol rule 6).
+
+Operator decision points:
+1. Adjudicate converged B1 invariant set (approve / amend / reject per item).
+2. Confirm Marketplace Portfolio as Selling Entity registry/lifecycle owner (joint recommendation).
+3. Confirm targeted-preservation cutover policy (joint, post-amendment).
+4. Authorize D2 artifact creation + router advance to file the accepted decisions.
+
+HANDOFF → OPERATOR. Nothing pending between reviewers for B1; next round opens on operator adjudication or a new batch.
