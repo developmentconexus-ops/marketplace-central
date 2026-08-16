@@ -1,306 +1,215 @@
 # Root-Cause / Global-Maximum Engineering Method
 
-> **Status:** canonical engineering standard  
-> **Scope:** Marketplace Central engineering work  
-> **Last verified:** 2026-08-13
+> **Status:** canonical engineering method  
+> **Primary reader:** LLM-assisted engineering  
+> **Applies to:** architecture, design, debugging, refactoring, implementation planning and review
 
-## Binding principle
+## Objective
 
-> **Always simplify the code, never simplify correctness. Find the root cause, test whether the proposed solution is only a local maximum, and prefer the global structure that makes the defect class unrepresentable or mechanically impossible at the strongest reasonable boundary.**
+> **Find the smallest sustainable solution that preserves essential complexity, removes accidental complexity, resolves the root cause and avoids foreseeable structural dead ends.**
 
-This method governs non-trivial engineering work. It is not a mandate for maximum sophistication. It distinguishes **essential complexity** from **accidental complexity** and removes the latter without weakening invariants.
-
-## What this method prevents
-
-1. **Patch-on-patch:** fixing a visible symptom while preserving the structural fact that made it possible.
-2. **Local-maximum optimization:** improving a workaround, legacy seam or faulty foundation instead of replacing it.
-3. **False simplification:** deleting enforcement/proof because it is inconvenient while the invalid state remains representable.
-4. **Overengineering:** creating a framework, registry, parser, compatibility layer or second source of truth when a stronger existing boundary can enforce the property.
-5. **Infinite review:** continuing hypothetical hardening after the material property is solved and proved.
-
-## Definitions
-
-### Symptom
-
-The observable failure or finding: wrong response, race, duplicate implementation, CI escape, unsafe write, broken import boundary, contract drift or similar evidence.
-
-A symptom says where a defect appeared; it does not determine where the fix belongs.
-
-### Root cause
-
-The structural fact that made the defect possible.
-
-Examples:
-
-- not “this handler forgot validation,” but “runtime request shapes and OpenAPI are independent authorities”;
-- not “this module wrote the wrong tenant,” but “tenant identity can be invented/defaulted at several boundaries”;
-- not “this marketplace mapping leaked,” but “provider DTOs are legally importable outside the provider boundary”;
-- not “this table has two writers,” but “data ownership is not structurally assigned to one authority.”
-
-### Target property / invariant
-
-A statement that must remain true for every valid implementation, independent of current code shape.
-
-Examples:
-
-- each business fact has one owning context and one write authority;
-- provider wire models cannot become domain contracts;
-- an unknown monetary/operational fact cannot be represented as a plausible known zero;
-- application code cannot write another context’s state directly;
-- one API authority generates or mechanically validates all runtime/client contract shapes.
-
-### Local maximum
-
-A solution that improves the current implementation but preserves the structural limitation that produced the defect class.
-
-A local maximum is legal only when explicitly transitional, with a named successor and deletion condition.
-
-### Global maximum
-
-The best sustainable structure for the system’s actual constraints: it resolves the root cause, converges authorities, preserves required invariants, minimizes accidental complexity and makes invalid states impossible or mechanically detectable at the strongest reasonable boundary.
-
-Global maximum does **not** mean maximum abstraction, maximum code, big-tech infrastructure without need, perfect future-proofing or indefinite redesign.
-
-### Essential vs accidental complexity
-
-**Essential complexity** comes from real domain/system constraints: multi-tenancy, external-provider uncertainty, transactional consistency, authorization, asynchronous delivery, temporal facts, auditability, idempotency and contract evolution.
-
-**Accidental complexity** comes from implementation choices: duplicate policies, parallel abstractions, hand-synced registries, unnecessary compatibility, redundant lifecycle code, speculative providers and repeated enforcement of the same property.
-
-Remove accidental complexity; do not erase essential complexity.
-
-### YAGNI
-
-YAGNI removes speculative capability, not required correctness.
-
-YAGNI may justify deleting unused extensibility, unsupported compatibility paths, future-vendor frameworks, configuration nobody sets, abstractions with no real boundary and duplicate enforcement.
-
-YAGNI does **not** justify deleting an invariant, fail-closed default, proof for a reachable failure mode or a boundary that prevents a known defect class.
-
-## Enforcement hierarchy
-
-Prefer the strongest reasonable mechanism:
-
-1. **Structure / public API makes the invalid state unrepresentable**
-2. **Type system makes it invalid**
-3. **Database/schema constraint makes it invalid**
-4. **Runtime boundary fails closed**
-5. **Test proves reachable behavior**
-6. **Static guard/lint detects the violation**
-7. **Documentation/convention**
-
-This is a preference order, not dogma. A lower layer is valid when a stronger layer cannot express the complete property without disproportionate cost or destroying legitimate flexibility. Record why.
+Do not optimize for agreement, familiarity, minimum code, maximum abstraction, framework preference or preservation of the current implementation.
 
 ## Required decision flow
 
-### 1. Observe and reproduce
+For every material decision:
 
-State the actual evidence. Use the correct measurement universe. Do not start from the proposed patch.
+```text
+Evidence
+→ Known / Inferred / Unknown / Deferred
+→ Root Cause
+→ Target Invariant
+→ Constraints
+→ Credible Alternatives
+→ Local Maximum vs Global Maximum
+→ Essential vs Accidental Complexity
+→ YAGNI / Overengineering
+→ Future-Cost Test
+→ Authority / Boundary when relevant
+→ Strongest Reasonable Enforcement
+→ Proof
+→ Adversarial Review
+→ Decision
+→ Reopen Triggers
+```
 
-For integration/runtime claims, distinguish:
+After a meaningful group of decisions, perform a **Global Coherence Review**.
 
-- `contract_validated` — local behavior/types/fakes proved;
-- `integration_validated` — real dependency/runtime proved;
-- `blocked_for_real_validation` — exact blocker named.
+## 1. Evidence first
 
-A fake cannot prove credentials, network, provider semantics, database policy or deployment behavior.
+Start from what is known, not from a preferred solution.
 
-### 2. Identify the root cause
+Classify material information as:
+
+- **Known:** directly supported by reliable evidence.
+- **Inferred:** reasoned from known evidence.
+- **Unknown:** material but unresolved.
+- **Deferred:** intentionally left to later work.
+
+Unknown must not become a convenient default.
+
+Current code, schemas, package layout, APIs, tests, runtime and historical decisions are evidence, not target authority merely because they exist.
+
+Use the **Structural Inversion Test**:
+
+> If the current implementation were completely different, which parts of this conclusion would still be true?
+
+Prefer primary/official sources for unstable external or technical facts.
+
+## 2. Root cause before correction
+
+Do not patch symptoms before identifying the structural condition that made the defect possible.
 
 Ask:
 
 - What structural fact made this possible?
-- Can the same fact produce other symptoms?
-- Are several findings evidence of one shared cause?
-- Would the finding still matter if the current directory/package layout were the opposite?
+- Can it produce other failures?
+- Would a local fix leave the defect class reachable?
 
-Repeated findings around the same construct trigger mandatory local-vs-global review.
+Then state an implementation-independent **target invariant**: what must remain true in every valid implementation.
 
-### 3. State the target property
+Bad: `Create ValidationService.`  
+Good: `Invalid state cannot enter committed state through any supported path.`
 
-Write the invariant independently of current implementation.
+The invariant is durable; the implementation is replaceable.
 
-Bad: “move `connectors` into `adapters`.”  
-Good: “provider-specific protocol knowledge is unreachable from business contexts; consumer-owned ports are the only dependency from business semantics toward an external provider.”
+## 3. Local Maximum vs Global Maximum
 
-Bad: “replace this SQL.”  
-Good: “one context is the only write authority for this business state.”
+**Local Maximum:** best solution inside the current structure.
 
-### 4. Name authority and boundary
+**Global Maximum:** best sustainable structure for the real constraints, even when the current structure must change.
 
-Identify:
+Prefer the Global Maximum when the current structure preserves the root cause.
 
-- who owns the business meaning;
-- which artifact is the source of truth;
-- which component owns lifecycle/writes;
-- which public contract is legal;
-- the strongest reasonable enforcement boundary.
+Global Maximum does **not** mean maximum abstraction, infrastructure, generality or future-proofing.
 
-A solution that creates a second authority is presumed wrong until justified.
+## 4. Essential vs accidental complexity
 
-### 5. Evaluate credible candidates
+**Essential complexity** comes from the real problem: uncertainty, concurrency, authorization, isolation, auditability, partial failure, idempotency, temporal correctness, external dependencies, contract evolution and similar constraints.
 
-For each candidate answer:
+**Accidental complexity** comes from the chosen solution: duplicate authorities, hand-synced models, unnecessary indirection, speculative frameworks, repeated enforcement and compatibility without consumers.
 
-- Does it remove the root cause or only this symptom?
-- What defect class remains representable afterward?
-- What complexity does it add now?
-- What complexity does it avoid later?
-- Is the added complexity essential or accidental?
-- Does it preserve a legacy seam only because the seam already exists?
+> **Remove accidental complexity. Never simplify correctness by flattening essential complexity.**
 
-### 6. Choose one legal outcome
+## 5. YAGNI, overengineering and future cost
 
-Exactly one:
+YAGNI means **do not build capability without justified need**. It may remove speculative frameworks, hypothetical integrations, unused extensibility, generic engines and abstractions with no real responsibility.
 
-1. **Restructure now** — implement the global-maximum structure in the current work.
-2. **Transitional solution** — bounded local maximum with named successor/deletion gate.
-3. **Stop and split prerequisite** — the correct fix crosses the current boundary; do not patch around it.
-4. **Current structure confirmed** — architecture is sound and a local correction is appropriate.
+YAGNI must not remove a known invariant, safety property, required isolation/recoverability/auditability, evidence/provenance, or a seam already justified by evidenced evolution.
 
-### 7. Define proof before implementation
+Before adding abstraction, ask:
 
-Specify how the target property will be demonstrated:
+1. What concrete problem does it solve?
+2. What defect class does it eliminate?
+3. Is that defect reachable or evidenced?
+4. Is more than one real use case justifying the abstraction?
+5. Are we generalizing from one example?
+6. Could it be added later without dismantling existing authority?
+7. Does it reduce total complexity or only move it?
+8. Is a simpler existing boundary sufficient?
 
-- RED/counterfactual proof when useful;
-- GREEN positive behavior;
-- type/compile failure for illegal dependency/state;
-- schema/constraint proof;
-- generation/diff check for derived artifacts;
-- integration/live proof when an external behavior is claimed;
-- broader regression only when the changed boundary warrants it.
+Before deliberately choosing a simpler structure, run the **Future-Cost Test**:
 
-Proof validates the property, not a spelling of the implementation.
+> If foreseeable evolution already supported by evidence occurs, can this design extend additively, or will it require dismantling authority, rewriting core contracts or duplicating semantics?
 
-### 8. Implement and simplify
+Prefer:
 
-After correctness is established, subtract:
+> **Prepare the seam, not the entire future capability.**
 
-- duplicate paths;
-- obsolete compatibility;
-- transitional mechanisms whose successor landed;
-- dead abstractions;
-- redundant authorities;
-- guards that no longer protect a distinct reachable property.
+## 6. Mechanism is not authority
 
-### 9. Close with evidence
+A shared mechanism does not automatically own the meaning it supports.
 
-Complete means:
+Retries, scheduling, idempotency, policy lookup, validation primitives, observability, audit transport, caching, serialization and event transport may be centralized when that reduces repeated correctness work.
 
-- root-cause disposition explicit;
-- target property holds;
-- authority is unambiguous;
-- relevant proof is green/non-vacuous;
-- no known material contradiction remains;
-- transitional debt has a named exit;
-- findings are resolved, disproved or explicitly deferred with ownership.
+> **Centralize repeated mechanisms when justified. Keep meaning and decisions with the component that actually understands them.**
 
-## Structural inversion test
+When ownership matters, explicitly state who owns the meaning/lifecycle, what remains external, what callers may depend on and what the boundary does not own. Two authorities for the same meaning are presumed wrong until justified.
 
-For every structural conclusion, state:
+## 7. Strongest reasonable enforcement
 
-> **What part of this conclusion would still be true if the current implementation were the opposite in every respect?**
+After defining the invariant, prefer enforcement in this order:
 
-Current directory shape, migration cost, old ADR wording, import graph or schema are valid **current-state evidence** and sequencing inputs. They are not sufficient arguments that a target boundary is correct.
+1. structure / public boundary;
+2. type system;
+3. schema / database constraint;
+4. runtime fail-closed boundary;
+5. executable test;
+6. static guard / lint;
+7. documentation / convention.
 
-Target structure must be justified by domain semantics, user-observable behavior, named failure modes, system constraints and enforceability.
+Use a weaker layer when a stronger one creates disproportionate complexity or encodes assumptions that are not universally valid.
 
-## Control versus artifact
+## 8. Proof before implementation
 
-A control that exists but does not fire on the path a change actually takes is absent.
+Define proof before implementation. Artifact existence is not proof:
 
-Examples:
+- test exists ≠ relevant path executed;
+- mock passes ≠ integration works;
+- success response ≠ convergence;
+- guard exists ≠ guard can fail;
+- configuration exists ≠ enforcement works.
 
-- a script invoked by no required path;
-- a database policy bypassed by the runtime role;
-- a generated file with no regeneration/diff gate;
-- a test file outside test discovery;
-- a guard with no negative fixture proving it can fail.
+Prefer proof that can fail for the exact protected property: compile failure, type/schema rejection, negative fixture, real integration test, restart/recovery test, concurrency test, contract diff or end-to-end failure-path exercise.
 
-Do not count artifacts; prove effects.
+> **A control that cannot be shown to fire is not proven.**
 
-## Guard / lint / verifier policy
+## 9. Adversarial and global review
 
-A custom guard is justified only when all are true:
+Before accepting a material decision, ask:
 
-1. it protects a material property;
-2. the failure is reachable or has occurred;
-3. a stronger structure/type/schema/runtime mechanism cannot reasonably express the complete property yet;
-4. a standard existing tool does not already enforce it;
-5. maintenance cost is lower than recurring defect risk;
-6. a negative fixture proves the guard can fire.
+- What is the strongest argument against it?
+- Which assumption would invalidate it?
+- Is there hidden duplicate authority?
+- Are we fitting the current implementation instead of the real problem?
+- Are we overfitting one framework, provider, database or use case?
+- Are we using YAGNI to justify underengineering?
+- Are we using future-proofing to justify overengineering?
+- What happens under uncertainty, partial failure, concurrency or restart?
+- What will be hardest to change later?
 
-Repeated syntax-specific patches to a guard are a signal to re-evaluate the enforcement boundary rather than indefinitely hardening spelling recognition.
+Periodically review the whole system for duplicate/missing/circular ownership, contradictory assumptions, repeated mechanisms, God components, excessive fragmentation, abstractions caused only by other abstractions, missing seams and speculative extensibility.
 
-## Transitional enforcement
+> **Local correctness does not guarantee global coherence.**
 
-Every transitional mechanism records:
+## 10. Decision, reopen and stop
 
-- property protected now;
-- why the global maximum cannot land in the current slice;
-- named successor;
-- milestone/stage that removes it;
-- deletion as part of that successor’s definition of done.
+Every material decision ends as one of:
 
-Without an exit condition, treat it as permanent architecture and hold it to the permanent bar.
+- **RESTRUCTURE NOW** — implement the Global Maximum now.
+- **CURRENT STRUCTURE CONFIRMED** — structure is sound; make the bounded correction.
+- **TRANSITIONAL SOLUTION** — temporary local maximum with named successor and deletion condition.
+- **STOP / SPLIT PREREQUISITE** — another unresolved decision blocks correctness.
+- **DEFER SAFELY** — current work can proceed without deciding this detail.
 
-## Data/contract/integration rules for this repository
+Do not repeatedly reopen accepted decisions for preference or hypothetical futures. Record concrete **reopen triggers**: new real use case, changed scale/ownership, newly reachable failure mode, or external requirement that invalidates the assumptions.
 
-During the architecture rebaseline, these are cross-cutting reasoning constraints:
+Stop when evidence is sufficient; root cause and invariant are explicit; credible alternatives were compared; Global Maximum, YAGNI, overengineering and future cost were checked; ownership is clear where relevant; proof is defined; strongest objections were addressed; no material contradiction remains; and reopen triggers are recorded.
 
-- unknown is not zero/default;
-- provider payload is not domain data merely because it contains useful fields;
-- an external identifier is not automatically canonical identity;
-- a read model/projection is not an authority;
-- a successful provider HTTP response is not necessarily convergence;
-- timeout after a potentially accepted write is an ambiguous outcome, not automatic failure/retry;
-- polling, webhook, cursor and freshness semantics belong to the business capability that understands what “complete/current” means; generic platform code owns only mechanics;
-- frontend convenience does not justify a second business policy/contract authority;
-- current migrations/tables/routes are evidence to inventory, not obligations to preserve when there are no production compatibility constraints.
-
-## Engineering Decision Record
-
-Use a proportional written record for non-trivial decisions:
+## Compact decision record
 
 ```markdown
-## Engineering Decision Record
+## Decision: <name>
+Status: PROPOSED | ACCEPTED | DEFERRED | REOPENED
 
-### Symptom / evidence
-
-### Root cause
-
-### Target property
-
-### Authority and boundary
-
-### Local-maximum candidate
-
-### Global-maximum candidate
-
+### Evidence
+### Known / Inferred / Unknown / Deferred
+### Root Cause
+### Target Invariant
+### Alternatives
+### Global Maximum
+### YAGNI / Overengineering / Future Cost
+- Remove:
+- Preserve:
+- Prepare seam:
+- Do not build yet:
+### Authority / Boundary
+Only when relevant.
+### Enforcement & Proof
+### Adversarial Findings
 ### Decision
-Restructure now | Transitional solution | Stop and split prerequisite | Current structure confirmed
-
-### Enforcement
-Strongest reasonable layer and why.
-
-### Proof
-RED/GREEN/type/schema/static/integration evidence.
-
-### Transitional exit
-Successor + deletion condition, or N/A.
+RESTRUCTURE NOW | CURRENT STRUCTURE CONFIRMED | TRANSITIONAL SOLUTION | STOP / SPLIT PREREQUISITE | DEFER SAFELY
+### Reopen Triggers
 ```
 
-Formal ADR/spec is needed when the decision changes durable architecture, contracts, ownership, security, persistence or cross-context semantics. Tiny factual/mechanical work can use a short record.
-
-## Review and convergence
-
-Review is adversarial but bounded.
-
-- A finding is evidence to verify, not an instruction to obey automatically.
-- Repeated findings at the same architectural altitude trigger root-cause analysis, not another patch round.
-- Optional hardening does not become blocking without a material property at risk.
-- Convergence between reviewers is weak evidence; unexplained divergence is evidence that a question remains unsettled.
-
-Stop reviewing when root cause, target property, authority, boundary, trade-offs and proof are settled; remaining findings are mechanical/non-material; and no material contradiction remains.
-
-**Global maximum is not permission for endless perfection search. Reopen a settled decision only on a new material finding or changed constraint.**
+Keep the record proportional. Do not add ceremony that does not improve the decision.
