@@ -921,3 +921,106 @@ Not attempted: only the sandbox Gateway credential is available in the environme
 **Verdict: CONFIRMATION SURFACE = NOT ESTABLISHED (official) / CANDIDATE ESTABLISHED (`CACSP.confirmarNota`, MGECOM, community-evidenced) — documentation gap, not external-only-by-design.**
 
 Adjudicate: (1) whether B3 can proceed to review candidate with the confirmation step expressed as an explicit **PROVIDER-CONDITIONED candidate clause** discharged by the named three-step controlled sandbox write ladder — my recommendation: **proceed**; nothing must be invented to draft the contract, and the write ladder was already a mandatory gate before B3 whole-closure — or (2) STOP/SPLIT if GPT judges an officially-undocumented command too weak to anchor even a conditioned contract clause, in which case the split prerequisite is: operator asks Sankhya support/portal to confirm the sanctioned confirmation command, and/or the controlled sandbox execution is scheduled first. Sequencing between "draft candidate now" and "write proof first" is an operator decision; either way Direct Oracle remains excluded and no confirmation was executed in this round.
+
+
+## FABLE — D4-B3 Controlled Sandbox Materialization Proof (2026-08-17)
+
+**HEAD base:** `d1053f1c19d400e5bfa6eac8780661a4e2959e33`. Authority reconstructed from AGENTS.md + router before any write; D0–D3 ACCEPTED, D4-B1+B2 ACCEPTED/CANONICAL, D4-B3 NEXT with evidence gate PARTIAL, implementation BLOCKED until D9. No authority file, no product code and no repository document other than this one was touched.
+
+**Environments (both measured, kept distinct):**
+
+- **SANDBOX** `api.sandbox.sankhya.com.br` — token claims `ambiente=hml`, `environment=<uuid>`, backing schema `METALTST`.
+- **PRODUCTION** `api.sankhya.com.br` — token claims `ambiente=prd`, **`environment=null`**. *Correction to the previous round's A2 finding: the `environment` UUID marker exists only in sandbox; the reliable cross-environment discriminator is `ambiente` (`hml` vs `prd`), not the UUID.*
+
+**Operator authorization (verbatim scope, chronological):** controlled write proof authorized for sandbox only, one order, with mandatory human checkpoint between every mutating step. Mid-proof the operator (a) authorized an additional update call to set a missing header field, (b) **explicitly moved the proof to production** with fresh production credentials, stating cleanup would follow. Fable recorded a factual correction before proceeding — an authorized NF-e cannot be "deleted", only cancelled within a legal deadline and permanently registered — and split production execution into risk blocks, refusing to run the fiscal leg without a separate explicit authorization. The operator authorized Bloco 1 (create+confirm) and Bloco 2 (invoice to the non-fiscal order TOP) and then chose **"Encerra"**, declining the fiscal leg. **No production NF-e was ever emitted.**
+
+**Human checkpoints honoured:** ETAPA 1 sandbox → operator replied "CONFIRMO ETAPA 1 ela realmente não está confirmada como você disse mas está tudo aqui"; ETAPA 2 sandbox → "Aprovado, go"; production preflight → "Go bloco1"; after Bloco 1 reread → "Go bloco 2"; after Bloco 2 reread → "Encerra". Every mutating call was followed by an authoritative reread before any further action, and no step ran on an implicit or reused approval.
+
+### Prohibited-operation compliance
+
+No Direct Oracle, no DbExplorer/SQL, no `DatasetSP.save`/`saveRecord`, no direct `STATUSNOTA` write, no liberação bypass, no TOP/rule/trigger/parameter change, no LOGTABOPER or Modelo de Notas configuration, no blind retry of a possibly-accepted request, no operation outside the proof documents. Every rejected call was followed by a residue reread proving zero persistence before any corrected attempt. Two community-sourced paths were seen and deliberately not used: `EXEC SANKHYA.ENVIACOMANDO` (database-side) remains excluded target-wise.
+
+### Chronology and results
+
+**Sandbox — order creation**
+
+1. `POST /v1/vendas/pedidos` (v1 REST, `notaModelo=810568`) → **400** `"Nota modelo informada não é um modelo válido"`. Residue reread: 0. Read-only probing then established that no sanctioned entity or field exposes the model registry (`ModeloNota`/`NotaModelo`/`Modelo` absent; `MODELO`/`CODMOD`/`EHMODELO` invalid descriptors). **Finding: v1 REST order creation is CONDITIONED on a formally configured "Modelo de Notas e Pedidos" in the ERP, and that prerequisite is not discoverable through the sanctioned API surface.** A spreadsheet the operator located ("Modelo Nota Fiscal Estoque", 44 rows of file path/printer/report number) proved to be the *print-model* registry, a different object — recorded to prevent the same conflation later.
+2. `CACSP.incluirNota` (MGECOM) with `CODTIPOPER=303` → HTTP 200 transport, service `status=0`, `CORE_E02938` `"Série '' não pode ser usada com a TOP 303"`. Residue 0.
+3. same + `SERIENOTA=PA` → `CORE_E03235` `"O campo 'Perc. desconto' deve ser informado"`. Residue 0.
+4. same + item `PERCDESC=0` → `status=0` with a bare Java method signature `br.com.sankhya.library.featurelock.FeatureLockBuilder.globalFeature(Z)…` and **no** `tsErrorCode`. Residue 0 verified by two independent predicates (date; partner+TOP).
+
+**Sandbox — TOP topology discovered (read-only), which reframed the whole proof**
+
+| TOP | Description | TIPMOV | ATUALEST |
+|---|---|---|---|
+| 14 | ORCAMENTO | P | N — no stock effect |
+| 303 | PEDIDO ENTREGA FUTURA (NOVA) | P | R — **reserves** |
+| 305 | NFE ENTREGA PEDIDO (NOVA) | V | B — **writes down** |
+
+**Material contract finding: materialization in this instance is a three-document chain with two invoicing hops and two confirmations — `ORÇAMENTO(14) → faturar → PEDIDO(303, reserve) → faturar → NFE(305, write-down)`.** The previously measured read-only pair 810568(303)→811143(305) is only the last hop. A Business Order Intent does not become a fiscal document in one step here.
+
+Also diagnosed from operator-supplied evidence: the operator's manually created order 843242 failed invoicing for "no stock" because its item carried an **empty CONTROLE** while product 37203 is lot-controlled — stock lives in lots (measured: `L-1328 2` free 7.74; empty-control bucket 0). Not a stock shortage; an item pointing at an empty bucket.
+
+**Sandbox — successful chain to confirmation**
+
+5. `CACSP.incluirNota` with `CODTIPOPER=14` (+`SERIENOTA=PA`, `CODTIPVENDA=8`, `CODVEND=1019`, `DTVAL`, `TIPFRETE=S`, item with `CONTROLE="L-1328 2"`, `PERCDESC=0`) → `status=1`, **NUNOTA 843244**. Reread: `STATUSNOTA='A'`, PENDENTE=S, TOP 14, 193.78; item intact with correct lot; **stock untouched** (`7.74/0`), consistent with `ATUALEST='N'`. → CHECKPOINT 1, operator confirmed.
+6. `CACSP.confirmarNota` (candidate payload exactly as evidenced, no speculative parameters) → `status=0`, `ORA-20101: Favor Informar a Transportadora` raised inside **`METALTST.METAL_TRG_INC_UPD_TGFCAB` line 297**, called from **`METALTST.STP_CONFIRMANOTA2` line 379**, with the valid carrier list echoed. Reread: state unchanged (`A`), clean rollback. **This rejection is itself the strongest existence proof: the call reached Sankhya's own confirmation stored procedure.**
+7. Operator authorized an update; `CACSP.incluirNota` with `NUNOTA=843244` + only `CODPARCTRANSP=124499` → `status=1`. Reread: carrier set, `STATUSNOTA` still `A`, **item and remaining header preserved** — partial update is safe.
+8. `CACSP.confirmarNota` again → `status=1`, NUNOTA 843244. Reread: **`STATUSNOTA` `A` → `L`**, PENDENTE=S, stock still `7.74/0`, **zero financeiros generated**. → CHECKPOINT 2, operator approved.
+
+**Sandbox — invoicing blocked**
+
+9. `SelecaoDocumentoSP.faturar` → `"Informe o elemento 'notasComMoeda'"` (0.11s). Official docs then confirmed `notasComMoeda:{}` is a required empty container and `serie` is a payload field.
+10. +`notasComMoeda:{}` → `CORE_E02938` series×TOP 303. Residue 0.
+11. +`serie:"PA"` → **the same featurelock signature**. Residue 0 across four predicates (partner docs today, order state, TGFVAR, stock). **Pattern closed: the featurelock fires whenever TOP 303 is the target, through two independent services, while TOP 14 works in both.** The earlier hypothesis "303 cannot be a direct origin" was refuted by this.
+
+**Production — the discriminating run (operator-authorized, blocked into risk tiers)**
+
+Preflight read-only established production parity: TOPs 14/303/305 identical and active; partner 20116 present; lot **L-1377** chosen for maximum operational headroom (223.17 stock, 61.92 reserved, 161.25 free).
+
+12. **Bloco 1** — `CACSP.incluirNota` TOP 14 → `status=1`, **NUNOTA 898227**; then `CACSP.confirmarNota` → `status=1`. Rereads: `A → L`, TOP 14, 193.78, item `37203 / 1.29 M2 / L-1377`, **stock unchanged** `223.17/61.92`, zero financeiros, TGFVAR empty. Production reproduced sandbox exactly — no new rule, no liberação. *Novel observation: the production create response carried a `clientEvents` `VendaCasada` cross-sell suggestion — UI-oriented payload an adapter must consciously ignore; nothing was created by it.* → CHECKPOINT, operator approved.
+13. **Bloco 2** — `SelecaoDocumentoSP.faturar` (`codTipOper=303`, `serie="PA"`, `notasComMoeda:{}`, `nota:[898227]`) → **`status=1`**, response `notas.nota = 898228`, `tipMov=P`, `vlrNotaFat=193.78`. Authoritative rereads:
+    - **898227**: TOP 14, `STATUSNOTA=L`, **`PENDENTE` S → N** (fulfilled);
+    - **898228**: TOP **303**, `STATUSNOTA='A'` (must be confirmed again), TIPMOV=P, same company/partner/value;
+    - **TGFVAR (`CompraVendavariosPedido`): `NUNOTAORIG=898227 → NUNOTA=898228`, `QTDATENDIDA=1.29`** — correlation generated by the API itself;
+    - **stock L-1377: `RESERVADO` 61.92 → 63.21 (+1.29), `ESTOQUE` unchanged at 223.17** — exactly `ATUALEST='R'` semantics, no other lot or product touched.
+
+14. **Fiscal leg deliberately NOT executed.** Operator chose "Encerra" after being shown that the marginal architectural gain was small (confirmation, invoicing and order→result correlation were all already proven, the last by an API-created document) while the cost was a real authorized NF-e requiring deadline-bound cancellation.
+
+**Final production state at close:** operator cleanup already in progress — 898228 no longer exists, the reservation is released (`RESERVADO` back to 61.92), 898227 returned to `PENDENTE=S`, and a `TIPMOV='V'` scan for the test partner today returns **0**: no fiscal document was created at any point. *Incidental evidence: deleting the 303 order reverted the origin quotation's fulfilled flag and released the reservation — the chain's reversal behaviour is observable.*
+
+### Evidence result
+
+- **Order creation:** **SUPPORTED** via `CACSP.incluirNota` (MGECOM) — proven in both environments. **CONDITIONED** via v1 REST `POST /v1/vendas/pedidos`, which requires a formally configured Modelo de Notas that no sanctioned read surface exposes.
+- **`CACSP.confirmarNota`:** **SUPPORTED** — no longer a community-sourced candidate. Officially undocumented but empirically established: correct NUNOTA targeting, real execution path through `STP_CONFIRMANOTA2`, state transition verified by independent reread, in sandbox and production.
+- **MGECOM OAuth bearer:** **SUPPORTED** — definitively, across three distinct services and both environments.
+- **Confirmation behavior:** `created` (`STATUSNOTA='A'`) → `confirmed` (`STATUSNOTA='L'`); `PENDENTE` is orthogonal (fulfilment pendency, not confirmation). One reproducible **rejected-by-business-rule** outcome when `CODPARCTRANSP` is absent, raised by house trigger `METAL_TRG_INC_UPD_TGFCAB`, always with clean rollback. **No liberação/alçada appeared at any point** — release-approval behaviour therefore remains untested, not absent.
+- **Invoicing:** **SUPPORTED in production**, **REFUTED in the sandbox environment** for TOP 303 (featurelock). Requires `notasComMoeda:{}` and `serie` beyond the minimal documented body.
+- **Order→Invoice correlation:** **PROVEN** — TGFVAR row created by the API-driven invoicing, item-level `QTDATENDIDA`, origin and result NUNOTAs distinct and both preserved. *(The fiscal-document variant of the same relation was already proven read-only in the previous round via `codigoPedidoOrigem` + TGFVAR on the real pair 810568→811143.)*
+- **B3 prerequisite verdict: PASS.** The confirmation surface — the gap that opened this round — is established, and the full materialization chain up to the fiscal boundary is proven end to end with authoritative rereads. The only unexercised step is the final fiscal hop, deliberately declined and already documented read-only.
+
+### Material findings
+
+- **F-P1 — The sandbox is not a faithful proxy for materialization proofs.** Identical payload, identical TOP, identical service: `FeatureLockBuilder` failure in `hml`, clean success in `prd`. Any future D8 golden-flow claim resting on sandbox evidence must state this risk explicitly.
+- **F-P2 — Materialization is a three-document, two-invoicing, two-confirmation chain** (`14 → 303 → 305`), not a single order→invoice step. This directly shapes what Business Order Intent must model and where convergence checkpoints belong.
+- **F-P3 — Confirmation demands fields creation does not.** `CODPARCTRANSP` is not required to create but blocks confirmation via house trigger. A contract validated only against the creation payload passes and then fails at confirmation.
+- **F-P4 — Instance customizations are first-class contract constraints**, not noise: series×TOP compatibility, item `PERCDESC`, mandatory carrier — all house rules, all surfacing as raw `ORA-…` text through the API (adapter-boundary translation obligation under D3 §3.9 confirmed again).
+- **F-P5 — Lot-controlled stock makes CONTROLE part of the availability contract.** An item with empty CONTROLE reads as zero stock and blocks reserving invoicing, even when the product has ample stock in lots.
+- **F-P6 — `CACSP.incluirNota` with a populated NUNOTA performs a safe partial update** (single field sent; item and remaining header preserved). This is the sanctioned alteration surface.
+- **F-P7 — Provider responses can carry UI-oriented `clientEvents`** (cross-sell suggestion) that an adapter must ignore deliberately rather than interpret.
+- **F-P8 — Environment marker correction:** `environment` UUID is sandbox-only; `ambiente` (`hml`/`prd`) is the reliable discriminator. Supersedes the corresponding detail in the 2026-08-17 gate round.
+
+### Remaining Unknowns
+
+- the fiscal hop `303 → 305` executed through the API (declined; read-only correlation evidence already exists);
+- liberação/alçada behaviour during confirmation (none triggered on this path — untested, not proven absent);
+- whether Sankhya will officially document `CACSP.confirmarNota` (still absent from the current official reference; operator-side support question);
+- root cause of the sandbox featurelock (licensing/feature enablement vs library defect) — not diagnosable without provider log/licensing access, deliberately not pursued via SQL;
+- partial invoicing (`QTDFAT` subset) and cancellation paths — out of this round's authorization;
+- whether v1 REST order creation becomes viable once a Modelo de Notas exists.
+
+### HANDOFF → GPT
+
+The B3 order-confirmation prerequisite is **discharged**. `CACSP.confirmarNota` moves from community-sourced candidate to empirically established surface, and the full chain `create → confirm → invoice → correlate` is proven with authoritative rereads in production, stopping short of the fiscal document by operator decision.
+
+Adjudicate: (1) accept the PASS verdict for the prerequisite and whether B3 may now proceed to review candidate; (2) fold F-P2 into the Business Order Intent contract — the three-document chain with two confirmation points is a structural fact, not an instance detail to abstract away; (3) decide how the contract expresses instance-conditioned mandatory fields (F-P3/F-P4) without hardcoding Metal Nobre's customizations into target architecture; (4) rule on F-P1's consequence for D8 — whether sandbox evidence may support any golden-flow claim at all; (5) decide whether the remaining fiscal hop belongs to B3 closure or to D8 proof. No authority was altered and no repository file other than `AI-DIALOG.md` was touched in this round.
