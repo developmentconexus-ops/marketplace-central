@@ -1,6 +1,6 @@
 # D3 — Communication / Events
 
-> **Status:** OPEN / IN PROGRESS — D3-B1 accepted and canonical; D3-B2 is the exact next batch  
+> **Status:** CLOSURE CANDIDATE — D3-B1+B2 accepted and consolidated; final Global Coherence completed; pending explicit operator ratification of D3 as a whole  
 > **Program:** Architecture Rebaseline / Technical System Design  
 > **Parent authorities:** `D0-PRODUCT-SYSTEM-DEFINITION.md`, `D1-DOMAINS-BOUNDARIES.md`, `D2-IDENTITY-TENANT-DATA-OWNERSHIP.md`  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
@@ -509,60 +509,489 @@ Framework preference, event-driven fashion or future microservice topology are n
 
 ---
 
-## 4. D3-B2 — Communication Contract & Failure Semantics — NEXT
+## 4. D3-B2 — Communication Contract & Failure Semantics — ACCEPTED
 
-B1 identifies **which communications exist and why**. B2 now defines only the minimum semantic contract properties required before D4/D7.
+**Outcome:** `CURRENT STRUCTURE CONFIRMED` with bounded review corrections. No D0/D1/D2/B1 reopen and no B3 are required.
 
-B2 must adjudicate, where materially necessary:
+The operator explicitly accepted the converged B2 batch after independent Fable challenge, GPT adjudication and reviewer convergence with no remaining dispute.
 
-- explicit Organization scope on communication;
-- Principal/actor attribution when material;
-- domain-local Intent identity/reference where applicable;
-- event occurrence identity and producer ownership;
-- causation/correlation semantics;
-- provenance and material time meanings;
-- duplicate handling and consumer semantic idempotency;
-- ordering assumptions, including no accidental global-order dependency;
-- late/stale event behavior and anti-regression;
-- missed-delivery detection/recovery;
-- replay/reconciliation expectations without universal event sourcing;
-- progression-edge current reread vs evidence-edge occurrence recovery;
-- capability outcomes (`accepted` / `rejected` / `pending` and ambiguity where acceptance may outlive the caller);
-- projection rebuild contracts and fail-honest completeness;
-- multi-target/granular partial outcomes where communication carries them;
-- the D3 semantic residue of ADR-019 and ADR-024.
+### 4.1 Governing failure contract
 
-B2 must **not** choose broker, outbox table, queue, worker, scheduler, lock, transaction or deployment mechanism. Those remain D7; concrete external acquisition/provider contract remains D4.
+> **Communication may duplicate, arrive late/out of order, fail or be replayed without changing business truth. Current truth comes from its owner; material historical occurrence comes from the smallest sufficient durable authority; ambiguous acceptance remains explicit until reconciled; transport remains mechanism, never authority.**
+
+D3 does not require perfect delivery. It requires business correctness despite imperfect delivery.
+
+### 4.2 Explicit Organization scope
+
+Every communication concerning Organization-owned state or persisted external evidence is evaluated inside an explicit Organization isolation scope.
+
+- Q/C that live entirely inside one trusted execution context may obtain the explicit scope from that context.
+- Any durable communication/recovery state that can outlive its producing execution context must preserve Organization scope explicitly in its durable representation/container so later processing does not reconstruct it.
+- Installation, SourceInstance, Selling Entity, provider account, external resource ID, Principal last-used Organization, request-global default or process-global state never substitute for or determine Organization.
+- Installation/SourceInstance/native identifiers may participate as namespace qualifiers **inside** the explicit Organization scope.
+- Duplicate predicates, reconciliation anchors, replay and recovery are always evaluated inside the explicit Organization scope. A bare external identifier cannot collapse identical IDs from different Organizations.
+
+Exact schema/RLS/transaction/message-envelope enforcement remains D7.
+
+### 4.3 Event payload and occurrence discrimination
+
+An event remains an immutable notification of a producer-owned committed fact.
+
+- payload contains only stable identities and immutable occurrence facts consumers materially need;
+- it does not mirror a whole mutable aggregate merely to avoid a Q;
+- provider webhook/callback/poll payload is still acquisition evidence, not an MPC event until the owner commits MPC meaning;
+- PII is minimized and credentials/secrets are never propagated for convenience.
+
+D3 introduces no universal business `EventID`, `EvidenceID` or occurrence aggregate.
+
+However:
+
+> **When a consumer's correctness requires distinguishing “the same material occurrence delivered again” from “two distinct material occurrences”, the producer/source public contract exposes a stable occurrence discriminator sufficient for that semantic distinction.**
+
+The discriminator may be:
+
+- source-qualified external movement/result identity;
+- an existing canonical occurrence such as Authorization Decision;
+- a bounded domain-local occurrence key/identity where that meaning genuinely exists;
+- another immutable owner/source-defined key sufficient for the contract.
+
+The evidence-consuming domain decides when that distinction is materially required. A discriminator answers **same vs different**; it does not establish before/after ordering and does not justify a universal occurrence identity class.
+
+If correctness requires inventing a materially new business identity not supported by D2, reopen only the implicated D2 identity/lineage decision.
+
+### 4.4 Actor, correlation, provenance and time
+
+Communication preserves actor/provenance honestly:
+
+- human, automation and system Principals remain distinguishable where material;
+- provider-originated evidence uses source provenance rather than inventing an MPC Principal;
+- a technical worker delivering a communication is not automatically the business actor that caused the underlying action/decision;
+- where canonical Intent/Authorization/Work lineage already contains actor/authority context, communication references that lineage rather than creating a duplicate actor authority.
+
+Business correlation uses typed semantic identities that already express the relationship — Sale/source-qualified order, domain Business Intent, Resolution, Authorization Decision, Work, owner-defined occurrence/result and similar accepted identities. Technical trace/span IDs may exist for observability but never become canonical business meaning. No universal SagaID/WorkflowID/Correlation aggregate is introduced.
+
+Material time/provenance meanings remain distinct:
+
+- source/effective/event time;
+- observation/acquisition time;
+- MPC record/commit time;
+- decision time;
+- external deadline/window;
+- transport publish/delivery/redelivery time.
+
+Delivery/redelivery time never rewrites when a business fact occurred. Unknown source time remains unknown. Freshness remains consumer/use-sensitive; message age alone is not a universal freshness rule.
+
+### 4.5 Duplicate delivery and semantic idempotency
+
+Duplicate delivery is permitted and must be safe.
+
+> **Transport dedupe may reduce repeated work; consumer-owned semantic idempotency prevents duplicate business effect.**
+
+Examples:
+
+- repeated delivery of the same Sale obligation does not create a second Business Order Intent;
+- repeated delivery of the same actionable condition does not create a second Work obligation while genuinely distinct conditions do not collapse;
+- repeated Authorization Decision notification does not create another Decision or bypass current revalidation;
+- projection update redelivery has no side effect outside projection state.
+
+The consuming owner defines its semantic duplicate predicate using the explicit Organization scope plus the smallest stable semantic anchor/discriminator required by the case. A universal `{event_id -> processed}` table may be a runtime optimization but is never sufficient proof of domain idempotency.
+
+### 4.6 Ordering, late delivery and anti-regression
+
+D3 assumes **no global delivery order**.
+
+> **Arrival order never defines business order or authority.**
+
+Progression edges:
+
+- late events wake/reconcile current progression;
+- current owner truth is re-queried/revalidated when consequential currentness matters;
+- an older delivery cannot roll current meaning backward merely because it arrived last.
+
+Evidence edges:
+
+- a true material occurrence remains processable when delivered late;
+- source/domain time and provenance determine historical meaning;
+- occurrence discrimination does not imply ordering.
+
+If a specific producer genuinely requires a monotonic revision to distinguish superseding current-state observations, it may define one locally. D3 does not define global sequence, total order, universal aggregate version, vector/Lamport clock or queue-partition order as business truth.
+
+This fully rehomes ADR-024's D3 anti-regression meaning.
+
+### 4.7 Recoverable propagation and missed-reaction ownership
+
+After a producer commits a fact whose consumer reaction is required for an accepted Product 1.0 lifecycle:
+
+> **sufficient durable authority/evidence must remain for a missing required reaction to be detected and recovered.**
+
+Producer commit does not become uncommitted because propagation fails. `commit -> best-effort in-memory publish -> forget forever` is not sufficient correctness by itself.
+
+The owner of the progression/convergence that should have happened owns the semantic conclusion that its required reaction is missing. A generic reconciliation runtime does not acquire that authority.
+
+Recovery may use, as appropriate:
+
+- producer public/current state;
+- consumer canonical/pending state;
+- domain Business Intent;
+- preserved material occurrence evidence;
+- honest re-observation of authoritative external evidence;
+- another accepted durable owner state capable of proving the gap.
+
+D7 may realize this with outbox, worker, queue, reconciliation sweep, poller, checkpoint or another smaller mechanism. D3 does not require durable message records or make the event transport log the recovery authority.
+
+A successful automatic recovery discharges the miss without automatically creating Work. Only an unresolved condition that is materially actionable becomes Work/attention under the owning domain + Operational Work semantics. Persistent/recurring recovery degradation may itself become a material condition when the responsible domain judges it so.
+
+### 4.8 Progression recovery vs evidence recovery
+
+For a progression trigger where current owner state is sufficient, recovery may compare public producer state with consumer state and determine whether required progression is missing. Reconstructing every historical event is unnecessary.
+
+For an evidence edge where correctness requires individual occurrences, latest mutable state is insufficient. Each material occurrence must remain recoverable from the smallest sufficient durable authority, for example owner canonical history/state, preserved external observation/evidence, or an authoritative source that can still be re-observed honestly.
+
+If no accepted authority can recover a genuinely required occurrence class, surface a targeted D2 lineage gap. Never substitute latest state and never introduce universal event sourcing as a transport workaround.
+
+### 4.9 Replay / redelivery
+
+Replay is not permission to create new business history or repeat an external effect.
+
+- replay/redelivery of one communication represents the same producer occurrence;
+- progression replay re-evaluates current owner validity/readiness where material;
+- evidence replay applies the same occurrence idempotently to the consumer's interpretation/history;
+- replay associated with an external effect never means blind external re-execution;
+- projection replay/rebuild has no business side effects;
+- replay does not rerun current policy and claim that today's policy was the historical reason for an old decision/action.
+
+D3 does not require infinite event retention or global replayability.
+
+### 4.10 Query result semantics
+
+Q preserves honest knowledge state. The minimum semantic distinctions are:
+
+- **known value**;
+- **known empty/absent**, only when the owner can legitimately prove absence for the asked scope;
+- **unknown / insufficiently known**;
+- **unavailable / error** because the owner could not answer.
+
+Failure to reach/query an owner never silently becomes `false`, `0`, empty, absent, ready or permitted.
+
+Freshness is orthogonal to those four states. When freshness-for-use is material, the Q result supplies or references enough owner-controlled provenance/observation time for the consuming domain to judge freshness. A `known value` may still be insufficiently fresh for a particular use.
+
+Exact wire/status/error encoding remains D5/D7.
+
+### 4.11 Capability outcomes, ambiguity and retry safety
+
+C distinguishes request acceptance from completion/convergence.
+
+Where applicable, semantic outcomes are:
+
+- **accepted** — callee accepted/created/continued owner-owned work;
+- **rejected** — callee definitively refused under its own semantics;
+- **pending** — decision/work remains unresolved;
+- **ambiguous / unknown acceptance** — only when the caller cannot know whether acceptance occurred and acceptance could have survived the caller's timeout/failure.
+
+`accepted != completed != externally applied != converged`.
+
+Timeout/disconnect is not automatically `rejected` where acceptance may already have occurred. Ambiguity is not universalized: when a realization proves atomic non-acceptance, failure remains definitive.
+
+For capability classes subject to ambiguous acceptance:
+
+> **the caller supplies a stable Organization-scoped semantic anchor; the callee's public semantic contract supports acceptance reconciliation by that anchor and callee-owned semantic idempotency so retry of the same semantic request converges on already-accepted work rather than creating a duplicate.**
+
+Examples may use Resolution + consequence scope, domain Business Intent, source condition/subject or another accepted owner-specific identity. D3 does not introduce a generic CommandID/Request aggregate solely for retry safety.
+
+If the callee cannot expose acceptance reconciliation without leaking private implementation, revisit that edge's public contract; never bypass the semantic boundary.
+
+### 4.12 Projection failure/rebuild contract
+
+A projection remains read-only derived state.
+
+- incremental update tolerates duplicate/out-of-order communication;
+- arrival order does not become business order;
+- rebuild uses public owner current state plus only the historical state/evidence the projection actually requires;
+- event transport is never the sole rebuild/system-of-record authority;
+- rebuild/replay has no business side effect;
+- `projection.updated_at` does not prove source freshness or population completeness;
+- if required history is not durably available from an accepted authority, the projection shrinks its claimed content honestly rather than inventing history or promoting transport retention into authority.
+
+Exact projection storage/update topology remains D6/D7.
+
+### 4.13 Multi-target / partial outcomes
+
+Where communication carries a material multi-target operation/result, it preserves the D0 distinction between:
+
+- intended target scope owned by the action domain;
+- authorized scope snapshot owned by Governance;
+- attempted/outcome scope from execution evidence;
+- member-level `confirmed`, `rejected`, `ambiguous`, `not-executed` or equivalent distinctions when material.
+
+A batch-level correlation/result cannot erase member-level correctness or make whole-batch blind replay safe.
+
+### 4.14 Contract ownership, cutover and evolution
+
+The producer owns the meaning of its public semantic communication contract. Consumers may not fork producer meaning by convenience.
+
+D3 intentionally rejects a baseline schema registry, universal event-version hierarchy, upcaster framework or multi-version consumer machinery.
+
+However:
+
+> **an incompatible communication-contract cutover must preserve every required reaction that remains pending/recoverable under the old contract.**
+
+Depending on D7 realization, cutover may drain retained pending records, translate them, or safely regenerate/reconcile required reactions from owner authority. Silently orphaning a required reaction is the same propagation failure §4.7 forbids.
+
+This rule does not assume durable message records. True simultaneous multi-version consumer support is deferred until evidence proves it is required.
+
+### 4.15 External-effect safety remains mechanism, not authority
+
+Shared execution-safety runtime may structurally verify proofs and capture attempts/results, including intent/attempt correlation, duplicate/replay safety, ambiguity handling, actor/audit evidence and presence/currentness of owner-issued disposition/authorization/validity proofs.
+
+It does not evaluate or grant business disposition, policy, readiness or authorization. Those answers remain with action owners/Governance. Provider protocol remains D4. Exact runtime realization remains D7.
+
+### 4.16 Legacy ADR disposition after B2
+
+#### ADR-019
+
+Its remaining D3 meaning is fully rehomed by:
+
+- explicit accepted-consumer semantics from B1;
+- recoverable propagation/missed-reaction ownership from §4.7;
+- duplicate discrimination/semantic idempotency from §§4.3/4.5;
+- honest external translation parity remaining a D0/D4 concern.
+
+Legacy listing observer/table/PK implementation does not constrain target architecture.
+
+**D3 adjudication complete: ADR-019 becomes historical.**
+
+#### ADR-024
+
+Its target meaning is fully rehomed by:
+
+- one Marketplace Sales interpretation/write authority under D1/B1;
+- owner convergence and public boundary rules;
+- arrival-order independence and anti-regression in §4.6.
+
+Legacy trigger taxonomy/import/backfill/webhook implementation is D4/D7 evidence only.
+
+**D3 adjudication complete: ADR-024 becomes historical.**
+
+#### ADR-018
+
+No additional D3 semantic residue remains. D1/B1/B2 already rehome domain intent ownership, external-effect safety proofs, ambiguity/replay safety and restart/recovery semantics.
+
+Poller/table/claim/`FOR UPDATE SKIP LOCKED` and concrete execution topology remain D7 evidence.
+
+**ADR-018 remains reopened — D7 only.**
+
+#### ADR-026
+
+Its D3 semantic portion remains adjudicated; no global phase vocabulary is carried forward. Scheduler/cursor mechanics remain D7 evidence.
+
+**ADR-026 remains reopened — D7 only.**
+
+### 4.17 YAGNI / explicit non-decisions
+
+B2 does **not** create or require:
+
+- universal business EventID/EvidenceID/Occurrence aggregate;
+- generic CommandID/Request aggregate;
+- global ordering/sequence;
+- universal aggregate version;
+- exactly-once delivery;
+- universal `{event_id -> processed}` domain correctness table;
+- universal event history/event store/event sourcing;
+- infinite event retention;
+- universal Saga/Workflow/Correlation business identity;
+- schema registry/upcaster/versioning framework;
+- multi-version consumer support;
+- generic reconciliation business domain/component;
+- broker, outbox table, queue, worker, poller or scheduler topology;
+- cross-owner transaction or process topology.
+
+B2 prepares only semantic seams justified by reachable failure classes.
+
+### 4.18 Proof / strongest counterexamples
+
+B2 must remain true under these cases:
+
+1. same Sale occurrence delivered twice -> no duplicate Business Order Intent;
+2. same material source condition delivered twice -> no duplicate Work obligation, while distinct conditions remain distinct;
+3. old Fulfillment progression event arrives late -> current owner truth prevents regression;
+4. invoice + reversal/adjustment arrive late/out of order -> each material occurrence remains attributable without treating arrival order as truth;
+5. process dies after producer commit and before propagation -> required downstream reaction remains detectable/recoverable;
+6. consumer commits own state and dies before acknowledgement -> redelivery converges idempotently;
+7. Authorization Decision arrives after material governing drift -> action owner revalidates and stale approval does not execute;
+8. capability timeout after possible acceptance -> caller reconciles by semantic anchor; callee does not create duplicate work;
+9. Q owner unavailable -> does not become false/zero/empty/ready/permitted;
+10. known Q value is materially stale -> consumer can judge freshness from provenance/time rather than trusting `known` alone;
+11. projection receives duplicate/out-of-order updates -> remains rebuildable and side-effect free;
+12. replay associated with external effect -> never blind re-execution;
+13. multi-target partial outcome -> member-level distinctions remain intact;
+14. same external/native identifier exists in two Organizations -> explicit Organization scope prevents cross-tenant dedupe/correlation collapse;
+15. provider webhook duplicates/out-of-order -> transport dedupe/order never becomes domain correctness;
+16. evidence-edge duplicate cannot be distinguished from distinct same-valued occurrences -> contract must provide stable bounded occurrence discriminator or surface a targeted lineage/identity gap;
+17. technical worker delivers an event -> worker identity cannot overwrite the actual human/automation/source cause;
+18. incompatible communication contract deploys while a required reaction remains recoverable -> cutover drains/translates/regenerates/reconciles rather than silently losing the reaction;
+19. projection history is not reconstructable from owner authority -> projection reduces its claim rather than requiring a hidden event store;
+20. future process separation changes failure mode -> semantic ambiguity/recovery rules survive without moving ownership.
+
+### 4.19 B2 reopen / stop triggers
+
+Revisit B2 or its parent decision only for material evidence such as:
+
+1. a consequential edge cannot be made recoverable without moving semantic authority -> B1 review;
+2. a genuinely material evidence occurrence cannot be recovered from any accepted durable authority -> targeted D2 lineage review;
+3. evidence correctness requires a materially new business identity rather than a bounded occurrence discriminator -> targeted D2 identity review;
+4. a callee subject to ambiguous acceptance cannot expose anchor-based reconciliation without violating its public boundary -> revisit that edge contract;
+5. a real edge proves a baseline monotonic revision/order contract is required -> add only owner-local ordering semantics justified by that evidence;
+6. D7 cannot preserve explicit Organization isolation structurally/fail-closed -> surface conflict against D2/`ARCHITECTURE.md`, never infer scope from another identity;
+7. incompatible contract cutover silently drops a still-required recoverable reaction -> stop-the-line propagation failure;
+8. shared safety/reconciliation mechanism begins deciding business truth/disposition/authorization -> stop; Mechanism != Authority;
+9. a projection must become write authority or event transport must become sole history -> stop and re-evaluate ownership/lineage.
+
+Framework preference, desire for Kafka/event sourcing, process separation or generic distributed-systems patterns are not reopen evidence.
 
 ---
 
-## 5. Review and authority protocol
+## 5. Final D3 Global Coherence + YAGNI / Overengineering / Future-Cost review — COMPLETED
 
-D3 uses the same accelerated protocol proven in D2:
+**Outcome: CURRENT STRUCTURE CONFIRMED with no material correction. No B3, D0/D1/D2 reopen or B1/B2 reopen is required.**
 
-1. GPT prepares a coherent candidate batch from repository authority/evidence.
-2. The operator approves the **candidate direction** for independent challenge.
-3. A disposable `D3-B<n>-REVIEW-CANDIDATE.md` may be committed, clearly marked **NOT ARCHITECTURE AUTHORITY**.
-4. The operator invokes **Fable** separately. Fable reconstructs the authority path independently and writes material findings through the GitHub review channel (`AI-DIALOG.md`).
-5. Reviewer findings are evidence, never authority. GPT independently adjudicates each material finding against the current repository authority/evidence.
-6. Reviewer disagreement is named and returned for another round or escalated to the operator; GPT does not simulate Fable and Fable does not silently decide operator authority.
-7. Only the operator-approved converged batch is consolidated into this canonical D3 artifact.
-8. Review candidates are disposable and should be removed after consolidation.
-9. After material batches converge, D3 receives a final **Global Coherence + YAGNI / Overengineering / Future-Cost review**.
+The review evaluates accepted B1+B2 as one communication system against D0–D2, `ARCHITECTURE.md` and the DevelopmentConexus Engineering Method.
+
+### 5.1 Duplicate / missing authority
+
+**PASS.** Q/C/E/P transport meaning but do not create a new business owner. Events remain producer facts; capability mutations remain with the callee; projections remain read-only; recovery/missed-reaction conclusions remain with the domain whose progression/convergence is at stake. No generic event/reconciliation/workflow authority appears.
+
+### 5.2 Semantic-edge completeness
+
+**PASS.** B1 realizes every accepted D1 edge plus the D2 identity/access dependency without adding a dependency outside D1. B2 strengthens failure semantics without introducing a new semantic edge. New future semantic dependencies still trigger targeted D1 reopen.
+
+### 5.3 Business cycles / deadlock / authority cycles
+
+**PASS.** Materialization <-> Fulfillment is a business cycle realized by two owner-specific committed-fact/query flows, not mutual writes. Governance/action-owner and Work/source cycles similarly preserve separate authorities. No shared mutable workflow object or circular write authority is introduced.
+
+### 5.4 Current truth vs historical occurrence
+
+**PASS.** Progression uses current owner revalidation when currentness matters; evidence consumers preserve/recover material occurrences when latest state is insufficient. The distinction avoids both stale-event authority and universal event-history/event-sourcing requirements.
+
+### 5.5 Failure/recovery coherence
+
+**PASS.** Duplicate delivery is semantically idempotent; arrival order is not truth; missed required reactions remain recoverable; replay does not recreate history or external effects; ambiguous capability acceptance is reconciled by owner/domain anchors. None of these properties require exactly-once delivery, global ordering or one transport technology.
+
+### 5.6 Tenant / identity coherence
+
+**PASS.** Organization remains explicit and is never inferred from Installation/SourceInstance/provider key. Durable communication/recovery state preserves scope. Occurrence discrimination uses existing source/domain semantics only when materially needed and does not create a universal EventID identity graph.
+
+### 5.7 Trust / actor / authorization layering
+
+**PASS.** Technical delivery workers do not become business actors. Governance still owns authorization only; action owners retain disposition and execution-time validity. Approval events cannot execute provider actions or waive revalidation. Shared execution-safety mechanisms verify proofs but never own policy/authorization answers.
+
+### 5.8 External-authority / D4 fence
+
+**PASS.** Provider webhooks/callbacks/poll results remain acquisition evidence, not MPC events by default. D3 defines only the semantics after an owning domain commits meaning. Concrete provider capabilities, authoritative rereads, source completeness and protocol remain D4.
+
+### 5.9 Projection coherence
+
+**PASS.** Projections never become write authority, never make update time equivalent to source freshness/completeness, and rebuild from owner state/evidence. Missing historical authority shrinks projection claims rather than turning event transport into system of record.
+
+### 5.10 Multi-target / partial outcome coherence
+
+**PASS.** Communication preserves intended, authorized and attempted/outcome scope separation and member-level partial/ambiguous states. Batch-level communication cannot manufacture cross-target atomicity or make whole-batch retry safe.
+
+### 5.11 YAGNI / overengineering
+
+**PASS.** D3 explicitly refuses unsupported generic capability:
+
+- no event-per-state/CRUD;
+- no generic Event/Command Bus as business authority;
+- no Workflow/Saga engine;
+- no universal CQRS/event sourcing/event store;
+- no universal EventID/CommandID/SagaID business identity;
+- no global sequence/version/vector clock;
+- no exactly-once promise;
+- no schema registry/upcaster framework;
+- no generic reconciliation domain;
+- no broker/outbox/queue/worker topology;
+- no distributed transaction;
+- no microservice split.
+
+Every retained abstraction has a current semantic consumer or protects an accepted safety/isolation/history invariant.
+
+### 5.12 Future-cost / seam review
+
+**PASS.** D3 prepares only justified seams:
+
+- public semantic contracts permit later process separation without changing authority;
+- Q/C/E/P allow the simplest current realization while preserving async fan-out where required;
+- explicit Organization scope survives future tenancy/process changes;
+- domain/source occurrence discrimination is added only where evidence correctness needs it;
+- anchor-based capability reconciliation avoids a generic Command identity while remaining safe under later remote failure modes;
+- recoverable propagation allows D7 to choose the smallest runtime mechanism rather than forcing a broker/outbox now;
+- contract cutover protects pending/recoverable reactions without imposing permanent multi-version support.
+
+No irreversible structural dead end was found.
+
+### 5.13 Later-stage leakage
+
+**PASS.** D3 does not select provider DTOs/contracts/auth (D4), HTTP/OpenAPI/error encoding (D5), concrete projection/UI topology (D6), or worker/queue/outbox/transaction/lock/retry/RLS/process/deployment topology (D7). B2 contract-cutover and recoverability requirements constrain correctness only, not mechanism.
+
+### 5.14 Legacy ADR coherence
+
+**PASS.** ADR-019 and ADR-024 have no remaining target role after B1+B2 rehome their durable meaning and may be historical. ADR-018 and ADR-026 retain only D7 mechanism/runtime residue. ADR-013/029 remain carried external-evidence/write-safety constraints through D0/`ARCHITECTURE.md`; D3 does not inherit their old implementation shapes.
+
+### 5.15 Strongest counterexamples checked
+
+- duplicate Sale delivery cannot duplicate Business Order Intent;
+- duplicate Work-condition delivery cannot create duplicate material obligation;
+- same provider ID in two Organizations cannot collapse tenant scope;
+- late old progression event cannot regress current owner meaning;
+- same-valued distinct evidence occurrences can remain distinguishable where material;
+- invoice/reversal sequence cannot be erased by latest state;
+- producer crash before notification cannot leave a permanent silent stall;
+- consumer crash after own commit cannot make redelivery duplicate semantic effect;
+- ambiguous capability timeout cannot create a second callee-owned intent by blind retry;
+- approval arriving after governing drift cannot bypass execution-time validity;
+- owner-query failure cannot become a plausible business value;
+- projection cannot require broker history to become truthful;
+- incompatible contract cutover cannot silently orphan a required recoverable reaction;
+- runtime safety/reconciliation mechanics cannot become business authority.
+
+**Conclusion:** no material contradiction, missing authority, hidden God component, speculative framework or later-stage mechanism leak remains in D3.
+
+---
+
+## 6. Review and authority protocol
+
+D3 used the same accelerated protocol proven in D2:
+
+1. GPT prepared coherent B1/B2 candidate batches from repository authority/evidence.
+2. The operator approved each candidate direction for independent challenge.
+3. Disposable `D3-B<n>-REVIEW-CANDIDATE.md` files were explicitly non-authority.
+4. The operator invoked Fable separately; Fable reconstructed the authority path independently and appended material findings to `AI-DIALOG.md`.
+5. Reviewer findings remained evidence; GPT independently adjudicated material findings against repository authority/evidence.
+6. Material disagreements received another reviewer round until convergence.
+7. The operator explicitly ratified each converged batch before canonical consolidation.
+8. Review candidates are disposable after consolidation.
+9. D3 received the final Global Coherence + YAGNI / Overengineering / Future-Cost review in §5.
 10. D3 closes only after explicit operator ratification as a whole.
 
-`AI-DIALOG.md`, review candidates, chat summaries and reviewer statements are **not** part of the architecture authority path.
+`AI-DIALOG.md`, review candidates, chat summaries and reviewer statements are not architecture authority.
 
 ---
 
-## 6. Current D3 state / exact next action
+## 7. Current D3 state / exact next action
 
-D3 is **OPEN / IN PROGRESS**.
+D3 is a **CLOSURE CANDIDATE**.
 
-**D3-B1 — Communication Topology & Edge Matrix is ACCEPTED / CANONICAL** after operator-approved candidate direction, independent Fable review, GPT adjudication, reviewer convergence with no remaining dispute and explicit operator ratification.
+- **D3-B1 — Communication Topology & Edge Matrix: ACCEPTED / CANONICAL.**
+- **D3-B2 — Communication Contract & Failure Semantics: ACCEPTED / CANONICAL.**
+- **Final Global Coherence + YAGNI / Overengineering / Future-Cost review: COMPLETED / PASS.**
+- **B3: NOT REQUIRED.**
 
-Exact next action: **D3-B2 — Communication Contract & Failure Semantics**.
+Exact next action: **explicit operator ratification of D3 as a whole**.
 
-Do not reopen B1 merely to choose transport/runtime technology. Reopen only under the material triggers in §3.23.
+If ratified:
 
-Do not begin D4 or product implementation while D3 remains open.
+1. mark D3 `CLOSED / ACCEPTED`;
+2. update the rebaseline router so **D4 — External Integrations** becomes the exact next stage;
+3. do not begin product implementation; implementation remains blocked until D9.
+
+If a material issue is found, reopen only the implicated D3 decision rather than re-running the whole stage.
