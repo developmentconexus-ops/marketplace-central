@@ -1,7 +1,7 @@
 # Marketplace Central — Architecture Rebaseline
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
-> **Current phase:** **D2 — IDENTITY / TENANT / DATA OWNERSHIP — CLOSED / ACCEPTED; D3 — COMMUNICATION / EVENTS is the exact next stage**  
+> **Current phase:** **D3 — COMMUNICATION / EVENTS — OPEN / IN PROGRESS; D3-B1 independent review is the exact next action**  
 > **Implementation:** BLOCKED until D9 is accepted  
 > **Last updated:** 2026-08-16
 
@@ -17,7 +17,7 @@ A fresh session reads, in order:
 6. `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`
 7. `docs/engineering/rebaseline/D1-DOMAINS-BOUNDARIES.md`
 8. `docs/engineering/rebaseline/D2-IDENTITY-TENANT-DATA-OWNERSHIP.md`
-9. active D3 artifact once D3 is opened
+9. `docs/engineering/rebaseline/D3-COMMUNICATION-EVENTS.md`
 10. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
 11. code, OpenAPI, schemas, tests and runtime only as current-state evidence when needed
 
@@ -36,9 +36,9 @@ D1 — Domains / Boundaries — CLOSED / ACCEPTED
   ↓
 D2 — Identity / Tenant / Data Ownership — CLOSED / ACCEPTED
   ↓
-D3 — Communication / Events — NEXT, NOT YET OPENED
+D3 — Communication / Events — OPEN / IN PROGRESS
   ↓
-D4 — External Integrations
+D4 — External Integrations — NOT OPEN
   ↓
 D5 — API
   ↓
@@ -90,6 +90,12 @@ Accepted D2 direction includes:
 - clean target persistence baseline with **no legacy-data migration or archival requirement** for the pre-rebaseline MPC database;
 - old ADR structures do not carry forward by inheritance; D2 adjudicated ADR-011/012/022/028/031 and defined safe rehoming gates/new ADR-036+ transition.
 
+### D3 — OPEN
+
+`D3-COMMUNICATION-EVENTS.md` is the active D3 stage artifact. It currently records only the D3 purpose/boundary, imported D0–D2 invariants, review protocol and current stage status.
+
+**No D3 batch is canonical yet.** The operator approved the direction of D3-B1 for independent challenge; `D3-B1-REVIEW-CANDIDATE.md` is deliberately non-authoritative until reviewer convergence and explicit operator batch acceptance.
+
 ## 4. Engineering method and repo lifecycle
 
 Engineering reasoning follows the **DevelopmentConexus Engineering Method** identified in `AGENTS.md`; the local file in this authority path is only the consumed context copy.
@@ -98,23 +104,34 @@ This router defines the Marketplace Central D0–D9 status/lifecycle and allowed
 
 ## 5. What is prohibited now
 
-Until D3 is adjudicated:
+While D3 remains open:
 
 - do not begin D4–D9 target design prematurely;
 - do not implement product architecture/features;
 - do not let legacy IDs/tables/ADRs imply target identity, persistence ownership, communication architecture or target contracts;
 - do not silently alter accepted D0/D1/D2 authority while choosing D3 communication semantics;
+- do not create a semantic dependency outside D1 by hiding it in an event, API, queue, projection or database;
 - do not choose provider/ERP transport contracts or credentials;
 - do not choose HTTP/frontend/runtime topology;
-- do not treat `AI-DIALOG.md` or reviewer/chat summaries as target authority.
+- do not choose workers, brokers, outbox/transaction implementation, locks, RLS enforcement or deployment topology;
+- do not treat `AI-DIALOG.md`, `D3-B1-REVIEW-CANDIDATE.md` or reviewer/chat summaries as target authority.
 
 Existing code/module/context/schema shape remains current-state evidence only.
 
 ## 6. Exact next action
 
-**Open D3 — Communication / Events with the operator.**
+**Independent review of D3-B1 — Communication Topology & Edge Matrix.**
 
-D3 must decide the target synchronous capability/query, event and projection/read-model communication matrix inside the accepted D1 semantic edge set and D2 identity/ownership invariants. It must define event/communication semantics only to the depth required before D4–D7, without prematurely choosing provider transports, HTTP contracts, UI topology or runtime/deployment mechanisms.
+The operator has approved B1 as a review candidate, not yet as canonical architecture.
+
+Next sequence:
+
+1. Fable is invoked independently by the operator and reads the current repository authority path itself.
+2. Fable reviews `docs/engineering/rebaseline/D3-B1-REVIEW-CANDIDATE.md` and appends only material findings to `AI-DIALOG.md`.
+3. GPT independently adjudicates every material finding against repository authority/evidence; reviewer findings remain evidence, not authority.
+4. Material reviewer disagreement receives another GitHub round or operator adjudication; GPT does not simulate Fable.
+5. The converged B1 batch returns to the operator for explicit acceptance.
+6. Only after acceptance is B1 consolidated into `D3-COMMUNICATION-EVENTS.md`; then D3-B2 may proceed.
 
 If D3 discovers a genuinely necessary semantic dependency not allowed by D1, reopen only the implicated D1 decision rather than hiding the dependency in an event, queue, API, projection or database.
 
@@ -127,9 +144,10 @@ A fresh session should conclude that:
 - D0, D1 and D2 are **CLOSED / ACCEPTED**;
 - D1 defines exactly 12 semantic business boundaries but no runtime topology;
 - D2 fixes canonical/external identities, tenant/isolation semantics, persistent ownership and shared value/knowledge/time semantics;
+- D3 is **OPEN / IN PROGRESS** and owns communication/event/projection semantics only inside D1/D2 authority;
+- D3-B1 is currently an **independent-review candidate**, not canonical target authority;
 - current modules/contexts/schema/legacy ADRs remain evidence, not target authority by inheritance;
 - implementation remains blocked until D9;
-- the exact next stage is **D3 — Communication / Events**;
-- D4–D9 design is not yet authorized.
+- D4 is not yet open.
 
 If it cannot, the authority path is incomplete or contradictory.
