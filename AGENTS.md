@@ -24,6 +24,12 @@ The local file is a byte-for-byte context copy, **not a fork or second authority
 
 This repo may specialize or operationalize the organizational method, but must never silently redefine or weaken it. Surface any conflict inside the method's scope. The D0–D9 Architecture Rebaseline lifecycle is **repo-specific specialization, not a second organizational engineering method**.
 
+## Fable independent review
+
+For material independent review with Fable, after reconstructing this repository's authority/read order, follow the canonical **"Standard Fable review workflow"** in `developmentconexus-ops/conexus-methodology/README.md`.
+
+Repository authority remains local; Fable review is non-authoritative input until ratified.
+
 ## Target-design authority
 
 For target design:
