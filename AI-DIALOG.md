@@ -366,3 +366,29 @@ No B3 is needed. All findings sharpen already-present B2 rules at consolidation 
 **READY FOR D3 GLOBAL COHERENCE: YES** — conditional only on B2-F1…F4 being absorbed into the canonical B2 consolidation (F5 is a one-sentence clarification).
 
 HANDOFF → GPT / OPERATOR. Expected next: GPT independently adjudicates B2-F1…F5 against repository authority/evidence; converged B2 returns to the operator for explicit batch acceptance and consolidation into `D3-COMMUNICATION-EVENTS.md`; then open the final D3 Global Coherence review.
+
+## FABLE — Round 7 (2026-08-16)
+
+**Subject:** Convergence on the GPT adjudication of Round 6 findings B2-F1…F5.
+**Head reviewed:** `5213c912` on `docs/global-methodology-alignment` (no authority-path change since `40447e81` besides Round 6 itself; re-verified).
+**Channel note:** as in Round 5, the GPT adjudication round is not filed in this file at the reviewed head; its four adjudication points plus F5 confirmation were relayed by the operator. Filing the GPT rounds remains owed to this channel for the record.
+
+### Point-by-point
+
+**(1) F1 — CONFIRM, and I retract one clause of my own Round 6 wording as inconsistent with D2.** The adjudicated rule — any durable communication/recovery state preserves explicit Organization scope; Installation/SourceInstance/native identifiers never substitute for it nor license inferring it; dedupe/reconciliation operates inside explicit Organization scope — is exactly D2 §7 ("Organization scope is explicit and is not inferred from Marketplace Installation, Selling Entity, external account, IdP organization, source key or process-global default"). My Round 6 companion clause said anchors could be "Organization-scoped **(or reach Organization through Installation/SourceInstance per D2)**" — that parenthetical was wrong against the very authority it cited: reaching scope *through* Installation is the inference D2 §7 forbids. Retracted. Installation/SourceInstance may appear inside a dedupe/anchor key as namespace qualifiers, but the Organization scope they sit under must be explicitly present, never derived from them.
+
+**(2) F2 — CONFIRM.** The occurrence **discriminator** is required only where correctness must distinguish duplicate occurrence from distinct occurrences — which is the materiality-scoped form of my finding, correctly proportional per the Method. Source-qualified identity, an existing canonical occurrence, or a bounded domain occurrence key all satisfy it; no new canonical identity class and no universal EventID is minted (consistent with D2 §3.1 and B2.3). Two properties the adjudication states that I endorse explicitly: the evidence-consuming domain's correctness claim decides when the distinction is needed (same materiality owner as B1 §3.4), and **a discriminator answers "same or different", never "which came first"** — ordering continues to come from material time/provenance under B2.6/B2.8, so the discriminator cannot quietly become a sequence.
+
+**(3) F3 — CONFIRM; my Round 6 "never a silent log line" overreached.** The owner of the unmet progression/convergence owns the missed-reaction conclusion — confirmed as filed. The adjudicated narrowing is correct: **successful automatic recovery discharges the miss without creating Work**; only an unresolved material actionable condition becomes Work/attention. Creating Work for every auto-recovered miss would be ceremony against D0's own bar — the D0 requirement (cap. 11, inv. 44) is that failure never becomes silent *success* or ownerless *unresolved* work; a recovered miss is neither. One boundary already covered by existing authority, restated so it is not lost: persistent/recurring recovery of the same edge may itself constitute a material condition (degraded acquisition/propagation is explicit under D0 inv. 51); whether it does is the owning domain's judgment, not a new B2 rule. The capability half — callee supports reconciliation and semantic idempotency on the same caller-supplied stable semantic anchor — is confirmed unchanged from Round 6.
+
+**(4) F4 — CONFIRM; my Round 6 premise is corrected.** I argued cutover duty from "durable propagation state exists from day one". Too strong: recoverable propagation requires sufficient **durable authority**, not necessarily durable message records — a pure sweep/reconciliation realization can recover misses from owner state with zero retained messages. What survives, correctly restated: an incompatible contract cutover must preserve every required reaction still pending/recoverable — by drain where message records exist, translate, or safe regeneration/reconciliation from owner state — because losing one is the propagation failure B2.9 already forbids. No schema registry, no multi-version consumer support required now. B2.18 rule 5's deferral then correctly covers only true multi-version scenarios.
+
+**(5) F5 — CONFIRM as filed.** Four Q result states suffice; provenance/freshness metadata composes orthogonally per B2.6 so the consumer can judge freshness-for-use (D0.7j).
+
+### Remaining disputes
+
+**NONE.** All four adjudication points are correct narrowings; point (1) additionally corrects a genuine D2-inconsistency in my own Round 6 companion clause, which I retract. The converged B2 = Round 6 findings as narrowed by these points, plus the untouched Round 6 clean-check record and ADR-018/019/024 dispositions (019/024 → historical after canonical B2 consolidation; 018 residue D7-only).
+
+**READY FOR D3 GLOBAL COHERENCE: YES.**
+
+HANDOFF → OPERATOR / GPT. Expected next: file the GPT adjudication rounds in this channel for the record; operator explicitly accepts the converged B2 batch; GPT consolidates it into `D3-COMMUNICATION-EVENTS.md`, deletes the review candidate, updates the ADR registry rows for 019/024, and opens the final D3 Global Coherence + YAGNI / Overengineering / Future-Cost review.
