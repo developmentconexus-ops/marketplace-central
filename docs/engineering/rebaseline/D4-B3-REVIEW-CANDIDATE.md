@@ -1,11 +1,13 @@
 # D4-B3 — Sankhya Business-System Contract — REVIEW CANDIDATE
 
 > **Status:** REVIEW CANDIDATE / NON-AUTHORITATIVE / DISPOSABLE  
-> **Base HEAD:** `eaab7127518002949ebdfa00aead90151a85ec56`  
+> **Base evidence HEAD:** `eaab7127518002949ebdfa00aead90151a85ec56`  
+> **Independent review HEAD:** `f7ec08d91108ed905133874bb5bcc26f1b729b2b`  
+> **Review evidence commit:** `039e81082c8e5ab687b1537063b210caeb322c3f`  
 > **Program:** Architecture Rebaseline / Technical System Design  
 > **Parent authority:** accepted D0–D4-B2 only  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
-> **Purpose:** coherent independent-review surface for D4-B3; this file MUST NOT be used as target authority unless its decisions are later adjudicated, ratified by the operator and consolidated into canonical D4.
+> **Purpose:** amended coherent surface for closing the remaining D4-B3 evidence gates. This file is not target authority and MUST be deleted before canonical consolidation.
 
 ---
 
@@ -15,97 +17,72 @@ D4-B3 must answer:
 
 > **Through which concrete sanctioned business-system contracts can MPC obtain the internal facts and cause/reconcile the native business-order and fiscal effects required by Product 1.0, while preserving D0–D3 semantic authority, explicit SourceInstance qualification, honest coverage and a future business-system seam without building a generic ERP/workflow framework?**
 
-This candidate is intentionally both:
+The target is intentionally:
 
-- **provider-independent at the MPC semantic boundary**; and
-- **concrete about Sankhya inside D4**, because Sankhya is the first business system used to prove that boundary.
+- provider-independent at the MPC semantic boundary;
+- concrete about Sankhya inside D4 because Sankhya is the first business system proving that boundary;
+- SourceInstance-aware because real customer configuration changes how the provider contract behaves;
+- bounded by YAGNI: no universal ERP ontology, plugin framework or workflow/BPM engine.
 
-It does **not** claim that Sankhya is the MPC business-system model.
-
-It does **not** model TOTVS, Bling, SAP or any speculative future system. A future concrete system is only a structural replacement test: if the same accepted MPC business meanings can be supplied/materialized by that system, its protocol belongs in another adapter; if genuinely new business meaning appears, the responsible D-stage reopens rather than hiding it in a generic integration abstraction.
-
-This candidate does not choose:
-
-- D5 MPC HTTP/OpenAPI;
-- D6 UI;
-- D7 scheduler/worker/cursor/token-refresh/process topology;
-- D8 golden-flow execution;
-- persistence schema/package layout;
-- a generic integration/plugin/provider registry;
-- a workflow/BPM engine;
-- a universal ERP ontology.
+A future TOTVS/Bling/SAP-like system is only a replacement test. It is not modelled now.
 
 Implementation remains blocked until D9.
 
 ---
 
-## 2. Imported authority — not reopened here
+## 2. Imported authority — not reopened
 
-B3 imports these accepted rules rather than redefining them:
+B3 imports rather than re-decides:
 
-1. **Business-System Materialization owns `Business Order Intent`, `Invoicing Intent`, native-result correlation and convergence meaning.** ERP-native TOP/document taxonomy is not MPC business semantics.
-2. **Product master remains external.** MPC references the source-qualified Product; it does not create a Product master mirror.
-3. **Availability Control owns Sellable Availability, Inventory Source/Scope and allocation semantics.** Native stock/reservation truth remains external.
-4. **Commercial Economics owns Cost Basis and economic interpretation.** A native cost field/variant is evidence, not Cost Basis by inheritance.
-5. **Marketplace Sales owns the canonical marketplace sale interpretation and transaction-specific Selling Entity attribution.** Materialization consumes that meaning rather than independently inferring marketplace/provider semantics.
-6. **Post-Sale Resolution coordinates consequences; native business-system reversal/fiscal-result semantics remain external.** A pre-invoice commercial reversal is not automatically a post-invoice fiscal return.
-7. **`SourceInstance` identifies one logical externally authoritative business-system/source namespace.** Credential rotation does not itself change SourceInstance; production and test/sandbox are distinct namespaces/environments.
-8. **Consumer owns meaning; adapter owns protocol.** Provider DTO/status/operation vocabulary does not cross into business contexts.
-9. **Known / absent / unknown / unavailable remain distinct.** Partial acquisition is not closure.
-10. **Acceptance is not convergence.** Potentially accepted external writes are not blindly retried.
-11. **Provider PII is minimized.**
-12. **Direct Oracle/database is outside the target architecture and is not a fallback.**
-13. **Integration Support, Provider Effective Capability/Requirement and Effective Business Capability remain separate authorities.**
+1. Business-System Materialization owns `Business Order Intent`, `Invoicing Intent`, native-result correlation and convergence meaning.
+2. ERP-native TOP/document taxonomy is not MPC semantics.
+3. Product master remains external; MPC references source-qualified Product identity.
+4. Availability Control owns Inventory Source/Scope, allocation meaning and Sellable Availability; native stock/reservation truth remains external.
+5. Commercial Economics owns Cost Basis and economic interpretation; provider cost variants are evidence only.
+6. Marketplace Sales owns canonical marketplace-sale interpretation and transaction-specific Selling Entity attribution.
+7. Post-Sale Resolution coordinates consequences without importing provider-native fiscal taxonomy.
+8. `SourceInstance` identifies one logical externally authoritative business-system/source namespace; credentials are not identity.
+9. Consumer owns meaning; adapter owns protocol.
+10. Known / absent / unknown / unavailable remain distinct; partial is not closure.
+11. Acceptance is not convergence; ambiguous writes are not blindly retried.
+12. Provider PII is minimized.
+13. Direct Oracle/database access is outside target architecture and is not fallback.
+14. Integration Support, Provider Effective Capability/Requirement and Effective Business Capability remain separate authorities.
 
-No D0/D1/D2/D3 or D4-B1/B2 reopen is proposed by this candidate.
+No D0/D1/D2/D3 or D4-B1/B2 reopen is proposed.
 
 ---
 
-## 3. Proposed B3 governing invariant
+## 3. Governing invariant
 
-> **For every Product 1.0 business-system fact or effect, MPC depends on a consumer-owned semantic contract whose external evidence/effect is Organization + SourceInstance qualified; the concrete Sankhya adapter may use only sanctioned provider operations and SourceInstance-specific bindings whose material assumptions are verifiable, preserves provider-native granularity/provenance/partiality, and reconciles consequential effects through authoritative reread/correlation. Sankhya-native topology and customer configuration never become MPC business ontology, and future substitutability does not authorize a generic ERP/workflow framework before a second real consumer proves the abstraction.**
+> **For each Product 1.0 business-system fact or effect, MPC depends on a consumer-owned semantic contract whose external evidence/effect is Organization + SourceInstance qualified. The concrete Sankhya adapter uses only sanctioned provider operations and bounded SourceInstance-specific bindings, preserves provider-native granularity/provenance/partiality, and reconciles consequential effects through authoritative reread/correlation. Provider-declared configuration may be validated where observable but never guarantees execution success; hidden/custom rules remain execution-time uncertainty. Sankhya-native topology and customer configuration never become MPC business ontology, and future substitutability does not authorize a generic ERP/workflow framework before a second real consumer proves the abstraction.**
 
 Corollaries:
 
-- Sankhya first **does not mean** Sankhya model.
-- A SourceInstance binding **does not mean** a workflow engine.
-- A provider inventory partition **does not mean** MPC `Lot`/batch identity or proven interchangeability.
-- A TOP/code reference **does not prove** that its configured meaning remains valid after provider configuration drift.
-- Provider configuration can be a prerequisite/capability fact; it does not become MPC policy merely because it influences execution.
+- Sankhya first does not mean Sankhya model.
+- SourceInstance binding does not mean workflow engine.
+- Provider stock decomposition does not imply an MPC `Lot`/Batch entity or proven interchangeability.
+- TOP/code identity alone does not prove current configured meaning.
+- Provider configuration evidence is not MPC policy.
+- A validated binding is a necessary precondition, never a prediction that a consequential effect will succeed.
 
 ---
 
-## 4. Alternatives and proposed Global Maximum
+## 4. Alternatives / Global Maximum
 
-### Alternative A — Sankhya-shaped core
+### A — Sankhya-shaped core
 
-Example failure shape:
+Examples: `Business Order = TOP 313`, `Invoice = TOP 306`, `Marketplace = CODTIPVENDA 27`, `Lot = CONTROLE`.
 
-```text
-Business Order = TOP 313
-Invoice = TOP 306
-Marketplace = CODTIPVENDA 27
-Lot = CONTROLE
-```
+**REJECT.** One current SourceInstance already contains materially different store and e-commerce native document topologies. A Sankhya-shaped core fails the present before any second ERP exists.
 
-**REJECT.** Current production already disproves this shape without needing another ERP: one SourceInstance contains materially different store and e-commerce document topologies, and TOP 313 represents e-commerce generally rather than Mercado Livre specifically.
+### B — generic ERP/workflow framework now
 
-### Alternative B — generic ERP/workflow framework now
+Examples: `GenericERP`, generic resource/capability graph, configurable materialization step sequence, arbitrary provider-operation DSL.
 
-Example failure shape:
+**REJECT.** There is one concrete business system and no second real consumer proving a stable shared provider ontology or workflow language.
 
-```text
-GenericERP
-GenericResource
-GenericCapabilityGraph
-MaterializationWorkflow
-  steps[]
-  arbitrary operations/conditions
-```
-
-**REJECT.** There is one concrete business system today and no second consumer proving a stable shared provider ontology or workflow DSL. Such machinery would guess universals from Sankhya and create accidental complexity.
-
-### Alternative C — provider-independent consumer semantics + concrete Sankhya adapter + bounded SourceInstance binding
+### C — provider-independent consumer semantics + concrete Sankhya adapter + bounded SourceInstance binding
 
 **PROPOSED GLOBAL MAXIMUM.**
 
@@ -114,134 +91,101 @@ D1 owner meaning
     ↓ consumer-owned semantic port
 D4 Sankhya adapter
     - sanctioned operations
-    - SourceInstance binding
-    - provider requirements/capability
+    - bounded SourceInstance binding
+    - provider capability/requirements
     - authoritative reread/correlation
     ↓
-Sankhya
+Sankhya SourceInstance
 ```
 
-A future accepted business system adds another adapter behind the same consumer semantics where those meanings are genuinely equivalent. Shared technical machinery is extracted only after real repetition proves it; no generic provider/business graph is created for symmetry.
-
-### Falsification test — workflow-engine drift
-
-If MPC/domain-level configuration ever needs to express arbitrary **“how many native documents, in what sequence, under which provider-specific steps”**, this boundary has failed. B3 must return to decision rather than letting a binding evolve into a workflow/BPM engine.
-
-Business domains care about their intents, provider requirements relevant to those intents, and convergence on authoritative external results — not an arbitrary provider document choreography.
+**Falsifier:** if MPC/domain configuration must express arbitrary provider-native document count, sequence or conditional choreography, the boundary has failed and must return to decision rather than evolve into BPM/workflow infrastructure.
 
 ---
 
-## 5. Sankhya SourceInstance, environment and authentication
+## 5. SourceInstance, environment and authentication
 
-### 5.1 Environment qualification
+Production and sandbox are distinct environments/namespaces.
 
-Production and sandbox are distinct SourceInstance environments and cannot be collapsed because native keys/data appear similar.
+Measured auth evidence:
 
-Measured current auth token evidence establishes:
+- sandbox token: `ambiente=hml`;
+- production token: `ambiente=prd`;
+- sandbox exposed an `environment` UUID while production exposed it as null, so that UUID is not a universal namespace law.
 
-- `ambiente=hml` for sandbox;
-- `ambiente=prd` for production.
-
-A sandbox-only `environment` UUID was observed, while production exposed that claim as null. Therefore the UUID is **not** a cross-environment identity law.
-
-Proposed contract:
-
-1. configured SourceInstance binding identifies the intended environment/host;
-2. provider-authoritative environment markers such as `ambiente`, when exposed, must match the binding or attribution fails closed;
-3. data-plane responses need not carry a namespace marker on every resource; where none exists, the authenticated/configured SourceInstance binding is the control;
-4. credentials are runtime secrets, never SourceInstance identity.
-
-### 5.2 Authentication
-
-Current target auth is:
+Current target auth:
 
 ```text
 OAuth 2.0 client_credentials
 + X-Token
 + POST /authenticate
-→ Bearer access token
+→ Bearer token
 ```
 
-The old login/appkey path is not target fallback.
+Measured token TTL is 300 seconds. Refresh scheduling/locking/caching belongs to D7.
 
-Measured token TTL is 300 seconds. Refresh scheduling/locking/caching belongs to D7; B3 only requires that auth expiration/unavailability never become business absence.
-
-MGECOM Bearer compatibility is empirically established across sanctioned services in both sandbox and production.
+MGECOM Bearer compatibility is empirically established in sandbox and production.
 
 ---
 
-## 6. Product and Readiness evidence
+## 6. Bounded sanctioned entity-read contract
 
-### 6.1 Native Product identity
+Dedicated REST resources remain preferred when they are semantically sufficient. `CRUDServiceProvider.loadRecords` is admitted only when a real consumer requires a fact unavailable or materially lossy on the dedicated resource.
 
-For the current Sankhya SourceInstance:
+The admission is intentionally narrower than what the Gateway parser may technically accept:
+
+1. a named sanctioned `rootEntity` is required;
+2. result fieldsets are explicit and minimum for the consumer claim;
+3. `criteria` is restricted to predicates over fields of the named root entity using ordinary comparison/logical operators and bound parameters;
+4. sanctioned related-entity data, when genuinely required, uses provider-declared relation/path mechanisms with explicit fieldsets rather than ad-hoc cross-table expressions;
+5. subqueries, cross-table references inside criteria, Oracle-specific pseudo-tables/functions, arbitrary SQL expressions and query-language escape hatches are **outside the D4 sanctioned entity-read contract**, even if the Gateway happens to execute them;
+6. a future need for such an expression is a capability finding requiring adjudication, not authorization for Oracle-via-HTTP;
+7. no entity read becomes a replicated ERP mirror by convenience.
+
+This clause protects the accepted Direct-Oracle exclusion at the semantic contract level; D7/implementation later chooses mechanical enforcement.
+
+---
+
+## 7. Product / Readiness evidence
+
+### 7.1 Native Product identity
+
+Current external Product reference:
 
 ```text
 SourceInstance + CODPROD
 ```
 
-is the external Product reference required by D2.
+`CODPROD` remains provider-native, not an MPC Product-master identity.
 
-`CODPROD` remains provider-native; it is not an MPC Product master identity.
+### 7.2 Identifier evidence
 
-### 6.2 Read surfaces
+Available provider observations include active state, reference, supplier reference, brand, NCM/fiscal facts and alternate-volume barcode where populated.
 
-Prefer the dedicated Product REST surface when it supplies the requested semantic facts. Use sanctioned `CRUDServiceProvider.loadRecords` with `rootEntity=Produto` and a minimum explicit fieldset only when a real consumer requires native/custom facts absent from the dedicated REST resource.
+No universal first-class GTIN/EAN Product field was established. Therefore `REFERENCIA == EAN` is forbidden as an identity/correspondence law.
 
-This is a **per-claim** selection rule, not “REST always” or “loadRecords always”.
-
-### 6.3 Identifier evidence
-
-Measured Product evidence includes, where populated:
-
-- native product key;
-- active state;
-- reference;
-- supplier reference;
-- brand;
-- NCM/other fiscal product facts;
-- alternate-volume barcode where applicable.
-
-The current Product REST surface exposes **no universal first-class GTIN/EAN field**. An EAN-shaped `referencia` value is convention evidence only.
-
-Therefore:
-
-- `REFERENCIA == EAN` is forbidden as an identity/correspondence law;
-- one identifier is insufficient by architecture fiat;
-- D4 supplies available identifier evidence;
-- Product & Channel Readiness owns whether the evidence is sufficient to establish correspondence.
-
-Wire quirks such as provider field spelling/encoding differences remain entirely inside the adapter.
+D4 supplies identifier evidence; Product & Channel Readiness owns sufficiency of correspondence.
 
 ---
 
-## 7. Company, location and inventory contract
+## 8. Company, location and inventory contract
 
-### 7.1 External references remain external
+### 8.1 External references stay external
 
-Sankhya `CODEMP` and `CODLOCAL` are external/source-native references.
+`CODEMP` and `CODLOCAL` do not automatically equal Selling Entity, Inventory Source or Fulfillment Node.
 
-They do not automatically equal:
+Transaction-specific Selling Entity attribution comes from Marketplace Sales; D4 does not infer it from company codes.
 
-- Selling Entity;
-- Inventory Source;
-- Fulfillment Node.
+### 8.2 Native stock observations
 
-Current business owners map/qualify those references under their accepted semantics. Transaction-specific Selling Entity attribution continues to come from Marketplace Sales, not from D4 guessing `CODEMP`.
-
-### 7.2 Inventory observation granularity
-
-The dedicated stock REST surface is useful but lossy. Real measurement established that, for the observed SourceInstance:
+Measured in sandbox and independently re-measured in production:
 
 ```text
 REST estoque = native ESTOQUE - RESERVADO
 ```
 
-at provider dimensions including product/company/location/control where present.
+at the provider dimensions represented by the resource.
 
-It does not expose the decomposition needed to distinguish, for example, no stock from fully reserved stock.
-
-For claims requiring reservation/control decomposition, the minimum sanctioned entity read is `Estoque` with only materially required fields such as:
+The REST net surface is useful but lossy because it cannot explain the reservation decomposition. When a consumer needs that distinction, the sanctioned `Estoque` entity read preserves the minimum required dimensions/fields such as:
 
 ```text
 CODEMP
@@ -254,669 +198,554 @@ ESTOQUE
 RESERVADO
 ```
 
-No ERP mirror is introduced.
+The net surface may legitimately be **negative** when commitments exceed physical stock. Negative is a real external observation; it is neither zero nor unknown and MUST NOT be clamped away at the adapter boundary.
 
-### 7.3 Dedicated-stock limitations remain part of coverage
+Dedicated REST stock also has provider-defined coverage limits; resource absence is not automatically `stock=0`.
 
-The dedicated REST stock resource is not universal inventory authority merely because it is convenient. Current documented/measured limitations include provider-defined exclusions/absence semantics such as WMS/third-party scope and never-moved products not appearing as zero.
+### 8.3 Provider control dimension
 
-Therefore resource absence cannot automatically become `stock=0`.
+`CONTROLE` is preserved as an opaque provider inventory-partition value when present. It is not canonically named `Lot`, `Batch`, `Tonality`, `Serial` or another MPC identity.
 
-### 7.4 Provider control partition
+Current SourceInstance evidence:
 
-`CONTROLE` is preserved as an **opaque provider inventory partition value** when present.
+- control is per Product, not reliably inferred from family;
+- 3,038 active controlled Products were observed;
+- controlled Products concentrate in flooring/covering families including porcelain, but those same families contain uncontrolled counterexamples;
+- one raw control-type code (`TIPCONTEST='I'`) is currently observed, so no multi-type MPC taxonomy is justified;
+- `CONTROLE` carries physical-looking lot strings and also `ENCOMENDA`;
+- no sanctioned structured source for tonalidade/calibre/grade attributes was established.
 
-It is **not** canonically named `Lot`, `Batch`, `Tonality`, `Serial` or another MPC entity/identity.
+### 8.4 Provider-independent sellability invariant
 
-Current production evidence materially shows:
+Measured evidence proves an aggregate free quantity may exceed every individual provider partition. The D1-facing rule is therefore about **satisfiability**, not provider topology:
 
-- control is configured **per Product**, not reliably by product family;
-- 3,038 active controlled products were observed in the SourceInstance;
-- controlled products are concentrated in floor/covering families, including porcelain, but the same families contain uncontrolled counterexamples;
-- this SourceInstance currently uses one observed raw control-type code (`TIPCONTEST='I'`), so no multi-type MPC control taxonomy is justified;
-- `CONTROLE` can carry values such as physical-looking lot strings **and** `ENCOMENDA`, proving the field itself does not encode one universal business meaning;
-- no sanctioned provider entity was found exposing structured tonalidade/calibre/grade attributes for a `CONTROLE` value.
+> **Sellable Availability may treat an aggregate quantity as sellable only when the available evidence and applicable rules establish that the requested quantity is actually satisfiable by the eligible source inventory. Where an external source decomposes inventory in a way material to satisfiability, D4 preserves that decomposition as evidence rather than erasing it into a pre-aggregated total.**
 
-### 7.5 Partition-aware availability fence
+This does not assert partitions are always non-interchangeable.
 
-Measured evidence proves aggregate free quantity can exceed every individual provider partition. Therefore:
+Current Mercado Livre **sold** population evidence is control-free: all observed e-commerce items were uncontrolled (`TIPCONTEST='N'`). The current **listed** ML population was not cross-matched for control sensitivity and remains unknown.
 
-> **Availability Control must not collapse provider-native inventory partitions before interchangeability/satisfaction semantics are sufficiently established for the consequential decision.**
+First Product 1.0 capability fence:
 
-This rule does not decide that partitions are always non-interchangeable. It preserves uncertainty instead of fabricating aggregate sellability.
+- uncontrolled current marketplace lane: supported subject to ordinary Availability rules;
+- controlled Product automatic marketplace availability/materialization: not claimed until interchangeability/satisfiability and selection timing are proven for that lane;
+- no adapter-chosen partition and no aggregate guess.
 
-Current Mercado Livre **sold** population evidence is control-free: all observed e-commerce items had empty `CONTROLE` because their Products were actually uncontrolled (`TIPCONTEST='N'`). The currently **listed** Mercado Livre population was not cross-matched in the final control sweep and remains unknown for this property.
+No D1 reopen is required by current evidence.
 
-Proposed first Product 1.0 capability fence:
+### 8.5 Materialization-created inventory commitment
 
-- uncontrolled Product lane: supported subject to ordinary Availability rules;
-- controlled Product automatic marketplace availability/materialization lane: **not claimed** until business interchangeability and required selection timing are proven for that operating path;
-- controlled-path unknown is explicit `unsupported` / `external-required` / operator work as appropriate, never silent aggregate availability or adapter-chosen partition.
-
-This does not reopen D1. Availability already owns Sellable Availability and evidence sufficiency. A future real controlled-marketplace path is the reopen/adjudication trigger if existing ownership proves insufficient.
-
----
-
-## 8. Cost and tax evidence
-
-### 8.1 Cost observations
-
-No dedicated current cost REST contract was established. Sanctioned entity read `rootEntity=Custo` is proven live and exposes externally governed observations qualified by Product, company, effective/as-of time and provider-local dimensions/provenance where populated.
-
-Multiple native cost variants are real external observations. B3 does **not** select one as `Cost Basis`.
-
-Commercial Economics receives typed/provenanced Cost Observations and alone owns the Cost Basis used for L0/L1/L2 economic reasoning.
-
-Provider sentinel rows such as zero-cost historical sentinel dates are not silently promoted to economic facts.
-
-### 8.2 Expected-tax calculation
-
-`POST /v1/fiscal/impostos/calculo` is the sanctioned candidate for expected-tax evidence because it applies the business system's configured tax rules rather than requiring MPC to copy a tax-rule engine.
-
-Integration Support is established, but Provider Effective Capability is currently **conditioned** by SourceInstance configuration/customization. A real sandbox call was intercepted by instance customization requiring data the exercised calculation setup did not satisfy; no persistence residue remained.
-
-Proposed decision:
-
-- prefer sanctioned Sankhya tax calculation over copying fiscal-rule tables/logic into MPC;
-- do not claim Expected-Tax capability merely because the endpoint exists;
-- B3 acceptance must retain an explicit **Tax Evidence Gate**: the selected production SourceInstance calculation path/model/configuration must be proven semantically sufficient and operationally usable for Product 1.0, or B3 returns `STOP / SPLIT PREREQUISITE` for that capability;
-- Direct Oracle/TGFICM-style rule copying is not fallback.
-
-Realized tax/fiscal evidence comes from authoritative native fiscal results, not from the expected-tax simulation.
-
----
-
-## 9. Coverage, pagination and change semantics
-
-### 9.1 Full/scoped observation is the correctness baseline
-
-Current sanctioned enumeration is operationally plausible at the measured SourceInstance scale. B3 does not require delta acquisition to make facts correct.
-
-Per-operation coverage remains explicit:
-
-- point read proves only that exact source-qualified object/scope;
-- enumeration proves only the traversed source-defined scope and only after all required pages complete;
-- no source-defined snapshot isolation is invented;
-- partial traversal is partial.
-
-### 9.2 Delta is optional and prerequisite-bound
-
-`modifiedSince`/change-log behavior depends on Sankhya source configuration. Current measurement observed the change log disabled.
-
-Materially, failure honesty differs by resource:
-
-- some operations return an attributable error when logging is unavailable;
-- Product delta can return a no-record/404 shape that is indistinguishable from a legitimate empty delta if the consumer ignores the prerequisite.
+The selected native order binding reserves inventory in this SourceInstance. That is a provider effect whose business meaning remains Availability-owned.
 
 Therefore:
 
-> **No delta result is accepted as completeness evidence until the required source change-log coverage is independently established.**
+> **When native Business Order materialization creates or changes an external inventory commitment, the inventory observation contract must preserve that effect so Availability Control can account for current sellability. Materialization does not acquire allocation authority, and MPC must not model its own materializations as inventory-neutral.**
 
-Even when enabled, the documented short retention window means delta is not historical authority or indefinite recovery.
-
-B3 does **not** require enabling `LOGTABOPER` now. Full/scoped acquisition remains the correctness path; D7 later decides whether delta is operationally justified, its cadence and recovery strategy.
-
-### 9.3 Pagination/provider quirks
-
-Provider-specific page origins, page sizes, `hasMore`, 404-as-end behavior, date formats and malformed/provider-specific field names stay in the Sankhya adapter.
-
-A short page is not automatically end-of-data when the provider indicates more results.
-
-### 9.4 Operational viability
-
-Measured behavior is sufficient to treat the sanctioned Gateway as operationally plausible for Product 1.0 design:
-
-- ordinary reads/loadRecords are bounded and usable;
-- order enumerations are materially heavier and PII-rich, so they should be scoped/minimized rather than indiscriminately mirrored;
-- no rate-limit headers were observed, so concurrency/rate ceilings remain Unknown;
-- no aggressive stress test is justified in D4.
-
-D7 owns token refresh, request scheduling, concurrency, backoff, cursors and runtime observability.
+This is not a new Materialization→Availability business-authority edge: Availability observes its authoritative external inventory source as already accepted.
 
 ---
 
-## 10. Native order observation
+## 9. Cost and expected-tax evidence
 
-### 10.1 Native order identity and point authority
+### 9.1 Cost
 
-The native business-order result remains:
+No dedicated current cost REST surface was established. Bounded sanctioned `rootEntity=Custo` reads expose provider observations with company/Product/time/provider-local qualifiers.
+
+`CUSGER`, `CUSREP`, `CUSSEMICM`, `CUSMED` and other native variants remain **Cost Observations**, never Cost Basis by inheritance. Commercial Economics owns Cost Basis selection/interpretation.
+
+Sentinel/placeholder rows are not silently promoted to valid cost facts.
+
+### 9.2 Expected tax — current classification
+
+`POST /v1/fiscal/impostos/calculo` is Integration-Supported and documented as a calculation surface that applies Sankhya configuration rather than requiring MPC to copy a tax engine.
+
+The observed failure is currently classified more precisely as:
+
+> **SourceInstance configuration prerequisite not yet satisfied for the selected path.**
+
+The exercised calculation encountered a Metal Nobre customization requiring seller data during internal movement preparation. The current evidence does not show that Sankhya lacks the capability; it shows that the selected SourceInstance still needs a native calculation/model configuration that satisfies its own customizations.
+
+B3 decision:
+
+- keep the sanctioned calculation surface as the preferred Expected-Tax path;
+- do not copy TGFICM/provider fiscal rules into MPC;
+- G1 remains a **B3 closure gate**;
+- close G1 by identifying/configuring the correct native model/path and performing a non-persisting re-probe;
+- only if the correctly configured sanctioned calculation remains semantically insufficient for L0 Expected Economics does `STOP / SPLIT PREREQUISITE` apply.
+
+Realized fiscal/tax evidence comes from authoritative fiscal results, not the Expected-Tax simulation.
+
+---
+
+## 10. Coverage, pagination and change semantics
+
+Full/scoped acquisition is the correctness baseline. Point reads prove only their exact source-qualified scope; enumeration proves only the completed traversed scope.
+
+`modifiedSince`/change-log use is optional and prerequisite-bound. Current evidence shows change logging disabled and failure honesty differs by resource; Product delta may look like an empty/no-record result when the prerequisite is absent.
+
+Therefore no delta result is accepted as completeness evidence until source change-log coverage is independently established. Even when enabled, the documented short retention window prevents delta from becoming indefinite recovery/history authority.
+
+B3 does not require enabling `LOGTABOPER`; D7 owns cadence, checkpoints and recovery mechanics.
+
+Provider-specific page origin, `hasMore`, short-page, 404-as-end and date-format quirks remain adapter-local.
+
+---
+
+## 11. Native order observation and precedence
+
+The native business-order identity remains:
 
 ```text
 SourceInstance + native NUNOTA
 ```
 
-No synthetic `MPCOrder` alias is introduced merely to normalize Sankhya.
+No synthetic `MPCOrder` identity is introduced.
 
-The current REST order enumeration is usable for bounded company/window observation but its documented point filters were empirically unreliable for existing orders.
+Current REST order enumeration is useful for bounded discovery/observation but its documented point filters were empirically unreliable in both sandbox and production. The sanctioned `CabecalhoNota` read by NUNOTA is therefore the current authoritative point/reread surface for consequential native-order state.
 
-Therefore the current authoritative point/reread surface for the consequential native-order state is the sanctioned `CabecalhoNota` entity read by NUNOTA, with minimum required fields.
+**Precedence rule:** when a bounded enumeration observation and the authoritative point reread disagree for a consequential decision, the point reread governs the current native state and the divergence remains explicit evidence. The two surfaces are not treated as competing authorities.
 
-This is an adapter decision, not permission for business contexts to read `CabecalhoNota` or other provider entity vocabulary directly.
+Raw `STATUSNOTA`/`PENDENTE` vocabulary remains adapter-local.
 
-### 10.2 Confirmation and pendency are distinct facts
+Measured Sankhya facts include created/unconfirmed (`A`), confirmed (`L`) and orthogonal pendency combinations. MPC does **not** acquire a universal `Confirmation` lifecycle stage.
 
-Measured provider semantics establish:
+The provider-independent Materialization meaning is:
 
-```text
-STATUSNOTA='A' → created / unconfirmed
-STATUSNOTA='L' → confirmed
-```
+> **the native business order has reached the externally required state sufficient for the next claimed materialization progression.**
 
-while `PENDENTE` is orthogonal fulfillment/billing pendency. Confirmed + pending combinations are real.
+For the current Sankhya binding, `CACSP.confirmarNota` and `A → L` are the adapter-local realization of that requirement.
 
-The adapter therefore must not collapse:
-
-```text
-created
-confirmed
-pending/fulfilled
-fiscalized
-```
-
-into a single boolean lifecycle.
-
-Raw status letters remain provider-local; Materialization consumes semantic evidence such as native order exists / confirmation established / remaining materialization pendency.
-
-### 10.3 `CACSP.confirmarNota`
-
-The current official public reference does not document a confirmation operation, but the provider-native service `CACSP.confirmarNota` was empirically established through the sanctioned MGECOM Gateway in sandbox and production:
-
-- requests targeted the caller-known NUNOTA;
-- a missing SourceInstance-required carrier produced a clean provider/business-rule rejection without state change;
-- after satisfying that prerequisite, reread proved `A → L` convergence;
-- OAuth/Bearer MGECOM transport succeeded;
-- no direct database/status mutation was used.
-
-Therefore current Integration Support for confirmation is **SUPPORTED in the observed SourceInstance/runtime**, while the documentation gap remains provider evidence/reopen risk rather than reason to pretend the operation is officially documented.
-
-Confirmation errors can represent business/provider prerequisites, rejection, pending/release behavior or ambiguity; transport success is not the confirmation claim. Authoritative reread owns convergence.
-
-No claim is made that every future Sankhya environment/version supports this undocumented service identically; SourceInstance capability must remain re-verifiable.
+`CACSP.confirmarNota` remains officially undocumented but empirically established through MGECOM in sandbox and production, including clean rejection on a custom prerequisite and authoritative reread after success.
 
 ---
 
-## 11. Customer/partner prerequisite
+## 12. Native customer/partner prerequisite
 
-Current e-commerce orders prove that native materialization uses real distinct customer/partner references rather than one generic marketplace partner.
+Current e-commerce evidence proves that native orders use real distinct customer/partner records, not one generic Mercado Livre partner.
 
-B3 therefore requires a bounded native-customer prerequisite contract:
+B3 therefore requires a bounded Materialization prerequisite, not a new Customer Master domain:
 
-1. Marketplace Sales supplies the marketplace sale/buyer facts legitimately required for materialization;
-2. D4 may use sanctioned Sankhya customer lookup/create/update capability where required;
-3. Materialization must establish a source-native partner reference sufficient for the native order before consequential order creation;
-4. raw buyer PII is minimized to the fields genuinely required by Sankhya/business/fiscal processing;
-5. native customer/partner identity remains external/source-qualified; MPC does not create a Customer Master domain or infer canonical customer identity from mutable names/emails/documents by convenience.
+1. Marketplace Sales supplies only buyer facts legitimately required for the sale/materialization purpose.
+2. D4 resolves the source-native partner using sanctioned customer surfaces.
+3. Matching must fail honest on none/multiple/ambiguous candidates; mutable names/emails are not silently treated as canonical identity.
+4. Only minimum PII needed for business/fiscal processing crosses the boundary and is retained proportionately.
+5. A source-native partner reference must be established before consequential order creation.
+6. **Any native customer create or update is itself a consequential external effect** and is governed by the full external-effect contract in §18: explicit correlation anchor, duplicate protection, no blind retry after ambiguous possible acceptance, authoritative reread, auditable outcome and minimum PII.
+7. Duplicate or ambiguous partner resolution becomes explicit exception work, never guessed matching.
 
-Exact create-vs-match policy and required buyer fields must be proven against the selected marketplace/business-system lane before D8. Duplicate/ambiguous native customer correspondence is explicit exception work rather than silent guessed matching.
+G2 closes the architecture contract for matching/create/update semantics and the minimum safe source-native path. The first real consequential customer write may be proven in D8 when needed; B3 must not defer discovering the matching/duplicate semantics until after architecture acceptance.
 
 ---
 
-## 12. Business Order Intent materialization
+## 13. Business Order Intent materialization
 
-### 12.1 Semantic contract
-
-Materialization owns the MPC intent and convergence meaning:
+### 13.1 Provider-independent semantic contract
 
 ```text
 Business Order Intent
   + Organization
   + SourceInstance
-  + canonical marketplace Sale context
+  + canonical Marketplace Sale context
   + transaction-specific Selling Entity attribution
-  + required product/quantity/customer/materialization facts
+  + required product / quantity / customer / materialization facts
 → attempt native materialization
 → source-qualified native business-order result(s)
 → authoritative convergence / rejection / pending / ambiguity
 ```
 
-The domain does **not** own Sankhya TOPs, series, TIPMOV, CACSP operations, NUNOTA status letters or TGFVAR.
+The domain does not own TOPs, series, TIPMOV, CACSP, NUNOTA letters or TGFVAR.
 
-A Business Order Intent may require provider-native intermediate artifacts internally. Their number and sequence are adapter concerns and do not become configurable MPC workflow steps.
+Provider-native intermediate artifacts may exist internally. Their number and sequence are adapter concerns and do not become configurable MPC workflow steps.
 
-### 12.2 Selected current Metal Nobre e-commerce binding
+### 13.2 Current Metal Nobre e-commerce binding
 
-Production evidence establishes the current e-commerce lane:
+Production evidence establishes:
 
 ```text
 create native e-commerce order
-  current binding: TOP 313
-  current order series: PA
-  current marketplace discriminator for Mercado Livre: CODTIPVENDA 27
-→ confirm native order
+  current provider binding: TOP 313
+  order series: PA
+  Mercado Livre discriminator in this SourceInstance: CODTIPVENDA 27
+→ satisfy source-required progression state
+  current Sankhya realization: CACSP.confirmarNota / A→L
 → authoritative reread
 → native business order converged
 ```
 
-Material facts of current TOP 313 include order movement + reservation/financial behavior under the currently effective, version-qualified TOP configuration.
+TOP 313 is e-commerce generally, not Mercado Livre identity. Multiple e-commerce negotiation types exist on the same TOP.
 
-**These values are a time-bound SourceInstance binding, not MPC semantics.**
+The current TOP has provider-native reservation/financial effects. Those are binding facts, not MPC policy.
 
-TOP 313 is e-commerce generally, not Mercado Livre. Other e-commerce negotiation types exist on the same TOP. The Marketplace Sales/Installation context selects the correct marketplace-specific binding evidence; the adapter does not infer provider identity from TOP alone.
+### 13.3 Creation surface
 
-### 12.3 Creation surface
+For the selected current binding, `CACSP.incluirNota` is the proven MGECOM creation surface. The newer REST `POST /v1/vendas/pedidos` remains provider-conditioned because its required native model setup is unresolved; B3 does not prefer it merely because it is REST.
 
-For the selected current SourceInstance binding, `CACSP.incluirNota` is the proven sanctioned MGECOM creation surface and can express the real native operation without requiring the currently unresolved REST `notaModelo` setup.
+Measured partial-update behavior of `CACSP.incluirNota` is not generalized into an arbitrary patch API.
 
-The v1 `POST /v1/vendas/pedidos` capability remains provider-conditioned rather than globally rejected: it may be usable with a correctly configured native model, but B3 does not prefer it merely because it is newer REST if it cannot currently satisfy the selected binding correctly.
+### 13.4 Required input binding — not a knob bag
 
-`CACSP.incluirNota` partial update behavior was also measured, but B3 does not generalize this into an arbitrary provider patch API. Only consumer-required sanctioned update use is admitted.
-
-### 12.4 Required input binding, not a bag of knobs
-
-Current documents expose varying company/vendor/nature/carrier/customer values. The target MUST NOT turn every observed field into a global config setting.
-
-For each selected materialization operation, the adapter binding includes only values/derivations required to perform that operation correctly, sourced explicitly from one of:
+For each selected operation, only values actually required for correct execution are bound, sourced explicitly from:
 
 - stable SourceInstance configuration;
 - current domain-owned intent/context;
 - externally governed/provider-derived prerequisite/default.
 
-A binding value never becomes business policy merely because Sankhya requires it.
+Observed variation in vendor, nature, carrier, partner or other fields does not justify one global setting per field.
 
 ---
 
-## 13. SourceInstance binding validation and configuration drift
+## 14. Binding validation and hidden SourceInstance rules
 
-Current `TipoOperacao` evidence is version-qualified by `DHALTER`; `CODTIPOPER` alone is not eternal meaning.
+`TipoOperacao` is version-qualified by `DHALTER`; `CODTIPOPER` alone is not eternal meaning.
 
-Sanctioned reads expose material native properties including movement class, stock effect, financial effect, pendency/lot behavior, fiscal-model posture, activity and version/effective timestamp.
+Provider-declared properties available through sanctioned configuration reads include, where material:
 
-Therefore a consequential binding MUST NOT mean only:
-
-```text
-orderTop = 313
-invoiceTop = 306
-```
-
-It must be able to establish that the referenced current provider configuration still has the properties on which the selected integration contract depends.
-
-For the current e-commerce lane this includes, where material to the consumer claim, evidence such as:
-
-- order vs fiscal movement role;
-- reservation vs write-down effect;
-- financial generation/reversal posture;
-- confirmation/provider prerequisites;
+- movement role;
+- stock effect;
+- financial posture;
+- pendency posture;
 - fiscal-model posture;
-- active/current version.
+- active/effective version.
 
-If the referenced provider operation/configuration drifts so the expected properties are no longer established, the binding becomes invalid/unknown and consequential execution fails closed until re-adjudicated/reconfigured.
+A consequential binding therefore cannot mean only `orderTop=313` / `invoiceTop=306`; provider-declared assumptions material to the contract must still be established.
 
-B3 freezes this **semantic validation obligation**, not its runtime polling/cache mechanism. D7 decides when/how configuration is revalidated and cached.
+However, independent review established an essential limit: provider-declared configuration is **not a complete description of SourceInstance behavior**. Custom database triggers, liberação/approval rules and procedural customizations may impose requirements that are not exposed by the sanctioned configuration surface and may even contradict a provider-declared flag.
+
+Therefore:
+
+1. binding validation detects observable provider-configuration drift;
+2. it is **necessary but never sufficient** for a consequential effect;
+3. it MUST NOT claim to pre-validate all confirmation/provider/customization prerequisites;
+4. hidden/unexposed SourceInstance rules remain explicit execution-time uncertainty;
+5. consequential execution remains fail-closed under provider rejection/pending/ambiguity even after a binding validates;
+6. successful validation is never interpreted as a prediction of write success.
+
+D7 later decides validation cadence/cache mechanics.
 
 ---
 
-## 14. Invoicing Intent materialization
+## 15. Invoicing Intent materialization
 
-### 14.1 Semantic contract
+Provider-independent contract:
 
 ```text
 Invoicing Intent
-  + readiness-gated native business-order result
-  + current Fulfillment-owned physical-readiness/conference meaning
+  + native business-order result in the source-required progression state
+  + Fulfillment-owned physical readiness/conference meaning
   + required provider/business-system prerequisites
 → sanctioned native fiscal progression
-→ source-qualified fiscal/document result
+→ source-qualified fiscal result
 → authoritative reread + origin/result correlation
 → converged / rejected / pending / ambiguous
 ```
 
-Physical readiness remains Fulfillment authority. Materialization never invoices merely because a provider order exists.
+Physical readiness remains Fulfillment authority. Materialization does not invoice merely because a native order exists.
 
-### 14.2 Current e-commerce binding evidence
-
-Production history proves the current SourceInstance e-commerce progression:
+Current SourceInstance production history proves the e-commerce result topology:
 
 ```text
-TOP 313 native order
-  → TOP 306 native fiscal result
+TOP 313 native order → TOP 306 native fiscal result
 ```
 
-with distinct native NUNOTAs and line/quantity correlation.
+with distinct native identities and line/quantity correlation.
 
-The current TOP 306 configuration is fiscal/write-down shaped and its current document examples carry fiscal numbering/status evidence. Exact TOP/series/config values remain SourceInstance-local.
+`SelecaoDocumentoSP.faturar` is the selected sanctioned progression surface. It is documented, OAuth/Bearer-compatible and empirically exercised in production on a non-fiscal transformation; existing native history proves 313→306 fiscal results/correlation.
 
-### 14.3 Effect surface
-
-`SelecaoDocumentoSP.faturar` is the selected sanctioned transform/invoicing surface:
-
-- documented to require an eligible confirmed source document and provider configuration;
-- empirically proven with OAuth/Bearer in production on a non-fiscal order→order transformation;
-- existing real SourceInstance evidence proves 313→306 order→fiscal results and TGFVAR correlation;
-- partial/quantity-level correlation is representable by provider-native relation evidence.
-
-The final selected-lane **controlled fiscal write** remains a D8 effect proof because executing a production fiscal document has materially higher irreversible/legal cost than the architectural signal needed in B3. B3 does not claim D8 has passed.
-
-Whether the generated 306 requires a separately visible post-create confirmation transition is not inferred from steady-state history; fiscal convergence is proven by the authoritative native fiscal reread/result state rather than by guessing internal provider steps.
+The first controlled real 313→306 fiscal write remains D8 proof because it is an irreversible/legal effect whose architectural contract is already grounded.
 
 ---
 
-## 15. Native result correlation
+## 16. Native result correlation
 
-The adapter preserves source-native correlation without creating an MPC universal provider graph.
+D4 preserves source-native correlation without creating a generic provider graph.
 
-Current supported surfaces include:
-
-- native fiscal result carrying source-order correlation where exposed;
-- sanctioned provider relation entity `CompraVendavariosPedido` / TGFVAR semantics for origin/result line and `QTDATENDIDA` quantity correlation.
+Current Sankhya evidence includes native result correlation and `CompraVendavariosPedido`/TGFVAR line + `QTDATENDIDA` relation evidence.
 
 Requirements:
 
-1. original order identity and result document identity remain distinct source-qualified references;
-2. 0..N/partial result relationships remain representable when the provider exposes them;
-3. item/quantity scope is preserved when material;
-4. provider relation resources remain protocol/evidence, not MPC entities;
-5. a 2xx transform response alone is not convergence.
+- origin and result identities remain distinct source-qualified references;
+- 0..N/partial results remain representable when the source exposes them;
+- line/quantity granularity is preserved where material;
+- provider relation resources remain adapter evidence, not MPC entities;
+- 2xx transform response is not convergence.
 
-Commercial Economics and Post-Sale may consume the resulting Materialization-owned interpretation/evidence through accepted semantic boundaries; they do not read TGFVAR directly.
+Commercial Economics/Post-Sale consume Materialization-owned interpretation through semantic boundaries; they do not read TGFVAR directly.
 
 ---
 
-## 16. Pre-invoice commercial reversal vs post-invoice fiscal return
+## 17. Pre-invoice commercial reversal vs post-invoice fiscal return
 
-Production evidence establishes a current SourceInstance e-commerce branch in which uninvoiced TOP-313 orders correlate to TOP-307 results.
+Current SourceInstance history proves an alternative branch in which uninvoiced TOP-313 orders correlate to TOP-307 results.
 
-Observed semantics:
+Known:
 
-- the 307 results originate from uninvoiced 313 orders;
-- they reverse commercial/financial pendency without a stock write-down;
-- no observed 307 originated from a 306 fiscal result.
+- observed 307s originate from uninvoiced 313 orders;
+- 307 reverses commercial/financial posture and has no stock write-down;
+- no observed 307 originates from a 306 fiscal result;
+- 313→306 and 313→307 are alternative observed result branches.
 
 Therefore:
 
 > **Pre-invoice native commercial reversal is not the same business-system consequence as post-invoice fiscal return/reversal.**
 
-B3 may expose/translate the observed native reversal result to the consuming Post-Sale/Materialization semantics, but the command that produces the 307-class result is **not yet proven** and MUST NOT be invented by equating it with another cancel endpoint.
+Unknown/deferred:
 
-Current actuation classification:
+- the sanctioned write command that produces the observed 307-class consequence;
+- whether that reversal releases the inventory commitment/reservation created by the originating order;
+- the post-invoice fiscal-return/reversal path.
 
-- observed pre-invoice reversal result: supported as read/correlation evidence;
-- write/command to produce the same consequence: Unknown / external-required until proven;
-- post-invoice fiscal return/reversal path: Unknown in the observed e-commerce history.
+Availability and Post-Sale MUST NOT assume either reservation-release outcome from the current evidence.
 
-This does not block Product 1.0 from coordinating post-sale work: unsupported business-system consequences remain explicit external-required Work rather than silent success. A later real requirement/controlled proof may extend support without creating a generic reversal model.
-
----
-
-## 17. External-effect semantics for Sankhya writes
-
-Every consequential write admitted by the selected binding obeys D3/D4-B1:
-
-1. target Organization + SourceInstance is explicit;
-2. Materialization/Post-Sale domain intent/correlation anchor is explicit;
-3. current required binding/provider prerequisites are established;
-4. the request is scoped only to the intended native effect;
-5. response is classified no stronger than provider evidence permits;
-6. accepted/rejected/pending/ambiguous remain distinguishable where reachable;
-7. authoritative reread/correlation follows consequential acceptance;
-8. timeout/connection loss after possible acceptance is **not blindly retried**;
-9. native business-rule/custom-trigger/liberação failures become translated provider requirement/rejection evidence, not raw ORA/provider implementation leakage to business domains;
-10. a provider write never bypasses current Readiness, Fulfillment, Governance or other domain validity merely because D4 supports the protocol.
-
-Measured confirmation proved that SourceInstance custom rules can reject a write after creation succeeded. Therefore validating only the creation payload is insufficient evidence for full materialization capability.
+These unknowns do **not** block B3 whole acceptance while reversal actuation remains explicit `external-required`. They become proof gates before MPC claims automated pre-invoice reversal or automated post-invoice fiscal return.
 
 ---
 
-## 18. Current Product 1.0 Sankhya proof lane
+## 18. External-effect semantics
 
-The current first business-system proof context is deliberately narrow and time-bound.
+Every consequential business-system write admitted by the selected contract — including native customer create/update, order create/update, source-required order progression, invoicing and any later reversal effect — obeys:
 
-### 18.1 Read/fact lane
+1. target Organization + SourceInstance explicit;
+2. owning domain intent/correlation anchor explicit;
+3. current known provider/binding prerequisites established no stronger than evidence permits;
+4. request scoped only to intended effect;
+5. response classified no stronger than provider evidence;
+6. accepted/rejected/pending/ambiguous preserved where reachable;
+7. authoritative reread/correlation after possible acceptance;
+8. timeout/connection loss after possible acceptance is never blindly retried;
+9. duplicate/ambiguity conditions become explicit exception work;
+10. native business-rule/custom-trigger/liberação failures are translated as provider requirement/rejection evidence rather than raw provider implementation leakage to business domains;
+11. protocol support never bypasses Readiness, Availability, Fulfillment, Governance or other owner validity;
+12. provider PII is minimized.
 
-- Sankhya production SourceInstance via sanctioned Gateway;
-- Product native key = CODPROD;
-- current Product/identifier facts as measured;
-- company/location external refs explicitly qualified;
-- inventory via dedicated net surface and minimum entity decomposition where the consumer needs reservation/control detail;
-- cost via sanctioned `Custo` observations;
-- expected tax subject to the explicit Tax Evidence Gate.
+Measured confirmation already proves that creation success does not establish full materialization capability and that hidden SourceInstance rules can reject later progression.
 
-### 18.2 Marketplace business-order lane
+---
 
-Current Metal Nobre production evidence:
+## 19. Current Product 1.0 proof lane
+
+### Read/fact lane
+
+- Sankhya production SourceInstance through sanctioned Gateway;
+- Product identity/identifier evidence as measured;
+- qualified company/location inventory evidence;
+- dedicated net stock plus bounded entity decomposition when required;
+- cost as `Custo` observations;
+- expected tax subject to G1.
+
+### Marketplace business-order lane
 
 ```text
 Marketplace Sale
-  → e-commerce materialization binding
-  → native TOP-313 order
-  → confirmation
-  → authoritative reread
+→ bounded Metal Nobre e-commerce binding
+→ native TOP-313 order
+→ current Sankhya source-required progression (confirmation)
+→ authoritative reread
+→ native business-order convergence
 ```
 
-For Mercado Livre, current SourceInstance evidence distinguishes that lane with negotiation-type binding `27`; TOP 313 alone is not the marketplace identity.
+`CODTIPVENDA=27` is a current SourceInstance discriminator for Mercado Livre; neither it nor TOP 313 becomes marketplace semantics.
 
-### 18.3 Fiscal lane
+### Fiscal lane
 
 ```text
-confirmed native e-commerce order
-  + Fulfillment readiness
-  → Invoicing Intent
-  → sanctioned faturamento
-  → native TOP-306 fiscal result
-  → authoritative reread + correlation
+native business order in required source state
++ Fulfillment readiness
+→ Invoicing Intent
+→ sanctioned faturamento
+→ native TOP-306 fiscal result
+→ authoritative reread + correlation
 ```
 
-The production fiscal write itself remains D8 controlled proof; existing production history proves the native result topology/correlation.
+First actual selected-lane fiscal effect remains D8.
 
-### 18.4 Inventory-control support fence
+### Inventory-control fence
 
-Current observed Mercado Livre sold population is uncontrolled. Controlled marketplace products are **not** included in the currently claimed automatic Availability/Materialization proof lane until partition business semantics are established.
+Current observed ML sold lane is uncontrolled. Automatic controlled-product marketplace Availability/Materialization remains unclaimed until satisfiability/interchangeability and selection timing are proven.
 
 ---
 
-## 19. Explicit residual gates and defers
+## 20. Residual gates and defers
 
-### Gate G1 — Expected Tax
+### G1 — Expected Tax — **B3 CLOSURE GATE**
 
-**B3 closure gate.** Prove the sanctioned expected-tax calculation is usable and semantically sufficient for the selected production SourceInstance configuration, or return `STOP / SPLIT PREREQUISITE` for L0 Expected Economics. Do not copy tax rules through Oracle as fallback.
+Close the SourceInstance configuration prerequisite and perform a non-persisting calculation re-probe proving the selected sanctioned path is usable and semantically sufficient for L0 Expected Economics.
 
-### Gate G2 — Native customer/partner prerequisite
+If, after correct SourceInstance configuration, the sanctioned calculation remains materially insufficient, return `STOP / SPLIT PREREQUISITE`. Do not copy provider tax rules or use Oracle as fallback.
 
-**B3/D8 proof obligation.** Establish the concrete minimal source-native customer resolution/materialization path for a real marketplace sale, including duplicate/ambiguity and PII-minimization behavior. Customer API existence alone is not convergence proof.
+### G2 — Native customer/partner — **B3 CLOSURE GATE**
 
-### Gate G3 — First selected-lane fiscal effect
+Establish the concrete minimal safe path for:
 
-**DEFER SAFELY → D8.** Controlled actual 313→306 external effect plus authoritative fiscal reread/correlation. The command/topology is sufficiently grounded for architecture; D8 proves the irreversible effect.
+- buyer evidence required from Marketplace Sales;
+- source-native partner lookup/matching;
+- uniqueness/duplicate/ambiguity behavior;
+- minimum required PII;
+- when create/update is necessary;
+- authoritative reread/correlation for customer writes;
+- no-blind-retry behavior after ambiguous possible acceptance.
 
-### Gate G4 — Controlled-product marketplace lane
+Customer API existence alone is insufficient. B3 closes the contract; first consequential customer write may be controlled in D8 when required.
 
-**DEFER SAFELY / not a current Product 1.0 proof lane.** Before automatic marketplace availability/materialization for a controlled Product, establish business interchangeability/partition-feasibility and when a concrete partition must be selected. No adapter-chosen lot and no aggregate guess.
+### G3 — First selected-lane fiscal effect — **DEFER SAFELY → D8**
 
-### Gate G5 — Post-invoice business-system return/reversal
+Controlled actual 313→306 effect plus authoritative fiscal reread/correlation.
 
-**DEFER SAFELY as explicit external-required consequence unless selected Product 1.0 golden flow demands automated actuation.** Current observed e-commerce history does not establish the fiscal-return path or command. Post-Sale remains capable of explicit Work/closure coordination without pretending automated business-system reversal support.
+### G4 — Controlled-product marketplace lane — **DEFER SAFELY**
+
+Before automated controlled-product operation is claimed, establish satisfiability/interchangeability and selection timing. No adapter-chosen `CONTROLE`, no aggregate guess.
+
+### G5 — Post-invoice fiscal return — **DEFER SAFELY / EXTERNAL-REQUIRED**
+
+Current e-commerce history does not establish the path/command. Post-Sale can coordinate explicit work without pretending automated support.
+
+### G6 — Pre-invoice reversal inventory commitment fate — **DEFER WITH REVERSAL CLAIM**
+
+Whether the observed 307 branch releases the originating reservation remains Unknown. This does not block B3 while reversal actuation is external-required; it must close before automated reversal/convergence is claimed.
 
 ### D7 defers
 
-- token refresh scheduling/locking;
-- polling/full/delta cadence;
-- cursor/checkpoint storage;
-- rate/concurrency/backoff;
-- cache of provider configuration/binding validation;
-- worker/process/deployment topology.
-
-None of these defers moves business authority.
+Token refresh mechanics; full/delta cadence; checkpoints/cursors; rate/concurrency/backoff; configuration-validation cache/cadence; worker/process/deployment topology.
 
 ---
 
-## 20. YAGNI / explicit non-goals
+## 21. YAGNI / explicit non-goals
 
-B3 MUST NOT introduce merely for abstraction or anticipated providers:
+B3 MUST NOT introduce:
 
-- generic `ERP` business entity;
-- universal `ERPAdapter` interface containing every possible ERP operation;
-- generic provider/resource/operation/capability graph;
-- plugin registry/factory/self-registration framework;
+- generic ERP business entity or universal ERP ontology;
+- universal `ERPAdapter` containing every possible operation;
+- generic provider/resource/capability graph;
+- plugin registry/factory framework for speculative providers;
 - arbitrary workflow/materialization DSL;
-- MPC `TOP`, `NUNOTA`, `TipoNegociacao`, `TGFVAR`, `CONTROLE`, Sankhya status or Sankhya document entity;
-- universal `Lot`/Batch/Serial entity from `CONTROLE`;
-- replicated Sankhya product/stock/cost/tax database mirror;
-- arbitrary SQL/DbExplorer access disguised as Gateway integration;
-- duplicated tax engine from Sankhya rule tables;
-- support for every Metal Nobre non-marketplace commercial process;
+- MPC TOP/NUNOTA/TGFVAR/CONTROLE/Sankhya-status entities;
+- universal Lot/Batch/Serial model derived from `CONTROLE`;
+- Sankhya product/stock/cost/tax database mirror;
+- arbitrary SQL/DbExplorer behavior through `loadRecords.criteria` or another Gateway route;
+- duplicated Sankhya tax engine;
+- support for every Metal Nobre non-marketplace process;
 - speculative TOTVS/Bling adapters;
-- claim that every Sankhya customer uses the same TOP/document workflow;
-- family-level inference of product control semantics;
-- blanket configuration knob for every provider field seen in historical documents.
+- family-level inference of control semantics;
+- one config knob for every historical provider field.
 
-The store-process 14→303→305 lane is useful as variability/counterexample evidence; it is not a Product 1.0 MPC workflow requirement merely because it exists in the SourceInstance.
+The observed store lane `14→303→305` remains variability/counterexample evidence, not a Product 1.0 MPC workflow requirement.
 
 ---
 
-## 21. Provider-independent replacement test
+## 22. Provider-independent replacement test
 
-A future accepted business system may replace Sankhya for the same organization or be used by another Organization.
+These MPC meanings should remain valid if a future accepted business system genuinely supplies the same semantics:
 
-The following MPC meanings should survive unchanged where the future system genuinely supplies the same semantics:
-
-- source-qualified Product reference;
-- Product/identifier facts for Readiness;
-- qualified inventory observations and honest partition/granularity semantics;
+- source-qualified Product facts;
+- inventory evidence sufficient for Sellable Availability derivation;
 - Cost Observations;
 - expected/realized fiscal evidence requirements;
 - Business Order Intent;
-- native business-order convergence;
+- native business-order convergence on the externally required state;
 - Invoicing Intent;
 - native fiscal convergence;
-- native origin/result line/quantity correlation;
-- explicit commercial reversal vs fiscal-return consequence distinction;
+- origin/result line/quantity correlation;
+- pre-invoice commercial reversal distinct from post-invoice fiscal consequence;
 - honest unknown/unavailable;
 - authoritative reread;
-- no blind retry of ambiguous effects.
+- no blind retry after ambiguous effect.
 
-The following Sankhya pieces should be replaceable without changing those business meanings:
+Replaceable Sankhya-local pieces include TOP/versioning, NUNOTA, series, `STATUSNOTA`/`PENDENTE`, CACSP/SelecaoDocumentoSP, TGFVAR, `TIPCONTEST`/`CONTROLE`, auth/Gateway, triggers/liberações and all Metal Nobre binding values.
 
-- TOPs and their versioning;
-- NUNOTA;
-- series;
-- `STATUSNOTA` / `PENDENTE` provider vocabulary;
-- `CACSP` / `SelecaoDocumentoSP` services;
-- TGFVAR/provider relation entities;
-- `TIPCONTEST` / `CONTROLE` representation;
-- Sankhya auth/Gateway;
-- customer-specific triggers/liberações;
-- all Metal Nobre binding values.
+If a future real system reveals genuinely different business meaning, reopen the responsible semantic decision rather than contort it into a false common ERP model.
 
-If adding another concrete system requires changing an accepted MPC semantic because the business meaning is genuinely different, reopen the responsible semantic decision. Do not contort the new system into a false common ERP model.
-
-Marketplace Installation and business-system SourceInstance remain distinct concepts; symmetry between adapter families does not justify a generic `IntegrationInstance` identity.
+Marketplace Installation and business-system SourceInstance remain distinct; no generic `IntegrationInstance` is justified.
 
 ---
 
-## 22. Proposed B3 outcome
+## 23. Proposed B3 outcome after residual gates
 
-Subject to independent review and operator adjudication, the proposed B3 decision is:
+Subject to G1/G2 evidence and operator ratification:
 
-### `CURRENT STRUCTURE CONFIRMED` — business-system boundary
-
-The accepted D1/D2/D3/D4-B1 structure remains sound:
+### `CURRENT STRUCTURE CONFIRMED`
 
 - consumer-owned semantic ports;
-- SourceInstance-qualified external evidence/results;
+- SourceInstance-qualified external facts/results;
 - concrete provider adapter;
 - no Integration business domain;
 - no generic ERP/workflow framework.
 
-### `CURRENT STRUCTURE CONFIRMED` — sanctioned Sankhya target
+### `CURRENT STRUCTURE CONFIRMED` — Sankhya target
 
-The sanctioned Gateway/API surface is sufficient to define the current Product 1.0 fact/materialization contract without Direct Oracle fallback, subject to explicit capability gates rather than invented support.
+The sanctioned Gateway/API surface is sufficient to define the current Product 1.0 business-system contract without Direct Oracle fallback, subject to honest capability gates.
 
 ### `DEFER SAFELY`
 
-- runtime/delta/cursor/concurrency mechanics → D7;
+- D7 runtime mechanics;
 - first irreversible selected-lane fiscal write → D8;
-- controlled-product marketplace automation until real evidence exists;
-- unproven post-invoice fiscal-return actuation unless a selected golden flow makes it mandatory.
+- controlled-product marketplace automation;
+- automated pre-invoice reversal until reservation-fate/command proof;
+- post-invoice fiscal return unless a selected golden flow requires automated actuation.
 
-### `STOP / SPLIT PREREQUISITE` trigger
+### `STOP / SPLIT PREREQUISITE`
 
-If the expected-tax gate, selected native customer prerequisite, or another materially required Product 1.0 claim cannot be satisfied correctly through sanctioned SourceInstance operations, stop/re-adjudicate that capability. Direct Oracle/database is never admitted implicitly.
+If G1, G2 or another materially required Product 1.0 claim cannot be satisfied correctly through sanctioned SourceInstance operations, stop and re-adjudicate that capability. Direct Oracle/database is never admitted implicitly.
 
-No D0/D1/D2/D3 reopen is proposed now.
+No D0/D1/D2/D3/B1/B2 reopen is proposed now.
 
 ---
 
-## 23. Proof strategy before implementation
+## 24. Proof state
 
-B3 architecture claims are falsified/proven proportionally:
+Already evidenced proportionately:
 
-### Already evidenced
-
-- current OAuth/SourceInstance environment binding behavior;
-- Product native key and identifier limitations;
-- company/location stock granularity;
-- REST-net vs reservation decomposition;
-- controlled-product partition evidence;
-- cost entity observations;
+- OAuth/environment binding and short token TTL;
+- Product native key/identifier limits;
+- company/location/control stock granularity;
+- REST net formula, including production re-measurement;
+- negative net-stock possibility;
+- reservation decomposition;
+- controlled-product/source decomposition evidence;
+- cost observations;
 - change-log prerequisite/failure-honesty behavior;
-- native order point-read fallback;
+- REST-order point-filter failure and bounded entity reread fallback, including production re-measurement;
 - `CACSP.incluirNota` creation;
-- `CACSP.confirmarNota` confirmation + rejection + reread;
+- `CACSP.confirmarNota` success/rejection + reread;
 - MGECOM OAuth compatibility;
-- `SelecaoDocumentoSP.faturar` effect capability;
-- origin/result line/quantity correlation;
-- production e-commerce topology 313→306;
-- observed 313→307 pre-invoice reversal branch;
-- binding-property/version reads;
+- `SelecaoDocumentoSP.faturar` capability;
+- source-native origin/result line/quantity correlation;
+- production e-commerce topology `313→306`;
+- observed `313→307` pre-invoice branch;
+- binding configuration/version reads;
 - current control-free marketplace sold lane;
 - production-vs-sandbox materialization divergence.
 
-### Still required for the named claim
+Still required for B3 whole acceptance:
 
-- G1 expected-tax selected SourceInstance proof;
-- G2 concrete customer/partner prerequisite proof;
-- D8 controlled selected-lane fiscal effect;
-- any later claim of automated controlled-product marketplace support;
-- any later claim of automated post-invoice business-system fiscal return.
+- G1 Expected Tax;
+- G2 native customer/partner contract.
 
-A green mock/test cannot substitute for the real external dependency claim.
+D8/deferred proofs are not B3 closure blockers unless their capability becomes a claimed B3 normal path.
+
+A mock/test cannot substitute for a real external-dependency claim.
 
 ---
 
-## 24. Reopen triggers
+## 25. Reopen triggers
 
 Reopen only the implicated decision when evidence shows, for example:
 
-- a second real business system cannot implement the accepted consumer meaning without forcing Sankhya-specific semantics into the domain;
-- a selected current Sankhya provider operation disappears/changes materially and sanctioned replacement is not sufficient;
-- SourceInstance binding properties cannot be validated strongly enough to protect consequential execution;
-- a controlled Product enters the marketplace operating scope and its interchangeability/selection semantics cannot fit existing Availability/Fulfillment ownership cleanly;
-- business-system customer correspondence requires a genuinely independent MPC business lifecycle rather than a bounded materialization prerequisite;
-- post-invoice return/reversal becomes a claimed automated normal path and current external-required treatment is insufficient;
-- Product 1.0 requires a business-system fact/effect for which only Direct Oracle/arbitrary SQL could satisfy the current claim;
-- repeated second-provider evidence proves a shared adapter mechanism/abstraction materially reduces total complexity — at that point extract the smallest common mechanism rather than forecasting it now.
+- a second real business system cannot implement accepted consumer meaning without Sankhya semantics leaking into the domain;
+- a selected Sankhya operation disappears/changes materially and no sanctioned replacement is sufficient;
+- provider-declared configuration validation cannot protect even the observable assumptions required by consequential execution;
+- a controlled Product enters marketplace scope and its sellability/selection semantics cannot fit existing Availability/Fulfillment ownership;
+- customer correspondence requires a genuinely independent MPC business lifecycle rather than a bounded Materialization prerequisite;
+- automated post-invoice fiscal return becomes a claimed normal path and external-required handling is insufficient;
+- Product 1.0 requires a fact/effect for which only arbitrary SQL/Direct Oracle could satisfy the claim;
+- second-provider repetition proves a smaller shared technical mechanism materially reduces total complexity.
 
 Do not reopen for naming preference, abstract symmetry or hypothetical providers.
 
 ---
 
-## 25. Independent-review attack surface
-
-Reviewer should reconstruct authority independently and challenge at least:
-
-1. **Sankhya leakage:** Does any proposed domain contract still encode TOP/NUNOTA/CACSP/TGFVAR/CONTROLE semantics by disguise?
-2. **Workflow-engine drift:** Does the SourceInstance binding secretly require a configurable provider step graph? Can the current e-commerce binding remain bounded without supporting the store lane as a generic workflow?
-3. **Future business-system seam:** Does the replacement test actually preserve the domain if a real TOTVS/Bling-like system arrives, without already building a universal ERP abstraction?
-4. **Binding vs policy:** Are provider flags/configuration being misread as MPC business policy?
-5. **Binding drift:** Is version/property validation sufficient as an architecture obligation, or is the proposed binding too weak/too complex?
-6. **Inventory partitions:** Does B3 preserve enough granularity for Availability without inventing a `Lot` entity or incorrectly aggregating partitions?
-7. **Controlled-product defer:** Is it legitimate to keep the first marketplace proof lane control-free, or does D0 require controlled Product support now?
-8. **Tax gate:** Is expected-tax capability correctly classified, or is B3 attempting to close while a material Product 1.0 economics prerequisite is unresolved?
-9. **Customer prerequisite:** Is native partner resolution truly a bounded Materialization prerequisite, or does it expose a missing D1 responsibility?
-10. **Reversal:** Is observed pre-invoice 307 evidence correctly separated from post-invoice fiscal return, and is external-required actuation sufficient for current Product 1.0?
-11. **Point/read authority:** Is sanctioned `loadRecords` use bounded entity access, or has it become an ERP mirror/database abstraction by another name?
-12. **Operational viability:** Do the measured latency/coverage/token facts expose a B3 correctness issue rather than a D7 runtime defer?
-13. **Sandbox divergence:** Does the observed sandbox featurelock vs production success invalidate any current proof claim?
-14. **PII:** Does order/customer acquisition minimize real buyer PII sufficiently for the required materialization/fiscal purpose?
-15. **No hidden Oracle:** Does any gap tempt an arbitrary SQL/DB fallback contrary to accepted B1?
-
-Reviewer findings are evidence, not authority. Any finding that creates a new business requirement or moves authority must return to adjudication rather than entering B3 as a disguised correction.
-
----
-
 ## 26. Candidate disposition
 
-This file exists only to enable fresh independent challenge.
+This file is a disposable design/review surface only.
 
-It MUST be deleted after review/adjudication and before canonical B3 consolidation.
+It MUST be deleted after G1/G2 evidence, final adjudication/operator ratification and before canonical D4-B3 consolidation.
 
-Canonical status remains whatever `docs/engineering/rebaseline/README.md` says. This candidate does not open/accept B3 by existence and does not authorize B4, D5+, implementation, merge or product writes.
+Canonical stage/status remains solely in `docs/engineering/rebaseline/README.md`. This file does not open/accept B3, authorize B4/D5+, authorize implementation, merge or product writes.
