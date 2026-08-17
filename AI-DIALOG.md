@@ -861,3 +861,63 @@ Each write requires explicit operator authorization per repo policy; none is aut
 ### HANDOFF → GPT
 
 Adjudicate: (1) accept/adjust the **PARTIAL** grading and its five listed reasons; (2) accept the measured contracts as the B3 evidence base: CODPROD key, identifier-evidence set with explicit GTIN gap, net-vs-decomposed inventory dual surface, `Custo` cost-observation contract, dual-surface order state semantics with `CabecalhoNota` point fallback, NFe + `CompraVendavariosPedido` correlation pair, faturar-as-documented; (3) decide whether the B3 target contract adopts REST-net or entity-decomposed inventory (or both, per-claim) — that is a design decision, not evidence; (4) adjudicate findings F-B3-1…8 into contract clauses; (5) sequence the operator prerequisites (production credential measurement, LOGTABOPER decision incl. ≤7d window acceptance, Modelo de Notas configuration, controlled-write schedule) and their router consequence — whether B3 opens as a batch now with these as explicit gates, per operator decision. This session did not open B3 and did not alter any authority file.
+
+
+## FABLE — D4-B3 Order Confirmation Prerequisite (2026-08-17)
+
+**Scope:** single prerequisite — establish the sanctioned Sankhya confirmation command surface for API-created sales orders. Not a new B3 sweep. Documentation/community investigation only; **zero Gateway mutations, zero invocations of any confirmation/mutating service** (not even error-shaped probing), no SQL/DbExplorer/Oracle, no order created, no authority/code changed.
+
+- **HEAD measured:** `8ff25b9e69e03f96ac4ed5a9773ae550115b4c69` (matches expected; clean tree except pre-existing untracked `.mnfs/`).
+- **Authority reconfirmed via router:** D0–D3 ACCEPTED; D4-B1+B2 ACCEPTED/CANONICAL; D4-B3 NEXT with evidence gate PARTIAL (previous round); implementation BLOCKED until D9. Full read-order was executed earlier this same session at `4ecae88c`; the only file changed between is `AI-DIALOG.md`.
+- **Method:** (1) current official reference incl. the full `llms.txt` index; (2) Context7 `/websites/developer_sankhya_br_reference`; (3) no read-only Gateway introspection surface exists that could establish service existence without invoking the mutating service — deliberately not attempted; (4) provider community threads used strictly as evidence, never authority.
+
+### CONFIRMATION SURFACE verdict
+
+**NOT ESTABLISHED in the current official reference — this is a documentation gap, with a concrete provider-native candidate: `CACSP.confirmarNota` (MGECOM).**
+
+Two-part finding:
+
+1. **Official reference has no confirmation operation.** Exhaustive negative result across the current official surface:
+   - `llms.txt` (complete index): **no page whose path/title contains `confirma`**;
+   - v1 REST `vendas/pedidos` family: only `POST` (incluir — official text: created **"SEMPRE A CONFIRMAR"**), `PUT` (atualizar — *presupposes* confirmation: "A atualização de um Pedido de Venda já confirmado só é permitida se a TOP … 'Permitir Alteração após Confirmar'"), `POST cancela`. No confirmation endpoint;
+   - legacy-service official docs (`reference/pedidos` family) document the lifecycle **Cadastro (`CACSP.IncluirNota`) → Itens (`CACSP.incluirAlterarItemNota`/`excluirItemNota`) → Status (consulta) → Cancelamento → Faturamento (`SelecaoDocumentoSP.faturar`)** — the confirmation step between *incluir* and *faturar* is simply absent from the documented chain, while *faturar*'s prerequisite explicitly requires it ("O pedido deve estar confirmado no ERP Sankhya-Om");
+   - FAQ: nothing on confirmation; Context7: no `confirmarNota` content indexed.
+2. **Interpretation — gap, not external-required-by-design.** The faturamento prerequisite wording ("confirmado **no ERP** Sankhya-Om") is *state* language, not *channel* language; the official docs nowhere state that confirmation must be performed on an ERP screen. Meanwhile the provider's own ecosystem evidence (below) shows a server confirmation service exists and is invoked by integrators. Honest reading: **until officially documented, the only officially-supported path today is confirmation inside the ERP (Om), and the API-side command exists as a real but undocumented service** — a documentation gap for Sankhya to confirm, not proof of external-only design.
+
+### Candidate command surface registration (evidence-grade: provider community + service-family symmetry; NOT official reference)
+
+| Field | Evidence |
+|---|---|
+| Exact service | `CACSP.confirmarNota` |
+| Module / URL | MGECOM — `{base}/gateway/v1/mgecom/service.sbr?serviceName=CACSP.confirmarNota&outputType=json` |
+| Required inputs (community-evidenced) | `requestBody.nota`: `NUNOTA {"$": <id>}`, `confirmacaoCentralNota: true`, `ehPedidoWeb: false`, `atualizaPrecoItemPedCompra: false` |
+| Required current state | order exists and is unconfirmed ("a confirmar"); confirmed-state vocabulary on reread observed as `STATUSNOTA='L'` in the previous round; the pending-side native vocabulary remains unpinned |
+| Documented effect | confirms the movement; community note: confirmation alone does **not** recalculate taxes/financials |
+| Authorization / business-rule behavior | confirmation executes ERP business rules — community threads show `ContextoRegra` firing at confirmation and an internal `ConfirmacaoNotaHelper.confirmarNota()`; instance customizations (the `TRG_INC_UPD_TGFCAB_METAL` trigger class measured in the previous round) and liberação/alçada-style pendências can plausibly block or pend the outcome — **accepted/rejected/pending must be treated as possible outcomes until observed** |
+| Response / correlation | exact envelope unverified; expected standard service envelope (`status` 1/0 + `statusMessage`); correlation anchor is the caller-known NUNOTA |
+| Authoritative reread | loadRecords `CabecalhoNota` by NUNOTA (`STATUSNOTA`, `PENDENTE`) — proven surface; REST `confirmada` flag via enumeration (REST point filters remain broken per F-B3-3) |
+| OAuth Gateway compatibility | same status as MGECOM generally: bearer-on-mgecom is documented on the official Gateway page but **empirically unproven** (no read-only mgecom service exists to prove it without a write) |
+| Controlled sandbox execution still required? | **YES — mandatory.** Service existence, OAuth-mgecom compatibility, outcome classes (confirmed / rejected-by-rule / pending-liberação), response envelope and reread convergence are all only dischargeable by the already-defined controlled write ladder, now fully named: `POST /v1/vendas/pedidos` (create) → `CACSP.confirmarNota` (confirm) → `SelecaoDocumentoSP.faturar` (invoice), each with authoritative reread |
+
+Also registered for GPT's materialization-contract choice: the official `CACSP.IncluirNota` docs require **`CODVEND`** in the header (plus CODPARC/CODTIPOPER/CODEMP/TIPMOV/etc.), while v1 REST `addpedido` exposes **no vendedor field** — the same asymmetry that blocked the tax-calc API on this instance's vendedor-mandatory trigger. The CACSP surface may therefore be the only include path able to satisfy Metal Nobre's customizations; the v1-REST-vs-CACSP choice for Business Order Intent materialization is a B3 design decision that now has concrete evidence on both sides.
+
+**Explicitly rejected during this round:** the community-shown `EXEC SANKHYA.ENVIACOMANDO` path (database-side execution) — that is Direct Oracle and remains outside target authority; its existence is not evidence for the Gateway contract.
+
+### Production credential note
+
+Not attempted: only the sandbox Gateway credential is available in the environment, and official guidance pairs sandbox credentials exclusively with the sandbox host. Production authentication would require new credential configuration — recorded as absent, **not** a justification for any fallback.
+
+### Remaining unknowns
+
+- whether Sankhya officially documents/supports `CACSP.confirmarNota` (provider-side documentation gap — worth an explicit support/portal question by the operator);
+- empirical existence + OAuth bearer acceptance of the service on this instance (controlled sandbox write);
+- outcome classes under Metal Nobre customizations (vendedor trigger; possible liberação pendências);
+- response envelope / correlation fields;
+- native pending-side status vocabulary (`STATUSNOTA` value for "a confirmar") and cancellation representation (carried from previous round);
+- whether TOP configuration can make API-included orders arrive confirmed (no official evidence found; community says API-created orders "não chegam confirmados").
+
+### HANDOFF → GPT
+
+**Verdict: CONFIRMATION SURFACE = NOT ESTABLISHED (official) / CANDIDATE ESTABLISHED (`CACSP.confirmarNota`, MGECOM, community-evidenced) — documentation gap, not external-only-by-design.**
+
+Adjudicate: (1) whether B3 can proceed to review candidate with the confirmation step expressed as an explicit **PROVIDER-CONDITIONED candidate clause** discharged by the named three-step controlled sandbox write ladder — my recommendation: **proceed**; nothing must be invented to draft the contract, and the write ladder was already a mandatory gate before B3 whole-closure — or (2) STOP/SPLIT if GPT judges an officially-undocumented command too weak to anchor even a conditioned contract clause, in which case the split prerequisite is: operator asks Sankhya support/portal to confirm the sanctioned confirmation command, and/or the controlled sandbox execution is scheduled first. Sequencing between "draft candidate now" and "write proof first" is an operator decision; either way Direct Oracle remains excluded and no confirmation was executed in this round.
