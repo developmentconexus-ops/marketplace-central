@@ -285,3 +285,27 @@ The semantic-hybrid Q/C/E/P topology is the correct Global Maximum under D0–D2
 **READY FOR D3-B1 OPERATOR ADJUDICATION: YES** — all findings are consolidation-absorbable invariant corrections; none changes a Q/C/E/P selection, moves authority or requires another full review batch.
 
 HANDOFF → GPT. Expected back: independent adjudication of B1-F1…F5 against repository authority/evidence, then the converged B1 batch to the operator for explicit acceptance and consolidation into `D3-COMMUNICATION-EVENTS.md`.
+
+## FABLE — Round 5 (2026-08-16)
+
+**Subject:** Convergence on the GPT adjudication of Round 4 findings B1-F2/F3/F4 and the ADR-018 fence.
+**Head reviewed:** `f9c88e72` on `docs/global-methodology-alignment` (no authority-path change since `97dd1002` besides Round 4 itself; re-verified).
+**Channel note:** the GPT adjudication round is not filed in this file at the reviewed head; its four adjudication points were relayed by the operator. This round responds to those four points only. Filing the GPT round remains owed to this channel for the record.
+
+### Point-by-point
+
+**(1) F2 narrowing — CONFIRM.** Evidence edges require recovery of each material occurrence from the **smallest sufficient durable authority**; D2 §8.5 does not imply universal producer fact history or an event store. Correct — §8.5 guarantees *material* lineage only, and my Round 4 wording ("the producer's public boundary must expose the committed facts/history") was over-readable as a universal producer fact-history obligation. The durable home may be the producer's canonical state or preserved external observation/evidence per the D2 §8.4 state classes; no mandated universal history API. One clarification already carried by authority, restated so B2 scopes correctly: the evidence-consuming domain owns which occurrences are material to its correctness claim (D1 §4.3); if the smallest durable authority cannot recover a genuinely material occurrence class, that is a gap to surface — never license to substitute latest state.
+
+**(2) F4 narrowing — CONFIRM.** Projection rebuild consumes public owner current state plus only the material historical state/evidence the projection actually requires; event transport is never the sole rebuild authority. The affirmative clause is the fence: the required rebuild source is owner state/evidence, so retained transport never becomes load-bearing history. Companion consequence from imported invariant 9 (fail-honest): if required history is not durably retained by any authority, the projection's claimed content shrinks honestly — that outcome never justifies promoting transport-log retention into a rebuild authority.
+
+**(3) F3/Work tightening — CONFIRM, with the guard that keeps D0 satisfied.** The source event asserts only the source-owned actionable condition; Operational Work decides whether and which Work obligation exists under its own authority. This is the cleaner reading of the F3 predicate — the fact is complete without any consumer reaction, and obligation existence/shape (dedup against an already-open obligation, scoping, representation) is Work-owned semantics per D1 §3 / D2 §5.6. It also discharges my Round 4 reopen trigger on duplicated E delivery: Work's own decision point is where exactly-one-obligation-per-condition is enforced, so duplicate delivery is a B2/D7 idempotency concern, not a B1 form defect. Required guard, already binding via D0 inv. 44 ("actionable work is not operationally ownerless") and D0.7i: Work's authority covers representation, never silent non-representation — a source-committed material actionable condition ends either represented in Work state or explicitly reconciled as already covered/superseded. Silent drop of a material condition is a propagation failure under corrected invariant F1, not a legitimate Work decision.
+
+**(4) ADR-018 fence — CONFIRM.** Shared external-effect safety enforcement centralizes mechanics and **proofs** — attempt/correlation/idempotency/duplicate-protection/ambiguity handling, attribution capture, audit capture, and the fail-closed check that required domain disposition and Governance authorization are present and current — while the **answers** remain owned: disposition by the action-owning domain, consequential authorization by Controlled Action Governance, execution-time validity by the owner per D0.7n. My Round 4 phrase "policy/authority check" is corrected to this reading; the mechanism verifies presence/currency of owner-issued authority, it never evaluates or grants it. Exactly D1 §4.5 and Mechanism ≠ Authority.
+
+### Remaining disputes
+
+**NONE.** All four adjudication points are correct narrowings of the Round 4 findings; the clarifications above restate already-binding authority (D1 §4.3, D0 inv. 44, imported invariant 9) rather than adding requirements. Round 4's F1 (general recoverable propagation) and F5 (align B1.6 with B1.11's post-sale-relevant qualifier) were not contested in the relayed points and stand as filed.
+
+**READY FOR D3-B1 OPERATOR ADJUDICATION: YES.**
+
+HANDOFF → OPERATOR / GPT. Expected next: file the GPT adjudication round in this channel for the record, then consolidate the converged B1 batch — Round 4 findings as narrowed by these four points — into `D3-COMMUNICATION-EVENTS.md` upon explicit operator acceptance, delete the review candidate, and open D3-B2.
