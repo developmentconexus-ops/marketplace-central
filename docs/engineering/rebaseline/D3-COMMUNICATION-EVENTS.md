@@ -1,6 +1,6 @@
 # D3 — Communication / Events
 
-> **Status:** OPEN / IN PROGRESS — D3 stage opened; no D3 batch is canonical yet; D3-B1 direction is operator-approved for independent review  
+> **Status:** OPEN / IN PROGRESS — D3-B1 accepted and canonical; D3-B2 is the exact next batch  
 > **Program:** Architecture Rebaseline / Technical System Design  
 > **Parent authorities:** `D0-PRODUCT-SYSTEM-DEFINITION.md`, `D1-DOMAINS-BOUNDARIES.md`, `D2-IDENTITY-TENANT-DATA-OWNERSHIP.md`  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
@@ -44,48 +44,499 @@ These are already authoritative from D0–D2; D3 does not reopen them by choosin
 7. **Historical snapshots/references/projections never become current producer authority.** A read model may compose authorities; it may not become write authority.
 8. **External provider/business-system facts remain external/source-qualified.** Provider notifications or payloads are not automatically MPC domain events; D4 owns concrete acquisition/translation contracts.
 9. **Unknown/absence, provenance and material time meanings remain fail-honest.** Communication must not turn stale, partial, duplicated or delayed information into plausible current truth.
-10. **Mechanism ≠ Authority.** Shared transport/runtime mechanics may later centralize accidental complexity without acquiring business meaning.
+10. **Mechanism != Authority.** Shared transport/runtime mechanics may later centralize accidental complexity without acquiring business meaning.
 
-## 3. D3 decision surface
+---
 
-D3 must close two material decision groups before final stage review.
+## 3. D3-B1 — Communication Topology & Edge Matrix — ACCEPTED
 
-### D3-B1 — Communication Topology & Edge Matrix
+**Outcome:** `CURRENT STRUCTURE CONFIRMED` with bounded review corrections. No D0/D1/D2 reopen is required.
 
-Determine the smallest correct semantic communication form for every accepted D1 edge and the D2 cross-cutting identity/access dependency:
+The operator explicitly accepted the converged B1 batch after independent Fable challenge and GPT adjudication. Reviewer findings are evidence; the authoritative result is the operator-approved structure recorded here.
 
-- current owner query;
-- explicit owner capability request;
-- committed domain event;
-- projection/read model;
-- combinations such as event-triggered reaction followed by current owner revalidation when current truth is material.
+### 3.1 Governing communication rule
 
-B1 must explicitly resolve the highest-risk cycles/edges:
+Marketplace Central does **not** adopt one global communication ideology.
 
-- Business-System Materialization ⇄ Fulfillment Lifecycle;
-- Controlled Action Governance ⇄ action-owning domains;
-- Operational Work ⇄ originating domains;
-- Post-Sale Resolution ⇄ Sales / Materialization / Fulfillment / Economics;
-- Commercial Economics ⇄ Marketplace Offering Operations.
+> **Each dependency uses the smallest communication form coherent with the meaning crossing the boundary. Communication never changes who owns that meaning.**
 
-### D3-B2 — Communication Contract & Failure Semantics
+Four semantic forms are accepted:
 
-After B1 identifies which communications actually exist, define only the semantic contract properties required before D4/D7, including as materially necessary:
+- **Q — synchronous owner query:** consumer needs producer-owned current meaning to complete the consumer's current decision.
+- **C — explicit owner capability request:** caller asks the callee to perform/accept work whose meaning and state belong to the callee's own authority.
+- **E — committed domain event:** producer has already committed a producer-owned fact and an accepted consumer must react independently.
+- **P — projection/read model:** multiple authorities are composed for reading/attention/UX/analytics without creating new write authority.
 
-- committed-fact/event identity and producer ownership;
-- Organization scope;
-- Principal/actor attribution;
-- domain-local Intent reference;
-- causation/correlation;
+`Synchronous` describes semantic request/response at decision time; it does not choose HTTP, gRPC, Go package layout or process topology.
+
+### 3.2 Selection rule
+
+For each accepted D1/D2 dependency:
+
+```text
+Need producer-owned current meaning to decide now?
+  -> Q
+
+Need the owner to perform/accept owner-owned work?
+  -> C
+
+Producer-owned fact is already committed and an independent consumer must react?
+  -> E
+
+Only composing authorities for reading/attention/analytics?
+  -> P
+
+None applies?
+  -> no communication.
+
+Required semantic dependency absent from D1/D2?
+  -> STOP / targeted D1 reopen.
+```
+
+One semantic edge may use more than one form at different moments. A domain pair is therefore not globally classified as `sync` or `event-driven`.
+
+### 3.3 Event predicate and event-worthiness
+
+A committed fact is a legitimate **E** only when both are true:
+
+1. the producer's statement is true and complete independent of any consumer reaction; and
+2. each consumer's reaction is determined by consumer-owned semantics applied to that fact.
+
+A communication whose semantic meaning is effectively:
+
+> "callee, produce outcome X that you own, selected by the caller"
+
+is **C**, regardless of whether the physical transport later looks like a message.
+
+B1 does **not** adopt event-per-state-change or event-per-CRUD. A baseline event is justified only when:
+
+- the producer has committed meaning it owns;
+- an accepted consumer has a real independent reaction;
+- delayed delivery does not become authority;
+- the event removes a real coupling/fan-out/workflow problem rather than creating speculative event surface.
+
+Therefore baseline events are not required merely because Portfolio configuration, Readiness, Offering state, Market Intelligence evidence or Economics conclusions changed. If future evidence proves an autonomous reaction is necessary inside an already accepted semantic edge, `E` may be added without moving authority.
+
+### 3.4 Progression edges vs evidence edges
+
+`E -> Q` must not collapse two different correctness needs.
+
+#### Progression semantics
+
+When the consumer's next consequential decision depends on **current producer truth**, an event may wake the consumer, but the consumer queries/revalidates the producer's current public meaning before deciding when currentness is material.
+
+```text
+producer commits fact
+    ↓ E
+consumer becomes eligible to react
+    ↓ Q when current producer truth matters
+consumer makes its own decision
+```
+
+An older event is never automatically current authority.
+
+#### Evidence-accumulation semantics
+
+Some consumers require individual material occurrences, not merely the producer's latest mutable state. Examples include attributable fiscal/economic movements, reversals and consequence evidence used by Commercial Economics or Post-Sale Resolution.
+
+For those edges:
+
+> **The evidence-consuming domain determines which occurrences are material to its correctness claim. Each material occurrence must remain recoverable from the smallest sufficient durable authority. Latest mutable state must not erase an occurrence whose existence/sequence is material to attribution, reconciliation, closure or historical explanation.**
+
+The sufficient durable authority may be canonical MPC state/history or preserved/re-observable authoritative external observation/evidence as allowed by D2. This does **not** require a universal producer history API, universal event history, event store or event sourcing.
+
+If no accepted durable authority can recover a genuinely material occurrence class, surface the gap; do not substitute latest state and do not create a universal event store by mechanism.
+
+### 3.5 Consequential event propagation is recoverable
+
+A committed fact whose consumer reaction is required for an accepted Product 1.0 lifecycle progression has **recoverable propagation semantics**:
+
+> **loss is detectable and recoverable, never a silent permanent stall.**
+
+This applies across consequential event edges, including sale fan-out, Materialization/Fulfillment checkpoints, later Governance decisions and material actionable conditions.
+
+B1 defines the semantic obligation. **B2** defines per-edge duplicate/order/recovery/replay contracts. **D7** chooses outbox/queue/worker/transaction/poller or other concrete mechanism.
+
+### 3.6 Feed-forward D1 edge matrix
+
+For these accepted D1 feed-forward dependencies, baseline communication is **Q**:
+
+| Accepted D1 edge | Accepted B1 realization | Rationale |
+|---|---|---|
+| Marketplace Portfolio -> marketplace-facing domains | **Q** | Consumers ask Portfolio for current installation participation/configuration/posture and eligible Selling Entity participation when needed. |
+| Readiness -> Offering | **Q** | Offering consumes Readiness-owned correspondence/readiness and does not recompute it. |
+| Readiness -> Availability | **Q** | Availability consumes current Readiness meaning for its own decision. |
+| Offering -> Availability | **Q** | Availability obtains current marketplace representation/target while retaining Sellable Availability authority. |
+| Offering -> Market Intelligence | **Q** | Market Intelligence consumes the organization's own offer representation while retaining comparability authority. |
+| Offering -> Commercial Economics | **Q** | Economics consumes offer/listing/current commercial context needed for offer-specific economics. |
+| Market Intelligence -> Commercial Economics | **Q** | Economics consumes Market Intelligence-owned comparable-market meaning rather than reinterpreting competitor payloads. |
+| Commercial Economics -> Offering | **Q** | Offering consumes economic conclusions/implications and alone owns resulting Price Intent/listing action. |
+
+No speculative baseline event is required on these edges. A later proven autonomous reaction may add `E` without moving authority.
+
+### 3.7 Marketplace Sales fan-out
+
+Once Marketplace Sales establishes and commits canonical sale interpretation/context/correlation and transaction-specific Selling Entity attribution, independent downstream authorities may react without making Sale existence depend on their synchronous availability.
+
+Accepted baseline:
+
+```text
+Marketplace Sales
+  -> Materialization      E
+  -> Fulfillment          E
+  -> Commercial Economics E
+```
+
+Downstream consumers use current Sales meaning by **Q** when currentness is material and must never independently reinterpret provider transaction semantics or Selling Entity attribution as their own authority.
+
+**Sales -> Post-Sale** is narrower: `E` is baseline-worthy only for committed **post-sale-relevant** Sales facts. An ordinary committed Sale does not itself create a Post-Sale Resolution; D2 permits `0..N` resolutions per Sale. Post-Sale may query Sales by Q when it needs additional context.
+
+Provider order notifications are not `SaleCommitted`; D4 owns provider acquisition/refetch/translation before Sales commits MPC meaning.
+
+### 3.8 Materialization <-> Fulfillment
+
+This accepted business workflow cycle is realized as two separate semantic flows, never bilateral mutation or shared mutable workflow authority.
+
+#### Fulfillment -> Materialization
+
+```text
+Fulfillment commits physical-readiness/conference checkpoint
+    ↓ E
+Materialization becomes eligible to progress
+    ↓ Q when current physical state is consequential
+Materialization alone creates/blocks/advances Invoicing Intent
+```
+
+Fulfillment never creates or mutates Invoicing Intent.
+
+#### Materialization -> Fulfillment
+
+```text
+Materialization commits material business/fiscal result
+    ↓ E
+Fulfillment becomes eligible to progress
+    ↓ Q when current materialization meaning is consequential
+Fulfillment alone owns provider-readiness/packing/dispatch progression
+```
+
+Materialization never mutates Fulfillment state.
+
+> **The business cycle remains bidirectional; write authority does not. Each side commits only its own meaning, observes the other's public meaning, and owns its own next transition.**
+
+No distributed transaction or shared cross-owner workflow entity is required.
+
+### 3.9 Materialization -> Commercial Economics
+
+Material attributable business/fiscal occurrences that can independently change economic attribution/reconciliation use **E**.
+
+Commercial Economics processes the material occurrences it needs for its own evidence chain and may use **Q** for current/public Materialization meaning where currentness matters. Latest fiscal state cannot erase a material occurrence required for economic attribution/history.
+
+Economics never reads Materialization private tables or becomes fiscal authority.
+
+### 3.10 Controlled Action Governance <-> action-owning domains
+
+#### Action owner -> Governance
+
+Use **C + Q** as needed.
+
+The action-owning domain supplies:
+
+- domain-owned Business Intent;
+- intended target scope;
+- effective action disposition;
+- authorization-relevant context.
+
+Governance applies only its authorization-specific Grant/Delegation/Authorization Decision semantics. A request may return `pending`; semantic synchrony does not require an interactive transport request to remain open until a human decides.
+
+#### Governance -> action owner
+
+When a material Authorization Decision is committed after the original request, especially after pending human review, use **E** to wake the owner and **Q/revalidation** where current authorization/context matters.
+
+An approval event never executes a provider action and never waives execution-time domain validity, freshness, readiness, policy, correspondence or mandatory safety invariants.
+
+> **Governance decides authorization; the action owner retains Business Intent, business disposition and execution-time validity.**
+
+### 3.11 Operational Work <-> originating domains
+
+#### Source domain -> Work
+
+The source domain may emit **E** asserting only its own committed material actionable condition.
+
+It does **not** assert that a particular Work object must exist. Operational Work owns whether/how that condition is represented as Work, including obligation scoping, deduplication against an existing obligation and Work-local lifecycle.
+
+However, D0's no-ownerless-work invariant remains binding:
+
+> **A source-committed material actionable condition ends represented in Work state or explicitly reconciled as already covered/superseded. Silent disappearance is a propagation failure, not a legitimate Work decision.**
+
+Duplicate delivery is therefore a B2/D7 idempotency concern, not a reason to move Work authority back to the source domain.
+
+#### Work -> source domain
+
+Use **C/Q** when Work submits or points to resolution evidence that the source domain must evaluate under the source's own closure semantics.
+
+```text
+Work submits/points to resolution evidence
+    ↓ C/Q
+source domain decides source condition:
+  resolved / unresolved / unknown-or-pending
+```
+
+Closing Work alone never changes source truth.
+
+If the source condition resolves independently, the source may emit a committed resolution fact **E** so Work reconciles/closes its own lifecycle.
+
+### 3.12 Post-Sale Resolution coordination
+
+Post-Sale remains coordinator/correlator of a material Resolution; it does not absorb Sales, Materialization, Fulfillment or Economics authority.
+
+- **Sales -> Post-Sale:** `E` only for committed post-sale-relevant Sales facts, with `Q` for additional/current context where needed.
+- **Post-Sale -> Materialization/Fulfillment/Economics:** **C** when Post-Sale requests a consequence whose semantics belong to that owner.
+- **Consequence owner -> Post-Sale:** **E** for committed consequence outcomes/checkpoints; Post-Sale may use `Q` where current owner meaning is material.
+
+This deliberately rejects imperative-looking choreography such as `RefundNeeded` or `CancelEverything` as disguised commands.
+
+Each consequence owner accepts/rejects/pends and owns its domain-local consequence intent/state. Post-Sale decides only whether **its Resolution** has sufficient evidence to close.
+
+### 3.13 Commercial Economics <-> Marketplace Offering Operations
+
+The accepted semantic cycle does not require bilateral event/mutation choreography.
+
+Normal path:
+
+```text
+Commercial Economics owns economic conclusion
+    ↑ Q by Offering when needed
+Marketplace Offering Operations owns resulting Price Intent / listing action
+```
+
+Economics never directly requests/executes marketplace price writes by authority. No baseline `PriceRecommended` event is required merely to create event-driven shape.
+
+If future evidence proves a real independent attention/re-evaluation reaction, `E` may awaken Offering while Offering remains price-intent authority.
+
+### 3.14 D2 identity/access substrate
+
+Correctness-critical ordinary identity/access checks use **Q** against the D2 identity/access substrate for current membership/RoleAssignment/Permission meaning.
+
+Revocation correctness cannot depend solely on eventual `RoleChanged`/`MembershipChanged` delivery. Events/caches may later optimize access checks, but delayed propagation cannot become the sole authority for current ordinary access.
+
+The substrate still cannot answer substantive marketplace action permissibility, consequential authorization or execution validity; those remain with action owners/Governance.
+
+### 3.15 Projection/read-model semantics
+
+A **P** combines authorities for reading/attention/UX/analytics without creating a new business authority.
+
+Expected uses include, where later D6/D7 justify them:
+
+- portfolio attention;
+- normalized OperationalStage;
+- Work + originating condition;
+- Authorization Decision + Business Intent;
+- material lifecycle/history views.
+
+Rules:
+
+1. A projection may consume owner public queries and committed events for incremental maintenance.
+2. A projection never commands/mutates canonical state by authority.
+3. A consequential write cannot use a projection as sole correctness authority when the owning domain must be consulted.
+4. Rebuild consumes public owner current state plus only the material historical state/evidence the particular projection genuinely requires.
+5. Event transport is an incremental-maintenance optimization, never the sole rebuild authority or system of record.
+6. If required history is not durably available from any accepted authority, the projection must shrink its claimed content honestly rather than promote transport-log retention into business/historical authority.
+7. D3 does not require universal event sourcing, infinite event retention or event-log replay as the rebuild model.
+8. Exact projection schema/topology remains D6/D7.
+
+### 3.16 Provider / D4 fence
+
+Provider webhook/callback/poll result is **not** automatically a D3 domain event.
+
+```text
+provider notification / polling evidence
+    ↓ D4 acquisition/refetch/translation
+owning domain establishes its MPC meaning
+    ↓ commit
+D3 domain event, only if event-worthy
+```
+
+A duplicate/out-of-order provider notification therefore does not automatically become duplicate/out-of-order MPC business truth. D4 and B2/D7 later close concrete acquisition, ordering and recovery mechanics.
+
+### 3.17 Cross-owner atomicity
+
+B1 requires no atomic mutation spanning multiple business authorities.
+
+Cross-owner workflows are correlated/convergent. Partial outcomes remain explicit. D7 may exploit a local database transaction where safe and useful, but semantic correctness must not depend on every current owner remaining colocated in one process/database.
+
+No cross-provider or cross-owner atomicity is invented.
+
+### 3.18 Public semantic boundary and code-cycle rule
+
+Inter-domain communication depends only on the producer's public semantic contract.
+
+A consumer must not import:
+
+- producer repository/store;
+- producer private application types;
+- producer private tables;
+- provider DTOs leaked through another business context.
+
+A bidirectional semantic edge is implemented as two owner-specific semantic flows, not a shared mutable business object.
+
+The producer owns the meaning of its public contract. D3 does not freeze exact Go interface/package placement and does not create `shared/domain`, universal `shared/contracts` or `shared/business-events` as informal authority containers.
+
+### 3.19 External-effect safety mechanism fence
+
+B1 preserves the reusable safety lesson behind legacy ADR-018 without preserving its generic Mutation business owner/table/poller shape.
+
+Every path that can reach an external side effect must cross structurally enforced execution-safety mechanics/proofs appropriate to the action, including as material:
+
+- intent/attempt correlation;
+- actor attribution capture;
+- idempotency/duplicate protection;
+- ambiguity handling;
+- audit/attempt/outcome capture;
+- fail-closed proof that required owner-issued disposition/validity and Governance authorization are present/current enough.
+
+The shared mechanism verifies **proofs**; it does not own the **answers**:
+
+- action disposition/business policy remains with the action-owning domain;
+- consequential authorization remains with Controlled Action Governance;
+- execution-time validity remains with the action owner under D0.7n;
+- provider protocol remains D4.
+
+Exact runtime mechanism remains D7.
+
+### 3.20 Legacy ADR disposition at B1
+
+B1 adjudicates the D3 semantic portions of ADR-018/019/024/026 as follows.
+
+#### ADR-018 — generic mutation envelope
+
+The generic `mutation_protocols`/`mutation_items` business shape, `/mutations` ownership and in-process poller are **not target business architecture**. Domain Business Intents remain with action owners; reusable external-effect safety is a mechanism under §3.19.
+
+Pending approved/unexecuted domain intents are already canonical durable state under D2. Poller, claim strategy and `FOR UPDATE SKIP LOCKED` remain D7 evidence.
+
+**D3 portion adjudicated; D7 residue remains open.**
+
+#### ADR-019 — hidden secondary consumer starvation
+
+The durable semantic lesson is generalized:
+
+- accepted consumers of a committed fact must be explicit enough that a producer-path rewrite cannot silently starve one consumer while another remains healthy;
+- consequential propagation failure must be visible/recoverable rather than partial-silent;
+- honest content translation/parity remains required where D4 maps external evidence.
+
+Legacy one-row-per-item/PK/sentinel schema mechanics do not constrain the clean target database.
+
+B2 still must define concrete missed/duplicate-delivery/recovery semantics before the D3 portion is fully retireable.
+
+#### ADR-024 — single writer for order ingest
+
+The target preserves:
+
+1. one Marketplace Sales semantic interpretation/write authority for provider sale meaning; and
+2. trigger convergence/anti-regression: multiple acquisition triggers must converge on the owner's one interpretation path, and a late older observation cannot regress a newer committed interpretation merely because of scheduling order.
+
+The first principle is B1 authority topology; the second becomes a B2 ordering/duplication contract. Legacy import/backfill/webhook worker names and current code shape are evidence only.
+
+#### ADR-026 — scheduler phase vocabulary
+
+No global `backfill | incremental | sweep` D3 vocabulary is carried forward.
+
+Its useful semantic kernel is already D0 authority: full/terminal and incremental observations make different coverage claims; conflating them can corrupt completeness/freshness conclusions. Cursor/scheduler phase mechanics remain D4/D7 evidence.
+
+**D3 portion adjudicated; D7 residue remains open.**
+
+### 3.21 YAGNI / explicit non-decisions
+
+B1 does **not** create or choose:
+
+- generic Event Bus business abstraction;
+- generic Command Bus;
+- generic Action/Mutation business owner;
+- generic Workflow/Saga engine;
+- universal CQRS;
+- event sourcing;
+- universal producer/domain fact history;
+- event-per-CRUD;
+- projection-per-domain;
+- shared mutable business model;
+- cross-context SQL;
+- distributed transaction;
+- broker technology such as Kafka/RabbitMQ;
+- concrete outbox/queue/worker/poller topology;
+- retry/lock/lease framework;
+- exactly-once delivery claim;
+- microservice decomposition.
+
+B1 prepares the semantic seams D3 actually needs without designing D7 runtime in advance.
+
+### 3.22 Proof / strongest counterexamples
+
+B1 must remain true under these checks:
+
+- Economics cannot directly mutate listing/price.
+- Availability cannot copy/recalculate Readiness authority.
+- Fulfillment conference cannot create Invoicing Intent.
+- Materialization result cannot mutate packing/dispatch state.
+- Governance approval cannot execute provider action.
+- Work closure cannot change originating source truth.
+- Source actionable condition cannot dictate Work-owned obligation representation and cannot disappear silently.
+- Post-Sale consequence remains owned by the consequence domain.
+- Provider webhook duplicate does not automatically duplicate domain truth.
+- Delayed progression event cannot masquerade as current producer truth.
+- Evidence edge cannot lose a material historical occurrence merely because latest state changed.
+- Projection rebuild cannot require the event transport as sole history/system of record.
+- Projection cannot mutate canonical state.
+- A new semantic consumer outside D1 edges triggers targeted D1 reopen rather than hidden communication.
+- Future process separation may change transport but must not change semantic ownership/contracts.
+
+### 3.23 B1 reopen / stop triggers
+
+Revisit B1 only for material evidence such as:
+
+1. Product 1.0 requires a semantic dependency absent from D1 -> targeted D1 reopen.
+2. Materialization <-> Fulfillment cannot close without new owner/meaning -> implicated authority review.
+3. Post-Sale must own consequence semantics currently owned elsewhere -> D1 reopen.
+4. Operational Work must decide originating business truth itself -> D1 review.
+5. Identity/access substrate must decide business action permissibility -> D1/D2 boundary conflict.
+6. Correctness truly requires atomic cross-owner mutation -> reopen the implicated semantic decision; do not smuggle in a distributed transaction.
+7. A projection must become write authority -> stop; re-evaluate ownership.
+8. A required event cannot be stated as an already-true producer-owned fact -> it is likely C or an authority problem.
+9. A feed-forward Q edge gains a proven autonomous-reaction requirement -> add E inside the accepted edge; no D1 reopen unless meaning changes.
+10. B2 cannot give a consequential E edge recoverable propagation without moving semantic authority -> return to B1.
+11. A genuinely material evidence occurrence cannot be recovered from any sufficient durable authority -> surface the D2 lineage gap; never silently substitute latest state or universal event sourcing.
+12. D7 attempts to make shared execution-safety mechanics decide business disposition/authorization -> stop; Mechanism != Authority.
+
+Framework preference, event-driven fashion or future microservice topology are not reopen evidence.
+
+---
+
+## 4. D3-B2 — Communication Contract & Failure Semantics — NEXT
+
+B1 identifies **which communications exist and why**. B2 now defines only the minimum semantic contract properties required before D4/D7.
+
+B2 must adjudicate, where materially necessary:
+
+- explicit Organization scope on communication;
+- Principal/actor attribution when material;
+- domain-local Intent identity/reference where applicable;
+- event occurrence identity and producer ownership;
+- causation/correlation semantics;
 - provenance and material time meanings;
-- duplication and ordering assumptions;
-- replay semantics;
-- delayed/missed-delivery recovery expectations;
-- projection rebuildability and authority fence.
+- duplicate handling and consumer semantic idempotency;
+- ordering assumptions, including no accidental global-order dependency;
+- late/stale event behavior and anti-regression;
+- missed-delivery detection/recovery;
+- replay/reconciliation expectations without universal event sourcing;
+- progression-edge current reread vs evidence-edge occurrence recovery;
+- capability outcomes (`accepted` / `rejected` / `pending` and ambiguity where acceptance may outlive the caller);
+- projection rebuild contracts and fail-honest completeness;
+- multi-target/granular partial outcomes where communication carries them;
+- the D3 semantic residue of ADR-019 and ADR-024.
 
-D7 will decide concrete transport/runtime implementation.
+B2 must **not** choose broker, outbox table, queue, worker, scheduler, lock, transaction or deployment mechanism. Those remain D7; concrete external acquisition/provider contract remains D4.
 
-## 4. Review and authority protocol
+---
+
+## 5. Review and authority protocol
 
 D3 uses the same accelerated protocol proven in D2:
 
@@ -102,18 +553,16 @@ D3 uses the same accelerated protocol proven in D2:
 
 `AI-DIALOG.md`, review candidates, chat summaries and reviewer statements are **not** part of the architecture authority path.
 
-## 5. Current D3 state / exact next action
+---
+
+## 6. Current D3 state / exact next action
 
 D3 is **OPEN / IN PROGRESS**.
 
-The operator approved the direction of **D3-B1 — Communication Topology & Edge Matrix** for independent review. That approval authorizes review preparation; it does **not** make the B1 candidate canonical D3 architecture.
+**D3-B1 — Communication Topology & Edge Matrix is ACCEPTED / CANONICAL** after operator-approved candidate direction, independent Fable review, GPT adjudication, reviewer convergence with no remaining dispute and explicit operator ratification.
 
-Exact next action:
+Exact next action: **D3-B2 — Communication Contract & Failure Semantics**.
 
-1. review `docs/engineering/rebaseline/D3-B1-REVIEW-CANDIDATE.md` through an independent Fable round;
-2. GPT independently adjudicates the returned material findings against repository authority/evidence;
-3. continue reviewer rounds only where a material dispute remains;
-4. return the converged B1 batch to the operator for explicit batch acceptance;
-5. only then consolidate accepted B1 meaning into this artifact and proceed to B2.
+Do not reopen B1 merely to choose transport/runtime technology. Reopen only under the material triggers in §3.23.
 
 Do not begin D4 or product implementation while D3 remains open.
