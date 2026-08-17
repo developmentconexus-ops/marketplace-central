@@ -93,7 +93,7 @@ Communication may duplicate, arrive late/out of order, fail or replay without ch
 
 ## External-integration principles
 
-D4-B1 is accepted and canonical. External integrations obey these constraints:
+D4-B1 and D4-B2 are accepted and canonical. External integrations obey these constraints:
 
 - consumer context owns semantic meaning/port;
 - adapter owns provider/business-system protocol, DTOs, auth and pagination;
@@ -103,12 +103,16 @@ D4-B1 is accepted and canonical. External integrations obey these constraints:
 - point/enumeration/delta/notification coverage is operation-scoped; incomplete/unavailable never becomes plausible absence;
 - Integration Support and Provider Effective Capability/Requirement do not become Effective Business Capability;
 - external-effect contracts distinguish acceptance/ambiguity from convergence and name an authoritative reread/reconciliation surface;
+- Mercado Livre Item/User Product/Catalog/stock/Order/Shipment/Claim topology stays provider-local and does not become MPC business ontology by normalization;
+- provider stock/price/fulfillment capability is context-sensitive; seller-managed does not automatically mean API-writable, provider-managed Full is not silently treated as MPC-controlled, and shared User Product effects cannot silently widen intended/authorized scope;
+- seller Order-search completion does not prove cancellation-inclusive Sales coverage when provider documentation/runtime behavior does not establish a reliable complete universe;
+- the first current Mercado Livre proof lane selected by D4-B2 is deliberately narrow and time-bound; future provider configuration changes re-evaluate capability rather than creating speculative universal mode support;
 - Sankhya uses the sanctioned API Gateway target path; Direct Oracle is not an admitted fallback;
 - current unstable provider/reference behavior must be verified against current official behavior for the concrete decision that depends on it;
 - live integration claims require real-dependency evidence, not only mocks;
 - no speculative universal provider/integration framework is introduced.
 
-D4-B2/B3/B4 decide the concrete Mercado Livre, Sankhya and market/economics/settlement surfaces still open.
+D4-B3/B4 decide the still-open Sankhya and market/economics/settlement surfaces. Installation-specific current Mercado Livre lane details and later proof obligations remain in canonical D4 rather than becoming stable global platform constants here.
 
 ## API and frontend
 
