@@ -674,3 +674,190 @@ Explicitly NOT claimed: D8 is not proven; Product 1.0 is not implemented; no D0 
 - whether the 7 `waiting_for_patch` listings affect the chosen proof candidates over time (candidates selected among unmoderated active items).
 
 HANDOFF → GPT. Expected adjudication: (1) confirm the GATE VERDICT grading — PASS as recommended, or PARTIAL under the strict reading of §4.8 fact 4 — with the same selected lane set either way; (2) adjudicate F-GATE-1 and narrow the §4.4 canceled-order clause accordingly; (3) accept the selected smallest proof lane set (availability = Item-path single-Item; price = direct write; fulfillment = me2 xd_drop_off seller-operated; post-sale = existing return case) as the §4.8 result and record R1/R2 as the bound residual obligations; (4) recommend to the operator the router consequence — whether B2 can now move to ACCEPTED-as-a-whole with R1/R2 carried as explicit D8-phase obligations, or remains OPEN until R1/R2 discharge — that sequencing is an operator decision, not mine.
+
+
+## FABLE — D4-B3 Sankhya Gateway Evidence Gate (2026-08-17)
+
+**Session role:** evidence collection for B3, not independent final review. No architecture decided; no authority altered; no product implemented.
+
+- **HEAD measured:** `4ecae88c6eb1217fd5ed7435ee8e223c7b3ae31f` (local branch fast-forwarded from `cbbd104a` to match origin before any probe).
+- **Authority state confirmed:** D0–D3 CLOSED/ACCEPTED; D4 OPEN; B1+B2 ACCEPTED/CANONICAL; B2 Installation Gate CLOSED/PASS; B3 NEXT; B4 not opened; implementation BLOCKED until D9.
+- **Measurement window:** 2026-08-17T15:30:33Z → 2026-08-17T15:45Z (UTC), single session, low-volume read-only probes; no stress testing.
+- **Environment:** **SANDBOX** — `https://api.sandbox.sankhya.com.br`. Operator-supplied Gateway credential explicitly declared sandbox; the credential authenticated on the sandbox host. Token claims: `ambiente=hml`; an Oracle error surface leaked schema qualifier `METALTST` (test schema), independently confirming non-production. **Nothing below is production evidence.** Sandbox data is a stale copy of the Metal Nobre registry (orders end ~mid-2024; only 2 product rows altered since 2026-01-01).
+- **Auth method:** OAuth 2.0 `client_credentials` + `X-Token` header + `POST /authenticate`, per current official flow. No legacy `/login`. No secret/token entered stdout, this file, or any commit; probe tooling lived only in the session scratchpad outside the repo and is abandoned there.
+- **Safety compliance:** zero mutations executed. No order created/altered/confirmed/canceled, no invoicing, no DatasetSP.save, no DbExplorerSP/SQL, no Oracle. One documented-as-pure calculation endpoint was exercised and its non-persistence was verified by an authoritative reread (see D2). All `loadRecords` uses were sanctioned-entity reads with explicit rootEntity + minimal fieldset + explicit criteria.
+
+### B3-A — Source / Gateway contract
+
+**A1 — Authentication: KNOWN / SUPPORTED (sandbox).** `POST /authenticate` → HTTP 200 in ~2.1s; `token_type=Bearer`, **`expires_in=300`** (5-minute token; refresh cadence is a real D7 concern). Subsequent calls authorize with `Authorization: Bearer`. Official environments: production `api.sankhya.com.br`, sandbox `api.sandbox.sankhya.com.br`; official guidance states sandbox tokens only pair with sandbox credentials (observed consistent).
+
+**A2 — SourceInstance / namespace evidence: KNOWN (sandbox-qualified).** The Gateway *does* expose authoritative environment/namespace markers inside the JWT access token:
+
+- `ambiente: "hml"` (cleartext environment class);
+- `environment: baa487b9-b990-4479-a050-b04ce776182e` (UUID, **stable across repeated authentications** in the window — durable namespace marker candidate);
+- `sub`/`azp` stable principal/client UUIDs;
+- `nomeCliente`, `codParc`, `url`, `nomeAplicacao` claims exist but are **encrypted/opaque** — present, not consumable.
+
+Independent corroboration: Oracle error text exposed the backing schema (`METALTST`). Conclusion: a B3 contract can fail-closed on the token `environment`/`ambiente` markers per B1 §3.4(7); where markers are absent in data-plane responses (they are — v1 payloads carry no namespace field), the configured/authorized Gateway binding remains the control, exactly as B1 states. No DatabaseID/tenant ID invented.
+
+**A3 — Empresas: KNOWN.** `GET /v1/empresas?page=0` → 13 companies in one page: CODEMP {1, 2, 3, 4, 100, 200, 501, 602, 701, 801, 901, 904, 999} (Metal Nobre matriz/filial/depósito plus consolidation and test entries; registry mirrors the real universe in sandbox). Fields include `cnpjCpf`, `razaoSocial`, `codigoEmpresaMatriz`; **no `ativo` field** on this surface. Pagination end behavior: `page=1` → **HTTP 404 `RESOURCE_NOT_FOUND`** — see H. CODEMP remains an external source reference; no Selling Entity equivalence made.
+
+### B3-B — Product facts
+
+**B1 — REST surface: KNOWN.** `GET /v1/produtos` (50/page fixed, includes inactive products) and `GET /v1/produtos/{codigoProduto}` (point read; body wrapped in `produtos` object). Native key: `codigoProduto` (= CODPROD, integer). Available facts: `nome`, `complemento`, `ativo`, `referencia`, `referenciaFornecedor`, `marca`, `ncm`, `cest`, `volume`, group, dimensions, `dataAlteracao`. Material contract defects/limits measured on the real payload:
+
+- the modification-date JSON key is literally **`"dataAlteracao:"` — with a trailing colon** — in the list response (parser-visible provider quirk);
+- **no first-class EAN/GTIN/barcode field exists** on the product surface. `referencia` carried an EAN-13-shaped value for some products (e.g. 59162 → `7894200045618`) and empty for others (e.g. 47423) — convention, not contract; `REFERENCIA=EAN` must NOT be assumed (confirms the B3 brief's warning);
+- `GET /v1/produtos/{cod}/volumes` exposes `codigoBarra` but **only for alternate volumes**; a product without alternates returns 404 (`VolumeAlternativo`) — so volume barcodes are conditional evidence, not a universal GTIN source.
+
+**B2 — loadRecords comparison: KNOWN.** `CRUDServiceProvider.loadRecords` rootEntity `Produto`, minimal fieldset, CODPROD=59162 — values match REST field-for-field (REFERENCIA, REFFORN, MARCA, NCM, ATIVO=S, DTALTER). One translation divergence: REST `usadoComo` is an integer enum while entity `USOPROD` is the native char code (e.g. `R`) — the REST layer re-encodes native values; a contract that mixes surfaces must not assume identical vocabularies. Response format is positional (`f0…fN`) mapped by a metadata field list; `_rmd` carries decimals/control metadata. Evidence strength: REST alone covers the material product facts except raw native codes and any custom (AD_) fields; loadRecords is the sanctioned reserve for those.
+
+**B3 — Pagination / delta: pagination KNOWN; delta SUPPORTED + COVERAGE UNKNOWN.** Latency flat 0.37–0.60s from page 5 to page 500; universe bracketed between page 700 (200 OK) and page 850 (404) ⇒ ≈35–42.5k products; full serial enumeration ≈750–850 requests ≈6–8 min — operationally plausible. Delta: `modifiedSince` exists on `/v1/produtos` (format `DD/MM/AAAA HH:MM`, distinct from the ISO format on `/v1/vendas/*` — two formats on one API family), **but see B3-E: change log is disabled and this endpoint fails silently.** Product delta classification: **SUPPORTED + COVERAGE UNKNOWN** (provider-conditioned on LOGTABOPER activation; even then retention is LOGTABMAXAGE 3–7 days per official docs).
+
+### B3-C — Inventory
+
+**C1 — REST stock: KNOWN, lossy.** `GET /v1/estoque/produtos?page=N` and `/v1/estoque/produtos/{cod}`. Real granularity: **codigoProduto × codigoEmpresa × codigoLocal × controle** with a single quantity field `estoque`. Measured facts: no `reservado`, no third-party/`CODPARC`, no as-of/updated timestamp, WMS stock excluded (doc), never-moved products absent from the response (absence ≠ zero — honest-absence trap present), a page returned 45 rows with `hasMore=true` (n<50 does not terminate enumeration).
+
+**C2 — Sanctioned entity read: KNOWN — this is the decisive inventory measurement.** loadRecords rootEntity `Estoque`, fieldset `CODEMP, CODLOCAL, CODPROD, CONTROLE, TIPO, CODPARC, ESTOQUE, RESERVADO`, compared row-by-row against REST for CODPROD=37096 (14 rows = 14 rows, same key-space):
+
+> **REST `estoque` = TGFEST `ESTOQUE` − `RESERVADO` (net), proven exactly.** Example: emp 1 / local 10101 / controle L-01 → entity `ESTOQUE=2.85, RESERVADO=2.85` while REST shows `estoque=0`; emp 1 / local 10107 / L-52 → entity `2.85/0`, REST `2.85`.
+
+Positive controls: rows with `RESERVADO>0` are real and current-shaped; `CONTROLE` carries real lot codes (`L-01`, `L-NS`); quantities are fractional (2.85, 26.55, 1.42 — decimal quantities are real, not integers). `TIPO <> 'P'` returned **zero rows** — no third-party stock exists in this instance (universe fact; capability untested).
+
+**Central question answered:** the specific REST API preserves company/location/control granularity for **net** availability; it cannot distinguish "no stock" from "fully reserved" and cannot expose the reservation decomposition. If Availability Control needs only net sellable quantity per (empresa, local, controle), REST suffices; if it needs stock/reservation decomposition (D0 speaks of stock/**reservation** facts), the smallest sanctioned contract is the loadRecords `Estoque` fieldset above. Both are proven live. No ERP mirror implied.
+
+**C3 — Company/location qualification: KNOWN.** `/v1/estoque/locais` → 43 locations as a hierarchical tree (`codigoLocalPai`, `grau`, `analitico`, `ativo`; e.g. 10101 `1_REVENDA`, 10102 `2_OUTLET`, 10107 present in stock rows). The location registry is global — not company-qualified in the response; stock rows carry the (CODEMP, CODLOCAL) pair. D4 supplies CODEMP/CODLOCAL as external references only; no Inventory Source / Fulfillment Node equivalence made.
+
+**C4 — Inventory delta: UNSUPPORTED (REST) / COVERAGE UNKNOWN (entity).** The REST stock endpoints expose **no** `modifiedSince` at all. loadRecords `modifiedSince` exists generically but depends on the disabled change log (B3-E). Zero-delta ≠ no-change preserved.
+
+### B3-D — Cost / tax economics inputs
+
+**D1 — Cost observations: KNOWN / SUPPORTED.** No REST cost endpoint exists (checked the official index). The sanctioned surface is loadRecords rootEntity **`Custo`** (instantiates TGFCUS; discovered and proven live). The entity PK auto-materialized in the response: **CODEMP × CODPROD × CODLOCAL × CONTROLE × DTATUAL (+ NUNOTA/SEQUENCIA)** — cost rows can carry provenance to the movement that generated them. Cost variants measured as distinct real series: `CUSGER`, `CUSREP`, `CUSSEMICM`, `CUSMED` (sample product 37096: 16 rows, effective-dated 2019→2023, company-scoped — emp 1 and emp 2 series differ; sentinel rows `DTATUAL=01/01/1900` with zeros exist and must be treated as sentinel, not fact). No ordering parameter exists; "latest cost" = client-side max(DTATUAL) or a criteria window. **Output as required by the brief: Sankhya can provide these Cost Observations with these qualifications. No Cost Basis chosen — Commercial Economics owns that.**
+
+**D2 — Tax calculation: SUPPORTED + PROVIDER-CONDITIONED; currently not usable in this instance.** `POST /v1/fiscal/impostos/calculo` is documented as pure calculation (no persistence) and is the sanctioned candidate for L0 expected-tax evidence (response: per-product tax array — tipo/cst/aliquota/valorBase/valorImposto incl. FCP/desoneração). Real measurement with real inputs (existing confirmed order as `notaModelo`, its partner, real product):
+
+- HTTP 400 with `ORA-20101: Vendedor deve ser informado` raised by **house customization trigger `METALTST.TRG_INC_UPD_TGFCAB_METAL`** — i.e. the implementation internally *prepares a TGFCAB movement* and that preparation is subject to instance customizations;
+- the model order **had** `CODVEND=394`, so the preparation does not propagate the model's vendedor, and the request schema has **no vendedor input** — the API cannot satisfy the customization from the outside;
+- **non-persistence verified:** authoritative reread of `CabecalhoNota` for any row with DTALTER/DTNEG ≥ today → 0 rows. The attempt left no residue (rolled back).
+
+Prerequisite recorded exactly: a **"Modelo de Notas e Pedidos"** configured in Sankhya Om (help article 360051706514) whose prepared movement satisfies the instance's customization triggers (vendedor etc.). Until an operator configures such a model in the target instance, this API answers no tax question there. Note also: the error surface leaks raw ORA/trigger/schema text — adapter-boundary translation obligation (D3 §3.9), and the same house-trigger class presumably exists in production, so this conditioning likely carries over.
+
+### B3-E — Change / coverage contract
+
+**Change log: disabled in this instance — and the failure honesty is endpoint-specific (material).**
+
+- `GatewayServiceProviderSP.logAlteracoesTabelas` → `CORE_E07537: "Necessario habilitar o parametro 'LOGTABOPER'"` — **honest, attributable error**;
+- `/v1/vendas/pedidos?modifiedSince=…` → HTTP 400 with the same LOGTABOPER detail — **honest**;
+- `/v1/produtos?modifiedSince=…` → **HTTP 404 "Nenhum registro …" — silent**, byte-indistinguishable from "zero changes". A consumer treating that as "no changes" fabricates completeness. This is D4-B1 §3.14 counterexample 11 observed in the flesh.
+
+Classification for the materially needed entities (Produto, Estoque, CabecalhoNota): **log disabled** ⇒ all delta coverage UNKNOWN/not-established. When enabled, official retention is **3 days default, 7 days maximum** (`LOGTABMAXAGE`) — even a healthy delta lane has a ≤7-day recovery window and can never serve as historical authority. Activation is an Om configuration with table-locking risk (docs recommend off-hours) — operator decision, not performed or simulated by this session. No scheduler/cadence chosen (D7).
+
+### B3-F — Existing business order evidence (no orders created)
+
+**F1 — Reads: KNOWN, with one broken REST surface.** `GET /v1/vendas/pedidos` requires `codigoEmpresa`, page ≥ 1; returns full embedded payloads (itens with `codProduto` — doc says `codigoProduto`; financeiros; cliente block **containing partner PII — minimization obligation for any future acquisition**; none retained/recorded by this gate). Status semantics measured: `confirmada` and `pendente` are independent — `pendente=true&confirmada=true` rows exist (TOP 157, 2024): *pendente = pending fulfillment/billing quantity, NOT "unconfirmed"*. Native provider facts for the brief's four questions:
+
+- order exists → row present by NUNOTA (see fallback below);
+- confirmed/ready → REST `confirmada` / entity `STATUSNOTA='L'`;
+- still pending → REST `pendente` / entity `PENDENTE='S'` (+ TGFVAR absence of billing rows);
+- changed/canceled → `dataHoraAlteracao` exists; **cancellation representation was NOT established** (no canceled-order sample identified; no cancellation filter on the REST surface) — UNKNOWN, must be pinned before B3 closes its Sales-side contract.
+
+**Broken surface (material):** the documented point filters `codigoNota=` and `numeroNota=` returned **404 for orders that exist** (verified present in the same company's enumeration). Date-range filters work. REST point-read of an order is therefore **not currently usable**; the proven sanctioned fallback is loadRecords `CabecalhoNota` by NUNOTA (measured: NUNOTA 812581 → `TIPMOV=P, STATUSNOTA=L, PENDENTE=S, CODTIPOPER=157, VLRNOTA=1065.35`, CODVEND, CODPARC). Doc/runtime divergences on this family (metadata shape `pagination` vs documented `paginaAtual/...`; wrapper key `pedido`; item key `codProduto`) are recorded rather than normalized away.
+
+**F2 — Intent correlation seam: KNOWN from docs (no write).** `POST /v1/vendas/pedidos` returns `retorno.codigoPedido` and creates orders **"SEMPRE A CONFIRMAR"** — official text — so `created ≠ confirmed ≠ downstream-ready` is a real provider distinction B3's contract must carry. Correlation evidence a future Business Order Intent can rely on: returned `codigoPedido` (native NUNOTA) + authoritative reread via `CabecalhoNota` + TGFVAR progression. The **confirmation command surface was not verified** in this read-only session — B3 must name it from official docs before D8 (see write-proof section).
+
+### B3-G — Existing invoice / fiscal result (no invoicing executed)
+
+**G1 — NFe reads: KNOWN.** `GET /v1/vendas/nfe` (list; header-level; wrapper `nota`) and `GET /v1/vendas/nfe/{codigoNota}` (point; includes itens + per-item `impostos` + financeiros). Real sample (empresa 1, Jun–Jul 2024): 50 headers; `statusNFe` distribution 1×36, 11×14; real 44-char `chaveNFe` (UF 31/MG, yymm 2406); `numeroProtocoloNFe`/`dataProtocoloNFe` present. Fiscal NUNOTA (`codigoNota`) is distinct from order NUNOTA; `numeroNota`/`serieNota` present.
+
+**G2 — Order→invoice correlation: KNOWN.** Two sanctioned surfaces proven: (a) NFe point read carries `codigoPedidoOrigem` (measured: invoice 811143 → order 810568); (b) loadRecords rootEntity **`CompraVendavariosPedido`** (instantiates TGFVAR; exact name discovered — `VariacaoNota`/`Variacao`/`TGFVAR` do not resolve) returns `NUNOTAORIG/SEQUENCIAORIG → NUNOTA/SEQUENCIA` with **`QTDATENDIDA`** at item granularity (measured 810568/1 → 811143/1, QTDATENDIDA=1.29 — matches the invoice item quantity exactly). Structure supports 0..N invoices per order and partial billing at item/quantity scope; the live sample was 1:1. Original NUNOTA and fiscal NUNOTA remain distinct and correlated. TGFVAR remains provider-native relation evidence, not an MPC entity.
+
+**G3 — Invoicing write capability (docs only, NOT executed): PROVIDER-CONDITIONED / partially UNKNOWN.** Current official reference (`post_faturamovimento`): service `SelecaoDocumentoSP.faturar`, module **mgecom** (`/gateway/v1/mgecom/service.sbr?...`); required state: **order confirmed in the ERP**; required keys: order NUNOTA + `codTipOper` (billing TOP configured in the ERP); response returns the **generated invoice NUNOTA**; partial billing supported per item/quantity (`QTDFAT`); bulk variant `SelecaoDocumentoSP.faturarLote`. Authoritative post-write reread exists (G1/G2 surfaces). **OAuth-Gateway compatibility for mgecom is documented (the official Gateway page shows bearer-token requests incl. mgecom services) but was NOT empirically proven** — no read-only mgecom service was identified, and exercising `faturar` is a forbidden write here. Classified UNKNOWN-empirical; discharged only by the controlled write proof below.
+
+### B3-H — Operational viability (sandbox measurements, no stress)
+
+| Aspect | Measured |
+|---|---|
+| Auth | 200 in ~2.1s; token TTL **300s** (refresh pressure is real; D7 concern) |
+| Simple v1 GETs | 0.2–0.6s |
+| `/v1/estoque/produtos` first hit | 3.1s cold, then ~0.3s |
+| `/v1/vendas/pedidos` list pages | 6–9s, 146–215KB/page (heavy embedded itens/financeiros/cliente) |
+| `/v1/vendas/nfe` list page | ~1.0s, ~126KB |
+| loadRecords | 0.12–1.3s |
+| Page size | 50 fixed on every enumerated v1 surface |
+| Universe | ≈35–42.5k products; 13 empresas; 43 locais |
+| Rate limits | **no rate-limit headers exposed** anywhere; gateway is Kong (`Via: kong/3.5.0`); `GTW-REQUEST-ID` present as correlation header; limits UNKNOWN — deferred to D7 proof |
+| End-of-data | v1 enumerations signal end with **HTTP 404 `RESOURCE_NOT_FOUND`**, not an empty page; a consumer must not read that 404 as error OR as absence proof beyond the enumerated scope; `hasMore` exists and 45-row pages with `hasMore=true` occur |
+| Timeouts | none observed |
+
+Verdict on viability: the sanctioned Gateway is operationally plausible for Product 1.0 acquisition volumes at this universe scale; order/NFe enumerations are heavy but filterable by company + date window; unknown rate limits and the 5-minute token are the two D7-relevant frictions.
+
+### Proof matrix
+
+| Concern | Specific REST API | loadRecords needed? | Real result | Coverage | Candidate contract |
+|---|---|---|---|---|---|
+| Auth | `POST /authenticate` | no | 200, Bearer, 300s TTL | KNOWN (sandbox) | OAuth client_credentials + X-Token per B1 §3.6 |
+| Source binding | token claims (no data-plane marker) | no | `ambiente=hml` + stable `environment` UUID | KNOWN (sandbox) | fail-closed on token env markers; configured binding otherwise (B1 §3.4) |
+| Product key | `/v1/produtos`, `/{cod}` | optional | `codigoProduto`=CODPROD int | KNOWN | SourceInstance + CODPROD |
+| Product identifiers | same (+ `/volumes` conditional) | for native codes/AD fields | referencia/refForn/marca/ncm; **no first-class GTIN** | KNOWN (gap explicit) | identifiers as evidence; GTIN evidence conditional/absent — Readiness decides sufficiency |
+| Product delta | `modifiedSince` (DD/MM fmt) | alternative w/ same precondition | log disabled; **silent 404** on produtos | SUPPORTED + COVERAGE UNKNOWN | delta only with proven LOGTABOPER + ≤7d window; else full enumeration |
+| Inventory quantity | `/v1/estoque/produtos[/{cod}]` | for decomposition | REST = ESTOQUE−RESERVADO proven | KNOWN | REST net OR entity `Estoque` fieldset |
+| Inventory company/local | same + `/v1/estoque/locais`, `/v1/empresas` | no | emp×local×controle real; locais tree global | KNOWN | CODEMP/CODLOCAL as external refs |
+| Inventory reserved/control | — (absent on REST) | **yes** | RESERVADO/CONTROLE/TIPO/CODPARC live | KNOWN | loadRecords `Estoque` minimal fieldset |
+| Inventory delta | none on REST | log-conditioned | no modifiedSince on estoque REST | UNSUPPORTED (REST) / UNKNOWN (entity) | enumeration; delta after log proof |
+| Cost observations | none | **yes** | entity `Custo`: 4 variants, CODEMP+DTATUAL(+local/controle/NUNOTA) | KNOWN | loadRecords `Custo`; Economics picks Cost Basis |
+| Tax calculation | `POST /v1/fiscal/impostos/calculo` | no | blocked by house trigger; needs Modelo de Notas; no residue | SUPPORTED + PROVIDER-CONDITIONED | usable only after operator model config; else L0 tax = gap |
+| Existing order read | `/v1/vendas/pedidos` (enum) | **yes for point read** | enum OK; `codigoNota`/`numeroNota` filters broken (404) | KNOWN (enum) / KNOWN-fallback (point) | enum by empresa+date; point via `CabecalhoNota` NUNOTA |
+| Order confirmation/readiness | `confirmada`/`pendente` | corroborated | STATUSNOTA=L / PENDENTE=S semantics measured | KNOWN (states) / UNKNOWN (cancel repr.) | dual-surface state contract; cancel representation to pin |
+| Existing NFe read | `/v1/vendas/nfe[/{cod}]` | optional | headers+point w/ chave/protocolo/itens/impostos | KNOWN | REST NFe surfaces |
+| Order→invoice relation | NFe `codigoPedidoOrigem` | **yes for 0..N/partial** | TGFVAR via `CompraVendavariosPedido` proven, QTDATENDIDA item-level | KNOWN | both surfaces; TGFVAR for partial/multi |
+| Order-create capability | `POST /v1/vendas/pedidos` (docs) | n/a | returns codigoPedido; "SEMPRE A CONFIRMAR" | KNOWN (docs) / write unproven | intent→codigoPedido + reread; confirm command TBD |
+| Invoicing capability | `SelecaoDocumentoSP.faturar` mgecom (docs) | n/a | requires confirmed order + NUNOTA + codTipOper; partial ok | PROVIDER-CONDITIONED + UNKNOWN (OAuth-mgecom empirical) | controlled write proof required |
+| Pagination | all v1 | n/a | 50/page; 404-as-end; hasMore; n<50 ≠ end | KNOWN | enumerate until 404/hasMore=false |
+| Operational viability | all | n/a | latencies above; no rate-limit headers; 300s token | KNOWN (sandbox scale) / limits UNKNOWN | plausible; rate/volume proof deferred D7 |
+
+### GATE VERDICT — **PARTIAL**
+
+The direction is viable: every Product 1.0 fact/command family has a demonstrated or explicitly documented sanctioned Gateway path, and GPT can draft a concrete B3 candidate **without inventing any capability** — every claim above is measured, or named PROVIDER-CONDITIONED/UNKNOWN with its exact discharge condition. It is not PASS because material contract claims still need evidence that read-only sandbox measurement structurally cannot give:
+
+1. all facts are **sandbox-qualified**; production re-measurement (auth, environment marker, universes, customization triggers) is required before B3 claims bind production;
+2. tax calculation is blocked by instance customization until an operator-configured Modelo de Notas exists (then a read-only re-probe closes it);
+3. delta coverage requires operator activation of LOGTABOPER (+ acceptance of the ≤7-day window) before `modifiedSince` means anything;
+4. order-create/confirm/invoice are doc-known but effect-unproven (writes were correctly out of scope — see below);
+5. cancellation representation on the order surface is unpinned.
+
+**Nothing here is BLOCKED**: no required fact/command lacks a sanctioned path, and no gap tempts an Oracle fallback — Oracle remains excluded per B1 §3.5.
+
+### Material findings
+
+- **F-B3-1 — REST `estoque` is net (ESTOQUE−RESERVADO), proven row-by-row.** The doc calls it "available"; it silently hides full-reservation vs no-stock. Availability contracts must choose surface per claim.
+- **F-B3-2 — modifiedSince honesty is endpoint-specific.** With the log disabled, `/v1/vendas/pedidos` fails honest-400 while `/v1/produtos` returns silent-404 "no records". The produtos variant can fabricate "no changes". Delta lanes must gate on proven log coverage, never on empty responses.
+- **F-B3-3 — Order point filters are broken** (`codigoNota`/`numeroNota` → 404 for existing orders). Point authority = loadRecords `CabecalhoNota` until the REST defect is resolved by the provider.
+- **F-B3-4 — `/v1/fiscal/impostos/calculo` internally materializes a movement** and is intercepted by house triggers (`TRG_INC_UPD_TGFCAB_METAL`: vendedor mandatory; schema has no vendedor input). Non-persistence verified by reread (0 residue). Usability is instance-configuration-conditioned.
+- **F-B3-5 — No first-class GTIN on the product surface**; `referencia` is EAN-shaped by convention only; volume barcodes exist only for alternate volumes.
+- **F-B3-6 — Provider contract quirks that must live in the adapter:** JSON key `"dataAlteracao:"` (trailing colon); item key `codProduto` vs documented `codigoProduto`; two date formats for modifiedSince in one API family; 404-as-end-of-enumeration; pages with n<50 and `hasMore=true`; raw ORA/trigger/schema text leaking through error bodies.
+- **F-B3-7 — Change-log retention ceiling is 7 days** (LOGTABMAXAGE) — delta can never be historical authority; recovery beyond 7 days = full enumeration.
+- **F-B3-8 — Token TTL 300s** — credential lifecycle pressure belongs in D7 design explicitly.
+
+### Remaining Unknowns
+
+- production-environment counterparts of every sandbox fact (incl. whether production triggers block the calc API the same way);
+- rate limits / concurrency ceilings (no headers; not stress-tested by design);
+- cancellation representation for orders (native fields/status vocabulary unmeasured — no canceled sample found);
+- order confirmation command surface (not verified this session);
+- OAuth bearer on mgecom module (documented, not exercised);
+- whether a properly configured Modelo de Notas satisfies the house triggers for the calc API;
+- third-party/consignment stock behavior (TIPO≠'P' universe empty here);
+- log-enabled behavior of `modifiedSince`/`logAlteracoesTabelas` (activation is an operator Om change with table-lock risk).
+
+### CONTROLLED WRITE PROOF REQUIRED (not executed; operator/GPT to schedule — sandbox first)
+
+1. **Order materialization:** `POST /v1/vendas/pedidos` (sandbox). Expected effect: one TGFCAB/TGFITE pedido "a confirmar"; proof: returned `codigoPedido` + authoritative reread (`CabecalhoNota`) showing created-not-confirmed; blast radius: one sandbox order; reversible (sandbox disposable; cancel path exists). Proves: Business Order Intent → native order correlation + created≠confirmed.
+2. **Order confirmation:** exact sanctioned service to be named from official docs first (not verified this session). Proves: confirmed-state transition + readiness gate for invoicing.
+3. **Invoicing:** `SelecaoDocumentoSP.faturar` (mgecom) on the sandbox order. Expected: new fiscal NUNOTA; proof: response NUNOTA + reread via `/v1/vendas/nfe/{cod}` + TGFVAR row; ALSO discharges OAuth-mgecom compatibility. Blast radius: one sandbox invoice (no SEFAZ effect from sandbox — to be confirmed before running); classification: reversible in sandbox, irreversible-class in production.
+4. **Tax calc re-probe** after operator configures a Modelo de Notas in sandbox Om (read-only once configured).
+
+Each write requires explicit operator authorization per repo policy; none is authorized by this gate.
+
+### HANDOFF → GPT
+
+Adjudicate: (1) accept/adjust the **PARTIAL** grading and its five listed reasons; (2) accept the measured contracts as the B3 evidence base: CODPROD key, identifier-evidence set with explicit GTIN gap, net-vs-decomposed inventory dual surface, `Custo` cost-observation contract, dual-surface order state semantics with `CabecalhoNota` point fallback, NFe + `CompraVendavariosPedido` correlation pair, faturar-as-documented; (3) decide whether the B3 target contract adopts REST-net or entity-decomposed inventory (or both, per-claim) — that is a design decision, not evidence; (4) adjudicate findings F-B3-1…8 into contract clauses; (5) sequence the operator prerequisites (production credential measurement, LOGTABOPER decision incl. ≤7d window acceptance, Modelo de Notas configuration, controlled-write schedule) and their router consequence — whether B3 opens as a batch now with these as explicit gates, per operator decision. This session did not open B3 and did not alter any authority file.
