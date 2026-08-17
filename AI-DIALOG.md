@@ -527,3 +527,150 @@ Alternative C (provider-local concrete topology behind consumer-owned semantic p
 **READY FOR GPT ADJUDICATION AND OPERATOR DECISION ON D4-B2: YES** — conditional on F1–F3 being absorbed at consolidation and the Installation Evidence Gate retained (with the F3 scope split if the operator wants B3/B4 sequencing unblocked).
 
 HANDOFF → GPT. Expected next: GPT independently adjudicates F1–F3 against repository authority and the cited current official evidence — especially F1's canceled-order enumeration exclusion, F2's site-gated/UP-shared stock-write sharpenings, and F3's gate scope split — confirms or refutes the Full-only-insufficiency and gate-necessity adjudications recorded here, and returns the converged B2 batch to the operator for explicit acceptance and canonical consolidation into `D4-EXTERNAL-INTEGRATIONS.md`.
+
+## FABLE — D4-B2 Installation Evidence Gate (2026-08-17)
+
+**Subject:** Execution of the read-only real-dependency probe required by `D4-EXTERNAL-INTEGRATIONS.md` §4.8.
+**Head measured:** `c6ad6196a93475467edcafc5e25d5a5592ec7e28` on `docs/global-methodology-alignment`.
+**Authority state reconstructed first:** D0–D3 CLOSED/ACCEPTED; D4 OPEN/ACTIVE; D4-B1 ACCEPTED/CANONICAL; D4-B2 OPEN/CANONICAL CONTRACT CORE with Installation Evidence Gate OPEN blocking whole-batch closure; B3/B4 not opened; implementation blocked until D9.
+**Runtime identity (sanitized):** Installation `inst-mercado_livre-7e0d2125-f525-4174-9ade-8c7dc496a0e0`, tenant `tenant_default`, bound `external_account_id=691607102`. Credential resolved through the existing runtime mechanism (Postgres + local AES-GCM key), token never printed/persisted.
+**Measurement window:** 2026-08-17T14:34:58Z → 14:37:5xZ (UTC). All calls were HTTP GET against `api.mercadolibre.com` with ~250ms spacing; no write of any kind was attempted; no stress/rate-limit test was run. Temporary probe code (`cmd/mlgate`, session-local) was deleted before commit; only this report enters the repository. Evidence below is counts/classifications; no buyer PII, no raw payloads, no secrets.
+
+### G1 — Installation / seller posture — KNOWN
+
+`/users/me` → 200.
+
+- `seller_id=691607102`, `site_id=MLB`, `user_type=normal`, `status.site_status=active`.
+- **Binding check: observed seller_id == Installation `external_account_id` → MATCH (fail-closed check passed).**
+- Tags present: `user_product_seller`, `business`, `eshop`, `normal`, `messages_as_seller`.
+- Tags **absent**: `warehouse_management`, `multiwarehouse` → no multi-origin/seller-warehouse surface enabled.
+- `seller_reputation.level_id=4_light_green`; no operationally material seller-level restriction observed on the identity surface.
+
+### G2 — Real listing topology — KNOWN (complete enumeration)
+
+Universe: full seller enumeration via `/users/691607102/items/search?search_type=scan&limit=100` — **34 item IDs in 2 batches, scan COMPLETED** (empty final page). All 34 hydrated via `/items?ids=` multiget (2 batches, all 200).
+
+- **Model: 34/34 User Product; 0 legacy; 0 items with `variations[]`.** `family_name` non-null on all.
+- **Item↔UP cardinality: strictly 1:1 today — 34 distinct `user_product_id`, zero multi-Item UPs.**
+- Catalog: 10/34 catalog-related (`catalog_listing=true` and/or `catalog_product_id` present).
+- Status: 8 `active`, 19 `paused`, 7 `under_review`; sub_status: 7× `waiting_for_patch`, 1× `paused_by_seller`, 1× `out_of_stock`.
+- Shipping on every item: `mode=me2`, `logistic_type=xd_drop_off`.
+- Composite/kit provider behavior: **not observed** in this population (no variations, no composite markers); classification "not observed in stated universe", not "capability absent".
+
+### G3 — Price Automation / price-write lane — KNOWN
+
+Official surfaces: `/pricing-automation/users/691607102/items` → 200, `paging.total=0` (no automated items seller-wide); per-item `/pricing-automation/items/{id}/automation` on 3 active candidates → all 404 `automation_not_found`.
+
+**PRICE-WRITE PROOF CANDIDATE:**
+- target: `MLB4834219830` (active, `gold_pro`, non-catalog, UP `MLBU783470824`); alternates `MLB4735326915`, `MLB4735364085`, `MLB4735304125` (catalog);
+- automation_state: none (seller-wide total=0; per-item 404);
+- provider-effective direct-write classification: **not blocked by Price Automation** for any candidate at measurement time; no other provider block observed on read surfaces;
+- evidence source/time: pricing-automation surfaces above, 2026-08-17T14:35Z.
+
+### G4 — Availability / stock write surface — KNOWN typology; write surface = documented candidate (unexercised by design)
+
+Sampled 10/34 distinct UPs via `GET /user-products/{up_id}/stock` — all 200, uniform result:
+
+- **every sampled UP exposes exactly one stock location: `type=selling_address`** (no `store_id`, no `network_node_id`);
+- **no `seller_warehouse`, no `meli_facility` anywhere in the sample**;
+- **`x-version` header present on every stock GET** (optimistic-precondition surface live);
+- seller tags confirm no multi-origin enablement; site is MLB.
+
+Classification per §4.8:
+
+- **B (UP/location write): NOT ENABLED** — `seller_warehouse` requires multi-origin + `warehouse_management` (absent); `selling_address` API stock editing is documented as enabled only on MLA/MLC, and this Installation is MLB.
+- **C (provider-managed): NOT PRESENT** — no `meli_facility`/Full stock observed anywhere.
+- **A (Item-path `/items.available_quantity`): the ONLY candidate lane, affirmatively documented** — current official User Products documentation lists `available_quantity` among the fields a `PUT /items` replicates asynchronously across the Items of the same UP, i.e. the Item-path write is the documented stock-change surface for UP sellers without multi-origin. Historical repository evidence (2026-08-01 live drives) shows Item-path stock writes previously succeeded on this account — time-bound corroboration, not current proof.
+- **Residual (structural to a read-only gate): actual provider acceptance of an Item-path stock write on this seller/site/listing is UNEXERCISED** — the gate forbids writes, so enablement is established by typology + configuration + affirmative documentation, and final acceptance proof belongs to the first controlled write of the selected lane.
+
+**UP shared effect / blast radius:** with strict 1:1 Item↔UP today, an Item-path availability write has **single-Item effect scope** on every current listing. The canonical B2 shared-effect gate remains armed: if any UP later gains a second Item, the same write becomes multi-Item and must fail closed/redecide per §4.3.
+
+**AVAILABILITY PROOF CANDIDATE:**
+- target: `MLB4834219830` / UP `MLBU783470824` (active; selling_address single location) — any of the 8 active items qualifies;
+- write surface: `PUT /items/{id}` `available_quantity` (UP-shared field; single-Item scope today);
+- provider scope/blast radius: single Item (1:1 UP verified across whole population);
+- preconditions: `user_product_seller` model active; no multi-origin; MLB site; no automation/moderation block on candidate;
+- classification: **seller-writable (documented candidate) — not provider-managed**; acceptance to be confirmed by the first controlled write before any D0 Availability-Control-complete claim;
+- confidence: typology/config/tags measured now; surface from current official docs; write unexercised.
+
+**No conflict with D0:** a seller-writable availability lane exists on this Installation (candidate A). The Full-only conflict scenario did not materialize — there is no Full stock here at all.
+
+### G5 — Order / Shipment / fulfillment lanes — KNOWN
+
+Universe: `/orders/search?seller=691607102&sort=date_desc&limit=20` → 200, `paging.total=40` within the provider-defined seller-search scope; 20 most recent orders classified; 5 shipments point-read via `GET /shipments/{id}` (`x-format-new: true`) + `GET /shipments/{id}/sla`.
+
+- **Every sampled order/shipment is `me2` / `xd_drop_off` (cross-docking drop-off), forward direction — a seller-operated physical fulfillment lane** (seller separates/packs/hands off). `fulfilled=true` on most paid orders; frequent `pack_order` tag; one `b2b`; some `d2c`/`one_shot`.
+- **No Full/`fulfillment` logistic, no flex/self_service observed** in items or sampled shipments.
+- **SLA surface live on this lane:** `/shipments/{id}/sla` → 200 with `status=on_time` (4×) and one real `status=delayed` (shipment `47745061741`, `expected_date=2026-08-12`, still `shipped`) — provider-authoritative deadline evidence works and matters here.
+- Fiscal/label prerequisites: sampled shipments were terminal (`delivered`)/`shipped` with `substatus=null`; **no live `invoice_pending`/`waiting_for_label_generation` state was observable in this sample**. The seller is `business` (CNPJ), so the NF-before-label sequence is expected on this lane but its live open-state sequence remains to be observed on the next open shipment.
+
+Gate questions answered:
+1. Seller-operated physical fulfillment lane exists? **YES — me2/xd_drop_off, the only lane observed.**
+2. Only provider-operated/Full? **NO — zero Full presence.**
+3. Smallest real Product 1.0 proof lane: **me2 `xd_drop_off` seller-operated, with the D0 internal normal path (separation → conference → invoicing → packing → dispatch) mapped onto it.**
+4. Provider prerequisites to close on it: ML-generated label print + dispatch handoff; NF/fiscal attachment sequence (taxonomy exists; live open-state sequence pending next open shipment); SLA/deadline observation (proven live).
+
+**Measured contradiction with a canonical premise (reported as finding F-GATE-1 below):** the 20-result sample **contains 2 `cancelled` orders** (both `not_paid`, with `cancel_detail` present), although canonical §4.4 records current official documentation as "seller-scoped search filters canceled Orders".
+
+### G6 — Moderation / restrictions — KNOWN
+
+- Seller level: `site_status=active`; no material seller-wide restriction observed on identity surface.
+- Listing level: **7/34 `under_review` with `waiting_for_patch`** — a real, material provider moderation condition on this Installation (provider requires listing data correction); plus 1 `out_of_stock`, 1 `paused_by_seller`. This is exactly the Portfolio/Offering attention + Provider-Effective-Capability evidence class B2 §4.2 expects; no reputation-management surface touched.
+
+### G7 — Claim / Return evidence — OBSERVED
+
+Universe: `/post-purchase/v1/claims/search` for this seller (filter required by API; `status=opened` → total=0; `status=closed` → **total=26**, all classified).
+
+- Types among 26 closed: `cancel_sale` (10), `cancel_purchase` (6, shipment-resource), `mediations` (9, stages claim/dispute/recontact), `returns` (1).
+- **Real total-return case confirmed for future D8 evidence:** claim `5528430246` (mediations → dispute, reason `PDD9939`, `related_entities:["return"]`, resolution `item_returned`, `applied_coverage=true`, closed_by mediator) with **`/post-purchase/v2/claims/5528430246/returns` → 200: `subtype=return_total`, `status=delivered`, `status_money=refunded`, reverse shipment `47307629504` (`type=return`, `delivered`)**. Reverse shipment is distinct from the forward shipment, exactly as canonical §4.5 models.
+- `players[].available_actions` present on claim detail (empty on closed claims — consistent Level-2 capability shape).
+- Access anomaly recorded: the single claim of type `returns` (`5370902617`) returns **403 "User does not have access to claim"** on detail/v2-returns with the current credential, while mediations claim detail works. Classified as a provider-side access/scope condition for that claim type/surface — Unknown, does not block the gate (return evidence exists via the mediations-related return above).
+
+### Gate decision matrix
+
+| Concern | Current real evidence | Classification |
+|---|---|---|
+| Installation model | seller 691607102 @ MLB; binding MATCH; `user_product_seller`; no `warehouse_management`/`multiwarehouse`; site_status active | **KNOWN** |
+| Listing model | 34/34 UP, 0 legacy, 0 variations, 1:1 Item↔UP (complete scan); 10 catalog-related | **UP (uniform)** |
+| Price write | automation seller-total=0; candidates 404 `automation_not_found` | **candidate (not blocked)** |
+| Availability write | only `selling_address` UP stock; no multi-origin/Full; MLB site-gating excludes location PUT; Item-path `available_quantity` is the documented candidate | **Item (documented candidate; acceptance unexercised — read-only gate)** |
+| Availability blast radius | 1:1 Item↔UP across whole population | **single-Item (today)** |
+| Fulfillment lane | 20/20 recent orders + 5/5 shipments me2 `xd_drop_off`; zero Full/flex | **seller-operated** |
+| Fiscal/label prerequisites | terminal-state sample; `invoice_pending`/label taxonomy known; live open-state sequence not observed | **partially KNOWN (pending next open shipment)** |
+| SLA | `/shipments/{id}/sla` live; on_time + one real delayed | **KNOWN / applicable** |
+| Moderation | 7/34 `waiting_for_patch` under_review; seller unrestricted | **KNOWN (material listing-level)** |
+| Claim/Return | 26 closed claims; 1 real total return w/ reverse shipment + refund; opened=0 | **observed** |
+
+### GATE VERDICT: **PASS** — smallest real proof lane set selected, with two named residual verification obligations
+
+Selected smallest Mercado Livre Product 1.0 proof lane set (per §4.8 outcome 1):
+
+1. **Availability lane:** Item-path `available_quantity` write on an active UP listing (candidate `MLB4834219830`), single-Item scope — seller-writable lane EXISTS; the Full-only D0 conflict did not materialize.
+2. **Price lane:** direct item price write on the same/alternate active listing — not blocked by Price Automation today.
+3. **Sale/Fulfillment lane:** me2 `xd_drop_off` seller-operated — supports the D0 internally-operated normal path; SLA surface proven live.
+4. **Post-Sale evidence:** real closed total-return with reverse shipment + refund available for D8 correlation.
+5. Modes not present on this Installation (Full/`meli_facility`, multi-origin `seller_warehouse`, flex, legacy variations, composites) remain **explicit unsupported/not-present** — no concrete support obligation now, seams preserved.
+
+Residual verification obligations attached to the selected lane set (not blockers to selection; both structurally unreachable by a read-only gate):
+
+- **R1:** first controlled availability/price write on the selected candidate must confirm provider acceptance (and reread convergence) before any D0 Availability-Control/price-lane capability is claimed complete — this is the existing D8/controlled-proof obligation, now bound to a concrete target;
+- **R2:** the live fiscal/label prerequisite sequence (`invoice_pending` → label → dispatch) must be observed on the next open shipment of the selected lane.
+
+If GPT reads §4.8 minimum-fact 4 ("write surface actually enabled") in its strictest sense — requiring exercised acceptance — the correct grading is **PARTIAL** with the same lane selection and the same residuals; nothing else in the matrix changes. I recommend PASS because the gate itself forbids writes, making documented-candidate + measured-configuration the ceiling of read-only proof, and because lane selection — the gate's stated purpose — is fully and honestly possible.
+
+Explicitly NOT claimed: D8 is not proven; Product 1.0 is not implemented; no D0 capability is complete. This gate only establishes the real ML context B2 admits.
+
+### Findings against canonical premises
+
+**F-GATE-1 — Measured seller order search RETURNED cancelled orders, contradicting the flat canonical clause.** Canonical §4.4 ("Order enumeration / history coverage" rule 2) records, from current official documentation, that seller-scoped search "filters canceled Orders". Real measurement at 2026-08-17T14:35Z: the first 20 `date_desc` results for this seller include **2 orders with `status=cancelled`** (both `not_paid`, `cancel_detail` present). Evidence: order IDs `2000017379792858`, `2000017258505630`. Impact: the documented exclusion is not reliably observed; behavior is inconsistent between documentation and measurement (possibly scoped to some cancellation subclass — undetermined). Proposed correction: narrow the canonical clause to "current documentation states canceled Orders may be filtered from seller search while real measurement shows cancelled orders can appear; the behavior is not a reliable contract in either direction" — the operative rules (enumeration cannot carry cancellation completeness; coverage claims name the exclusion risk; notification→point-reread carries cancellation acquisition) remain correct and unchanged. No reopen; consolidation-absorbable wording fix.
+
+**Minor (not a contradiction):** claim type `returns` detail surface returned 403 for this credential while mediations detail worked; record as a provider access/scope condition to re-examine when post-sale acquisition is implemented.
+
+### Remaining Unknowns after this gate
+
+- R1: provider acceptance of the Item-path stock/price write on this seller (first controlled write);
+- R2: live open-shipment fiscal/label prerequisite sequence on the selected lane;
+- access scope for `returns`-type claim detail (403);
+- whether the 7 `waiting_for_patch` listings affect the chosen proof candidates over time (candidates selected among unmoderated active items).
+
+HANDOFF → GPT. Expected adjudication: (1) confirm the GATE VERDICT grading — PASS as recommended, or PARTIAL under the strict reading of §4.8 fact 4 — with the same selected lane set either way; (2) adjudicate F-GATE-1 and narrow the §4.4 canceled-order clause accordingly; (3) accept the selected smallest proof lane set (availability = Item-path single-Item; price = direct write; fulfillment = me2 xd_drop_off seller-operated; post-sale = existing return case) as the §4.8 result and record R1/R2 as the bound residual obligations; (4) recommend to the operator the router consequence — whether B2 can now move to ACCEPTED-as-a-whole with R1/R2 carried as explicit D8-phase obligations, or remains OPEN until R1/R2 discharge — that sequencing is an operator decision, not mine.
