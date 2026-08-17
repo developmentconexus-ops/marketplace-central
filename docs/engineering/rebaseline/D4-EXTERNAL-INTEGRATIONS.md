@@ -58,9 +58,9 @@ D4 imports rather than re-decides these accepted meanings:
 
 ## 3. D4-B1 — External Contract Grounding — ACCEPTED
 
-**Outcome:** `RESTRUCTURE NOW` for the narrow Sankhya direct-transport assumption; otherwise `CURRENT STRUCTURE CONFIRMED` with bounded grounding additions. No D0/D1/D2/D3 reopen is required.
+**Outcome:** `RESTRUCTURE NOW` for the former Sankhya direct-Oracle target assumption; otherwise `CURRENT STRUCTURE CONFIRMED` with bounded grounding additions. No D0/D1/D2/D3 reopen is required.
 
-The operator explicitly accepted the converged B1 batch after an independent Fable challenge and GPT adjudication. Reviewer findings are evidence; the authority is the operator-approved result recorded here.
+The operator explicitly accepted the converged B1 batch after an independent Fable challenge and GPT adjudication, then clarified the Sankhya transport decision: Direct Oracle existed historically because a sanctioned Sankhya connection path was not yet known/available to the project; now that the API Gateway path is established, Direct Oracle is not wanted in the target architecture. Reviewer findings are evidence; the authority is the operator-approved result recorded here.
 
 ### 3.1 Governing external-contract invariant
 
@@ -114,46 +114,38 @@ The last rule is an attribution invariant. It does not require calling `/users/m
 
 1. `SourceInstance` is Organization-qualified and identifies one logical Sankhya business-system namespace/environment whose native keys are referenced.
 2. Production and sandbox/test are distinct external environments and must not be silently collapsed merely because their entities/keys look alike.
-3. Rotating `client_id`, `client_secret`, `X-Token` or connection credentials does not by itself create a new SourceInstance when the same authoritative namespace remains bound.
+3. Rotating `client_id`, `client_secret`, `X-Token` or other sanctioned API credentials does not by itself create a new SourceInstance when the same authoritative namespace remains bound.
 4. Changing to a materially different authoritative namespace/environment requires explicit source rebinding/new SourceInstance treatment per D2.
-5. Source identity is independent of concrete transport. Reaching the same namespace through a different admitted transport does not re-identify its facts.
+5. Source identity is independent of concrete protocol mechanics. Credential/auth/API implementation changes do not re-identify the source.
 6. B3 owns exact native-key/fact mapping and company/location/as-of qualification.
 7. Where a Sankhya response or source identity surface exposes an authoritative namespace marker, mismatch against the SourceInstance binding fails closed for attribution. Where no such marker exists, configured/authorized source binding remains the control.
 
-### 3.5 Sankhya transport — targeted re-adjudication of direct Oracle
+### 3.5 Sankhya transport — API Gateway is the target
 
 #### Decision
 
 **RESTRUCTURE NOW — transport only.**
 
-For new MPC↔Sankhya integration contracts, the provider-sanctioned Sankhya API Gateway is the **default target transport**.
+For MPC↔Sankhya integration, the provider-sanctioned Sankhya **API Gateway is the target transport**.
 
-Direct Oracle/database access is **not** a silent fallback and is no longer the normative target merely because current code, ADR-006 or ADR-007 already exist.
+**Direct Oracle/database access is not part of the target architecture and is not a fallback path.**
+
+The historical direct-Oracle/godror path existed because the project previously did not have a known/usable sanctioned Sankhya API integration path. That historical constraint no longer justifies carrying database access forward now that the Gateway integration path is available and preferred by the operator.
 
 This correction is deliberately narrow. It does **not** reopen or discard these transport-independent constraints:
 
 - Sankhya/business-system state is external to MPC;
 - MPC business consumers depend on MPC-owned semantic ports;
-- provider/business-system protocol stays behind adapter boundaries;
+- Sankhya protocol stays behind adapter boundaries;
 - PostgreSQL remains the store for MPC-owned canonical state;
-- business contexts do not gain ad-hoc SQL/driver knowledge;
+- business contexts do not gain ad-hoc ERP transport knowledge;
 - no legacy MetalShopping/Postgres source shortcut is resurrected.
 
-#### Current evidence status
-
-Current official Sankhya guidance establishes API Gateway as the exchange standard and states that direct database/old directly connected API integrations are outside the cited guideline **for the client population to which that guidance applies**. The same public guidance includes a client-population qualification tied to 2023-02-01.
-
-The repository does **not** currently establish this Metal Nobre/Sankhya installation's contract date, entitlement or provider-approved direct-database exception.
-
-Therefore:
-
-- **Gateway as the default target transport is accepted now** from current provider strategic direction, the rebaseline rule that current code is not target authority, and D0's existing sanctioned-API preference for writes;
-- **a claim that direct DB is contractually prohibited for this specific client remains Unknown** until client/provider contract/entitlement evidence is obtained;
-- no future document may flatten that Unknown into either “Oracle is forbidden for us” or “Oracle is allowed for us” without evidence.
+Current official Sankhya guidance independently supports Gateway as the standard integration surface, but target selection does not depend on proving that Direct Oracle is contractually forbidden for this specific client. The operator has explicitly chosen not to carry Direct Oracle into the target.
 
 #### B3 evidence gate
 
-B3 must evaluate the concrete Sankhya fact/command surface against the sanctioned Gateway/API path and prove it is sufficient for the required Product 1.0 claims.
+B3 must evaluate the concrete Sankhya fact/command surface through the sanctioned Gateway/API path and prove it is sufficient for the required Product 1.0 claims.
 
 “Sufficient” includes:
 
@@ -167,12 +159,11 @@ B3 must evaluate the concrete Sankhya fact/command surface against the sanctione
 
 B1 does **not** choose polling/job cadence, scheduler topology or concurrency. Those remain D7.
 
-If a materially required Product 1.0 fact/command cannot be obtained correctly and operationally through the sanctioned API surface, B3 must **STOP / SPLIT PREREQUISITE** and present the evidence. A direct-DB exception requires both:
+If a materially required Product 1.0 fact/command cannot be obtained correctly and operationally through the sanctioned Gateway/API surface, B3 must **STOP / SPLIT PREREQUISITE** and present the gap for explicit operator/architecture adjudication.
 
-1. explicit current provider/customer entitlement/support evidence; and
-2. a targeted architecture decision establishing why the sanctioned surface is insufficient.
+> **Failure of the Gateway surface does not authorize a Direct Oracle fallback.**
 
-Convenience or performance preference alone is not enough.
+The response to an API limitation is to find a sanctioned supported capability, alter the affected Product 1.0 claim explicitly if justified, or reopen the transport decision with new operator-approved evidence. It is never to introduce database access silently.
 
 ### 3.6 Authentication and credential lifecycle are protocol, not identity
 
@@ -187,9 +178,9 @@ Convenience or performance preference alone is not enough.
 
 #### Sankhya
 
-1. The current Gateway authentication surface uses OAuth 2.0 `client_credentials` with the provider-required `X-Token` contract.
+1. The target Gateway authentication surface uses OAuth 2.0 `client_credentials` with the provider-required `X-Token` contract.
 2. Production and sandbox environment credentials/tokens are not mixed.
-3. Legacy appkey/login behavior is historical evidence, not the default target for new work.
+3. Legacy appkey/login and direct-database connection behavior are historical evidence, not target auth/integration paths for new work.
 4. Credential changes do not alter SourceInstance when the same source namespace remains authorized.
 5. Authentication failure is availability/auth state, not business absence.
 
@@ -315,9 +306,9 @@ B1 rehomes source-qualified identity, honest coverage and reread principles. The
 
 #### ADR-006 / ADR-007
 
-Their **direct-Oracle default / canonical-godror transport meaning is no longer current target authority after B1**. They remain historical/current-state evidence for a possible explicitly proven B3 direct-database exception. If such an exception survives B3, D7 later chooses its runtime realization; godror/OCI is not retained merely because it exists today.
+**Historical after D4-B1 for target architecture.** Their direct-Oracle/default-godror transport meaning is superseded. Direct Oracle is not an admitted target transport and godror/OCI is not a target runtime requirement.
 
-Their transport-independent adapter-boundary/external-system lessons remain preserved independently by D0–D4/`ARCHITECTURE.md`.
+Their durable transport-independent lessons — Sankhya remains external, consumers depend on MPC-owned ports/adapters, business code does not inherit driver/protocol details, and a wrong legacy source store is not revived for convenience — are rehomed in D0–D4/`ARCHITECTURE.md`.
 
 ### 3.13 Explicit deferrals and next-batch ownership
 
@@ -341,8 +332,7 @@ B2 owns the concrete Mercado Livre operational surface needed by Product 1.0, in
 
 B3 owns:
 
-- sanctioned target surface under §3.5;
-- client/provider contract/entitlement evidence relevant to any direct-DB exception;
+- the sanctioned API Gateway target surface under §3.5;
 - exact authoritative Product/native key mapping;
 - inventory company/location/as-of facts;
 - cost/tax evidence and required source qualifiers;
@@ -350,7 +340,9 @@ B3 owns:
 - Invoicing Intent materialization;
 - native result keys and authoritative reread/reconciliation;
 - explicit unsupported facts/commands;
-- operational viability of the chosen sanctioned surface for the required correctness/coverage/volume.
+- operational viability of the Gateway/API surface for the required correctness/coverage/volume.
+
+If the Gateway/API surface proves insufficient for a required Product 1.0 claim, B3 stops and escalates the gap; **Direct Oracle is not a B3 fallback option** under current authority.
 
 B3 does not choose scheduling cadence/process topology.
 
@@ -382,10 +374,9 @@ B1 is accepted against these falsification cases:
 16. Provider receives a write and the connection drops -> ambiguity/reconciliation required; blind retry forbidden.
 17. Provider returns 2xx for accepted asynchronous work -> no convergence claim unless the source contract proves it.
 18. Multi-target effect partially succeeds -> member outcomes remain representable.
-19. Direct Oracle is technically easier/faster -> convenience alone cannot override the accepted Gateway-default target.
-20. B3-required Sankhya fact is unavailable or operationally non-viable through Gateway -> STOP / exception decision, never silent direct-DB fallback.
-21. Client entitlement evidence explicitly admits or forbids direct DB -> B3 adjudicates the actual client-specific claim; B1 does not fabricate it.
-22. A second marketplace arrives -> consumer-owned ports remain sufficient without a universal provider entity graph unless real repetition proves otherwise.
+19. Legacy Oracle path is technically easier/faster -> it remains historical and does not enter the target.
+20. B3-required Sankhya fact is unavailable or operationally non-viable through Gateway -> STOP / explicit architecture decision; no database fallback.
+21. A second marketplace arrives -> consumer-owned ports remain sufficient without a universal provider entity graph unless real repetition proves otherwise.
 
 ### 3.15 Reopen / stop triggers
 
@@ -396,8 +387,8 @@ Revisit only the implicated decision when material evidence shows:
 3. A concrete interaction needs a new semantic business dependency absent from D1 -> targeted D1 review.
 4. Provider effect semantics cannot fit D3 accepted/rejected/pending/ambiguous + reread/reconciliation -> targeted D3 review.
 5. Provider evidence makes the accepted Product 1.0 operating loop materially impossible/different -> targeted D0 review.
-6. Client/provider entitlement/contract evidence materially changes the current Sankhya direct-DB Unknown -> revisit §3.5 in B3 before admitting any exception.
-7. B3 proves a required fact/command cannot be obtained correctly and operationally through sanctioned Gateway/API and no supported equivalent exists -> **STOP / SPLIT PREREQUISITE** for a targeted transport-exception decision.
+6. B3 proves a required Sankhya fact/command cannot be obtained correctly and operationally through the sanctioned Gateway/API and no sanctioned equivalent exists -> **STOP / SPLIT PREREQUISITE** and return to the operator/architecture decision loop.
+7. Any proposal to reintroduce Direct Oracle/database access -> requires an explicit operator-requested reopen of §3.5 with new material evidence; it is never inferred from technical convenience or API limitation.
 8. A concrete second provider creates repeated technical failure unsolved by consumer-owned ports + provider-local mechanism -> consider only the smallest proven shared mechanism then.
 
 Framework preference, current-code convenience and speculative future providers are not reopen evidence.
