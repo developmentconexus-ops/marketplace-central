@@ -36,7 +36,7 @@ Status vocabulary in this registry:
 | 012 | superseded by rebaseline — D1/D2 own economics/provenance; legacy `pricing` DIFAL table is not target authority |
 | 013 | carried constraint — webhook payload is not domain truth; active home: D0 / D3 / D4-B1 external-evidence semantics |
 | 014 | reopened — D4-B4 (D1 portion adjudicated; on-demand/local-runtime shape has no authority by inheritance) |
-| 015 | reopened — D4-B2 evidence gate only; B2 canonical core supersedes the legacy read-only listings module/composite-ID/manual-refresh/absence=>closed target shape, but final historical transition waits for B2 whole-batch closure |
+| 015 | historical — D4-B2 accepted/canonical; legacy read-only listings module/composite-ID/manual-refresh/absence=>closed target shape is superseded and durable semantics are rehomed in D1/D2/D4 |
 | 016 | reopened — D5 |
 | 017 | historical predicate retained as evidence until target Fact ADR rehomes still-valid domain-judgment clauses |
 | 018 | reopened — D7 (D1/D3 semantic portions adjudicated; generic Mutation owner/table/poller not target authority) |
@@ -76,7 +76,7 @@ This transition does not reopen D0–D3.
 
 ## D4-B2 Mercado Livre transition note
 
-D4-B2 now has an operator-ratified **canonical contract core** while its real-Installation Evidence Gate remains open.
+D4-B2 is **ACCEPTED / CANONICAL** and its read-only real-Installation Evidence Gate is **CLOSED / PASS**.
 
 Current target authority is:
 
@@ -84,11 +84,12 @@ Current target authority is:
 - Offering, Availability, Sales, Fulfillment and Post-Sale retain the D1 meanings; D4 supplies provider resources/capability/requirement/coverage/effect evidence only;
 - Item/User Product/shared-field behavior may widen provider effect scope and therefore must not silently widen domain-owned intended/authorized scope;
 - stock writability is context-sensitive to concrete provider resource, site, seller configuration and current listing/resource mode; seller-managed is not automatically API-writable and provider-managed Full stock is not an MPC-controlled stock lane by convenience;
-- seller Order search does not establish complete cancellation/Sales-population coverage when current provider search excludes canceled Orders;
+- seller Order search completion does not establish cancellation-inclusive Sales coverage; current official documentation and the real 2026-08-17 Installation measurement disagree about canceled-Order inclusion, so neither direction is treated as a stable completeness contract;
 - provider 2xx does not prove listing/price/availability/fulfillment/post-sale convergence when authoritative reread can differ;
-- the current real supported/proof lane set remains Unknown until the read-only Installation Evidence Gate in D4 §4.8 is satisfied.
+- the current selected first proof context is User Product + non-multi-origin Item availability + direct-price candidate + seller-operated `xd_drop_off`, with time-bound provider state revalidated when consequential;
+- first controlled Price/Availability effect + reread/convergence remains D8 proof; live selected-lane fiscal/label progression is constrained by D4-B3 materialization semantics and later D8 proof.
 
-ADR-015 remains present only because B2 is not accepted as a whole yet. Its old target structure has no authority after the B2 core; final registry transition/removal eligibility is a B2-closure action.
+ADR-015 is historical because B2 now owns the complete target listing/provider-contract meaning that remained relevant from it. Its old target structure has no authority.
 
 This transition does not reopen D0–D3 or D4-B1.
 
