@@ -1,7 +1,7 @@
 # Marketplace Central — Architecture Rebaseline
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
-> **Current phase:** **D3 — COMMUNICATION / EVENTS — OPEN / IN PROGRESS; D3-B1 ACCEPTED, D3-B2 is the exact next batch**  
+> **Current phase:** **D3 — COMMUNICATION / EVENTS — OPEN / IN PROGRESS; D3-B1 ACCEPTED, D3-B2 independent review is the exact next action**  
 > **Implementation:** BLOCKED until D9 is accepted  
 > **Last updated:** 2026-08-16
 
@@ -38,7 +38,7 @@ D2 — Identity / Tenant / Data Ownership — CLOSED / ACCEPTED
   ↓
 D3 — Communication / Events — OPEN / IN PROGRESS
   ├─ B1 Communication Topology & Edge Matrix — ACCEPTED
-  └─ B2 Communication Contract & Failure Semantics — NEXT
+  └─ B2 Communication Contract & Failure Semantics — REVIEW CANDIDATE / INDEPENDENT REVIEW NEXT
   ↓
 D4 — External Integrations — NOT OPEN
   ↓
@@ -120,6 +120,8 @@ Accepted D3-B1 direction includes:
 - D3 B1 partially adjudicated legacy ADR-018/019/024/026 while leaving B2/D7 residues explicit;
 - no generic Event Bus/Command Bus/Workflow engine/event sourcing/universal CQRS/broker/outbox/runtime topology/microservice split is chosen by B1.
 
+**D3-B2 is not canonical yet.** The operator approved the direction of `D3-B2-REVIEW-CANDIDATE.md` for independent challenge. That disposable file is explicitly **not architecture authority** until reviewer convergence and explicit operator batch acceptance.
+
 ## 4. Engineering method and repo lifecycle
 
 Engineering reasoning follows the **DevelopmentConexus Engineering Method** identified in `AGENTS.md`; the local file in this authority path is only the consumed context copy.
@@ -139,36 +141,28 @@ While D3 remains open:
 - do not choose HTTP/frontend/runtime topology;
 - do not choose workers, brokers, outbox/transaction implementation, locks, RLS enforcement or deployment topology;
 - do not make event transport a business/historical authority or require universal event sourcing;
-- do not treat `AI-DIALOG.md`, review candidates or reviewer/chat summaries as target authority.
+- do not treat `AI-DIALOG.md`, `D3-B2-REVIEW-CANDIDATE.md` or reviewer/chat summaries as target authority.
 
 Existing code/module/context/schema shape remains current-state evidence only.
 
 ## 6. Exact next action
 
-**Open D3-B2 — Communication Contract & Failure Semantics.**
+**Independent review of D3-B2 — Communication Contract & Failure Semantics.**
 
-B1 is canonical and must not be reopened merely to choose technology.
+The operator approved B2 as a review candidate, not as canonical architecture.
 
-B2 must define, only to the semantic depth required before D4/D7:
+Next sequence:
 
-- Organization scope;
-- actor/Principal attribution where material;
-- domain-local Intent references;
-- event occurrence identity/producer ownership;
-- causation/correlation;
-- provenance/material time;
-- duplicate/idempotency semantics;
-- ordering/late-delivery/anti-regression assumptions;
-- missed-delivery recovery and replay/reconciliation expectations;
-- progression current-reread vs evidence occurrence recovery;
-- capability outcomes/ambiguity;
-- projection rebuild completeness/fail-honesty;
-- multi-target granular outcomes where material;
-- remaining D3 semantic residues of ADR-019/024.
+1. Fable is invoked independently by the operator and reads the current repository authority path itself.
+2. Fable reviews `docs/engineering/rebaseline/D3-B2-REVIEW-CANDIDATE.md` and appends only material findings to `AI-DIALOG.md`.
+3. GPT independently adjudicates every material finding against repository authority/evidence; reviewer findings remain evidence, not authority.
+4. Material reviewer disagreement receives another GitHub round or operator adjudication; GPT does not simulate Fable.
+5. The converged B2 batch returns to the operator for explicit acceptance.
+6. Only after acceptance is B2 consolidated into `D3-COMMUNICATION-EVENTS.md`; then D3 proceeds to final Global Coherence + YAGNI / Overengineering / Future-Cost review unless the review proves a real B3 is necessary.
+
+B2 review must challenge, at minimum, Organization scope, actor/provenance/time, duplicate/idempotency semantics, ordering/late delivery, missed-delivery recovery, progression-vs-evidence recovery, capability ambiguity/retry safety, projection rebuildability, multi-target partial outcomes and the remaining D3 residues of ADR-019/024/018.
 
 B2 must **not** select broker, outbox table, queue, worker, scheduler, lock, transaction or deployment topology; those remain D7. Concrete provider/source acquisition contracts remain D4.
-
-After B2 is operator-approved, independently challenged and consolidated, D3 proceeds to final Global Coherence + YAGNI / Overengineering / Future-Cost review before whole-stage ratification.
 
 If D3 discovers a genuinely necessary semantic dependency not allowed by D1, reopen only the implicated D1 decision rather than hiding the dependency in mechanism.
 
@@ -183,7 +177,8 @@ A fresh session should conclude that:
 - D2 fixes canonical/external identities, tenant/isolation semantics, persistent ownership and shared value/knowledge/time semantics;
 - D3 is **OPEN / IN PROGRESS**;
 - **D3-B1 is ACCEPTED / CANONICAL** and defines the semantic Q/C/E/P topology/edge matrix;
-- **D3-B2 is NEXT** and owns communication contract/failure semantics;
+- **D3-B2 is an independent-review candidate, not canonical authority**;
+- the exact next action is independent Fable review of D3-B2 followed by GPT adjudication and operator acceptance if converged;
 - current modules/contexts/schema/legacy ADRs remain evidence, not target authority by inheritance;
 - implementation remains blocked until D9;
 - D4 is not yet open.
