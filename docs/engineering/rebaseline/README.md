@@ -1,7 +1,7 @@
 # Marketplace Central — Architecture Rebaseline
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
-> **Current phase:** **D3 — COMMUNICATION / EVENTS — CLOSURE CANDIDATE / AWAITING OPERATOR RATIFICATION**  
+> **Current phase:** **D4 — EXTERNAL INTEGRATIONS — NEXT / NOT YET OPENED; D3 CLOSED / ACCEPTED**  
 > **Implementation:** BLOCKED until D9 is accepted  
 > **Last updated:** 2026-08-16
 
@@ -36,12 +36,12 @@ D1 — Domains / Boundaries — CLOSED / ACCEPTED
   ↓
 D2 — Identity / Tenant / Data Ownership — CLOSED / ACCEPTED
   ↓
-D3 — Communication / Events — CLOSURE CANDIDATE / AWAITING OPERATOR RATIFICATION
+D3 — Communication / Events — CLOSED / ACCEPTED
   ├─ B1 Communication Topology & Edge Matrix — ACCEPTED / CANONICAL
   ├─ B2 Communication Contract & Failure Semantics — ACCEPTED / CANONICAL
   └─ Final Global Coherence + YAGNI / Overengineering / Future-Cost — COMPLETED / PASS
   ↓
-D4 — External Integrations — BLOCKED UNTIL D3 RATIFICATION
+D4 — External Integrations — NEXT / NOT YET OPENED
   ↓
 D5 — API
   ↓
@@ -93,9 +93,9 @@ Accepted D2 direction includes:
 - clean target persistence baseline with **no legacy-data migration or archival requirement** for the pre-rebaseline MPC database;
 - old ADR structures do not carry forward by inheritance; D2 adjudicated ADR-011/012/022/028/031 and defined safe rehoming gates/new ADR-036+ transition.
 
-### D3 — CLOSURE CANDIDATE
+### D3 — CLOSED
 
-`D3-COMMUNICATION-EVENTS.md` is the complete current D3 authority.
+`D3-COMMUNICATION-EVENTS.md` is the accepted D3 authority.
 
 Accepted D3 direction includes:
 
@@ -124,9 +124,7 @@ Accepted D3 direction includes:
 - ADR-019 and ADR-024 are fully rehomed and historical; ADR-018/026 retain only D7 residue;
 - no generic Event Bus/Command Bus/Workflow engine/event sourcing/universal CQRS/exactly-once/global ordering/schema-registry/broker/outbox/runtime topology/microservice split is chosen by D3.
 
-D3-B1 and B2 were independently challenged and operator-ratified as batches. The final D3 Global Coherence + YAGNI / Overengineering / Future-Cost review completed with **CURRENT STRUCTURE CONFIRMED**, no material correction, no B3 and no D0/D1/D2 reopen.
-
-D3 is **not closed as a whole until the operator explicitly ratifies this closure candidate**.
+D3-B1 and B2 were independently challenged and operator-ratified as batches. The final D3 Global Coherence + YAGNI / Overengineering / Future-Cost review completed with **CURRENT STRUCTURE CONFIRMED**, no material correction, no B3 and no D0/D1/D2 reopen. The operator then explicitly ratified D3 as a whole on 2026-08-16.
 
 ## 4. Engineering method and repo lifecycle
 
@@ -136,46 +134,45 @@ This router defines the Marketplace Central D0–D9 status/lifecycle and allowed
 
 ## 5. What is prohibited now
 
-Until D3 is explicitly ratified as a whole:
+While D4 is the active next design stage:
 
-- do not begin D4–D9 target design prematurely;
+- do not begin D5–D9 target design prematurely;
 - do not implement product architecture/features;
-- do not silently alter accepted D0/D1/D2 or canonical D3-B1/B2 authority;
-- do not create semantic dependencies outside D1 by hiding them in events, APIs, queues, projections or databases;
-- do not choose provider/ERP transport contracts/credentials yet;
+- do not silently alter accepted D0–D3 authority while choosing external integration contracts;
+- do not let provider APIs, ERP schema, current adapters, legacy DTOs or historical ADRs become target business authority by inheritance;
+- do not create semantic dependencies outside D1 or bypass D2/D3 ownership/communication semantics through integration code;
 - do not choose HTTP/frontend/runtime topology prematurely;
-- do not make event transport a business/historical authority or require universal event sourcing;
 - do not treat `AI-DIALOG.md`, deleted review candidates or reviewer/chat summaries as target authority.
 
 Existing code/module/context/schema shape remains current-state evidence only.
 
 ## 6. Exact next action
 
-**Operator ratifies or amends D3 as a whole.**
+**Open D4 — External Integrations from repository authority.**
 
-The complete closure candidate is `docs/engineering/rebaseline/D3-COMMUNICATION-EVENTS.md`, including accepted B1+B2 and the final Global Coherence + YAGNI / Overengineering / Future-Cost review.
+A fresh D4 session must first reconstruct the state from the authority path above, confirm:
 
-If the operator approves the whole:
+- D0, D1, D2 and D3 are **CLOSED / ACCEPTED**;
+- D4 is **NEXT / NOT YET OPENED**;
+- implementation remains blocked until D9.
 
-1. mark D3 `CLOSED / ACCEPTED`;
-2. advance this router so **D4 — External Integrations** is the exact next stage;
-3. do not begin implementation; implementation remains blocked until D9.
+Then perform an independent D4 intake/decomposition before proposing target contracts. Use concrete provider/ERP documentation, code/schema/OpenAPI/tests/runtime only as evidence for specific D4 decisions; current integration shapes are not target authority.
 
-If the operator finds a material issue, reopen only the implicated D3 decision rather than re-running the whole stage.
+D4 owns concrete external acquisition/translation/capability contracts, including provider/business-system identities and namespaces as already bounded by D2, authoritative reread/reconciliation surfaces, capability/requirement semantics, credentials/protocol concerns, source completeness/coverage behavior and provider-specific contract evidence. D4 must preserve D1 authority and D3 Q/C/E/P/failure semantics rather than replacing them with provider shapes.
+
+Do not begin implementation; implementation remains blocked until D9.
 
 ## 7. Fresh-session success test
 
 A fresh session should conclude that:
 
-- D0, D1 and D2 are **CLOSED / ACCEPTED**;
+- D0, D1, D2 and D3 are **CLOSED / ACCEPTED**;
 - D1 defines exactly 12 semantic business boundaries but no runtime topology;
 - D2 fixes canonical/external identities, tenant/isolation semantics, persistent ownership and shared value/knowledge/time semantics;
-- D3 is a **CLOSURE CANDIDATE / AWAITING OPERATOR RATIFICATION**;
-- D3-B1 and D3-B2 are **ACCEPTED / CANONICAL**;
-- no B3 is required and final D3 Global Coherence completed with no material contradiction;
+- D3 fixes the semantic Q/C/E/P topology and failure/recovery contract without selecting D7 runtime technology;
+- D4 is **NEXT / NOT YET OPENED**;
 - current modules/contexts/schema/legacy ADRs remain evidence, not target authority by inheritance;
 - implementation remains blocked until D9;
-- D4 remains blocked until whole-stage D3 ratification;
-- the exact next action is explicit operator ratification of D3 as a whole.
+- the exact next action is independent D4 intake/decomposition from repository authority.
 
 If it cannot, the authority path is incomplete or contradictory.
