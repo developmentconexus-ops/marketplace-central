@@ -36,25 +36,25 @@ Status vocabulary in this registry:
 | 012 | superseded by rebaseline — D1/D2 own economics/provenance; legacy `pricing` DIFAL table is not target authority |
 | 013 | carried constraint — webhook payload is not domain truth; active home: D0 / D3 / D4-B1 external-evidence semantics |
 | 014 | reopened — D4-B4 (D1 portion adjudicated; on-demand/local-runtime shape has no authority by inheritance) |
-| 015 | reopened — D4-B2 (D1 portion adjudicated; B1 rehomed source-qualified identity/coverage/reread, final ML listing contract remains open) |
+| 015 | reopened — D4-B2 evidence gate only; B2 canonical core supersedes the legacy read-only listings module/composite-ID/manual-refresh/absence=>closed target shape, but final historical transition waits for B2 whole-batch closure |
 | 016 | reopened — D5 |
 | 017 | historical predicate retained as evidence until target Fact ADR rehomes still-valid domain-judgment clauses |
 | 018 | reopened — D7 (D1/D3 semantic portions adjudicated; generic Mutation owner/table/poller not target authority) |
 | 019 | historical — D1/D3 rehomed accepted-consumer, duplicate/idempotency and recoverable-propagation semantics |
 | 020 | reopened — D4-B4 (D1 portion adjudicated; generic `CollectorPort` target shape not inherited) |
 | 021 | carried constraint — TanStack Query owns frontend server state; active home: `ARCHITECTURE.md` |
-| 022 | superseded by rebaseline as identity law — D2 preserves pre-dispatch correspondence safety; D4-B2 re-verifies concrete Mercado Livre mapping/identifier evidence |
+| 022 | superseded by rebaseline as identity law — D2 preserves pre-dispatch correspondence safety; D4-B2 rehomes current Mercado Livre mapping/identifier evidence while Readiness retains sufficiency authority |
 | 023 | superseded by rebaseline — D1/`ARCHITECTURE.md` own semantic boundaries and private-implementation prohibition |
 | 024 | historical — D1/D3 rehomed single semantic owner, trigger convergence and anti-regression semantics |
 | 025 | carried constraint — provider PII minimization; active home: D0 / `ARCHITECTURE.md` |
 | 026 | reopened — D7 (D3 semantic portion adjudicated; no global phase vocabulary carried forward) |
-| 027 | carried constraint — partial-pull absence is not closure; active home: D0 / `ARCHITECTURE.md` / D4-B1 |
-| 028 | superseded by rebaseline — D1/D2 Readiness owns correspondence/corroboration policy; D4-B2 supplies current provider identifier evidence |
+| 027 | carried constraint — partial-pull absence is not closure; active home: D0 / `ARCHITECTURE.md` / D4-B1/B2 |
+| 028 | superseded by rebaseline — D1/D2 Readiness owns correspondence/corroboration policy; D4-B2 supplies current provider identifier evidence and pre-dispatch consistency inputs |
 | 029 | carried constraint — no blind retry of ambiguous external writes; active home: D0 / D3 / `ARCHITECTURE.md` |
 | 030 | reopened — D7 |
 | 031 | superseded by rebaseline — no target Product mirror; honest absence remains current authority |
 | 032 | reopened — D4-B4; current catalog-offers env flag/default-off behavior is current-state evidence, not target authority |
-| 033 | carried constraint — vendor adapters implement consumer-owned ports; active home: D1 / D4-B1 / `ARCHITECTURE.md` |
+| 033 | carried constraint — vendor adapters implement consumer-owned ports; active home: D1 / D4-B1/B2 / `ARCHITECTURE.md` |
 | 034 | carried implementation/evidence anchor — D2 decides target `Fact<T>` scope; replace with a new target Fact ADR before legacy cleanup |
 | 035 | carried transition constraint — rebaseline governs target design; retain until D0–D9 program closes |
 
@@ -73,6 +73,24 @@ Current target authority is:
 - any future proposal to reintroduce Direct Oracle requires an explicit operator-requested reopen with new material evidence.
 
 This transition does not reopen D0–D3.
+
+## D4-B2 Mercado Livre transition note
+
+D4-B2 now has an operator-ratified **canonical contract core** while its real-Installation Evidence Gate remains open.
+
+Current target authority is:
+
+- Mercado Livre provider topology remains behind the vendor adapter and does not create MPC `UserProduct`, provider warehouse, `OperatingMode`, Claim/Return or generic provider-resource business entities;
+- Offering, Availability, Sales, Fulfillment and Post-Sale retain the D1 meanings; D4 supplies provider resources/capability/requirement/coverage/effect evidence only;
+- Item/User Product/shared-field behavior may widen provider effect scope and therefore must not silently widen domain-owned intended/authorized scope;
+- stock writability is context-sensitive to concrete provider resource, site, seller configuration and current listing/resource mode; seller-managed is not automatically API-writable and provider-managed Full stock is not an MPC-controlled stock lane by convenience;
+- seller Order search does not establish complete cancellation/Sales-population coverage when current provider search excludes canceled Orders;
+- provider 2xx does not prove listing/price/availability/fulfillment/post-sale convergence when authoritative reread can differ;
+- the current real supported/proof lane set remains Unknown until the read-only Installation Evidence Gate in D4 §4.8 is satisfied.
+
+ADR-015 remains present only because B2 is not accepted as a whole yet. Its old target structure has no authority after the B2 core; final registry transition/removal eligibility is a B2-closure action.
+
+This transition does not reopen D0–D3 or D4-B1.
 
 ## Legacy-retirement gates
 
