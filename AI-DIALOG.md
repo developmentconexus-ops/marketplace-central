@@ -1024,3 +1024,334 @@ Preflight read-only established production parity: TOPs 14/303/305 identical and
 The B3 order-confirmation prerequisite is **discharged**. `CACSP.confirmarNota` moves from community-sourced candidate to empirically established surface, and the full chain `create → confirm → invoice → correlate` is proven with authoritative rereads in production, stopping short of the fiscal document by operator decision.
 
 Adjudicate: (1) accept the PASS verdict for the prerequisite and whether B3 may now proceed to review candidate; (2) fold F-P2 into the Business Order Intent contract — the three-document chain with two confirmation points is a structural fact, not an instance detail to abstract away; (3) decide how the contract expresses instance-conditioned mandatory fields (F-P3/F-P4) without hardcoding Metal Nobre's customizations into target architecture; (4) rule on F-P1's consequence for D8 — whether sandbox evidence may support any golden-flow claim at all; (5) decide whether the remaining fiscal hop belongs to B3 closure or to D8 proof. No authority was altered and no repository file other than `AI-DIALOG.md` was touched in this round.
+
+
+## FABLE — D4-B3 E-commerce Binding + Inventory Control Evidence Sweep (2026-08-17)
+
+**HEAD:** `d10541b4781ce843b22ce6ebcfd35d774cb86480`. Authority reconstructed from AGENTS.md + router before investigating; `git diff --name-only 4ecae88c..HEAD` confirms **only `AI-DIALOG.md` changed** since this session's full read of Method v1.0.0, ARCHITECTURE.md, the ADR registry, D0–D4 and the Evidence Register. Confirmed state: **D0/D1/D2/D3 CLOSED/ACCEPTED · D4 OPEN/ACTIVE · B1 ACCEPTED/CANONICAL · B2 ACCEPTED/CANONICAL · B3 NEXT/NOT YET OPENED · implementation BLOCKED until D9.** Nothing was canonized, no authority file touched, no product code written.
+
+**Sources:** current official `developer.sankhya.com.br` reference, Context7 `/websites/developer_sankhya_br_reference`, and **production** Gateway sanctioned reads (`CRUDServiceProvider.loadRecords` only). AI-DIALOG rounds used solely as supporting evidence.
+
+**Measurement window:** 2026-08-17T18:02:12Z → 18:11:46Z, production (`api.sankhya.com.br`, token claim `ambiente=prd`).
+
+**A0 compliance — STRICTLY READ-ONLY.** Zero mutations: no create/confirm/invoice/cancel/return, no `saveRecord`/`DatasetSP.save`, no DbExplorer, no Oracle, no TOP/config/parameter change. Bounded queries against existing records; the only enumeration loop (controlled products, 61 pages) ran sequentially with token refresh, no concurrency. One deliberate self-correction: an early `criteria` used an embedded `SELECT` subquery; it was discarded and re-run with explicit ID lists, since arbitrary SQL through `criteria` is outside the sanctioned-entity-read spirit even though the gateway accepted it.
+
+---
+
+## A — E-COMMERCE MATERIALIZATION BINDING
+
+### A1 — TOP semantics measured (not assumed)
+
+`TipoOperacao` is **version-qualified**: `DHALTER` is part of the primary key and materialized automatically in every response. Each of the six TOPs currently exposes exactly one row, so the reads below are the *currently effective versions*, dated per row — `CODTIPOPER` alone is not eternal semantics.
+
+| TOP | Description | TIPMOV | ATUALEST | ATUALFIN | ATUALCTB | PENDENTE | RESERVASEMLOTE | CODMODNF | effective (DHALTER) |
+|---|---|---|---|---|---|---|---|---|---|
+| **313** | PEDIDO ENTREGA FUTURA **ECOMMERCE** | P | **R** reserve | 1 | S | S | N | — | 03/03/2026 |
+| **306** | NFE ENTREGA **E-COMMERCE** | V | **B** write-down | 0 | S | N | N | 100 | 09/02/2026 |
+| **307** | DEVOLUCAO P ENTREGA FUTURA **ECOMMERCE** | **D** | **N** none | **-1** reverse | S | N | N | — | 07/10/2024 |
+| 14 | ORCAMENTO | P | N | 0 | N | S | N | — | 23/07/2026 |
+| 303 | PEDIDO ENTREGA FUTURA (NOVA) | P | R | 1 | S | S | N | — | 12/06/2025 |
+| 305 | NFE ENTREGA PEDIDO (NOVA) | V | B | 0 | S | N | N | 100 | 12/12/2025 |
+
+The operator's input was directionally right and now measured: 313 is the e-commerce order, 306 the e-commerce fiscal document, 307 an e-commerce-specific return/reversal. `RESERVASEMLOTE='N'` on **all six** — no lane is configured to reserve without a control partition.
+
+### A2 — Flow proven by existing documents, not by configuration
+
+Bounded universe, fully enumerated (`hasMoreResult=false` on every count): **48 orders TOP 313 · 42 invoices TOP 306 · 5 returns TOP 307**, spanning 30/10/2025 → 13/08/2026, companies 1 (37) and 2 (11).
+
+Correlation measured in **both directions** via `CompraVendavariosPedido` (TGFVAR):
+
+- **313 as origin →** result exists (sample 891490→891499, 893446→893459, 893645→893649, 897948→897949, all `QTDATENDIDA` matching item quantity);
+- **313 as destination → total = 0.** **The e-commerce order is never produced by transforming another document.** It is created directly.
+
+Result documents resolve to **TOP 306**, `TIPMOV=V`, with real `NUMNOTA` (e.g. 211614, 30315, 211978, 212689) and series **`1`** — while the originating orders carry series **`PA`**.
+
+> **Proven progression: `313 (created directly) → confirmation → faturamento → 306`. One hop, two native documents.** No intermediate document exists in any observed case.
+
+**Confirmation is a real, separate step, proven by a live counterexample:** of the 48 orders, 47 are `STATUSNOTA='L' / PENDENTE='N'` and exactly **one — NUNOTA 898155, 13/08/2026, company 1 — sits at `STATUSNOTA='A' / PENDENTE='S'`**: created, not yet confirmed. Since the confirmed-state vocabulary (`A` → `L`) was independently established in the previous controlled proof, this order is direct evidence that the e-commerce order also *starts* unconfirmed and awaits confirmation.
+
+All 42 invoices are `L/N`. Whether a 306 is born confirmed or is confirmed in a second step is **not observable from steady state** — no transition was witnessed, and no write was performed to test it. Recorded as UNKNOWN rather than inferred from the store lane.
+
+**Channel discriminator (materially important):** TOP 313 is *not* Mercado-Livre-specific — it is the **e-commerce channel** generally. The Mercado Livre discriminator on this SourceInstance is the **negotiation type**:
+
+| CODTIPVENDA | Description | count on TOP 313 |
+|---|---|---|
+| **27** | **ECOMERCE - MERCADO LIVRE** | **37** |
+| 300 | ECOMMERCE PIX | 5 |
+| 210 | ECOMMERCE CARTAO DE CREDITO 12X | 2 |
+| 214 | ECOMMERCE CARTAO DE CREDITO 5X | 1 |
+| 6 | CARTAO DE CREDITO | 3 |
+
+`TipoNegociacao` is also `DHALTER`-versioned. Other binding parameters observed across the 48 orders (cardinality only, no PII): **43 distinct partners** (each sale carries a real customer, not a generic marketplace partner — a PII-minimization obligation for any future acquisition), vendors {1019, 1116, 983}, natures {0, 1010000}, carriers {0, 107551, 119777, 124499, 126701, 3334}, series uniformly `PA`.
+
+### A3 — TOP 307
+
+All 5 documents read (`TIPMOV='D'`, `STATUSNOTA='L'`, series `PA`, dates 07/10/2024 → 27/03/2026, values 10.00–101.53). TGFVAR resolves every one of them, and the decisive fact is **which document they reverse**:
+
+> **All 5 returns originate from a TOP 313 order — never from a 306 invoice.** (823120→824486, 822624→824489, 823210→824490, 871908→883188, 884972→885311.)
+
+Cross-checking those five 313 orders: each has **exactly one** TGFVAR result — the 307 — so **none of them was ever invoiced**. 313 → 306 and 313 → 307 are therefore **alternative terminal paths**, not sequential ones.
+
+Combined with the configuration (`ATUALEST='N'`, `ATUALFIN='-1'`), TOP 307 in this SourceInstance behaves as **commercial reversal of an unfulfilled e-commerce order** — it reverses financial state, consumes the order's pendency, and performs no stock movement (consistent with the order having only *reserved*, never written down). It is **not** a fiscal return of a sold invoice; the reverse path for an invoiced sale is unobserved and remains **UNKNOWN** in this instance's e-commerce history.
+
+Role of 307: **KNOWN** for the pre-invoice reversal case; **UNKNOWN** for post-invoice returns.
+
+### A4 — Two lanes compared, not normalized
+
+| Concern | store-process lane | e-commerce lane | invariant across both? |
+|---|---|---|---|
+| Native documents | **3** (14 → 303 → 305) | **2** (313 → 306) | **NO** — document count is a binding property |
+| Invoicing hops | 2 | 1 | **NO** |
+| Confirmation points | 2 (each order document born `A`) | ≥1 proven (313 born `A`); 306 unknown | partially |
+| Origin | quotation (TOP 14) | **created directly** | **NO** |
+| Reserve timing | at 303 (second document) | at 313 (**first** document) | **NO** |
+| Write-down timing | at 305 (fiscal) | at 306 (fiscal) | **YES** — write-down coincides with the fiscal document |
+| Fiscal timing | last document | last document | **YES** |
+| Order series | PA | PA | yes (instance convention) |
+| Fiscal series | 1 | 1 | yes (instance convention) |
+| Negotiation type | 8 (CARTAO PARCELADO 6X) | 27/300/210/214 (channel-specific) | **NO** |
+| Carrier | mandatory at confirmation (house trigger) | present but heterogeneous (incl. `0`) | **NO** — the mandatory-carrier rule proven in the store lane is not uniformly visible here |
+| Origin→result correlation | TGFVAR + `QTDATENDIDA` | TGFVAR + `QTDATENDIDA` | **YES** |
+| Reversal path | not observed | 307 from the **order** | **NO** |
+
+**One SourceInstance exposes multiple business processes with materially different document topologies.** That is this comparison's whole architectural value. It does **not** imply MPC Product 1.0 must support the store lane.
+
+### A5 — Candidate decomposition (no schema designed)
+
+**Stable MPC meanings — survive the inversion test.** Ask "if the accepted business system were TOTVS tomorrow, would this still be true?":
+
+- a Business Order Intent exists and is materialized into a **native business order** owned by the external system;
+- the native order's **existence, confirmation state and pendency are distinct provider facts**, and `created ≠ confirmed ≠ fulfilled`;
+- an Invoicing Intent is materialized into a **native fiscal result** with its own external identity, distinct from the order identity;
+- **native result correlation** must be retrievable from the source (origin↔result, at line and quantity granularity), because partial and multi-result outcomes are real;
+- **inventory commitment and inventory write-down are separate moments**, and MPC must be able to observe which has occurred;
+- a **commercial reversal before fulfilment** is a distinct outcome from a **fiscal return after invoicing**, and conflating them corrupts both economics and post-sale;
+- transport success is not convergence; **authoritative reread** establishes current native state.
+
+All of these are already D0–D4 accepted meanings. **No new invariant was invented for this sweep.**
+
+**Sankhya mechanics needed (provider layer):** include (`CACSP.incluirNota`), confirm (`CACSP.confirmarNota`), transform/invoice (`SelecaoDocumentoSP.faturar`), authoritative reread (`loadRecords CabecalhoNota`/`ItemNota`), correlate (`CompraVendavariosPedido`), and — for the reversal case — an as-yet-unverified operation producing a 307-class document.
+
+**Metal Nobre SourceInstance binding parameters (facts actually required):** order TOP `313`; fiscal TOP `306`; reversal TOP `307`; company (1 or 2); order series `PA`; fiscal series `1`; negotiation type per channel (`27` = Mercado Livre); vendor; nature; carrier; stock location (`10101` dominant); plus the confirmation-time mandatory fields established earlier (carrier via house trigger, item `PERCDESC`, series×TOP compatibility).
+
+> **Answer to A5's question: YES.** The e-commerce process is expressible as *stable MPC intent* + *bounded set of Sankhya operations* + *SourceInstance-specific binding values*, without hardcoding 313/306 into MPC business semantics and without a workflow engine. The decisive evidence is that the two lanes differ **only** in binding values and document count while the MPC-level meanings above hold identically for both. What must **not** leak into domains: TOP numbers, NUNOTA, series, TIPMOV letters, `ATUALEST` codes, TGFVAR.
+
+### A6 — Binding validation is feasible
+
+`TipoOperacao` exposes, through sanctioned reads, exactly the properties a binding would need to assert: `TIPMOV` (movement class), `ATUALEST` (`N`/`R`/`B` — no effect / reserve / write-down), `ATUALFIN` (`0`/`1`/`-1` — none / generate / reverse), `ATUALCTB`, `PENDENTE`, `RESERVASEMLOTE`, `CODMODNF` (fiscal model presence), `ATIVO`, and **`DHALTER`** as the effective-version qualifier.
+
+> **Binding validity therefore need not degrade to `CODTIPOPER == 313`.** A binding can assert the *semantic properties* it depends on — "this TOP must be an order-type movement that reserves, generates financial state and does not carry a fiscal model" — and those assertions are checkable against provider-authoritative configuration, with drift detectable via `DHALTER`. **This sweep establishes feasibility only; no polling, cadence or runtime mechanism is proposed (D7).**
+
+---
+
+## B — INVENTORY CONTROL UNIVERSE
+
+### B1 — Control configuration and real distribution
+
+The identifying field is **`Produto.TIPCONTEST`** (corroborated independently by the `_rmd` metadata Sankhya attaches to `CODPROD` responses, which carries `controle.tipoContEst`).
+
+Full enumeration of **active** products with `TIPCONTEST <> 'N'` (61 pages, `hasMoreResult=false`, 53s):
+
+> **3.038 active controlled products — and exactly ONE control type in use: `'I'`.**
+
+Probes for other codes (`L`, `S`, `F`, `P`, `V`, `D`) returned nothing. Volume distribution of the controlled population: **M2 2.056 · PC 780 · PL 149 · CX 24 · ML 9 · KT 9 · CJ 5 · RL 2**. `'I'` is a raw provider code retained as-is; this sweep does **not** assert its official Sankhya label. The architecturally material fact is the *singleton*: this SourceInstance does not exercise a multi-type control taxonomy, so no multi-type control model is justified.
+
+*(Absolute count is exact; a proportion against total active products was deliberately not computed — it would have required enumerating the whole ~35–42k catalogue and would not change any architectural conclusion.)*
+
+### B2 — Porcelain/revestimento hypothesis: CONFIRMED, with a decisive qualification
+
+Controlled products by group (top 10 of the 3.038):
+
+| group | name | controlled |
+|---|---|---|
+| 10080000 | **PISO PORCELANATO** | 1.360 |
+| 11010000 | REV. VIA UMIDA | 648 |
+| 11070000 | REV. PASTILHAS | 417 |
+| 11030000 | REV. CONCRETO ARQUITETONICO | 246 |
+| 11060000 | REV. PEDRA NATURAL | 95 |
+| 11090000 | REV. PASTILHAS VASCONCELOS | 44 |
+| 10050000 | PISO VINILICO | 44 |
+| 10060000 | PISO MADEIRA | 42 |
+| 11050000 | REV. PORCELANATO | 37 |
+| 11080000 | REV. POLIURETANO | 28 |
+
+Every significant group is a floor/wall covering — the operator's business hypothesis holds on real configuration, not on description matching.
+
+> **Decisive counterexample: the same families also contain NON-controlled active products** — group 10080000 ≥50 uncontrolled (page 1, `hasMore=true`), 11010000 ≥50, 11070000 exactly 20. **Control is a per-product attribute, not a family property.** Any model inferring "controlled because porcelain" is wrong against this instance.
+
+No MPC Lot entity is proposed.
+
+### B3 — Partition evidence and the fragmentation question
+
+Representative controlled product (37203, M2), all partitions with stock:
+
+| CODEMP | CODLOCAL | CONTROLE | ESTOQUE | RESERVADO | free |
+|---|---|---|---|---|---|
+| 1 | 10101 | L-1302 2 | 3,87 | 0 | 3,87 |
+| 1 | 10101 | L-1328 2 | 6,45 | 0 | 6,45 |
+| 1 | 10101 | L-1354 2 | 2,58 | 0 | 2,58 |
+| 1 | 10101 | **L-1377** | 223,17 | 61,92 | **161,25** |
+| 1 | 10101 | L-1301 M | 3,87 | 0 | 3,87 |
+| 1 | **10106** | L-1362 | 123,84 | 0 | 123,84 |
+| 1 | 10101 | L-1365 | 9,03 | 0 | 9,03 |
+| 1 | 10101 | L-1366 | 29,67 | 0 | 29,67 |
+
+> **8 partitions · aggregate free 340,56 · largest single partition free 161,25.** A 200 M2 demand is satisfiable in aggregate and satisfiable by **no** individual partition. **The sanctioned source distinguishes this**: `Estoque` rows expose `CODEMP × CODLOCAL × CONTROLE` with `ESTOQUE`/`RESERVADO` per row, so both readings are derivable. The REST `/v1/estoque` surface returns only the net figure per row and cannot express the reservation decomposition (established in the earlier gate; unchanged).
+
+`TIPO`/`CODPARC` were read and are `P`/`0` throughout — no third-party stock in the sampled population.
+
+Business interchangeability is **not** decided here.
+
+### B4 — E-commerce documents and CONTROLE
+
+All items of all 48 TOP-313 orders were read — **50 items, 21 distinct products**:
+
+> **`CONTROLE` is empty in 50 of 50 e-commerce items (100%).** Volumes: PC 45 · PT 4 · PR 1 — **no M2 at all**.
+
+Root cause measured, not assumed: **all 21 products sold through the e-commerce lane are `TIPCONTEST='N'`** — genuinely uncontrolled (mixers, showers, flexible hoses, gaskets, coupled cisterns…). The absence of `CONTROLE` is *coherent*, not an omission.
+
+**Consequence: the e-commerce/marketplace lane has never exercised the controlled path in this instance.** There is no historical evidence of control assignment, control splitting, or control preservation *for an e-commerce order*, because no controlled product was ever sold through it.
+
+Control preservation **is** proven on the store lane, at line granularity: order 810568 item 1 (`CONTROLE="L-1335 2"`, 1,29) → invoice 811143 item 1 (`CONTROLE="L-1335 2"`, 1,29) — identical partition, identical sequence, TGFVAR relating them with `QTDATENDIDA`. Quantity-splitting across multiple partitions within one ordered line was **not observed** in any sampled document; unproven either way.
+
+### B5 — Timing of selection
+
+For the **store lane**, `CONTROLE` is populated **at order/quotation creation**, before confirmation: historical items of product 37203 show `L-1301 (M)` 35× , `ENCOMENDA` 7×, `L-1302 (M)` 6×, empty 2×, on documents including `TIPMOV='P'` quotations (TOP 14). The earlier controlled proof independently established the *mechanics*: an item with empty `CONTROLE` reads as zero stock and its invoicing to a reserving TOP fails, while the same item with a valued partition succeeds — and every TOP measured carries `RESERVASEMLOTE='N'`.
+
+> **Store lane classification: PRE-SALE / AVAILABILITY CONSTRAINT.** A control partition must be known for the quantity to be reservable.
+> **E-commerce lane classification: UNKNOWN — untested.** The lane has no controlled-product precedent (B4). Whether an e-commerce order could be created without `CONTROLE` and have the partition assigned later during separation is **not established by any existing document**.
+
+D1 ownership is deliberately **not** assigned here.
+
+Also material: **`ENCOMENDA` appears as a `CONTROLE` value.** The dimension is not semantically "lot" — it is a free control string (`TIPCONTEST='I'`) that this instance also uses to mark back-order/made-to-order units.
+
+### B6 — Interchangeability
+
+Probed for a sanctioned entity carrying control attributes — `Controle`, `LoteControle`, `ControleEstoque` — **none exists** in the data dictionary. `CONTROLE` is an opaque free string on stock rows and document lines, with no sanctioned attribute surface (no tonalidade, no calibre, no validity date, no grade).
+
+> **Classification: UNKNOWN, trending BUSINESS-RULE-CONDITIONED.** Provider partition existence does not prove non-interchangeability, and nothing in the sanctioned source expresses *why* partitions might differ. If tonalidade/calibre genuinely constrain which partitions may satisfy one order line, that semantics is **not represented in any sanctioned source fact** and would require explicit business configuration or operator-supplied evidence. This sweep does not invent it.
+
+### B7 — Marketplace relevance
+
+Correspondence was established **without** resurrecting `SELLER_SKU == CODPROD`: the Metal Nobre e-commerce documents carry `CODPROD` natively, and Mercado Livre orders are discriminated inside them by `CODTIPVENDA=27`. So the *sold* population is directly readable from accepted source facts.
+
+> **The currently sold Mercado Livre population is 21 distinct products, and 21/21 are `TIPCONTEST='N'` — control-insensitive.**
+
+Qualification kept honest: this is the population **sold** through the lane during 30/10/2025–13/08/2026. The population **listed** on Mercado Livre (34 items per the B2 Installation gate) was **not** cross-matched in this session — that would need the ML side, which is out of this sweep's scope. **Listed control-sensitive population = UNKNOWN.**
+
+---
+
+## C — PROVIDER-INDEPENDENCE / YAGNI ADVERSARIAL CHALLENGE
+
+**Approach 1 — Sankhya-hardcoded business model.** Rejected on this sweep's own evidence. The instance exposes *two* materially different document topologies (3-document store lane, 2-document e-commerce lane) and a channel discriminator that lives in the negotiation type, not the TOP. A domain modelled on "313 then 306" would already be wrong for the store lane **today**, before any second ERP exists. Hardcoding fails the present, not just the future.
+
+**Approach 2 — generic multi-ERP / workflow framework now.** Rejected. There is exactly one business system, one real consumer, and zero evidence of a second. A generic ERP ontology would have to guess which of the measured facts are universal — and this sweep shows the answer is counter-intuitive (document count: not universal; write-down-at-fiscal-document: universal across the two observed lanes). Guessing that from one provider is how a universal ERP model gets built wrong. Also fails the method's own test: no concrete consumer, no defect class eliminated, and it would move complexity rather than reduce it.
+
+**Approach 3 — provider-independent consumer semantics + concrete Sankhya adapter + SourceInstance-bounded bindings.** Attacked hard:
+
+- *"Sankhya vocabulary will leak into domains."* Real risk, and the sweep names the exact leak surface: TOP, NUNOTA, series, `TIPMOV`, `ATUALEST`, TGFVAR, `CONTROLE`. The mitigation is not new machinery — D1/D4-B1 already forbid provider DTO crossing. What this sweep adds is the concrete list to police. **Risk: manageable, but must be explicit in B3.**
+- *"The binding becomes a disguised workflow engine."* The strongest objection. Two lanes with different document counts invite a "steps" configuration — and a configurable step sequence *is* a workflow engine. **Defence from evidence:** MPC needs to model *intent and convergence*, not steps. It needs to know that a native order exists and is confirmed, and that a native fiscal result exists and correlates — the number of provider documents in between is an adapter concern. **Falsifiable line: if B3 ever needs MPC-level configuration for "how many documents and in what order", the boundary has failed and it must return to decision.**
+- *"Provider config becomes business policy."* Real. `ATUALEST='R'` is a provider fact; "availability is committed at order time" is a business meaning. They correlate here but are not the same statement, and MPC must not read policy out of TOP flags.
+- *"Impossible-to-validate config."* Refuted by A6 — the properties a binding depends on are readable and version-qualified.
+- *"Too many optional knobs."* Real risk: the measured binding already needs order TOP, fiscal TOP, reversal TOP, company, two series, negotiation type, vendor, nature, carrier, location. **Mitigation from evidence: bind only what a *required* operation actually needs**, and prefer values observable from existing documents over knobs invented for symmetry.
+- *"A future TOTVS would force domain redesign."* Tested in C1 below.
+- *"Abstraction existing only because TOTVS might exist."* This is the YAGNI trap. **Nothing in this sweep justifies building a second adapter, a registry, or a capability graph now.** The seam that *is* justified is the one D1/D4-B1 already established — consumer-owned ports — plus keeping the binding values out of domain code. That is a fence, not a framework.
+
+**Verdict: Approach 3 survives, with the workflow-engine drift named as its primary failure mode and an explicit falsification test attached.**
+
+### C1 — Replacement test
+
+If another accepted business system supplied Product facts, Inventory facts, Cost observations, Business Order materialization and Invoicing materialization, these MPC contracts remain **unchanged**: source-qualified external product identity; inventory facts qualified by company/location/partition with commitment and write-down distinguishable; cost observations with their qualifiers; Business Order Intent and its convergence on a native order; Invoicing Intent and its convergence on a native fiscal result; native result correlation at line/quantity granularity; commercial reversal distinct from fiscal return; honest unknown; no blind retry; authoritative reread.
+
+Replaced wholesale: TOP numbering and semantics, NUNOTA, `STATUSNOTA` letters, `PENDENTE`, series conventions, `CACSP`/`SelecaoDocumentoSP` operations, TGFVAR, `TIPCONTEST`/`CONTROLE` representation, the house triggers, and every binding value in A5.
+
+**No generic ERP ontology is required to state that.** The invariants above are already D0–D3 vocabulary; the replacement is entirely inside the adapter plus its binding.
+
+### C2 — Marketplace symmetry check
+
+D4-B2 established *Mercado Livre first ≠ Mercado Livre ontology*: Item/User Product/Claim stay provider-local. The business-system side must follow the same principle — *Sankhya first ≠ Sankhya ontology* — and this sweep is the direct test: TOP/NUNOTA/TGFVAR/CONTROLE must remain adapter-local exactly as `user_product_id` did.
+
+**Asymmetry worth preserving, not erasing:** Marketplace Installation binds an external *seller namespace*; SourceInstance binds an external *business-system namespace*. This sweep produced no evidence that they should unify, and one small piece of evidence that they should not: the same SourceInstance serves several channels (Mercado Livre plus the own web store) through one document topology. **Do not unify for symmetry.**
+
+---
+
+## Evidence matrix
+
+| Claim | Category | Evidence | State | Architectural implication |
+|---|---|---|---|---|
+| TOP 313 = e-commerce order, reserves stock, generates financial state, born unconfirmed | **METAL NOBRE BINDING** | `TipoOperacao` row (eff. 03/03/2026); NUNOTA 898155 at `A/S` | KNOWN | order TOP is a binding value, not MPC semantics |
+| TOP 306 = e-commerce fiscal result, writes down stock, series `1`, has fiscal model | **METAL NOBRE BINDING** | `TipoOperacao` row (eff. 09/02/2026); 42 docs with real NUMNOTA | KNOWN | fiscal TOP is a binding value |
+| TOP 307 = commercial reversal of an **uninvoiced** e-commerce order; no stock effect; reverses finance | **METAL NOBRE BINDING** | 5 docs; TGFVAR origins all TOP 313; those orders have no 306 | KNOWN (pre-invoice) / UNKNOWN (post-invoice return) | reversal-before-fulfilment ≠ fiscal return — distinction must survive into Post-Sale |
+| Actual progression `313 → 306`, single hop | **METAL NOBRE BINDING** | TGFVAR both directions; 313 never a destination (0 rows) | KNOWN | e-commerce order is created directly, not transformed |
+| Native document count differs per lane (2 vs 3) | **METAL NOBRE BINDING** | store lane 14→303→305 vs e-commerce 313→306 | KNOWN | document count must NOT reach MPC semantics — primary workflow-engine risk |
+| Order documents are born unconfirmed; `created ≠ confirmed` | **MPC SEMANTIC INVARIANT** | 898155 `A/S`; `A→L` transition proven earlier | KNOWN | convergence checkpoint belongs to MPC |
+| Confirmation state of 306 | — | all 42 observed at `L/N`; no transition witnessed | **UNKNOWN** | must not be inferred from the store lane |
+| Reserve at order, write-down at fiscal document | **SANKHYA PROVIDER FACT** (`ATUALEST` R/B) + binding for *which* TOP | TOP config both lanes | KNOWN | commitment vs write-down are distinct observable moments |
+| Origin↔result correlation with line/quantity granularity | **SANKHYA PROVIDER FACT** (TGFVAR) / **MPC INVARIANT** (correlation must exist) | `CompraVendavariosPedido` with `QTDATENDIDA`, both lanes | KNOWN | correlation is required meaning; TGFVAR is its provider mechanism |
+| Binding can be validated semantically, not by TOP number | **SANKHYA PROVIDER FACT** | `TIPMOV`,`ATUALEST`,`ATUALFIN`,`PENDENTE`,`RESERVASEMLOTE`,`CODMODNF`,`ATIVO`,`DHALTER` readable | KNOWN | binding validity ≠ `CODTIPOPER == 313`; drift detectable via `DHALTER` |
+| TOP semantics are version-qualified | **SANKHYA PROVIDER FACT** | `DHALTER` in PK, materialized in every read | KNOWN | a binding references a TOP *and its effective version* |
+| Mercado Livre discriminated by negotiation type, not TOP | **METAL NOBRE BINDING** | `CODTIPVENDA=27` "ECOMERCE - MERCADO LIVRE", 37/48 | KNOWN | channel attribution lives in a different field than the process |
+| Active controlled products = 3.038, **single** type `'I'` | **METAL NOBRE BINDING** (population) + **SANKHYA FACT** (field) | full enumeration, 61 pages | KNOWN | no multi-type control taxonomy is justified |
+| Controlled families are floors/coverings — porcelain largest | **METAL NOBRE BINDING** | group distribution, top-10 named | KNOWN | confirms operator hypothesis on configuration |
+| Control is per-product, NOT per-family | **METAL NOBRE BINDING** | uncontrolled actives in the same groups | KNOWN | forbids family-level inference of control |
+| E-commerce uses no CONTROLE: 50/50 items empty | **METAL NOBRE BINDING** | all items of all 48 orders | KNOWN | current marketplace lane is control-free |
+| …because all 21 sold products are `TIPCONTEST='N'` | **METAL NOBRE BINDING** | product config of the 21 | KNOWN | absence is coherent, not an omission |
+| Control preserved identically order→invoice | **SANKHYA PROVIDER FACT** | 810568 item1 `L-1335 2` → 811143 item1 `L-1335 2` | KNOWN | preservation is a provider behaviour MPC can rely on |
+| Control selection timing — store lane | **METAL NOBRE BINDING** | control present on `TIPMOV='P'` documents incl. quotations; `RESERVASEMLOTE='N'` everywhere | KNOWN → **PRE-SALE/AVAILABILITY CONSTRAINT** | partition must be known to reserve |
+| Control selection timing — e-commerce lane | — | no controlled product ever sold through it | **UNKNOWN** | listing controlled products on ML would be an unprecedented path |
+| Aggregate stock can exceed every partition | **SANKHYA PROVIDER FACT** | 37203: 8 partitions, free 340,56, max 161,25 | KNOWN | Availability must not read aggregate as satisfiable quantity |
+| Interchangeability of partitions | — | no control-attribute entity exists; `CONTROLE` opaque; `ENCOMENDA` used as a control value | **UNKNOWN / BUSINESS-RULE-CONDITIONED** | tonalidade/calibre absent from sanctioned facts — needs explicit business evidence |
+| Listed ML control-sensitive population | — | not cross-matched this session | **UNKNOWN** | acceptable per this round's terms |
+
+---
+
+## Material findings
+
+- **F-S1 — The e-commerce lane and the store lane have different native document topologies (2 vs 3) inside one SourceInstance.** Document count, origin document and reserve timing are binding properties. Any MPC construct that encodes "how many documents and in what order" has crossed into workflow-engine territory — this is B3's principal design hazard and its clearest falsification test.
+- **F-S2 — TOP 313 is the *e-commerce channel*, not Mercado Livre.** Mercado Livre is discriminated by `CODTIPVENDA=27` (37/48), alongside PIX and card e-commerce types. A binding keyed on TOP alone would silently mix Mercado Livre with the own web store.
+- **F-S3 — TOP 307 reverses the ORDER, never the invoice.** All five returns originate from uninvoiced 313 orders; `ATUALEST='N'`, `ATUALFIN='-1'`. Commercial reversal before fulfilment is a *different* business event from a fiscal return after invoicing, and the post-invoice reverse path is unobserved in this instance's e-commerce history.
+- **F-S4 — TOP semantics are version-qualified (`DHALTER` in the PK).** `CODTIPOPER` alone is not eternal meaning; a binding must reference the TOP *and* be able to detect that its effective version changed.
+- **F-S5 — Semantic binding validation is feasible today.** Provider configuration exposes movement class, stock effect, financial effect, pendency, lot requirement and fiscal-model presence, so a binding can assert properties rather than an ID. (Feasibility only — mechanism is D7.)
+- **F-S6 — Control is per-product, not per-family**, with only one control type (`'I'`) across 3.038 active controlled products. Family-level inference is refuted by counterexample in the same groups.
+- **F-S7 — The marketplace lane has never sold a controlled product** (50/50 items control-free; all 21 products `TIPCONTEST='N'`). Listing porcelain/coverings on Mercado Livre would exercise a path with **no precedent** in this instance — availability semantics for that case are unproven, not merely undocumented.
+- **F-S8 — Aggregate availability is not partition-satisfiable availability.** 37203: 340,56 free in aggregate, 161,25 in the largest partition. The sanctioned entity read distinguishes both; the REST stock surface exposes only the net figure. Availability Control's derivation must not silently read the aggregate as sellable.
+- **F-S9 — `CONTROLE` is a free opaque string, not a lot with attributes.** No control-attribute entity exists, and the instance uses the same field for `ENCOMENDA` (back-order marking). Tonalidade/calibre semantics — the business reason partitions might not be interchangeable — are **absent from sanctioned source facts** and would require explicit business configuration.
+- **F-S10 — Each e-commerce sale carries a real distinct customer** (43 partners across 48 orders), not a generic marketplace partner. PII minimization applies to any future acquisition of this lane.
+
+## Reopen analysis
+
+- **D0 — NO.** Nothing contradicts accepted Product 1.0 meaning. F-S7/F-S8 tighten what "unknown availability is not zero" means concretely but introduce no new product semantics.
+- **D1 — NO.** Every measured meaning maps to an existing boundary: Availability Control (partition-aware sellable quantity), Business-System Materialization (order/invoicing intents and convergence), Post-Sale Resolution (reversal vs fiscal return), Marketplace Sales (channel attribution). B5 deliberately does **not** assign control-selection ownership; if B3 later shows Availability cannot express partition-feasibility without a new authority, *that* would be the reopen trigger — this sweep does not reach it.
+- **D2 — NO.** Native identities remain source-qualified; no new canonical identity is required. `CONTROLE` stays provider-local evidence and does not become an MPC identity.
+- **D3 — NO.** Communication semantics untouched.
+- **D4-B1 — NO.** The Gateway remains the target transport; every fact here came from sanctioned reads; Oracle remains excluded (and an accidental SQL subquery was withdrawn rather than exploited).
+- **D4-B2 — NO.** F-S2/F-S7 refine what the Mercado Livre lane currently *is* on the business-system side, consistent with B2's time-bound Installation framing. No B2 contract is contradicted.
+
+**A provider-specific detail is not a domain contradiction, and none was found.**
+
+## B3 candidate readiness — **READY**
+
+GPT can draft a coherent D4-B3 candidate without inventing e-commerce materialization or control semantics:
+
+- the real e-commerce materialization path is measured end to end (`313 → confirm → faturar → 306`, plus `313 → 307` reversal), with correlation, stock timing, fiscal timing and required binding values;
+- the operations that realize it are empirically proven (previous round: include, confirm, invoice, reread, correlate);
+- the control dimension is characterized: single type, 3.038 products, per-product, family-correlated, preserved across documents, partition-fragmented, currently absent from the marketplace lane;
+- the provider-independence question has a defensible answer with a named failure mode and an explicit falsification test (A5/C).
+
+The remaining Unknowns below are **bounded and named** — none of them forces invention, and each can be carried as an explicit contract condition rather than a guess.
+
+## Remaining Unknowns
+
+- whether a TOP-306 invoice is born confirmed or requires a second confirmation (no transition observed; not testable read-only);
+- the sanctioned operation that produces a 307-class reversal (config known, command unverified);
+- the post-invoice fiscal return path for the e-commerce lane (no instance precedent);
+- whether an e-commerce order could be created for a controlled product **without** `CONTROLE` and have the partition assigned later — the whole B5 e-commerce classification (no precedent exists);
+- whether partitions are business-interchangeable (tonalidade/calibre not represented in sanctioned facts);
+- whether one ordered line can be split across partitions (never observed);
+- the **listed** Mercado Livre population's control sensitivity (not cross-matched this session);
+- the official Sankhya meaning of `TIPCONTEST='I'` (raw code retained; label not asserted);
+- proportion of controlled products against the full active catalogue (absolute count exact; ratio deliberately not enumerated).
+
+## HANDOFF → GPT
+
+Adjudicate: (1) accept **READY** and open the B3 review candidate; (2) rule on how the candidate expresses the materialization binding so that document count and TOP identity stay adapter-side — F-S1 is the sharpest risk and A5/C propose the fence plus its falsification test; (3) decide whether commercial reversal (F-S3) is contracted now or deferred, given that its command surface is unverified; (4) decide how far B3 must go on partition-aware availability (F-S7/F-S8/F-S9) — specifically whether Product 1.0 may launch with a control-free marketplace population and treat the controlled path as explicit `unsupported`/`external-required` until real evidence exists; (5) confirm the C2 position that Marketplace Installation and SourceInstance stay distinct. This sweep canonized nothing, altered no authority file, and performed no mutation.
