@@ -24,39 +24,55 @@ Status vocabulary in this registry:
 |---|---|
 | 001 | historical |
 | 002 | historical |
-| 003 | reopened — D4/D9 |
-| 004 | reopened — D4 (D1 portion adjudicated) |
+| 003 | reopened — D9 only; D4-B1 rehomed credential/identity-binding prerequisite and superseded the old OAuth→fee→frontend implementation sequence |
+| 004 | superseded by rebaseline — D4-B1 rejects generic plugin/self-registration/auth-factory/fee-sync registry as target structure |
 | 005 | carried constraint — Mercado Livre first; active home: D0 / `ARCHITECTURE.md` |
-| 006 | carried constraint — MPC-owned Oracle reads; active home: `ARCHITECTURE.md` |
-| 007 | carried constraint — godror/OCI current Oracle runtime; active home: `ARCHITECTURE.md` |
+| 006 | reopened — D4-B3 as exception evidence only; D4-B1 superseded direct-Oracle as the normative/default Sankhya target transport |
+| 007 | reopened — D4-B3/D7 only if a supported direct-DB exception survives; D4-B1 superseded godror/OCI as an inherited canonical default |
 | 008 | reopened — D7 |
 | 009 | carried constraint — fee/value provenance; active home: D2 provenance semantics |
-| 010 | reopened — D4/D7 |
+| 010 | reopened — D7 only; D4-B1 superseded polling-only/no-webhook target meaning and rehomed notification→reread + coverage semantics |
 | 011 | superseded by rebaseline — D1/D2 own divergence/work semantics; no generic divergence authority |
 | 012 | superseded by rebaseline — D1/D2 own economics/provenance; legacy `pricing` DIFAL table is not target authority |
-| 013 | carried constraint — webhook payload is not domain truth; active home: D0 external-evidence semantics |
-| 014 | reopened — D4 (D1 portion adjudicated) |
-| 015 | reopened — D4 (D1 portion adjudicated) |
+| 013 | carried constraint — webhook payload is not domain truth; active home: D0 / D3 / D4-B1 external-evidence semantics |
+| 014 | reopened — D4-B4 (D1 portion adjudicated; on-demand/local-runtime shape has no authority by inheritance) |
+| 015 | reopened — D4-B2 (D1 portion adjudicated; B1 rehomed source-qualified identity/coverage/reread, final ML listing contract remains open) |
 | 016 | reopened — D5 |
 | 017 | historical predicate retained as evidence until target Fact ADR rehomes still-valid domain-judgment clauses |
 | 018 | reopened — D7 (D1/D3 semantic portions adjudicated; generic Mutation owner/table/poller not target authority) |
 | 019 | historical — D1/D3 rehomed accepted-consumer, duplicate/idempotency and recoverable-propagation semantics |
-| 020 | reopened — D4 (D1 portion adjudicated) |
+| 020 | reopened — D4-B4 (D1 portion adjudicated; generic `CollectorPort` target shape not inherited) |
 | 021 | carried constraint — TanStack Query owns frontend server state; active home: `ARCHITECTURE.md` |
-| 022 | superseded by rebaseline as identity law — D2 preserves pre-dispatch correspondence safety; D4 re-verifies concrete provider mapping |
+| 022 | superseded by rebaseline as identity law — D2 preserves pre-dispatch correspondence safety; D4-B2 re-verifies concrete Mercado Livre mapping/identifier evidence |
 | 023 | superseded by rebaseline — D1/`ARCHITECTURE.md` own semantic boundaries and private-implementation prohibition |
 | 024 | historical — D1/D3 rehomed single semantic owner, trigger convergence and anti-regression semantics |
 | 025 | carried constraint — provider PII minimization; active home: D0 / `ARCHITECTURE.md` |
 | 026 | reopened — D7 (D3 semantic portion adjudicated; no global phase vocabulary carried forward) |
-| 027 | carried constraint — partial-pull absence is not closure; active home: D0 / `ARCHITECTURE.md` |
-| 028 | superseded by rebaseline — D1/D2 Readiness owns correspondence; D2 preserves corroboration/no-silent-human-override safety |
-| 029 | carried constraint — no blind retry of ambiguous external writes; active home: D0 / `ARCHITECTURE.md` |
+| 027 | carried constraint — partial-pull absence is not closure; active home: D0 / `ARCHITECTURE.md` / D4-B1 |
+| 028 | superseded by rebaseline — D1/D2 Readiness owns correspondence/corroboration policy; D4-B2 supplies current provider identifier evidence |
+| 029 | carried constraint — no blind retry of ambiguous external writes; active home: D0 / D3 / `ARCHITECTURE.md` |
 | 030 | reopened — D7 |
 | 031 | superseded by rebaseline — no target Product mirror; honest absence remains current authority |
-| 032 | reopened — D4 |
-| 033 | carried constraint — vendor adapters implement consumer-owned ports; active home: `ARCHITECTURE.md` |
+| 032 | reopened — D4-B4; current catalog-offers env flag/default-off behavior is current-state evidence, not target authority |
+| 033 | carried constraint — vendor adapters implement consumer-owned ports; active home: D1 / D4-B1 / `ARCHITECTURE.md` |
 | 034 | carried implementation/evidence anchor — D2 decides target `Fact<T>` scope; replace with a new target Fact ADR before legacy cleanup |
 | 035 | carried transition constraint — rebaseline governs target design; retain until D0–D9 program closes |
+
+## D4-B1 transport transition note
+
+D4-B1 explicitly re-adjudicated only the **normative Sankhya direct-transport meaning** behind ADR-006/007.
+
+Current target authority is:
+
+- Sankhya/business-system facts remain external to MPC;
+- consumer-owned ports and adapter boundaries remain binding;
+- provider-sanctioned Sankhya API Gateway is the default target transport for new MPC↔Sankhya contracts;
+- a direct-database exception is not assumed or silently available;
+- client-specific direct-DB contractual entitlement/compliance remains **Unknown** until proven;
+- D4-B3 may admit a direct-DB exception only with explicit current provider/customer support/entitlement evidence plus proof that sanctioned APIs cannot meet required correctness, coverage and operational viability;
+- if no exception survives B3, ADR-006/007 have no remaining target role and become historical evidence; if one survives, D7 adjudicates its runtime rather than inheriting ADR-007 automatically.
+
+This transition does not reopen D0–D3.
 
 ## Legacy-retirement gates
 
