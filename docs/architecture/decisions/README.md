@@ -27,8 +27,8 @@ Status vocabulary in this registry:
 | 003 | reopened — D9 only; D4-B1 rehomed credential/identity-binding prerequisite and superseded the old OAuth→fee→frontend implementation sequence |
 | 004 | superseded by rebaseline — D4-B1 rejects generic plugin/self-registration/auth-factory/fee-sync registry as target structure |
 | 005 | carried constraint — Mercado Livre first; active home: D0 / `ARCHITECTURE.md` |
-| 006 | reopened — D4-B3 as exception evidence only; D4-B1 superseded direct-Oracle as the normative/default Sankhya target transport |
-| 007 | reopened — D4-B3/D7 only if a supported direct-DB exception survives; D4-B1 superseded godror/OCI as an inherited canonical default |
+| 006 | historical — D4-B1 superseded direct-Oracle as target Sankhya transport; transport-independent adapter-boundary meaning is rehomed in D0–D4 / `ARCHITECTURE.md` |
+| 007 | historical — D4-B1 superseded godror/OCI as target Sankhya runtime; Direct Oracle is not an admitted target transport |
 | 008 | reopened — D7 |
 | 009 | carried constraint — fee/value provenance; active home: D2 provenance semantics |
 | 010 | reopened — D7 only; D4-B1 superseded polling-only/no-webhook target meaning and rehomed notification→reread + coverage semantics |
@@ -58,19 +58,19 @@ Status vocabulary in this registry:
 | 034 | carried implementation/evidence anchor — D2 decides target `Fact<T>` scope; replace with a new target Fact ADR before legacy cleanup |
 | 035 | carried transition constraint — rebaseline governs target design; retain until D0–D9 program closes |
 
-## D4-B1 transport transition note
+## D4-B1 Sankhya transport transition note
 
-D4-B1 explicitly re-adjudicated only the **normative Sankhya direct-transport meaning** behind ADR-006/007.
+D4-B1 explicitly supersedes the **direct-Oracle / canonical-godror target meaning** behind ADR-006/007.
 
 Current target authority is:
 
 - Sankhya/business-system facts remain external to MPC;
 - consumer-owned ports and adapter boundaries remain binding;
-- provider-sanctioned Sankhya API Gateway is the default target transport for new MPC↔Sankhya contracts;
-- a direct-database exception is not assumed or silently available;
-- client-specific direct-DB contractual entitlement/compliance remains **Unknown** until proven;
-- D4-B3 may admit a direct-DB exception only with explicit current provider/customer support/entitlement evidence plus proof that sanctioned APIs cannot meet required correctness, coverage and operational viability;
-- if no exception survives B3, ADR-006/007 have no remaining target role and become historical evidence; if one survives, D7 adjudicates its runtime rather than inheriting ADR-007 automatically.
+- provider-sanctioned Sankhya API Gateway is the target transport for MPC↔Sankhya integration;
+- Direct Oracle/database access is **not part of the target architecture and is not a fallback path**;
+- the previous Oracle path is historical evidence from a time when the project did not yet have a known/usable sanctioned Sankhya API path;
+- if D4-B3 proves the Gateway/API surface cannot satisfy a materially required Product 1.0 claim, B3 stops and returns to explicit operator/architecture adjudication rather than enabling database access implicitly;
+- any future proposal to reintroduce Direct Oracle requires an explicit operator-requested reopen with new material evidence.
 
 This transition does not reopen D0–D3.
 
