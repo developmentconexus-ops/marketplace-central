@@ -1,12 +1,12 @@
 # D4 — External Integrations
 
-> **Status:** OPEN / ACTIVE — D4-B1 accepted/canonical; D4-B2 contract core canonical with Installation Evidence Gate OPEN  
+> **Status:** OPEN / ACTIVE — D4-B1 accepted/canonical; D4-B2 accepted/canonical; D4-B3 next  
 > **Program:** Architecture Rebaseline / Technical System Design  
 > **Parent authorities:** `D0-PRODUCT-SYSTEM-DEFINITION.md`, `D1-DOMAINS-BOUNDARIES.md`, `D2-IDENTITY-TENANT-DATA-OWNERSHIP.md`, `D3-COMMUNICATION-EVENTS.md`  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
 > **Opened:** 2026-08-17  
 > **B1 accepted:** 2026-08-17  
-> **B2 contract core ratified:** 2026-08-17
+> **B2 accepted:** 2026-08-17
 
 ## 1. Purpose and boundary
 
@@ -303,7 +303,7 @@ D4-B1 does not adjudicate their market/economics-specific residue. They remain e
 
 #### ADR-015
 
-B1 rehomes source-qualified identity, honest coverage and reread principles. The final listing/variation/provider-contract disposition remains **D4-B2**. Legacy composite ID format, one read-model table/module, manual-refresh runtime and “absent from completed pull = closed” do not carry forward automatically.
+B1 rehomes source-qualified identity, honest coverage and reread principles. D4-B2 later closes the final listing/variation/provider-contract disposition. Legacy composite ID format, one read-model table/module, manual-refresh runtime and “absent from completed pull = closed” do not carry forward automatically.
 
 #### ADR-006 / ADR-007
 
@@ -313,7 +313,7 @@ Their durable transport-independent lessons — Sankhya remains external, consum
 
 ### 3.13 Explicit deferrals and next-batch ownership
 
-#### D4-B2 — Mercado Livre Operational Contract — OPEN BELOW
+#### D4-B2 — Mercado Livre Operational Contract — ACCEPTED BELOW
 
 B2 owns the concrete Mercado Livre operational surface needed by Product 1.0, including:
 
@@ -329,7 +329,7 @@ B2 owns the concrete Mercado Livre operational surface needed by Product 1.0, in
 - **current Product↔channel correspondence identifier evidence** required by D2/Readiness, including the real Mercado Livre `SELLER_SKU` / custom-field / attribute / variation-level semantics where applicable;
 - **the current provider identifier-evidence surface available to Product & Channel Readiness for unattended corroboration and pre-dispatch correspondence validation.** Readiness remains authority for whether that evidence is sufficient.
 
-#### D4-B3 — Sankhya Business-System Contract
+#### D4-B3 — Sankhya Business-System Contract — NEXT
 
 B3 owns:
 
@@ -396,13 +396,11 @@ Framework preference, current-code convenience and speculative future providers 
 
 ---
 
-## 4. D4-B2 — Mercado Livre Operational Contract — OPEN / CANONICAL CONTRACT CORE
+## 4. D4-B2 — Mercado Livre Operational Contract — ACCEPTED / CANONICAL
 
-**Outcome:** `CURRENT STRUCTURE CONFIRMED` for D0–D4-B1 with a bounded concrete Mercado Livre contract. No D0/D1/D2/D3/D4-B1 reopen is currently required.
+**Outcome:** `CURRENT STRUCTURE CONFIRMED` for D0–D4-B1 with a bounded concrete Mercado Livre contract and a real selected first-flow lane set. No D0/D1/D2/D3/D4-B1 reopen is required.
 
-The operator ratified the converged B2 contract core after a pre-review D0–D3/D4-B1 coherence pass, current-provider/reference review, independent Fable challenge and GPT adjudication. The review produced three consolidation findings: canceled-order search coverage must be explicit; stock writability/effect scope must include site/seller/UP context; and the Installation Evidence Gate is necessary but must be described as a lane-selection/completion gate rather than as uncertainty about the mode-conditional contract rules themselves.
-
-B2 is **not closed**. The target contract core below is canonical; the current Metal Nobre Mercado Livre Installation's actually supported Product 1.0 lane set remains Unknown until §4.8 is satisfied. Under the current router, B3/B4 remain unopened while this gate is open.
+The operator ratified the converged B2 contract core after a pre-review D0–D3/D4-B1 coherence pass, current-provider/reference review, independent Fable challenge and GPT adjudication. The later read-only real-dependency Installation Evidence Gate was executed against the bound MLB seller and passed. Its measurement selected the smallest real provider lane set required by Product 1.0 without broadening B2 to every documented Mercado Livre mode.
 
 ### 4.1 Governing Mercado Livre invariant
 
@@ -425,7 +423,7 @@ B2 therefore preserves provider-specific differences only where they change corr
 2. A legacy provider Variation is an external child identity only where the actual listing uses the legacy variation model.
 3. `user_product_id` is a provider-native seller physical-product reference; it is not MPC Product and gains no MPC canonical entity merely for normalization.
 4. `family_id`/`family_name` are provider grouping concepts; `catalog_product_id` remains Mercado Livre catalog ontology.
-5. Legacy and User Product listings may coexist. The adapter determines the actual provider model from current authoritative seller/resource evidence rather than a static installation-wide assumption.
+5. Legacy and User Product listings may coexist in provider capability generally. The adapter determines the actual model from current authoritative seller/resource evidence rather than a static assumption.
 6. Provider topology may be referenced by Installation + provider resource kind/native key where material; B2 does not create a universal provider-resource graph.
 7. Provider migration or Item↔UP relationship change never rewrites MPC Product identity or silently rewrites Readiness authority.
 
@@ -504,11 +502,11 @@ Rules:
 1. Availability Control owns Inventory Source/Scope, allocation policy, Sellable Availability and Availability Intent/convergence. Provider stock locations remain external references/evidence.
 2. `store_id`, `network_node_id`, `selling_address`, `seller_warehouse` or `meli_facility` never becomes Inventory Source or Fulfillment Node by convenience.
 3. **Seller-managed does not automatically mean API-writable.** Provider writability requires the concrete resource typology **plus current site applicability, seller configuration/tags and per-resource/listing state** to establish an enabled write surface.
-4. Current official behavior includes site/configuration-specific stock surfaces; no MLA/MLC capability is projected onto MLB merely because the typology name matches.
-5. `seller_warehouse`/multi-origin write capability is treated as conditional on the current provider configuration/enablement required by that surface.
+4. Current official behavior includes site/configuration-specific stock surfaces; no capability is projected across sites merely because the typology name matches.
+5. `seller_warehouse`/multi-origin write capability is conditional on the current provider configuration/enablement required by that surface.
 6. Provider-managed `meli_facility`/Full quantity is observable but is not presented as seller/MPC-writable availability merely because the adapter can read it.
 7. Unsupported/provider-managed paths are explicit, never successful no-ops.
-8. The actual Item-vs-UP/location write surface for the real MLB Installation remains probe-gated under §4.8.
+8. For the measured current MLB Installation, the selected Product 1.0 Availability lane is the non-multi-origin Item-path `available_quantity` surface on an active User Product listing. Current measurement established `user_product_seller`, no `warehouse_management`/`multiwarehouse`, no Full/`meli_facility`, and 1:1 Item↔UP across the enumerated population. Actual provider acceptance plus authoritative convergence remains a D8 proof obligation, not D4 discovery.
 
 #### Stock version conflict
 
@@ -526,7 +524,7 @@ D0 requires automatic normal-path synchronization for sufficiently-known, author
 
 Therefore the Product 1.0 proof set must contain at least one real provider-writable availability lane if MPC claims that controlled convergence capability complete. Provider-managed Full stock can prove observation of provider-owned availability, but a **Full-only** proof set cannot by itself prove MPC-controlled Sellable Availability convergence.
 
-This is a proof-selection rule, not a requirement to implement every Mercado Livre stock mode.
+The real Installation gate selected such a seller-controlled candidate lane. First controlled write + authoritative reread still must prove actual effect/convergence before D0 capability completion is claimed.
 
 ### 4.4 Sale & fulfillment operational contract
 
@@ -541,11 +539,11 @@ This is a proof-selection rule, not a requirement to implement every Mercado Liv
 #### Order enumeration / history coverage
 
 1. Order search is an enumeration surface with provider-defined filters/retention, not permanent Sales historical authority.
-2. Current official behavior documents retained/searchable Orders up to a bounded period and, materially, seller-scoped search **filters canceled Orders**.
-3. A completed seller Order enumeration therefore proves only its provider-defined scope; it must name the cancellation exclusion and cannot be labeled complete for a Sales population whose claimed universe includes canceled Orders.
+2. Current official documentation says seller-scoped Order search filters canceled Orders, while the 2026-08-17 real Installation measurement returned canceled Orders inside a normal seller search. This behavior is therefore **not a reliable completeness contract in either direction**.
+3. A completed seller Order enumeration proves only the exact provider-defined/search-observed scope. It cannot be labeled complete for a cancellation-inclusive Sales universe merely because traversal completed.
 4. Cancellation acquisition/recovery cannot rely on seller Order-search enumeration alone.
 5. Notification→point-reread remains valid when the source-qualified Order ID is known, but notification/missed-feed behavior is not promoted to complete durable history by assumption.
-6. If a correctness claim requires complete recovery/discovery of canceled Orders or another population excluded by provider search, B2/D8 must prove an authoritative discovery/recovery combination for the explicit universe. Until proven, that portion of coverage remains partial/unknown.
+6. If a correctness claim requires complete recovery/discovery of canceled Orders or another population whose search coverage is uncertain, B2/D8 must prove an authoritative discovery/recovery combination for the explicit universe. Until proven, that portion of coverage remains partial/unknown.
 7. Provider-search retention cannot serve as permanent Sales historical authority; accepted D2/D3 lineage must retain/recover material historical meaning required beyond the provider window.
 8. Historical repository evidence that an undocumented/unclear Order scan mode once worked remains evidence only until current official/real-dependency proof supports the exact coverage claim.
 
@@ -596,14 +594,15 @@ Where the selected lane exposes provider prerequisites before dispatch:
 
 #### First-flow proof selection
 
-B2 does not implement every Mercado Livre fulfillment mode merely because documentation lists them.
+The real Installation evidence gate selected the minimum current lane set instead of implementing every Mercado Livre fulfillment mode.
 
-1. The selected proof lane set is chosen from fresh real Installation evidence.
-2. A provider-writable availability lane is required if D0 Availability Control controlled convergence is claimed complete.
-3. The selected Sale/Shipment lane must make fulfillment responsibility explicit and close every provider prerequisite MPC claims to control.
-4. A Full/provider-operated lane may be supported honestly but cannot stand in for internally operated Fulfillment Node separation/conference/packing/dispatch work if D0 completion claims that internal path was proven.
-5. If the first proof requires the internally operated Fulfillment Node normal path, a real seller-operated physical fulfillment lane must be selected or the proof gap must be surfaced.
-6. Unsupported modes remain explicit and can be added later without changing D1 authority.
+1. Current seller/listing model measured for the selected proof is User Product, with no legacy variations in the completed current seller population.
+2. Current selected availability lane is Item-path `available_quantity` under the measured non-multi-origin configuration; Item↔UP was 1:1 across the current enumerated population, so current blast radius is single Item while the shared-effect guard remains mandatory if cardinality changes.
+3. Current Price-write candidates were not blocked by Price Automation at measurement time; actual write effect/convergence remains a D8 proof.
+4. Current Sale/Fulfillment lane is seller-operated `me2 / xd_drop_off`, observed across the recent sample; no Full/`fulfillment` or multi-origin lane was observed.
+5. Shipment SLA/deadline was proven live on the selected lane. The exact open-state fiscal/label transition remains a B3/D8 proof obligation tied to the selected lane rather than a reason to implement other logistics modes.
+6. A real Claim/Return with reverse Shipment exists for later D8 post-sale correlation proof.
+7. Modes not present in the current Installation proof set remain unsupported/not-selected for Product 1.0 now; B2 preserves seams without implementing them speculatively.
 
 ### 4.5 Essential post-sale provider contract
 
@@ -616,6 +615,7 @@ B2 does not implement every Mercado Livre fulfillment mode merely because docume
 7. Product 1.0 support remains bounded to essential cancellation/return/refund consequences; general complaint management, buyer Q&A/chat, reputation workflows and general CRM/SAC remain outside scope.
 8. B2 may preserve/correlate provider-native financial movement references needed downstream, but authoritative Payment/Refund/Fee/Adjustment/Settlement/Payout contracts and realized-economic interpretation remain **D4-B4 + Commercial Economics**.
 9. Physical Return terminal state does not fabricate financial closure; financial movement does not fabricate physical/Post-Sale closure.
+10. A measured 403 on one provider-native `returns` claim-detail surface remains a bounded Provider Effective access/scope unknown for that case type. It does not invalidate the accepted post-sale contract because a real mediated return + reverse Shipment was observable; implementation/D8 must keep access failure explicit rather than reinterpret it as absence.
 
 ### 4.6 External-effect reconciliation rule specialized for Mercado Livre
 
@@ -649,60 +649,43 @@ Explicitly rejected as target structure by B2:
 
 Known provider modes that are not selected for Product 1.0 proof may remain explicit `unsupported`/`external-required` without weakening source semantics. A later real mode/provider may extend concrete adapters through the existing consumer-owned seams.
 
-### 4.8 Installation Evidence Gate — OPEN
+### 4.8 Installation Evidence Gate — CLOSED / PASS
 
-#### Status and blocking scope
+#### Measurement outcome
 
-The mode-conditional contract rules in §§4.2–4.7 are canonical now. The current Metal Nobre Mercado Livre Installation's actual seller/resource modes and Product 1.0 supported lane set are **not** known from public documentation or the historical 2026-08-01 probe.
+A fresh read-only real-dependency probe was executed on 2026-08-17 against the currently bound MLB Installation using the runtime credential path. The seller binding matched; no Mercado Livre write, stress test, secret logging or buyer-PII retention occurred.
 
-Unknown remains Unknown.
+The probe established enough current real context to select the minimum Product 1.0 Mercado Livre lane set:
 
-This gate blocks:
+- seller is active on `MLB` and currently tagged `user_product_seller`;
+- `warehouse_management` and `multiwarehouse` were absent;
+- completed seller enumeration returned 34 current Items, all User Product model, zero legacy variations, with 34 distinct User Product IDs (1:1 Item↔UP at measurement time);
+- no Full/`meli_facility` or seller-warehouse/multi-origin stock was observed in the sampled stock surfaces;
+- Price Automation seller-wide population was zero at measurement time and selected active candidates were not automation-blocked;
+- sampled current stock used `selling_address`; the selected non-multi-origin Availability write surface is Item-path `available_quantity`, with shared-UP blast-radius revalidation retained;
+- recent sale/shipment sample showed seller-operated `me2 / xd_drop_off`; no Full/flex lane was observed;
+- Shipment SLA surface was live and included a real delayed case;
+- listing-level moderation was materially present in the population, so proof candidates must be selected/revalidated outside provider-blocked listings;
+- real Claim/Return + reverse Shipment evidence exists for future post-sale proof.
 
-- **D4-B2 closure / whole-batch ACCEPTED status under the current router;**
-- declaration of the actual supported Mercado Livre lane/mode set for the real Installation;
-- any claim that D0 Availability Control, internal Fulfillment Node execution, Price write or another lane-specific capability has been proven on the real Installation;
-- D8 lane selection/proof claims that depend on those facts.
+This evidence is **time-bound Installation state**, not a permanent promise that the seller will remain in the same provider configuration. B2's conditional contracts remain the authority when provider state changes.
 
-The gate does **not** mean that the already-ratified conditional contracts above are uncertain. Probe outcomes select which of those contracts apply to the real Installation.
+#### Gate adjudication
 
-Under the current router, B3/B4 remain unopened while B2 is open. If the operator later wants B3/B4 sequencing to proceed while this subgate remains open, that requires an explicit router/sequencing decision; it is not inferred from reviewer convenience.
+**PASS.** The gate's purpose was to identify the current applicable provider contract/lane set without writes. It did not need to prove the external effect itself.
 
-#### Required probe properties
+Two residual proof obligations are carried forward explicitly:
 
-Execute a read-only real-dependency probe with:
+- **R1 — D8:** first controlled Price/Availability write on the selected lane must prove provider acceptance, authoritative reread and convergence before the corresponding D0 capability is claimed complete.
+- **R2 — D4-B3 + D8:** the selected seller-operated fulfillment lane's live fiscal/invoice/label readiness sequence must be proven together with the accepted Sankhya materialization contract and the end-to-end golden flow. The absence of an open shipment in the gate sample is not converted into “no prerequisite”.
 
-- no Mercado Livre write;
-- no secret/token value recorded;
-- no buyer PII retained;
-- minimal classification/evidence only;
-- current provider authoritative point/resource reads;
-- stated universe/sample so absence is not overclaimed.
+A future provider/account configuration change that invalidates the selected lane does not silently rewrite B2; it triggers current capability re-evaluation and, only if a canonical assumption is invalidated, the smallest implicated reopen.
 
-#### Minimum facts to establish
-
-1. seller tags relevant to publication/stock model, including `user_product_seller`, `warehouse_management`, `multiwarehouse` where applicable;
-2. selected real listing topology: legacy vs User Product, Item↔UP relations, Catalog relation and real Variation/composite presence where material;
-3. current provider price model for candidate listings and whether Price Automation blocks the intended Price-write proof lane;
-4. current stock typologies/locations/ownership **and the concrete write surface actually enabled for this seller/site/listing**, including whether `/items.available_quantity` still applies to candidate listings and what UP/shared effect scope it has;
-5. recent selected real Orders/Shipments and their actual fulfillment/logistics/fiscal/label/SLA contexts;
-6. current Installation/listing moderation/restriction evidence materially relevant to the proof set;
-7. Claim/Return presence if available for later D8 proof; sample absence does not imply the provider capability does not exist.
-
-#### Gate outcomes
-
-- If a provider-writable availability lane exists, choose the smallest real lane needed to prove D0 Availability Control and leave other modes unsupported/external-required until needed.
-- If no provider-writable availability lane exists for the accepted Product 1.0 scope, surface a targeted D0/product-proof conflict before calling Availability Control complete; Full/provider-managed observation alone is insufficient proof of MPC-controlled convergence.
-- If Price Automation blocks every candidate Price Intent lane, direct price write remains Provider Effectively unavailable; do not disable provider automation by architecture assumption.
-- If the selected first fulfillment path is provider-operated, support it honestly; do not claim internally operated Fulfillment Node execution from provider-owned work.
-- If the operator requires the internal Fulfillment Node path in the first proof, select/prove a real seller-operated lane or surface the gap.
-- If a materially required provider feature cannot be reached on the real Installation, mark explicit unsupported/external-required or reopen only the actually implicated upstream decision; never fabricate support.
-
-### 4.9 Legacy/current-state disposition while B2 remains open
+### 4.9 Legacy/current-state disposition at B2 closure
 
 #### ADR-015
 
-B2's canonical core supersedes these legacy target assumptions now:
+**Historical after D4-B2.** B2 supersedes these legacy target assumptions:
 
 - one canonical read-only `listings` module/table;
 - composite MPC listing IDs derived from provider keys;
@@ -712,11 +695,9 @@ B2's canonical core supersedes these legacy target assumptions now:
 
 Durable lessons are rehomed in D1/D2/D4: provider state remains external, Listing Intent/convergence belongs Offering, external identity is source-qualified, time/coverage remains honest and acquisition enters through consumer-owned ports/adapters.
 
-However ADR-015 remains in the active legacy registry until the B2 Installation Evidence Gate closes and B2 is accepted as a whole; its final transition to historical is a B2-closure action rather than being inferred from this partial status.
-
 #### ADR-022 / ADR-028
 
-Their legacy identity formulas remain superseded. B2 now rehomes the concrete D4 obligation to supply current Mercado Livre identifier/correspondence evidence and enforce pre-dispatch consistency; Readiness keeps unattended-corroboration policy/human-decision authority.
+Their legacy identity formulas remain superseded. B2 rehomes the concrete D4 obligation to supply current Mercado Livre identifier/correspondence evidence and enforce pre-dispatch consistency; Readiness keeps unattended-corroboration policy/human-decision authority.
 
 #### Provider DTO/schema-drift evidence
 
@@ -724,23 +705,23 @@ Historical adapter DTO omissions prove provider translation drift is a real fail
 
 ### 4.10 B2 proof strategy / strongest counterexamples
 
-B2 must remain coherent against at least these cases:
+B2 remains coherent against at least these cases:
 
-1. seller is legacy, User Product, or mixed -> adapter follows actual resource model without duplicate MPC Product identity;
+1. seller is legacy, User Product, or mixed in a future/current provider state -> adapter follows actual resource model without duplicate MPC Product identity;
 2. one UP links multiple Items -> shared effect scope is known before a narrow write;
 3. Item↔UP relation changes after authorization -> current blast radius is revalidated;
 4. Price Automation is active or price is ignored inside a mixed 2xx response -> no false Price convergence;
-5. seller-managed stock exists but the current MLB site/configuration does not enable that location write surface -> no false Integration Support/Provider Capability;
+5. seller-managed stock exists but the current site/configuration does not enable that location write surface -> no false Integration Support/Provider Capability;
 6. Item availability write on a UP listing would propagate to sibling Items -> Availability intent is not silently widened;
 7. `meli_facility` Full stock is observed -> no seller/MPC write capability is fabricated;
 8. stale `x-version` returns 409 -> rejected precondition + reread, not ambiguous retry;
 9. provider stock location resembles an internal warehouse code -> no Inventory Source/Fulfillment Node identity collapse;
 10. listing disappears from partial enumeration but point read is active -> no absence=>closed inference;
-11. seller Order search completes while canceled Orders are excluded -> coverage explicitly excludes cancellations rather than claiming complete Sales population;
-12. a canceled Order notification was missed -> seller enumeration alone cannot fabricate recovery/completeness; required recovery coverage remains partial/unknown until proved;
+11. seller Order search completes while documentation and real runtime disagree about canceled-Order inclusion -> completion alone does not prove cancellation-inclusive Sales coverage;
+12. a canceled Order notification is missed -> seller enumeration alone cannot fabricate recovery/completeness; required recovery coverage remains partial/unknown until proved;
 13. Order and Shipment disagree -> current Shipment evidence governs shipping/fulfillment observation;
 14. fiscal prerequisite/label/SLA changes -> current provider requirement evidence controls Fulfillment closure, not stale transport success;
-15. only Full/provider-operated fulfillment is present -> support it honestly without claiming internal physical execution;
+15. only Full/provider-operated fulfillment appears in a future configuration -> support it honestly without claiming internal physical execution;
 16. partial Return/refund consequences occur -> Post-Sale and Economics remain separate authorities and scopes;
 17. a second marketplace arrives -> consumer-owned semantic ports remain usable without exporting Mercado Livre vocabulary into domains.
 
@@ -773,6 +754,8 @@ B2 current-provider facts were independently challenged/reverified during the re
 - seller reputation/moderation/restrictions;
 - Claims/Returns and provider-effective actions;
 - notifications and bounded missed-feed recovery.
+
+The 2026-08-17 Installation Evidence Gate then measured the real bound MLB seller read-only and established the current selected lane set summarized in §4.8. One material doc/runtime contradiction was preserved rather than normalized away: official Orders documentation says seller search filters canceled Orders, while the real seller sample returned canceled Orders; therefore B2 relies only on the stronger coverage rule that seller search completion does not prove cancellation completeness.
 
 Reference platforms such as ANYMARKET, Amazon, Casas Bahia and Mirakl were used only as failure-class evidence that provider/fulfillment responsibility is mode-sensitive. Their module/service topology is not MPC authority.
 
@@ -831,15 +814,15 @@ D4 uses the accelerated protocol established by the earlier stages:
 D4 is **OPEN / ACTIVE**.
 
 - **D4-B1 — External Contract Grounding: ACCEPTED / CANONICAL.**
-- **D4-B2 — Mercado Livre Operational Contract: OPEN / CANONICAL CONTRACT CORE; INSTALLATION EVIDENCE GATE OPEN.**
-- **D4-B3 — Sankhya Business-System Contract: NOT YET OPENED.**
+- **D4-B2 — Mercado Livre Operational Contract: ACCEPTED / CANONICAL; Installation Evidence Gate CLOSED / PASS.**
+- **D4-B3 — Sankhya Business-System Contract: NEXT / NOT YET OPENED.**
 - **D4-B4 — Market / Economics / Settlement Contract: NOT YET OPENED.**
 - **Final D4 Global Coherence + YAGNI / Overengineering / Future-Cost review: NOT STARTED.**
 
 No D0/D1/D2/D3 reopen is currently required.
 
-Exact next action: **execute/admit the D4-B2 §4.8 read-only Mercado Livre Installation Evidence Gate and establish the smallest real supported/proof lane set.** Do not infer current seller tags, stock writability, Price Automation or fulfillment modes from historical probes or generic provider documentation.
+Exact next action: **open D4-B3 — Sankhya Business-System Contract from canonical D4-B1+B2, using the sanctioned API Gateway only.** B3 must prove the exact authoritative Product/native-key, inventory, cost/tax, Business Order Intent and Invoicing Intent surfaces plus their correctness/coverage/operational viability. If a required Product 1.0 fact/command cannot be satisfied through the sanctioned Gateway/API surface, B3 stops and returns to explicit operator/architecture adjudication; Direct Oracle is not an admitted fallback.
 
-Until that gate is resolved under the current router, do not open B3/B4 or claim B2 accepted as a whole.
+B2 residual R1 (first controlled ML Price/Availability effect + reread convergence) remains a D8 proof obligation. B2 residual R2 (live selected-lane fiscal/label progression) is jointly constrained by B3's accepted materialization contract and later proven in D8; neither reopens B2 by itself.
 
 Product implementation remains blocked until D9 is accepted.
