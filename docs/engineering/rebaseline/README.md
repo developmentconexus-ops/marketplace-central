@@ -1,9 +1,9 @@
 # Marketplace Central — Architecture Rebaseline
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
-> **Current phase:** **D4 — EXTERNAL INTEGRATIONS — NEXT / NOT YET OPENED; D3 CLOSED / ACCEPTED**  
+> **Current phase:** **D4 — EXTERNAL INTEGRATIONS — OPEN / ACTIVE; D4-B1 ACCEPTED / CANONICAL; D4-B2 NEXT**  
 > **Implementation:** BLOCKED until D9 is accepted  
-> **Last updated:** 2026-08-16
+> **Last updated:** 2026-08-17
 
 ## 1. Authority path
 
@@ -18,8 +18,9 @@ A fresh session reads, in order:
 7. `docs/engineering/rebaseline/D1-DOMAINS-BOUNDARIES.md`
 8. `docs/engineering/rebaseline/D2-IDENTITY-TENANT-DATA-OWNERSHIP.md`
 9. `docs/engineering/rebaseline/D3-COMMUNICATION-EVENTS.md`
-10. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
-11. code, OpenAPI, schemas, tests and runtime only as current-state evidence when needed
+10. `docs/engineering/rebaseline/D4-EXTERNAL-INTEGRATIONS.md`
+11. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
+12. code, OpenAPI, schemas, tests and runtime only as current-state evidence when needed
 
 This file alone answers **where the program is and what happens next**. Stable architecture belongs in `ARCHITECTURE.md`; accepted/current stage semantics belong in D-stage artifacts; Git history is the archive.
 
@@ -41,7 +42,12 @@ D3 — Communication / Events — CLOSED / ACCEPTED
   ├─ B2 Communication Contract & Failure Semantics — ACCEPTED / CANONICAL
   └─ Final Global Coherence + YAGNI / Overengineering / Future-Cost — COMPLETED / PASS
   ↓
-D4 — External Integrations — NEXT / NOT YET OPENED
+D4 — External Integrations — OPEN / ACTIVE
+  ├─ B1 External Contract Grounding — ACCEPTED / CANONICAL
+  ├─ B2 Mercado Livre Operational Contract — NEXT / NOT YET OPENED
+  ├─ B3 Sankhya Business-System Contract — NOT YET OPENED
+  ├─ B4 Market / Economics / Settlement Contract — NOT YET OPENED
+  └─ Final Global Coherence + YAGNI / Overengineering / Future-Cost — NOT STARTED
   ↓
 D5 — API
   ↓
@@ -70,61 +76,61 @@ D0 authority and non-goals are defined only in `D0-PRODUCT-SYSTEM-DEFINITION.md`
 
 ### D1 — CLOSED
 
-`D1-DOMAINS-BOUNDARIES.md` is the accepted D1 authority. It defines 12 business boundaries, explicit ownership/non-ownership, cross-cutting non-domain treatment, legal semantic authority edges, forbidden boundary violations, legacy semantic disposition, D2–D7 defers and reopen triggers.
+`D1-DOMAINS-BOUNDARIES.md` is the accepted D1 authority. It defines 12 business boundaries, explicit ownership/non-ownership, cross-cutting non-domain treatment, legal semantic authority edges, forbidden boundary violations, legacy semantic disposition, later-stage defers and reopen triggers.
 
-D1 closure included operator adjudication, independent Fable review and final Global Coherence + YAGNI / Overengineering / Future-Cost review. The 12 D1 business boundaries do **not** imply 12 services, databases, processes or deployments.
+The 12 D1 business boundaries do **not** imply 12 services, databases, processes or deployments.
 
 ### D2 — CLOSED
 
-`D2-IDENTITY-TENANT-DATA-OWNERSHIP.md` is the accepted D2 authority. B1+B2 were operator-approved, independently challenged, consolidated and explicitly ratified as a whole after the final Global Coherence + YAGNI / Overengineering / Future-Cost review.
+`D2-IDENTITY-TENANT-DATA-OWNERSHIP.md` is the accepted D2 authority. Its accepted direction includes:
 
-Accepted D2 direction includes:
-
-- canonical identity follows semantic authority; MPC-owned IDs are opaque/stable/non-reusable;
-- MPC-owned Organization, Marketplace Installation, Selling Entity, Inventory Source, Fulfillment Node and human/automation/system Principal semantics;
-- Organization as canonical tenant/isolation root with no duplicate target `Tenant` identity;
-- source-qualified external Product, Listing/Variation, Sale/Order, Shipment and native financial identities;
-- minimal SourceInstance identity while D4 owns concrete source contracts/capabilities/config/credentials;
-- stable domain-local identity for material Business Intents that participate in authorization/external effects/convergence/history;
-- MPC-owned Post-Sale Resolution, Economic Attribution/Reconciliation, Operational Work and Authorization Decision/Grant semantics;
-- external OIDC human AuthN with MPC-owned Principal/binding/Membership/AccessRole/Permission ordinary-access state and a strict fence against business-action authority leaking into identity/access;
-- one D1 semantic write authority per canonical business meaning; typed references/snapshots/projections do not become current write authority;
-- exact Money/rate/material-quantity semantics, bounded `Fact<T>` scope, provenance and distinct material time meanings;
-- clean target persistence baseline with **no legacy-data migration or archival requirement** for the pre-rebaseline MPC database;
-- old ADR structures do not carry forward by inheritance; D2 adjudicated ADR-011/012/022/028/031 and defined safe rehoming gates/new ADR-036+ transition.
+- canonical identity follows semantic authority;
+- Organization is the canonical tenant/isolation root;
+- Marketplace Installation and SourceInstance qualify external namespaces without collapsing credentials/transport into identity;
+- source-qualified external Product, Listing/Variation, Sale/Order, Shipment and financial identities;
+- stable domain-local identity for material MPC Business Intents and accepted Work/Governance/Economics identities;
+- explicit Principal/identity/access state with a strict business-authority fence;
+- one D1 semantic write authority per canonical business meaning;
+- exact value/knowledge/time semantics and honest unknowns;
+- clean target persistence baseline and legacy-ADR rehoming gates.
 
 ### D3 — CLOSED
 
-`D3-COMMUNICATION-EVENTS.md` is the accepted D3 authority.
+`D3-COMMUNICATION-EVENTS.md` is the accepted D3 authority. Its accepted direction includes:
 
-Accepted D3 direction includes:
+- semantic hybrid **Q/C/E/P** communication;
+- current truth from owners; material historical occurrence from the smallest sufficient durable authority;
+- recoverable consequential propagation;
+- explicit Organization scope;
+- semantic idempotency under duplicate delivery;
+- no global arrival-order authority;
+- known/known-empty/unknown/unavailable query semantics;
+- accepted/rejected/pending/ambiguous capability semantics where applicable;
+- no blind replay of ambiguous external effects;
+- projections as rebuildable read state, never write authority;
+- shared execution-safety mechanisms verify owner-issued proofs without owning business disposition/authorization;
+- no generic Event Bus/Command Bus/Workflow engine/event sourcing/exactly-once/global-ordering/runtime topology choice.
 
-- semantic hybrid **Q/C/E/P** communication rather than all-sync or all-event-driven ideology;
-- Q for current owner meaning needed to decide now;
-- C for asking an owner to perform/accept owner-owned work;
-- E only for already-committed producer-owned facts with real independent consumer reactions;
-- P for read-only multi-authority composition;
-- progression events wake consumers while current owner revalidation remains required when currentness is material;
-- evidence-consuming edges preserve/recover material occurrences from the smallest sufficient durable authority rather than latest mutable state or universal event sourcing;
-- consequential event propagation is recoverable rather than silently lossy;
-- Organization scope remains explicit across communication/recovery and is never inferred from Installation/SourceInstance/provider IDs;
-- duplicate delivery is safe through consumer semantic idempotency; transport dedupe is not business correctness;
-- arrival order is not business order; no global sequence/order/version is assumed;
-- evidence occurrences use bounded owner/source-defined stable discrimination only where same-vs-distinct correctness requires it; no universal EventID is created;
-- missed-reaction conclusions stay with the domain whose progression/convergence is missing; automatic recovery does not automatically create Work;
-- capability acceptance distinguishes accepted/rejected/pending/ambiguous where applicable and ambiguous retry reconciles by stable Organization-scoped semantic anchor rather than generic CommandID;
-- Q preserves known/known-empty/unknown/unavailable semantics and material freshness provenance;
-- replay/redelivery cannot rewrite history or blindly repeat external effects;
-- projections remain rebuildable read state and never make transport logs historical authority;
-- multi-target communication preserves intended/authorized/attempted scope and granular member outcomes;
-- provider webhook/poll/callback evidence is not itself a D3 domain event;
-- no cross-owner distributed transaction is required;
-- shared external-effect safety mechanics verify proofs but do not own business disposition/policy/authorization;
-- incompatible communication-contract cutover preserves still-required recoverable reactions without requiring permanent multi-version support;
-- ADR-019 and ADR-024 are fully rehomed and historical; ADR-018/026 retain only D7 residue;
-- no generic Event Bus/Command Bus/Workflow engine/event sourcing/universal CQRS/exactly-once/global ordering/schema-registry/broker/outbox/runtime topology/microservice split is chosen by D3.
+### D4 — OPEN / B1 ACCEPTED
 
-D3-B1 and B2 were independently challenged and operator-ratified as batches. The final D3 Global Coherence + YAGNI / Overengineering / Future-Cost review completed with **CURRENT STRUCTURE CONFIRMED**, no material correction, no B3 and no D0/D1/D2 reopen. The operator then explicitly ratified D3 as a whole on 2026-08-16.
+`D4-EXTERNAL-INTEGRATIONS.md` is the active D4 authority.
+
+D4-B1 accepted:
+
+- concrete provider/business-system adapters implement consumer-owned semantic ports; no Integration business domain or universal provider entity graph;
+- Mercado Livre Installation binds fail-closed to the authoritative external seller namespace, including acquisition-time attribution when the provider exposes a namespace marker;
+- Sankhya SourceInstance remains transport-independent;
+- credentials/auth are protocol/runtime secrets, not business identity;
+- provider notification is a trigger/pointer and current provider meaning comes from authoritative reread where material;
+- point/enumeration/delta/notification coverage claims are operation-scoped and fail-honest;
+- Integration Support, Provider Effective Capability/Requirement and Effective Business Capability remain distinct authorities;
+- later external effects must define acceptance/ambiguity and an authoritative reconciliation surface; HTTP/provider transport success is not convergence;
+- **Sankhya API Gateway is the default target transport for new MPC↔Sankhya contracts.** Direct database access is no longer the normative default and can survive only as an explicitly evidenced B3 exception;
+- client-specific contractual prohibition/entitlement for direct DB is currently **Unknown**, not fabricated in either direction;
+- B3 must prove sanctioned-surface correctness, coverage and operational viability without D4 choosing D7 scheduling/runtime;
+- ADR-004 D4 plugin-framework meaning is superseded; ADR-010 polling-only D4 meaning is superseded while D7 runtime residue remains; ADR-006/007 direct-Oracle/godror default meaning is no longer target authority, pending only a possible explicitly proven B3 exception.
+
+No D0/D1/D2/D3 reopen was required by B1.
 
 ## 4. Engineering method and repo lifecycle
 
@@ -134,45 +140,53 @@ This router defines the Marketplace Central D0–D9 status/lifecycle and allowed
 
 ## 5. What is prohibited now
 
-While D4 is the active next design stage:
+While D4-B2 is the active next decision batch:
 
 - do not begin D5–D9 target design prematurely;
 - do not implement product architecture/features;
-- do not silently alter accepted D0–D3 authority while choosing external integration contracts;
+- do not silently alter accepted D0–D4-B1 authority;
 - do not let provider APIs, ERP schema, current adapters, legacy DTOs or historical ADRs become target business authority by inheritance;
-- do not create semantic dependencies outside D1 or bypass D2/D3 ownership/communication semantics through integration code;
+- do not create semantic dependencies outside D1 or bypass D2/D3 semantics through integration code;
+- do not promote a provider callback/notification/2xx into domain truth or convergence without the accepted D4 evidence/reread/reconciliation contract;
+- do not assume direct Oracle is an automatic fallback if the Sankhya Gateway surface is inconvenient;
 - do not choose HTTP/frontend/runtime topology prematurely;
-- do not treat `AI-DIALOG.md`, deleted review candidates or reviewer/chat summaries as target authority.
+- do not treat `AI-DIALOG.md`, review candidates or reviewer/chat summaries as target authority.
 
 Existing code/module/context/schema shape remains current-state evidence only.
 
 ## 6. Exact next action
 
-**Open D4 — External Integrations from repository authority.**
+**Open D4-B2 — Mercado Livre Operational Contract from canonical D4-B1.**
 
-A fresh D4 session must first reconstruct the state from the authority path above, confirm:
+B2 must use current official Mercado Livre evidence only for the concrete claims it needs and cover the Product 1.0 operational surface materially required now, including:
 
-- D0, D1, D2 and D3 are **CLOSED / ACCEPTED**;
-- D4 is **NEXT / NOT YET OPENED**;
-- implementation remains blocked until D9.
+- listing/item/variation identities and authoritative reads;
+- seller population enumeration/completeness;
+- provider-native Product↔channel correspondence identifier evidence required by D2/Readiness;
+- stock/availability reads and controlled writes;
+- listing/price controlled effects and provider outcome reconciliation;
+- sale/order acquisition and authoritative reread;
+- fulfillment modes/responsibilities/requirements/artifacts/deadlines needed by the selected first operating flow;
+- composite behavior only if the selected flow materially requires it.
 
-Then perform an independent D4 intake/decomposition before proposing target contracts. Use concrete provider/ERP documentation, code/schema/OpenAPI/tests/runtime only as evidence for specific D4 decisions; current integration shapes are not target authority.
+B2 must preserve D4-B1's authority/coverage/failure/capability fences and must not choose D7 worker/scheduler/queue/retry/cursor-storage topology.
 
-D4 owns concrete external acquisition/translation/capability contracts, including provider/business-system identities and namespaces as already bounded by D2, authoritative reread/reconciliation surfaces, capability/requirement semantics, credentials/protocol concerns, source completeness/coverage behavior and provider-specific contract evidence. D4 must preserve D1 authority and D3 Q/C/E/P/failure semantics rather than replacing them with provider shapes.
-
-Do not begin implementation; implementation remains blocked until D9.
+Do not begin B3/B4 implementation or D5–D9 design. Implementation remains blocked until D9.
 
 ## 7. Fresh-session success test
 
 A fresh session should conclude that:
 
 - D0, D1, D2 and D3 are **CLOSED / ACCEPTED**;
-- D1 defines exactly 12 semantic business boundaries but no runtime topology;
-- D2 fixes canonical/external identities, tenant/isolation semantics, persistent ownership and shared value/knowledge/time semantics;
-- D3 fixes the semantic Q/C/E/P topology and failure/recovery contract without selecting D7 runtime technology;
-- D4 is **NEXT / NOT YET OPENED**;
+- D4 is **OPEN / ACTIVE**;
+- D4-B1 is **ACCEPTED / CANONICAL**;
+- D4-B2 is **NEXT / NOT YET OPENED**;
+- consumer-owned ports and provider-local protocol remain distinct;
+- Marketplace Installation/SourceInstance external namespace binding is explicit and fail-closed;
+- source coverage/reread/reconciliation semantics are now canonical D4 grounding;
+- Sankhya Gateway is the default target transport, direct DB only a possible evidenced B3 exception, and client-specific entitlement/compliance remains Unknown until proven;
 - current modules/contexts/schema/legacy ADRs remain evidence, not target authority by inheritance;
 - implementation remains blocked until D9;
-- the exact next action is independent D4 intake/decomposition from repository authority.
+- the exact next action is D4-B2 independent design/review from canonical D4-B1 plus current official Mercado Livre evidence.
 
 If it cannot, the authority path is incomplete or contradictory.
