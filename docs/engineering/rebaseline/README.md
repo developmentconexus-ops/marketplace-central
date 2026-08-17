@@ -1,7 +1,7 @@
 # Marketplace Central — Architecture Rebaseline
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
-> **Current phase:** **D3 — COMMUNICATION / EVENTS — OPEN / IN PROGRESS; D3-B1 independent review is the exact next action**  
+> **Current phase:** **D3 — COMMUNICATION / EVENTS — OPEN / IN PROGRESS; D3-B1 ACCEPTED, D3-B2 is the exact next batch**  
 > **Implementation:** BLOCKED until D9 is accepted  
 > **Last updated:** 2026-08-16
 
@@ -37,6 +37,8 @@ D1 — Domains / Boundaries — CLOSED / ACCEPTED
 D2 — Identity / Tenant / Data Ownership — CLOSED / ACCEPTED
   ↓
 D3 — Communication / Events — OPEN / IN PROGRESS
+  ├─ B1 Communication Topology & Edge Matrix — ACCEPTED
+  └─ B2 Communication Contract & Failure Semantics — NEXT
   ↓
 D4 — External Integrations — NOT OPEN
   ↓
@@ -90,11 +92,33 @@ Accepted D2 direction includes:
 - clean target persistence baseline with **no legacy-data migration or archival requirement** for the pre-rebaseline MPC database;
 - old ADR structures do not carry forward by inheritance; D2 adjudicated ADR-011/012/022/028/031 and defined safe rehoming gates/new ADR-036+ transition.
 
-### D3 — OPEN
+### D3 — OPEN / B1 ACCEPTED
 
-`D3-COMMUNICATION-EVENTS.md` is the active D3 stage artifact. It currently records only the D3 purpose/boundary, imported D0–D2 invariants, review protocol and current stage status.
+`D3-COMMUNICATION-EVENTS.md` is the active D3 authority.
 
-**No D3 batch is canonical yet.** The operator approved the direction of D3-B1 for independent challenge; `D3-B1-REVIEW-CANDIDATE.md` is deliberately non-authoritative until reviewer convergence and explicit operator batch acceptance.
+Accepted D3-B1 direction includes:
+
+- a **semantic hybrid Q/C/E/P** communication model rather than all-sync or all-event-driven ideology;
+- Q for current owner meaning needed to decide now;
+- C for asking an owner to perform/accept owner-owned work;
+- E only for already-committed producer-owned facts with real independent consumer reactions;
+- P for read-only multi-authority composition;
+- progression events wake consumers, but current owner revalidation remains required when currentness is material;
+- evidence-consuming edges preserve/recover each material occurrence from the smallest sufficient durable authority rather than relying on latest mutable state or universal event sourcing;
+- consequential event propagation is detectable/recoverable rather than silently lossy;
+- accepted feed-forward edges remain Q-only by baseline unless a real autonomous reaction is proven;
+- Sales fan-out to Materialization/Fulfillment/Economics is event-based; Sales→Post-Sale events are limited to post-sale-relevant facts;
+- Materialization⇄Fulfillment remains a semantic business cycle with separate write authorities and committed checkpoints, not bilateral mutation;
+- Governance uses C/Q from action owner and E/Q back for later committed decisions without becoming executor;
+- Operational Work consumes source-owned actionable-condition facts while retaining Work-obligation representation/lifecycle authority;
+- Post-Sale coordinates through C/E/Q without absorbing consequence-owner semantics;
+- ordinary identity/access correctness remains Q-based; revocation cannot depend solely on eventual events;
+- projections are rebuildable from owner state/evidence and never make event transport the sole history/rebuild authority;
+- provider webhook/poll/callback evidence is not itself a D3 domain event;
+- no cross-owner distributed transaction is required;
+- shared external-effect safety mechanics verify proofs but do not own business disposition/policy/authorization;
+- D3 B1 partially adjudicated legacy ADR-018/019/024/026 while leaving B2/D7 residues explicit;
+- no generic Event Bus/Command Bus/Workflow engine/event sourcing/universal CQRS/broker/outbox/runtime topology/microservice split is chosen by B1.
 
 ## 4. Engineering method and repo lifecycle
 
@@ -109,33 +133,46 @@ While D3 remains open:
 - do not begin D4–D9 target design prematurely;
 - do not implement product architecture/features;
 - do not let legacy IDs/tables/ADRs imply target identity, persistence ownership, communication architecture or target contracts;
-- do not silently alter accepted D0/D1/D2 authority while choosing D3 communication semantics;
+- do not silently alter accepted D0/D1/D2 or accepted D3-B1 authority while choosing B2 communication contracts;
 - do not create a semantic dependency outside D1 by hiding it in an event, API, queue, projection or database;
 - do not choose provider/ERP transport contracts or credentials;
 - do not choose HTTP/frontend/runtime topology;
 - do not choose workers, brokers, outbox/transaction implementation, locks, RLS enforcement or deployment topology;
-- do not treat `AI-DIALOG.md`, `D3-B1-REVIEW-CANDIDATE.md` or reviewer/chat summaries as target authority.
+- do not make event transport a business/historical authority or require universal event sourcing;
+- do not treat `AI-DIALOG.md`, review candidates or reviewer/chat summaries as target authority.
 
 Existing code/module/context/schema shape remains current-state evidence only.
 
 ## 6. Exact next action
 
-**Independent review of D3-B1 — Communication Topology & Edge Matrix.**
+**Open D3-B2 — Communication Contract & Failure Semantics.**
 
-The operator has approved B1 as a review candidate, not yet as canonical architecture.
+B1 is canonical and must not be reopened merely to choose technology.
 
-Next sequence:
+B2 must define, only to the semantic depth required before D4/D7:
 
-1. Fable is invoked independently by the operator and reads the current repository authority path itself.
-2. Fable reviews `docs/engineering/rebaseline/D3-B1-REVIEW-CANDIDATE.md` and appends only material findings to `AI-DIALOG.md`.
-3. GPT independently adjudicates every material finding against repository authority/evidence; reviewer findings remain evidence, not authority.
-4. Material reviewer disagreement receives another GitHub round or operator adjudication; GPT does not simulate Fable.
-5. The converged B1 batch returns to the operator for explicit acceptance.
-6. Only after acceptance is B1 consolidated into `D3-COMMUNICATION-EVENTS.md`; then D3-B2 may proceed.
+- Organization scope;
+- actor/Principal attribution where material;
+- domain-local Intent references;
+- event occurrence identity/producer ownership;
+- causation/correlation;
+- provenance/material time;
+- duplicate/idempotency semantics;
+- ordering/late-delivery/anti-regression assumptions;
+- missed-delivery recovery and replay/reconciliation expectations;
+- progression current-reread vs evidence occurrence recovery;
+- capability outcomes/ambiguity;
+- projection rebuild completeness/fail-honesty;
+- multi-target granular outcomes where material;
+- remaining D3 semantic residues of ADR-019/024.
 
-If D3 discovers a genuinely necessary semantic dependency not allowed by D1, reopen only the implicated D1 decision rather than hiding the dependency in an event, queue, API, projection or database.
+B2 must **not** select broker, outbox table, queue, worker, scheduler, lock, transaction or deployment topology; those remain D7. Concrete provider/source acquisition contracts remain D4.
 
-Do not advance D4 or product implementation before D3 is accepted.
+After B2 is operator-approved, independently challenged and consolidated, D3 proceeds to final Global Coherence + YAGNI / Overengineering / Future-Cost review before whole-stage ratification.
+
+If D3 discovers a genuinely necessary semantic dependency not allowed by D1, reopen only the implicated D1 decision rather than hiding the dependency in mechanism.
+
+Do not advance D4 or product implementation before D3 is accepted as a whole.
 
 ## 7. Fresh-session success test
 
@@ -144,8 +181,9 @@ A fresh session should conclude that:
 - D0, D1 and D2 are **CLOSED / ACCEPTED**;
 - D1 defines exactly 12 semantic business boundaries but no runtime topology;
 - D2 fixes canonical/external identities, tenant/isolation semantics, persistent ownership and shared value/knowledge/time semantics;
-- D3 is **OPEN / IN PROGRESS** and owns communication/event/projection semantics only inside D1/D2 authority;
-- D3-B1 is currently an **independent-review candidate**, not canonical target authority;
+- D3 is **OPEN / IN PROGRESS**;
+- **D3-B1 is ACCEPTED / CANONICAL** and defines the semantic Q/C/E/P topology/edge matrix;
+- **D3-B2 is NEXT** and owns communication contract/failure semantics;
 - current modules/contexts/schema/legacy ADRs remain evidence, not target authority by inheritance;
 - implementation remains blocked until D9;
 - D4 is not yet open.
