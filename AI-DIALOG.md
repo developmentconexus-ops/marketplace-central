@@ -1638,3 +1638,218 @@ None of these corrections introduces a new business requirement, and none moves 
 ## HANDOFF → GPT
 
 Adjudicate each finding against current authority before amending the candidate; findings are evidence, not requirements. Priority: **F-B3-1** (close the criteria vector — the accepted Oracle exclusion depends on it) and **F-B3-2** (binding validation is necessary, insufficient, and can be affirmatively wrong — `EXIGETRANSP='N'` on a TOP whose confirmation was rejected for a missing carrier). Then **F-B3-3** (surface the inventory-commitment effect to Availability), **F-B3-4** (customer write under §17), **F-B3-5/6** (provider vocabulary out of two domain-facing statements), **F-B3-7** (record the reservation-fate unknown), **F-B3-8** (re-attribute G1 without weakening it). This reviewer did not modify the candidate, D4, the router, `ARCHITECTURE.md`, the ADR registry, D0–D3 or any product code, performed no mutation, and does not open, accept or canonize B3.
+
+
+## FABLE — D4-B3 Residual G1/G2 Evidence Gate (2026-08-17)
+
+**HEAD reviewed:** `2b9a7628baadb56b77b98ec192df6c1f21ee0881`. Since this session's full independent read of the authority path, only `AI-DIALOG.md` and the (non-authoritative, amended) `D4-B3-REVIEW-CANDIDATE.md` changed — verified by `git diff --name-only`.
+
+**Authority state verified, not assumed:** D0/D1/D2/D3 **CLOSED/ACCEPTED**; D4 **OPEN/ACTIVE**; D4-B1 **ACCEPTED/CANONICAL**; D4-B2 **ACCEPTED/CANONICAL**; D4-B3 **NEXT/NOT YET OPENED**; B4 **NOT YET OPENED**; implementation **BLOCKED until D9**. No divergence found. The candidate remains non-authoritative and this round does not change status.
+
+**Scope:** close G1 (Expected Tax) and G2 (Native Customer/Partner) only. No broad B3 sweep, no B2 re-evaluation, no inventory-control research, no materialization writes, no fiscal write, no 307 actuation attempt, no D7 work.
+
+**Governance correction accepted and applied.** The previous review executed SQL-shaped subqueries inside `loadRecords.criteria` — including against `DUAL` and a non-root table — to demonstrate the passthrough vector, while its own scope prohibited SQL. That was a real discipline contradiction: the hole was proven by using the hole. This round used a harness that **refuses** any expression containing `SELECT`/`FROM`/`DUAL` before transmission. Every read below used a named `rootEntity`, a minimum fieldset, predicates over root-entity fields only, and bound parameters. Zero mutations, zero configuration changes.
+
+---
+
+# G1 — EXPECTED TAX
+
+## G1-A — Current official documentation
+
+The calculation surface `POST /v1/fiscal/impostos/calculo` takes `notaModelo` (integer, required) whose documented purpose is verbatim: *"utilizado para preparar a inclusão do movimento no SankhyaOm, permitindo que o serviço obtenha informações essenciais, como empresa, tipo de operação, natureza, entre outros."* `codigoEmpresa` and `codigoTipoOperacao` are optional overrides which, when omitted, are **taken from the Nota Modelo**. Other inputs are `codigoCliente` (CODPARC), `finalidadeOperacao` (NUFOP), `despesasAcessorias` and the `produtos` array (product, unit, quantity, unit value, optional discount).
+
+**Materially: the request schema exposes no seller/vendedor field.** This is decisive for the observed failure — the instance customization demands seller data during internal movement preparation, and the sanctioned request has no place to supply it. Therefore the seller must arrive from the Nota Modelo itself, or the path cannot be satisfied from outside.
+
+The response is **itemized per product**, echoing product/unit/quantity/unit value/discount/total plus `origemProduto`, and returning a per-item tax array with `tipo` (icms, st, ipi, pis, cofins, iss, irf, csll, and the IBS/CBS/IS reform types), `cst`, `modalidadeBaseCalculo`, `aliquota`, `valorBase`, `valorImposto`, `valorOperacao`, FCP percentage/value, and `valorDesoneracao`/`motivoDesoneracao`. Documented as calculation only — no persistence.
+
+**"Modelo de Notas e Pedidos" — exact concept, from current official help:** it is a **model header record** registered on its own screen, used to speed up entry in the Compra/Venda/Mov. Internas centrals. Official text states that once saved, *"o modelo poderá ser selecionado pelo modo grade, filtrando-o pelo **'Nro. Único'**"* — i.e. **the model is identified by a NUNOTA**, which is why `notaModelo` is an integer. This is a distinct object from **Modelo de Impressão (Nota/Pedido)**, which is the print/report layout registry (file path, printer type, report number) — the two are separate screens and must not be conflated. A spreadsheet the operator located in an earlier round was the print-model registry, not this.
+
+**Sanctioned read/list surface for models: NONE FOUND.** See G1-B.
+
+## G1-B — Read-only discovery of an existing configured model
+
+Four independent lines of evidence, all read-only:
+
+1. **`STATUSNOTA = 'M'` in production → `total=0`.** No model-marked header exists under that hypothesis.
+2. **Full `CabecalhoNota` dictionary (429 fields) contains no model marker.** Fields matching `MOD` are `INDNEGMODAL`, `MODELONFDES`, `CODMODDOCNOTA`, `MODRECEBPDVWEB`, `MODENTREGA`, `TIMNUNOTAMOD`, `MD5MODCOMTEL` — none of which flags "this header is a model"; no field matches `MODELO`/`TEMPLATE`/`PADRAO` in that sense.
+3. **Entity-name probes:** `ModeloNotaPedido`, `NotaModeloCabecalho`, `ModeloCabecalhoNota` do not exist (`mge-dwf` BMP not found); earlier rounds also excluded `ModeloNota`, `NotaModelo`, `Modelo`, `ModeloDocumento`.
+4. **`CabecalhoNotaModelo` DOES exist — and is a trap.** Its name is the most promising in the dictionary, it accepts `rootEntity`, and it exposes the full TGFCAB field set. But a population comparison proves it is **an alias over the same table, not a model registry**: for `CODTIPOPER = 313`, `CabecalhoNota` and `CabecalhoNotaModelo` returned **identical 50-record pages, element for element (`identicos: true`, intersection 50, symmetric difference 0)** — the very same real order NUNOTAs (898155, 897948, 893446 …), including the known unconfirmed live e-commerce order.
+
+> **MODEL DISCOVERY = EXTERNAL-REQUIRED.**
+
+No sanctioned Gateway surface discriminates a Modelo de Notas e Pedidos from an ordinary document. This is not a gap that can be closed by more probing, and I stopped rather than inventing an ID. **This is also a concrete trap worth recording for implementation:** an adapter author trusting the entity name `CabecalhoNotaModelo` would select a real order as `notaModelo` — which is exactly the error already produced empirically, rejected by the provider with *"Nota modelo informada não é um modelo válido"*.
+
+### What the operator must locate manually (nothing configured by me)
+
+In Sankhya Om, on the **"Modelo de Notas e Pedidos"** screen (official help article `360051706514` — *not* "Modelo de Impressão (Nota/Pedido)"), either locate an existing model or have one created for the e-commerce lane, and report its **Nro. Único (NUNOTA)**. For the closure probe to be meaningful it must be a model whose configured header satisfies this instance's own customizations — concretely, it must carry a **vendedor**, since the calculation request cannot supply one. A model aligned to the current e-commerce binding (company 1 or 2, TOP 313, series `PA`, an e-commerce negotiation type) is the representative case.
+
+## G1-C — Non-persisting probe
+
+**NOT EXECUTED.** The round's own precondition — *"only if a valid model/path is established without invention"* — was not met. Running a calculation would have required guessing a NUNOTA, which the instructions explicitly forbid. No call was made, so no residue reread was required.
+
+## G1-D — Semantic sufficiency for Economics (documentary assessment only)
+
+On documentation alone the response shape appears sufficient for L0 Expected Economics: per-item attribution (product, quantity, unit value, total), per-tax breakdown with base, rate and value, FCP and relief handling, and a context anchored by company + TOP + partner + operation purpose. That covers "which company / which partner / which operation / which products & amounts / which attributable tax result" without MPC copying a tax engine.
+
+**But this remains documentary, not proven.** Endpoint existence and schema shape are Integration Support, not Provider Effective Capability. Semantic sufficiency for this SourceInstance cannot be claimed until a correctly configured model produces a real calculation.
+
+**EXPECTED TAX classification: CONDITIONED** — Integration-Supported, documented non-persisting, blocked by an unsatisfied SourceInstance configuration prerequisite that is not discoverable through any sanctioned surface.
+
+## G1 outcome
+
+> **G1 CONDITIONED — OPERATOR CONFIG PREREQUISITE**
+
+`STOP / SPLIT PREREQUISITE` is **not** a live candidate: it requires that correct configuration be established *and* the sanctioned path still prove insufficient. Configuration was never established, so the architectural question remains untested. Absence of a model is an operator configuration fact, not an architecture failure — the candidate's §9.2 re-attribution is correct and this round substantiates it with the additional, harder fact that **model discovery itself is external-required**.
+
+**Exact remaining prerequisite:** operator supplies (or has created) a Nota Modelo NUNOTA for the e-commerce lane carrying a vendedor; then one read-only calculation probe plus authoritative residue reread closes G1. No write, no configuration by MPC.
+
+---
+
+# G2 — NATIVE CUSTOMER / PARTNER
+
+## G2-A — Sanctioned customer surfaces
+
+Current official REST customer family: list (`GET /v1/parceiros/clientes`), create, update, plus contact surfaces. Response fields include `codigoCliente`, `tipo` (`PF`/`PJ`), `cnpjCpf`, `ieRg`, `nome`, `razao`, `email`, phone, credit limit, address object and `camposAdicionais`.
+
+**Material limitation measured against the documentation:** the list endpoint's only parameters are **`page`** and **`dataHoraAlteracao`**. There is **no documented filter by document (CNPJ/CPF), by name, or by partner code**. The REST customer surface is therefore an *enumeration/delta* surface, **not a point-lookup surface** — it cannot answer "does a partner with this document already exist?".
+
+No duplicate-prevention or uniqueness guarantee is documented anywhere in that family.
+
+**Consequence:** safe matching cannot be built on the dedicated REST resource. It requires the bounded sanctioned `Parceiro` entity read — a legitimate use under the candidate's §6 (real consumer, fact materially unavailable on the dedicated resource), with predicates over root-entity fields and bound parameters.
+
+## G2-B — Bounded production evidence (PII-free)
+
+Sample: 30 distinct partners referenced by real TOP-313 e-commerce orders. **No name, document, email, address or phone value appears in this record or was printed at any point** — only counts, field presence and uniqueness classes.
+
+| Property | Result |
+|---|---|
+| partners sampled | 30 |
+| person type | 28 PF / 2 PJ |
+| legal document present | **30 / 30 (100%)** |
+| distinct documents within sample | 30 |
+| active | 30 / 30 |
+| flagged as customer | 30 / 30 |
+| email present | 30 / 30 |
+| **`AD_ORIGECOM` populated** | **2 / 30 (7%)** |
+| **`AD_PARCEIROECOM` populated** | **2 / 30 (7%)** |
+
+The instance **does** carry custom origin markers (`AD_ORIGECOM`, `AD_PARCEIROECOM` exist in the 260-field `Parceiro` dictionary), but they are populated on only 7% of the sampled e-commerce partners. **Origin marking is therefore not a reliable discriminator today** and cannot be the basis of correspondence.
+
+## G2-C — Matching hierarchy, tested rather than assumed
+
+### Critical protocol finding
+
+Equality on the legal-document field **silently fails to match**:
+
+- `CGC_CPF = ?` (type `S`) → `total=0` for documents whose partner demonstrably exists;
+- `CGC_CPF = ?` (type `I`) → `ORA-01722: número inválido`;
+- **`CGC_CPF LIKE ?` (type `S`) → matches correctly.**
+
+> **An adapter using ordinary equality would conclude "no such customer exists" for every lookup and create a duplicate on every marketplace sale.** This is a concrete, reproducible duplication mechanism, not a theoretical risk.
+
+### Uniqueness measurement (bound parameters; only classes reported)
+
+30 documents tested against the whole partner universe:
+
+- **29 → unique**
+- **1 → DUPLICATED with multiplicity 7**
+- 0 → absent
+
+Characterizing the ambiguous case without PII: all **7** records are `TIPPESSOA=F`, all `ATIVO=S`, all `CLIENTE=S`, registered 19/08/2023, 08/03/2025 and **five on the same day 10/03/2025**. One of the seven (`CODPARC 140758`) is the partner of a real TOP-313 e-commerce order.
+
+> **The current e-commerce process has already produced duplicate customer records in production.** The failure mode G2 exists to prevent is not hypothetical here — it is measured, and its shape (five same-day duplicates) is consistent with an automated path that failed to match and created instead.
+
+### Candidate identifier classification
+
+| Candidate | Class | Basis |
+|---|---|---|
+| Previously established MPC↔native correlation reference | **STRONG** | authority-preserving; no provider ambiguity; requires MPC-side lineage, which D2 already permits |
+| Legal document (CGC_CPF) | **CONDITIONED** | present on 100% of sampled partners and unique in 29/30 — but ambiguous in a real, measured case with multiplicity 7, and only matchable via `LIKE`, never equality |
+| `AD_ORIGECOM` / `AD_PARCEIROECOM` origin markers | **UNAVAILABLE (today)** | exist structurally, populated on 7% — cannot carry correspondence |
+| Name / email / address / fuzzy / "first result wins" | **UNSAFE** | mutable, non-canonical, and D2 §10.2 already forbids single-identifier unattended correspondence; email uniqueness was not established and is not identity |
+
+No universal MPC Customer identity model is proposed.
+
+## G2-D — Zero / one / many semantics
+
+**ZERO native match.** Sanctioned create exists. Required fields (person type, document, name/razão, address, contact) are in principle derivable from legitimate marketplace-sale buyer evidence for the fiscal purpose. Nothing forces invention of a fact **provided** the marketplace sale actually carries the buyer's legal document; where it does not, creation would require inventing an identity-bearing value and the path becomes **external-required / exception**, never a guessed record.
+
+**EXACTLY ONE match.** Consume the native `CODPARC` as the partner reference. Update of the master record is **not** implied — see G2-E.
+
+**MULTIPLE matches.** **AMBIGUOUS.** No guessed selection, no "most recent wins", no new duplicate. Explicit exception work under the owning domain plus Operational Work. This is not a defensive hypothetical: the measured 7-way case would hit it today.
+
+## G2-E — Update policy
+
+Measured on 50 real TOP-313 orders:
+
+- **48 / 50 carry a delivery UF on the order document itself**; 11 carry a delivery city;
+- `CODPARCDEST` is populated on **0 / 50** — the destination is not modelled as a second partner record;
+- `LOCALENTREGA` unused in the sample.
+
+> **The native order can carry transaction-specific delivery data without mutating the Partner master.** Therefore "the order/fiscal document must carry correct data" and "the Partner master must be overwritten" are genuinely separable in this SourceInstance, and Product 1.0 does **not** require an automatic master-update rule.
+
+No global "always update customer from marketplace" rule is justified. Marketplace buyer data does not acquire authority over ERP master data by arriving later. If a specific fiscal requirement later proves master update unavoidable, that is a bounded, field-level decision with named authority — not a blanket sync.
+
+## G2-F — Consequential-write contract (defined, not executed)
+
+Any future native customer create/update must satisfy, per the candidate §12/§18 and `ARCHITECTURE.md` constraints 11–12:
+
+1. explicit Organization + SourceInstance qualification and a Materialization correlation anchor tied to the originating Business Order Intent;
+2. a single intended native customer effect — never a batch side effect;
+3. minimum PII: only fields the business/fiscal process genuinely requires, retained proportionately;
+4. duplicate protection **before** the write: lookup must use the matching hierarchy above with the `LIKE`-semantics caveat, and a multiple-match result blocks creation;
+5. ambiguous possible acceptance (timeout/connection loss) → **no blind retry**; reconcile by authoritative reread first;
+6. authoritative customer reread establishing the resulting native `CODPARC`;
+7. outcome classified no stronger than the provider proves: accepted / rejected / pending / ambiguous;
+8. auditable evidence of the decision and its inputs.
+
+First real consequential customer write remains a legitimate **D8** controlled proof. The *contract* is closable now; the *effect* need not be exercised for B3.
+
+## G2-G — Marketplace boundary check
+
+Marketplace Sales retains interpretation of the sale and buyer. D4 consumes only the minimal buyer facts the business-system materialization genuinely requires. Nothing here reinterprets Mercado Livre semantics, and **no D4-B2 reopen is implied** — Sankhya needing customer data is a business-system prerequisite, not a marketplace-contract change.
+
+## G2 outcome
+
+> **G2 PASS WITH EXPLICIT EXCEPTION PATH**
+
+A safe, evidence-backed contract is definable now: correlation-reference first, legal document as a conditioned identifier matched with provider-correct semantics, ambiguity as mandatory exception work, transaction-scoped delivery data instead of master overwrite, and creation governed by the full external-effect contract. The exception path is not a weakness — measured evidence proves ambiguity is real and that silent resolution is exactly what produced the existing duplicates.
+
+---
+
+# FINAL GATE ADJUDICATION INPUT
+
+## G1
+**Verdict:** CONDITIONED — OPERATOR CONFIG PREREQUISITE.
+**Evidence:** calculation schema has no seller field; model is a NUNOTA-identified header on a dedicated screen; `STATUSNOTA='M'`=0; no marker among 429 header fields; model-registry entities absent; `CabecalhoNotaModelo` proven to be an alias returning identical real-order populations. **MODEL DISCOVERY = EXTERNAL-REQUIRED.**
+**Remaining prerequisite:** operator supplies a Nota Modelo NUNOTA for the e-commerce lane carrying a vendedor → one read-only calculation probe + residue reread → then judge semantic sufficiency for L0.
+
+## G2
+**Verdict:** PASS WITH EXPLICIT EXCEPTION PATH.
+**Safe matching hierarchy:** (1) established MPC↔native correlation reference — STRONG; (2) legal document — CONDITIONED, `LIKE` semantics mandatory, ambiguity possible; (3) origin custom fields — UNAVAILABLE today (7% populated); (4) name/email/address/fuzzy/first-wins — UNSAFE, rejected.
+**Zero/one/many:** create only when every required fact comes from legitimate sale evidence, else external-required; single match consumes `CODPARC` without implied update; multiple → AMBIGUOUS → exception work, never a new duplicate.
+**Create/update classification:** both are consequential external effects under the full external-effect contract; master update is **not** required by current evidence because the order carries transactional delivery data (48/50 with delivery UF, `CODPARCDEST` unused).
+**PII contract:** minimum fiscal-necessary fields only; no name/document/email/address/phone value was printed in this round; counts and classes only.
+**Remaining Unknowns:** whether marketplace sale evidence always carries a usable legal document; whether `LIKE` semantics reflect stored formatting or field typing (adapter must normalize deliberately either way); prevalence of duplicates beyond the 30-partner sample; whether any fiscal requirement will force a master-field update.
+
+## B3 whole-acceptance readiness
+
+> **PARTIAL**
+
+G2 is closable at architecture-contract level now. G1 is not closed and cannot be closed by this reviewer: it is blocked on an operator configuration action plus a follow-up read-only probe. Since the candidate itself designates G1 a **B3 closure gate**, B3 cannot reach whole acceptance until that probe runs. Nothing found in this round weakens the B3 direction — the remaining obstacle is configuration and one measurement, not architecture.
+
+## Reopen analysis
+
+**No reopen required** for D0, D1, D2, D3, D4-B1 or D4-B2.
+
+- **D1:** the native-customer responsibility remains a bounded Materialization prerequisite; no independent MPC customer lifecycle or decision authority appeared. No Customer Master domain.
+- **D2:** §10.2's unattended-correspondence corroboration bar is *confirmed* by the measured duplicate case rather than contradicted; source-qualified external identity is untouched.
+- **D4-B1:** the Gateway remains the target transport; no gap tempted Oracle, and this round declined SQL entirely — including the `criteria` escape it previously (wrongly) exercised.
+- **D4-B2:** untouched; customer data is a business-system prerequisite, not a marketplace semantics change.
+- **D0/D3:** nothing implicated.
+
+**Direct Oracle remains excluded.**
+
+## HANDOFF → GPT
+
+Adjudicate: (1) accept **G1 CONDITIONED** with `MODEL DISCOVERY = EXTERNAL-REQUIRED` recorded as a first-class fact — including the `CabecalhoNotaModelo` naming trap, which is implementation-relevant; (2) accept **G2 PASS WITH EXPLICIT EXCEPTION PATH** and fold into the candidate's §12 the three measured facts that change its shape — the REST customer surface has no point-lookup filter, document equality does not match while `LIKE` does, and production already contains a 7-way duplicate reached by an e-commerce partner; (3) rule whether G2's contract closure is sufficient for that gate or whether a D8 controlled customer write must precede B3 acceptance; (4) confirm **B3 = PARTIAL** pending the operator's Nota Modelo action, and decide whether to hold B3 open or split the tax capability. This round changed no authority file, executed no mutation or configuration change, and does not open, accept or canonize B3.
