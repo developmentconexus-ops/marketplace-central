@@ -32,7 +32,7 @@ It must support trustworthy flows for:
 2. **Go backend is canonical business execution.** `apps/server_core` is the server-side application. Business policy is not duplicated in React.
 3. **React frontend is a client, not a second domain authority.** Server state is managed through TanStack Query (ADR-021) unless a material finding explicitly reopens that decision.
 4. **PostgreSQL stores MPC-owned canonical state.** External systems are sources/dependencies, not alternate writable application stores.
-5. **Sankhya is external to MPC; its transport is not business authority.** Business-system access stays behind MPC-owned consumer ports/adapters. D4-B1 makes provider-sanctioned Sankhya API Gateway the default target transport for new MPC↔Sankhya contracts. Direct database access is not a silent fallback: it requires explicit current provider/customer entitlement/support evidence plus a targeted D4-B3 finding that the sanctioned surface cannot meet required correctness, coverage and operational viability. Client-specific direct-DB entitlement/compliance remains unknown until proven. If a direct-DB exception survives B3, its driver/runtime is a later D7 decision rather than an inherited godror default.
+5. **Sankhya is external to MPC and is integrated through its sanctioned API Gateway.** Business-system access stays behind MPC-owned consumer ports/adapters. Direct Oracle/database access is explicitly outside the target architecture and is not a fallback path. If the Gateway/API surface cannot satisfy a materially required Product 1.0 claim, the architecture stops and re-adjudicates the requirement/transport explicitly; it does not fall back to Oracle by convenience. Legacy Oracle/godror code remains current-state/history evidence only.
 6. **Mercado Livre first.** Other marketplace providers are deferred until the Mercado Livre operating loop is coherent and the adapter protocol is proven (ADR-005).
 7. **Marketplace provider boundary.** Provider integrations enter through vendor adapters and implement ports owned by consuming business contexts (ADR-033). Provider wire DTO/protocol knowledge stays inside the vendor boundary; exact target package layout remains later realization detail unless a stage explicitly freezes it.
 8. **Honest absence.** Unknown facts do not become plausible zero/default values. `internal/kernel/fact` is an accepted primitive for uncertainty where semantically appropriate (ADR-034); D2 decides its correct scope rather than forcing it onto every value.
@@ -58,10 +58,11 @@ The following are **not currently frozen target decisions** even if old code/ADR
 - frontend feature/package topology;
 - exact transaction/outbox implementation;
 - legacy `connectors`, `integrations`, `marketplaces`, `mutations`, `sync`, `internal_read`, `dashboard` or other module structures;
-- old manual SDK or proxy-table synchronization mechanisms;
-- direct-Oracle/godror as a default Sankhya transport/runtime.
+- old manual SDK or proxy-table synchronization mechanisms.
 
-A future session must not infer target architecture from those existing artifacts before their responsible D-stage accepts the relevant meaning.
+The legacy direct-Oracle/godror Sankhya shape is no longer merely “unfrozen”: **D4-B1 explicitly supersedes it as target architecture.**
+
+A future session must not infer target architecture from existing artifacts before their responsible D-stage accepts the relevant meaning.
 
 ## Target reasoning shape
 
@@ -102,6 +103,7 @@ D4-B1 is accepted and canonical. External integrations obey these constraints:
 - point/enumeration/delta/notification coverage is operation-scoped; incomplete/unavailable never becomes plausible absence;
 - Integration Support and Provider Effective Capability/Requirement do not become Effective Business Capability;
 - external-effect contracts distinguish acceptance/ambiguity from convergence and name an authoritative reread/reconciliation surface;
+- Sankhya uses the sanctioned API Gateway target path; Direct Oracle is not an admitted fallback;
 - current unstable provider/reference behavior must be verified against current official behavior for the concrete decision that depends on it;
 - live integration claims require real-dependency evidence, not only mocks;
 - no speculative universal provider/integration framework is introduced.
@@ -118,7 +120,7 @@ D6 maps every target screen to explicit API/query/mutation ownership and decides
 
 ## Runtime and persistence
 
-D7 decides serving/worker/scheduler/outbox/transaction/cursor/secret/deployment topology and any driver/runtime needed by an explicitly admitted external transport. Do not preserve a dedicated executable, poller or database driver because it exists today.
+D7 decides serving/worker/scheduler/outbox/transaction/cursor/secret/deployment topology for the admitted target transports. Do not preserve a dedicated executable, poller or database driver because it exists today.
 
 D2 classifies persistent state and the clean target baseline. Historical migrations do not automatically define the target model.
 
@@ -133,7 +135,8 @@ A structural rule should, where reasonable, fail at the strongest available boun
 - RLS/isolation bypass → boot/integration failure;
 - custom guard → negative fixture proves it fires;
 - external namespace mismatch → fail closed before attribution/effect where the source exposes authoritative qualification;
-- partial acquisition → cannot pass as complete in contract/integration proof.
+- partial acquisition → cannot pass as complete in contract/integration proof;
+- attempted Direct Oracle wiring for Sankhya target integration → architecture/governance failure, not accepted fallback.
 
 A green artifact that did not execute the relevant subject is no proof.
 
