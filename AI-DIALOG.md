@@ -2028,3 +2028,370 @@ The trigger source is direct proof of the earlier review finding that binding pr
 ## HANDOFF → GPT
 
 Adjudicate: (1) accept both retractions and strike the `LIKE` clause and the `MODEL DISCOVERY = EXTERNAL-REQUIRED` claim from any candidate text derived from the prior round; (2) record `TIPMOV='Z'` as the sanctioned model-discovery predicate and the `CabecalhoNotaModelo` alias as an implementation trap; (3) accept the G1 root cause as characterized — a structural incompatibility between the sanctioned calculation API and a SourceInstance customization, not a configuration gap — and decide whether B3 may close on the operator's scheduled remediation or must carry the historical-observation alternative as the contracted L0 path; (4) confirm G2 as corrected; (5) route the `TGFCGM`/`PERCCUSVAR`/restitution/commission observations to B4 rather than B3. Nothing was canonized, no authority file touched, no business state mutated.
+
+## FABLE — D4-B3 Business-System Party Resolution / Sankhya Realization (2026-08-17)
+
+**HEAD:** `24ae547ae980ae95eb4c2b85ff0e90774fa2c52c`. Authority rebuilt from the repository, not from memory: `AGENTS.md` → `docs/engineering/rebaseline/README.md` → method → `ARCHITECTURE.md` → ADR router → D0–D4 artifacts. Verified state: D0/D1/D2/D3 **CLOSED/ACCEPTED**; D4 **OPEN/ACTIVE**; D4-B1 and D4-B2 **ACCEPTED/CANONICAL** with the B2 Installation Evidence Gate **CLOSED/PASS**; D4-B3 **NEXT/NOT YET OPENED**; B4 **NOT YET OPENED**; implementation **BLOCKED until D9**. This round changes no authority file, canonizes nothing, and does not open or accept B3.
+
+**Scope:** the Sankhya realization of the already-adjudicated provider-independent **Business-System Party Resolution** contract. The general contract is not redesigned. G1 was not investigated and did not block this round.
+
+**Safety, as executed.** Strictly read-only. Every read used a named `rootEntity`, an explicit minimum fieldset, predicates over root-entity fields only, and bound parameters. The harness refuses any expression containing `SELECT`/`FROM`/`DUAL`/`UNION`/`--` before transmission. Zero writes, zero confirmations, zero faturamento, zero configuration or trigger changes, no DbExplorer, no SQL, no subquery or cross-table expression inside `criteria`.
+
+**Direct Oracle explicitly declined.** The repository `.env` was inspected only through a loader that never prints values. It contains `MPC_SANKHYA_ORACLE_*` and `MPC_ORACLE_*` credentials and **no Gateway credential**. The Oracle path was not used and is not admitted; the Gateway credential lives in a separate operator-held file. Auth measured this round: `POST /authenticate`, form `grant_type=client_credentials` plus `X-Token` header, `expires_in=300` — consistent with the candidate §5.
+
+**No PII in this record.** No name, legal document, address, e-mail or phone value was printed at any point. Internal partner/document codes (`CODPARC`, `NUNOTA`) are reported because they are provider-internal keys, consistent with prior rounds. Everything else is counts, classes and field presence.
+
+---
+
+## METHOD CORRECTION THAT CHANGES THE ANSWER — `0` IS NOT "POPULATED"
+
+Sankhya returns `0` — not null — for unset numeric code columns on `CabecalhoNota`. Counting "field present" as "non-empty string" therefore counts every unset partner/city/UF/contact code as populated.
+
+I made exactly this error on my first pass and caught it by dumping one raw document. **The previous G2 round made the same error and its §G2-E conclusion rests on it.**
+
+| Claim | Previous round | Re-measured, `0`-as-absent |
+|---|---|---|
+| TOP-313 orders carrying a delivery UF | **48 / 50** | **11 / 57** |
+| TOP-313 orders carrying a delivery city | 11 / 50 | **11 / 57** (the same 11 — city, UF and delivery contact co-occur perfectly) |
+| `CODPARCDEST` populated | 0 / 50 | **0 / 57** (confirmed) |
+| `LOCALENTREGA` populated | unused | **0 / 57** (confirmed) |
+
+The "11 carry a delivery city" figure in the prior round was not the city count; city, UF and `CODCONTATOENTREGA` are populated together on the same 11 documents, and `0`-inflation made UF look near-universal.
+
+**Consequence:** the sentence *"The native order can carry transaction-specific delivery data without mutating the Partner master … Product 1.0 does not require an automatic master-update rule"* is **not supported by the evidence it cited**. §H below re-derives the master-update verdict from corrected measurement, and it lands differently.
+
+Population swept and verified complete by pagination (page0=50, page1=7, page2=0, zero overlap): **57 TOP-313 documents, `TIPMOV<>'Z'`, `DTNEG` 2024-09-18 … 2026-08-17**, plus **42 TOP-306**.
+
+---
+
+# A — TRANSACTION PARTY DECOMPOSITION
+
+## A.1 What the current SourceInstance represents separately
+
+`CabecalhoNota` exposes **429 fields**. The party/destination-bearing ones actually present are:
+
+| Semantic role | Provider field | Populated on TOP-313 (n=57) |
+|---|---|---|
+| native customer / fiscal party | `CODPARC` | **57 / 57** |
+| delivery-recipient as a second party | `CODPARCDEST` | **0 / 57** |
+| delivery recipient as a partner-scoped contact | `CODCONTATOENTREGA` | **11 / 57** |
+| general contact | `CODCONTATO` | 11 / 57 |
+| delivery city / UF | `CODCIDENTREGA`, `CODUFENTREGA` | **11 / 57** each |
+| free-form delivery location | `LOCALENTREGA` | 0 / 57 |
+| header city | `CODCID` | 0 / 57 |
+
+**Structurally decisive:** among all 429 header fields there is **no street, number, complement, neighbourhood or postal-code field**. The transaction document can name a city, a UF and a *pointer to a contact record*. It can never carry a street address.
+
+The address itself lives in cadastro entities:
+
+- `Parceiro` — 260 fields, including `CODEND`, `NUMEND`, `CODBAI`, `CODCID`, `CEP`, `CGC_CPF`, `TIPPESSOA`;
+- `Contato` — carries its **own** `CODEND`, `NUMEND`, `COMPLEMENTO`, `CODBAI`, `CODCID`, `CEP`, **plus its own `CPF`/`CNPJ`, `TIPPESSOA` and `NOMECONTATO`**.
+
+So Sankhya does model a delivery recipient distinct from the customer — as a **partner-scoped `Contato` row**, not as transaction data.
+
+## A.2 Bounded sample, as required
+
+- same `CODPARC` in multiple e-commerce orders: **6 reused partners** among 45 distinct, max reuse **7 orders**;
+- PF and PJ both present: **42 PF / 3 PJ**; PJ buyers are **not** confined to the non-marketplace lane — one PJ partner carries the 7-order reuse and another carries 2, both on `CODTIPVENDA=27`;
+- different companies: **`CODEMP` 1 (46) and 2 (11)** — material, and both appear on the marketplace lane;
+- differing destinations across orders for one partner: **1 case**, and it is on a non-marketplace negotiation type.
+
+Reused-partner detail (destination tuple = city | UF | delivery contact):
+
+| `CODPARC` | orders | negotiation type | distinct destination tuples | all-empty |
+|---|---|---|---|---|
+| 140028 | 2 | 300 | **2** | no |
+| 142604 | 2 | 27 | 1 | **yes** |
+| 142603 | 3 | 27 | 1 | **yes** |
+| 142718 | 2 | 27 | 1 | **yes** |
+| 142005 | 2 | 27 | 1 | **yes** |
+| 142375 | 7 | 27 | 1 | **yes** |
+
+## A.3 The measurement that settles the question
+
+Negotiation type **27 = `ECOMERCE - MERCADO LIVRE`** is not confined to TOP 313. A full sweep by negotiation type returns **231 documents across nine TOP/`TIPMOV` combinations**: `14/P` 71, `305/V` 47, `313/P` 46, `306/V` 36, `303/P` 31, `101/V` 30, `308/D` 3, `100/V` 2, `115/V` 2.
+
+Delivery representation measured on **every** Mercado Livre document, per TOP:
+
+| TOP | n | `CODPARCDEST` | `CODCONTATOENTREGA` | `CODCIDENTREGA` | `CODUFENTREGA` | `LOCALENTREGA` | `CODCONTATO` |
+|---|---|---|---|---|---|---|---|
+| 14 | 71 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 303 | 31 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 305 | 47 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 306 | 36 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 313 | 46 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+> **Across all 231 Mercado Livre documents in this SourceInstance — every lane, orders and fiscal results alike — transaction-scoped delivery representation is 0 / 231.**
+
+The capability is not missing from the TOP: the same TOP 313 carries city + UF + delivery contact on the 11 non-marketplace e-commerce documents. `TipoOperacao` 313 reads `GERARPARCDEST=N` and `PROVISENTREGA=N`, consistent with `CODPARCDEST` never being generated. **The marketplace integration simply does not use the mechanism** — this is incumbent behaviour, not a provider limit.
+
+Therefore, for the current Mercado Livre lane, the only thing that can determine where an order ships is the **Partner master address**.
+
+## A.4 Central question
+
+> Can the same native `CODPARC` safely participate in multiple sales with different transaction delivery destinations without updating its master record?
+
+**PROVEN NO — for the current Mercado Livre lane.** Zero of 231 marketplace documents carry any destination field. Two marketplace sales to different addresses under one `CODPARC` are **indistinguishable on the native documents**; nothing in the transaction can express the difference.
+
+**CONDITIONED — for the other e-commerce lanes.** The destination *reference* is transactional (`CODCONTATOENTREGA` + city + UF on the header, preserved into the fiscal result — §B.3). But the address it points at is a `Contato` row owned by the partner, i.e. cadastro state. A genuinely new destination therefore still requires a **native cadastro write**; it is merely additive instead of destructive.
+
+---
+
+# B — DELIVERY REPRESENTATION
+
+## B.1 The fields actually used
+
+Measured, not inferred from what Sankhya offers:
+
+- `CODPARCDEST` — **0 / 57** on TOP 313, **0 / 231** across the marketplace population. Delivery is **not** modelled as a second partner record in this SourceInstance.
+- `LOCALENTREGA` — **0 / 57**. Unused.
+- `CODCONTATOENTREGA` + `CODCIDENTREGA` + `CODUFENTREGA` — **11 / 57**, always together, always on non-marketplace negotiation types (300 ×5, 6 ×3, 210 ×2, 214 ×1).
+- No street/CEP/neighbourhood field exists on the header at all.
+
+## B.2 Does TOP 313 require a Contato de Entrega?
+
+**NO.** 46 of 57 TOP-313 documents carry none, and all 46 marketplace documents on that TOP carry none. A delivery contact is optional on this TOP.
+
+## B.3 Does 306 preserve the transaction destination?
+
+**YES — measured, not assumed.** Correlating origins to results through the sanctioned `CompraVendavariosPedido` relation: **47 of 57** TOP-313 orders have a correlated result (49 relation rows); result TOPs are **306 ×42 and 307 ×5**, matching the candidate's §17 branch evidence.
+
+Destination across origin → result: **preserved 11 · both empty 36 · lost 0 · gained 0.**
+Fiscal party across origin → result: **same `CODPARC` 47 / 47, different 0.**
+
+So when a destination exists it propagates intact to the fiscal document, and the fiscal party is never re-pointed between order and invoice.
+
+## B.4 Copied from master, or frozen transactionally?
+
+**Both, and the split matters.**
+
+- `CODCIDENTREGA` / `CODUFENTREGA` are denormalised codes stored on the document — **frozen** at document level.
+- The street address is **not stored on the document at all**. It is reached through `CODCONTATOENTREGA` → `Contato`, a mutable cadastro row, or — on the marketplace lane, where no pointer exists — through `CODPARC` → `Parceiro`, also mutable.
+
+> **The delivery address is a live reference to mutable master data, never a transactional snapshot.** Editing the partner or contact record retroactively changes where every historical document points.
+
+Supporting measurement: of the 16 `Contato` rows attached to these 45 partners, **4 carry an address different from their partner master** and **12 are identical** — so a contact genuinely can hold a distinct address for the same party.
+
+## B.5 Does a different destination require a Partner master update?
+
+- **Marketplace lane: YES, or a change of mechanism.** With 0/231 transactional carriers, the only ways to ship somewhere else are (i) update `Parceiro`, (ii) start using `CODCONTATOENTREGA` and create a `Contato`, or (iii) create another partner. All three are native cadastro writes.
+- **Other e-commerce lanes: a `Contato` write, not a `Parceiro` overwrite.** Additive, and it does not destroy the partner's registered address.
+
+## B.6 Contact creation as a separate provider consequence — RECORDED, NOT PERFORMED
+
+If MPC ever routes marketplace destinations through `CODCONTATOENTREGA`, then **creating a `Contato` is a consequential external effect** in its own right and falls under the full external-effect contract (candidate §18): explicit Organization + SourceInstance, correlation anchor, duplicate protection, no blind retry after ambiguous acceptance, authoritative reread, auditable outcome, minimum PII. `Contato` carries its own `CPF`/`CNPJ` and `TIPPESSOA`, so it is a **party record**, not a formatting detail.
+
+One unresolved precondition, explicitly not closed here: `ENTREGAENDCONTATO` is `'N'` on **45 / 45** of these partners. Whether a per-document `CODCONTATOENTREGA` alone drives the NF-e destination while that master flag is off is **UNKNOWN** and would need a controlled fiscal proof (D8 territory). No configuration was changed to find out.
+
+---
+
+# C — FISCAL PARTY VS DELIVERY PARTY
+
+| Case | Verdict | Evidence |
+|---|---|---|
+| fiscal/customer party stays the same, delivery differs | **PRECEDENT EXISTS, n=1, non-marketplace only** | `CODPARC 140028`, 2 orders, negotiation type 300, 2 distinct destination tuples. Zero such cases on the marketplace lane — structurally impossible there. |
+| delivery recipient is a different legal person from the billing party | **NO PRECEDENT** | `CODPARCDEST` 0/231. All 16 `Contato` rows carry **the same legal document as their own partner (16/16 identical)**. No observed case of shipping to a third party. |
+| partner master address differs from the transaction destination | **PRECEDENT EXISTS** | 4 of 16 contacts hold an address differing from their partner master. |
+| PF/PJ nature creates materially different handling | **YES, PROVEN** | 42 PF: document 11 digits, `CLASSIFICMS='C'`. 3 PJ: document 14 digits, `CLASSIFICMS='X'`, `IDENTINSCESTAD` present 3/3. PJ buyers occur on the marketplace lane, including the most-reused partner. |
+
+Absence is reported as absence. No universal rule is derived from the missing cases.
+
+---
+
+# D — NEW NATIVE PARTY REQUIREMENTS
+
+Measured across the **45 partners referenced by real TOP-313 e-commerce orders**.
+
+| Candidate fact | Populated | Class |
+|---|---|---|
+| `TIPPESSOA` (PF/PJ) | 45/45 | **REQUIRED BY SOURCEINSTANCE RULE** |
+| `CGC_CPF` (legal document) | 45/45 | **REQUIRED BY SOURCEINSTANCE RULE** |
+| `CODEND`, `NUMEND`, `CODBAI`, `CODCID`, `CEP` | 45/45 each | **REQUIRED BY SOURCEINSTANCE RULE** |
+| `CLASSIFICMS` | 45/45 (`C` for all PF, `X` for all PJ) | **REQUIRED BY SOURCEINSTANCE RULE**, and PF/PJ-derived |
+| `ATIVO='S'`, `CLIENTE='S'` | 45/45 | **REQUIRED BY SOURCEINSTANCE RULE** |
+| `IDENTINSCESTAD` | 3/3 PJ | **REQUIRED BY SOURCEINSTANCE RULE (PJ only)** |
+| `EMAIL` | 33/45 | OPTIONAL |
+| `TELEFONE` | 34/45 | OPTIONAL |
+| `CODTIPPARC` | 30/45 | OPTIONAL |
+| `CODVEND` on the partner | **18/45** | OPTIONAL |
+| `AD_PARCEIROECOM` | 15/45 | OPTIONAL — unusable as correspondence |
+| `AD_ORIGECOM` | 3/45 | OPTIONAL — unusable as correspondence |
+| delivery destination | — | **TRANSACTION-SCOPED — MUST NOT REQUIRE MASTER UPDATE**, and this class is **structurally empty on the marketplace lane** |
+| provider-contract required markers | — | **UNKNOWN** |
+
+Three honest limits:
+
+1. **100% population is evidence of practice, not proof of enforcement.** These fields are always present on partners the incumbent integration created; that does not prove the provider or the instance rejects their absence.
+2. **`REQUIRED BY PROVIDER CONTRACT` could not be independently established this round.** The official REST reference renders client-side and returned HTTP 404 to direct fetches on two slugs; Context7 exposes the customer endpoints but not their required-field markers. The prior round's documented field list (`codigoCliente`, `tipo` PF/PJ, `cnpjCpf`, `ieRg`, `nome`, `razao`, `email`, phone, credit limit, address object, `camposAdicionais`) is carried as evidence, with required-markers **UNKNOWN**. No default was invented.
+3. **`CODVEND` cannot be sourced from the partner.** Only 18/45 partners carry one, and the house trigger `TRG_INC_UPD_TGFCAB_METAL` demands a vendedor on the *note* for `TIPMOV IN ('V','P')`. Partner-derived vendedor is therefore not a reliable supply — independently consistent with the G1 root cause, and noted only as corroboration since G1 is out of scope.
+
+Nothing was created. No default was adopted merely because the incumbent integration populates it.
+
+---
+
+# E — SAFE PARTY-RESOLUTION ALGORITHM, ATTACKED
+
+| Step | Verdict | Attack outcome |
+|---|---|---|
+| **0** — determine the current sale's fiscal identity; marketplace buyer ID alone insufficient | **ACCEPT** | Reinforced. The marketplace buyer has **no reliable representation** in this SourceInstance: `AD_ORIGECOM` 3/45, `AD_PARCEIROECOM` 15/45. Neither can carry correspondence. |
+| **1** — reuse a prior established resolution after revalidating material compatibility | **AMEND** | Fiscal compatibility is not sufficient. On the marketplace lane the master address **is** the delivery address, so reusing a still-valid fiscal reference whose master address no longer matches the current sale ships to the wrong place with every check green. Revalidation must include **destination compatibility**, not only fiscal identity and native state. |
+| **2** — look up by strongest sanctioned fiscal identity evidence | **ACCEPT** | Re-verified live: `CGC_CPF = ?` with a **string-bound** parameter resolved **44 of 45** documents to exactly one partner. The prior round's withdrawn `LIKE` clause stays withdrawn. Numeric binding still raises `ORA-01722`. The REST customer family remains an enumeration surface with no point lookup, so the bounded `Parceiro` entity read is the correct lookup surface. |
+| **3** — exactly one eligible compatible match → use its native reference | **AMEND** | One match closes the *identity* question and leaves the *destination* question open. Amend to: one match **and** the destination is representable (or already equals the master) → use it; one match **and** the destination is materially different **and** the lane cannot carry it → explicit Work, never a silent master overwrite. |
+| **4** — zero matches → create only when every required identity-bearing fact is known from legitimate transaction evidence | **AMEND** | The measured required set includes the **full address quartet**, which is *delivery* evidence, not fiscal-identity evidence. So creation forces a semantic choice — which address becomes the master address — that the step currently leaves unstated and therefore unowned. Name it, or the first create silently decides it. |
+| **5** — multiple matches → AMBIGUOUS, no guess, no new duplicate, explicit Work | **ACCEPT** | The measured 7-way case offers **no tiebreaker whatsoever**: all 7 `ATIVO='S'`, all `CLIENTE='S'`, all `TIPPESSOA='F'`, none carrying an origin marker. Any selection rule would be arbitrary. |
+| **6** — material contradiction even with one match → fail closed | **ACCEPT** | PF/PJ contradiction is materially evidenced: document length 11 vs 14, `CLASSIFICMS` `C` vs `X`, and an IE-bearing field present only for PJ. A PF/PJ mismatch is a real fiscal-consequence divergence, not a cosmetic one. |
+| **7** — do not overwrite master merely because marketplace data differs; prefer transaction-scoped representation where the provider permits it | **AMEND** | The clause degrades silently. Measured, the provider does **not** permit it on this lane (0/231), so "prefer where permitted" evaluates to "no representation exists" and falls through to nothing. It must name the fallback explicitly: **where no transaction-scoped representation exists, a materially different destination is `external-required` / Work — never an implicit master mutation.** |
+
+---
+
+# F — DURABLE RESOLUTION STATE
+
+**Verdict: KEEP — PRESENT CORRECTNESS NEED.**
+
+- **Does D2 already permit it?** Yes, without any new decision. §5.1 requires explicit intent→native-result correlation; §8.2 allows typed domain-owned references and forbids only a universal entity graph; §8.4 class 1 covers MPC-owned meaning that cannot be reconstructed by re-reading the provider. A resolution that a human adjudicated is exactly that: re-reading Sankhya reproduces the ambiguity, never the decision.
+- **Can it go stale?** Yes, measurably. **12 of 45** partners were altered after their first e-commerce order, and **33 of 45** carry a `DTALTER` equal to one of their own order dates. Master state under a stable reference moves.
+- **What must invalidate or revalidate it?** The native reference no longer resolving or no longer active; the legal document on the native record no longer matching; PF/PJ changing; and — the amendment this round adds — **the current sale's destination no longer being compatible with the reference's current master address on a lane that cannot carry a transaction destination**.
+- **Does it accidentally become customer ownership?** Not if bounded to `(SourceInstance, scoped fiscal identity evidence) → native reference` plus provenance and the adjudication that produced it. It must never become a read source for customer attributes — those stay externally authoritative. No Customer Master, no `UniversalParty`, no CRM.
+- **Is it actually needed now, given the measured 7-way case?** **Yes.** Without it that one document is a permanent block: every future materialization re-derives AMBIGUOUS, and there is nowhere to record the operator's one-time answer. The durable state is precisely what converts a permanent block into a single human decision. That is present correctness, not speculation.
+
+No schema and no identifier is designed here.
+
+---
+
+# G — CONCURRENCY / DUPLICATION OBLIGATION
+
+**Does Sankhya guarantee CPF/CNPJ uniqueness in this SourceInstance? — PROVEN NO.**
+
+Measured directly against the whole `Parceiro` universe for the 45 e-commerce documents: **44 documents → exactly 1 partner each; 1 document → 7 partner records.** All seven are `ATIVO='S'`, `CLIENTE='S'`, `TIPPESSOA='F'`. Registration dates: **one 19/08/2023, one 08/03/2025, and five on 10/03/2025**. Six of the seven have `DTALTER = DTCAD` — created and never touched again. None carries an origin marker.
+
+Five records for one legal document on a single day is the signature of repeated or concurrent materialization that failed to match and created instead.
+
+> **B3 MUST freeze the provider-independent correctness property:**
+>
+> **Concurrent or repeated materializations for the same unresolved fiscal identity must not independently create duplicate native parties.**
+
+No lock, advisory lock, transaction, mutex, queue or worker is chosen — all D7. The point of record is that **D7 cannot delegate this correctness to the ERP**, because the ERP demonstrably does not enforce it.
+
+---
+
+# H — MASTER UPDATE POLICY
+
+The proposed invariant — *create-when-safely-absent, reuse-when-safely-resolved, master-update-by-exception, not marketplace-to-ERP customer synchronization* — is **directionally right and its previous supporting evidence was wrong**.
+
+**Verdict: BOUNDED FIELD UPDATE REQUIRED — CONDITIONED.** Not `NO AUTOMATIC MASTER UPDATE REQUIRED`, and emphatically not `FULL SYNC REQUIRED`.
+
+Per-field, as the section demands:
+
+| Question | Answer |
+|---|---|
+| Who owns the meaning of the delivery address? | The marketplace sale (destination) and the business system (master registration) own **different** things. Today Sankhya's marketplace lane collapses them, because the master address is the only carrier. |
+| Can correct order/fiscal output be achieved transactionally? | **On the marketplace lane, no** — 0/231. On other lanes, yes by reference, and the destination provably survives into the fiscal result (11 preserved / 0 lost). |
+| Does failing to update the master break the normal path? | **Yes, if MPC claims automated marketplace materialization with a correct destination.** The order would ship to whatever address the master happens to hold. |
+| Would overwriting destroy legitimate ERP master data? | **Yes.** `Parceiro` is the customer's registered fiscal address, shared with every other process in the house. Overwriting it from a marketplace shipping address is destructive and out of scope for a marketplace control plane. |
+
+Therefore the bounded exception is real but must be the **least destructive representable** one, in this order:
+
+1. destination already compatible with the current master → **no write at all**;
+2. lane can carry a destination → **additive `Contato` de entrega**, a new cadastro row that leaves the partner's registered address intact (measured live capability on TOP 313; propagation to the fiscal result proven; the `ENTREGAENDCONTATO='N'` precondition remains **UNKNOWN** and must be proven before this is claimed);
+3. neither available → **`external-required` / explicit Work**;
+4. **never** an unattended overwrite of the partner's registered address, and **never** creating another partner to hold a different address.
+
+**Do not inherit the incumbent behaviour.** It is measurably the opposite of the target: **34 / 45** partners have `DTCAD` equal to their first e-commerce order date (create-per-sale), and **33 / 45** have `DTALTER` equal to one of their own order dates (touched at order time). That is marketplace-to-ERP customer synchronization in practice, and it is the same pattern that produced the 7-way duplicate. It is current-state evidence, not target authority.
+
+---
+
+# I — STRUCTURAL REPLACEMENT TEST
+
+Stripping `Parceiro`, `CODPARC`, `CGC_CPF`, `Contato`, `CabecalhoNota` and `TOP`, the contract reads:
+
+> A marketplace sale carries buyer/account evidence, fiscal/billing-party evidence and delivery-recipient/destination evidence. Business-System Party Resolution turns the fiscal evidence into one source-native business-party reference, or into explicit Work. Materialization then uses that reference. Whether the destination can travel with the transaction is a **capability of the business system**, and when it cannot, a differing destination is an explicit external consequence — never an implicit mutation of master data.
+
+That holds with no Sankhya word in it.
+
+**Verdict: SANKHYA IS A REALIZATION** — with **one provider leakage identified and removed**.
+
+The leak was in the proposed step 7: *"prefer transaction-scoped fiscal/delivery representation where the provider permits it"* silently assumes such representation generally exists and leaves the negative branch unnamed. Sankhya's marketplace lane is exactly the negative branch, and under the original wording it degrades to nothing. The provider-independent repair is to make destination-carrying an explicit, typed capability of the business system with a named fallback — which is what the invariant below states.
+
+---
+
+# OUTCOME
+
+## Business-System Party Resolution — recommended provider-independent invariant
+
+> **A Marketplace Sale carries three separable party facts — marketplace buyer/account evidence, fiscal/billing-party evidence, and delivery-recipient/destination evidence — and none of them implies another. Business-System Party Resolution consumes only the buyer facts legitimately required for materialization and produces exactly one of: a source-native business-party reference, or explicit Work. Resolution uses the strongest sanctioned fiscal-identity evidence for that SourceInstance; a single sufficiently established compatible match may be reused, zero matches may authorize native creation only when every source-required identity-bearing fact comes from legitimate transaction evidence, and multiple or materially contradictory matches are AMBIGUOUS — never first-result-wins, never another duplicate. A previously established resolution may be reused only while it remains materially compatible with the current sale's fiscal identity, the current native state, **and the current sale's destination**. Whether a per-transaction destination can be carried is an explicit capability of the business system: where it can, the destination travels with the transaction; where it cannot, a materially different destination is an external-required consequence, never an implicit mutation of native master data. Native party create/update — and any equivalent cadastro record that carries a party's identity or address — is a consequential external effect under the full external-effect contract, and concurrent or repeated materializations for the same unresolved fiscal identity must not independently create duplicate native parties.**
+
+No MPC Customer Master, no `UniversalParty`, no CRM domain, no generic ERP party registry, no universal matching engine, no speculative TOTVS model is introduced. D1 contains **no** customer/partner/party boundary — verified by full read of the boundary catalogue — and none is proposed; this stays a bounded Business-System Materialization prerequisite.
+
+## Sankhya realization — current concrete realization only
+
+- source-native business-party reference = `SourceInstance + CODPARC`;
+- fiscal identity evidence = `CGC_CPF`, matched by **ordinary equality with a string-bound parameter** on the sanctioned `Parceiro` entity read (the REST customer family has no point lookup);
+- person type = `TIPPESSOA`, with `CLASSIFICMS` PF→`C` / PJ→`X` and `IDENTINSCESTAD` required for PJ;
+- native uniqueness of the legal document = **not enforced** (1 document → 7 active customer records);
+- delivery-recipient-as-second-party = `CODPARCDEST`, **unused** (0/231; `TipoOperacao` 313 has `GERARPARCDEST=N`);
+- delivery recipient/destination when used = `CODCONTATOENTREGA` + `CODCIDENTREGA` + `CODUFENTREGA` on the document, with the street address in the partner-scoped `Contato` cadastro row (which carries its own document and person type);
+- marketplace lane destination carrier = **none — the `Parceiro` master address is the only determinant**;
+- fiscal party is stable from order to fiscal result (47/47 same `CODPARC`), and an existing destination propagates intact (11 preserved / 0 lost);
+- correlation anchor candidate observed: `AD_NUMPEDIDO_ECOM` on the order header, populated 18/46 — evidence only, not a contract.
+
+## Case matrix
+
+| Case | Semantic decision | Sankhya realization | Fail-honest behaviour |
+|---|---|---|---|
+| existing party / same transaction context | reuse the native reference; no write | `CODPARC` consumed as-is | none needed |
+| existing party / different delivery address | destination must be represented, or it is Work | **marketplace lane: not representable (0/231)** → Work; other lanes: additive `Contato` + `CODCONTATOENTREGA` | never overwrite the registered master address; never mint a second partner to hold an address |
+| existing party / materially contradictory fiscal evidence | fail closed | PF/PJ mismatch, document-length mismatch, `CLASSIFICMS` mismatch | Work; no reuse, no create |
+| no existing party | create only if every source-required fact is legitimate transaction evidence | requires `TIPPESSOA`, document, full address quartet, `CLASSIFICMS`, PJ→IE | any required fact absent → `external-required`, never an invented value |
+| multiple existing parties | AMBIGUOUS | measured 7-way case, no tiebreaker in the data | Work; no guessed pick, no new duplicate |
+| same buyer account / different fiscal identity | fiscal identity governs, not the account | resolution keys on `CGC_CPF`, never on marketplace buyer id (`AD_ORIGECOM` 3/45, `AD_PARCEIROECOM` 15/45) | account-based reuse is prohibited |
+| different delivery recipient | a distinct recipient is a distinct party fact | **no precedent — `CODPARCDEST` 0/231, and all 16 contacts share their partner's own document** | `external-required`; do not synthesize a recipient |
+| concurrent first-time sales | one unresolved fiscal identity must yield at most one native party | ERP enforces nothing | correctness obligation frozen in B3; mechanism is D7 |
+| ambiguous create outcome | never blindly retried | authoritative reread on `Parceiro` by the same bound document | reconcile first; classify no stronger than the provider proves |
+
+## Durable resolution state
+
+**KEEP — PRESENT CORRECTNESS NEED.** Materialization-owned correspondence/lineage only, already permitted by D2 §5.1/§8.2/§8.4. Revalidation must cover fiscal identity, native state **and destination compatibility**. No schema, no identifier designed.
+
+## Master update policy
+
+**BOUNDED FIELD UPDATE REQUIRED — CONDITIONED.** Not full sync, not "no update required". Escalation order: no write → additive `Contato` (pending the `ENTREGAENDCONTATO` proof) → `external-required` Work. Unattended overwrite of the registered partner address is prohibited. The incumbent create-per-sale/touch-per-sale pattern is current-state evidence, explicitly not inherited.
+
+## D7 obligation — correctness property only, no mechanism
+
+> **Concurrent or repeated materializations for the same unresolved fiscal identity must not independently create duplicate native parties.**
+
+Delegation of this property to the ERP is **not available**: uniqueness of the legal document is measurably unenforced in this SourceInstance.
+
+## Reopen analysis
+
+**No reopen required — D0, D1, D2, D3, D4-B1, D4-B2.**
+
+- **D0/D3** — nothing implicated.
+- **D1** — the boundary catalogue contains no customer/partner/party domain and needs none; party resolution stays a bounded Materialization prerequisite consuming Marketplace Sales-owned buyer facts. No CRM, no Customer Master.
+- **D2** — §10.2's corroboration bar is corroborated again by the 7-way case; §5.1/§8.2/§8.4 already authorize the durable resolution state without a new identity.
+- **D4-B1** — Gateway remains the target transport; no gap tempted Oracle; the round declined the Oracle credentials present in `.env` and used no SQL.
+- **D4-B2** — untouched. Sankhya needing party data is a business-system prerequisite, not a marketplace-contract change.
+
+**Two items surfaced as evidence, not reopens:**
+
+1. **`CODTIPVENDA=27` spans nine TOP/`TIPMOV` combinations, 231 documents**, including the `14 → 303 → 305` lane that the candidate §21 currently records as non-marketplace variability/counterexample evidence. That lane is measurably carrying Mercado Livre sales. This is a **B3 binding-scope** observation for the materialization lane decision, not a party-resolution question, and it is not adjudicated here.
+2. `AD_NUMPEDIDO_ECOM` exists on the order header (18/46 populated) — a possible native correlation anchor, evidence only.
+
+## G2 final verdict
+
+> **PASS WITH AMENDMENT**
+
+The party-resolution contract is closable now at architecture level, and the first consequential party write remains a legitimate D8 controlled proof. The amendments are mandatory, not cosmetic:
+
+1. **strike the §G2-E evidence and its conclusion** — "48/50 orders carry delivery UF, therefore no master update is required" rests on counting `0` as populated; corrected figures are 11/57 on TOP 313 and **0/231 on the Mercado Livre lane**;
+2. **record that transaction-scoped delivery representation is unused on the entire marketplace population**, and that the master address is consequently the only destination determinant on that lane;
+3. **amend the master-update verdict** from "not required" to **bounded, conditioned, least-destructive-representable**, with the additive `Contato` path preferred and its `ENTREGAENDCONTATO` precondition explicitly unproven;
+4. **amend the resolution algorithm** at steps 1, 3, 4 and 7 so destination compatibility is part of reuse, one-match does not silently close the destination question, creation names which address becomes master, and the "no transaction-scoped representation" branch is explicitly `external-required` rather than a silent fall-through;
+5. **freeze the concurrency correctness property** and record that the ERP cannot be delegated it;
+6. **`Contato` creation is a consequential external effect** under §18, not a formatting detail.
+
+B3 whole-acceptance readiness remains **PARTIAL**, unchanged and for the unchanged reason: G1 is blocked on the operator's scheduled trigger remediation. Nothing in this round weakens the B3 direction.
+
+## HANDOFF → GPT
+
+Adjudicate: (1) accept the `0`-as-populated correction and strike the prior §G2-E evidence and conclusion from any candidate text derived from it; (2) accept **0/231 marketplace-lane transaction-destination representation** as a first-class B3 fact, including that the capability exists on TOP 313 and is simply unused, so this is incumbent behaviour rather than a provider limit; (3) rule on the master-update verdict — `BOUNDED FIELD UPDATE REQUIRED — CONDITIONED` with the additive-`Contato` preference, or hold the destination path as `external-required` until the `ENTREGAENDCONTATO` question is proven in D8; (4) accept the four algorithm amendments in §E; (5) accept **KEEP** for durable resolution state and confirm it stays Materialization-owned correspondence with no Customer Master; (6) freeze the D7 concurrency correctness property given that ERP-level document uniqueness is measurably absent; (7) route the `CODTIPVENDA=27`-spans-nine-TOPs observation to the B3 binding-scope decision rather than to party resolution. This round changed no authority file, executed no mutation, no configuration change and no external write, and does not open, accept or canonize B3.
