@@ -1355,3 +1355,286 @@ The remaining Unknowns below are **bounded and named** — none of them forces i
 ## HANDOFF → GPT
 
 Adjudicate: (1) accept **READY** and open the B3 review candidate; (2) rule on how the candidate expresses the materialization binding so that document count and TOP identity stay adapter-side — F-S1 is the sharpest risk and A5/C propose the fence plus its falsification test; (3) decide whether commercial reversal (F-S3) is contracted now or deferred, given that its command surface is unverified; (4) decide how far B3 must go on partition-aware availability (F-S7/F-S8/F-S9) — specifically whether Product 1.0 may launch with a control-free marketplace population and treat the controlled path as explicit `unsupported`/`external-required` until real evidence exists; (5) confirm the C2 position that Marketplace Installation and SourceInstance stay distinct. This sweep canonized nothing, altered no authority file, and performed no mutation.
+
+
+## FABLE — D4-B3 Independent Review (2026-08-17)
+
+**HEAD reviewed:** `f7ec08d91108ed905133874bb5bcc26f1b729b2b`. The only commit between the candidate's declared base (`eaab7127`) and this HEAD adds `D4-B3-REVIEW-CANDIDATE.md` itself — verified by `git diff --name-only`. No authority file changed since this reviewer's full independent read of the authority path.
+
+**Authority state verified (not assumed):** router reports D0/D1/D2/D3 **CLOSED/ACCEPTED**, D4 **OPEN/ACTIVE**, D4-B1 **ACCEPTED/CANONICAL**, D4-B2 **ACCEPTED/CANONICAL** with Installation Gate CLOSED/PASS, D4-B3 **NEXT/NOT YET OPENED**, B4 **NOT YET OPENED**, implementation **BLOCKED until D9**. **No divergence between expected state and authority was found.** The candidate correctly declares itself non-authoritative and does not alter status.
+
+**Review scope:** adversarial refutation attempt against the candidate's core direction — provider-independent consumer semantics + concrete Sankhya adapter + bounded SourceInstance bindings, no generic ERP model, no workflow engine. Read-only production Gateway calls were used solely to attack specific material claims; no mutation, no SQL/DbExplorer as a *recommendation*, no Oracle, no configuration change. Broad evidence sweeps already completed were not repeated.
+
+---
+
+### Claims I attacked and FAILED to refute
+
+Recording these first, because a review that only lists defects misrepresents the candidate's strength.
+
+- **§7.2 net-stock formula.** The claim `REST estoque = ESTOQUE − RESERVADO` was originally proven in sandbox. I re-measured it in **production**: product 37203, partition `L-1377` reads `ESTOQUE 223,17 / RESERVADO 61,92` on the entity and exactly **161,25** on the REST resource, with all seven other partitions matching. **Claim holds in production.**
+- **§10.1 unreliable REST point filters.** Also sandbox-derived. Re-measured in production against a real TOP-313 order (897948): `codigoNota=897948` → **404**, and `numeroNota=50452` (its true NUMNOTA) → **404**, while the order demonstrably exists. **Claim holds in production.**
+- **Alternative A rejection.** Sound, and for the reason the candidate gives: the store lane and e-commerce lane coexist in one SourceInstance with different topologies, so a Sankhya-shaped core fails *today*, not hypothetically.
+- **Alternative B rejection.** Sound under the Method's own test — one business system, no second consumer, and this sweep showed which facts are universal is counter-intuitive (document count is not; write-down-at-fiscal-document is). Guessing universals from one provider is precisely the failure mode.
+- **§4 falsification test.** "If MPC/domain configuration must express how many native documents in what sequence, the boundary has failed" is a genuine, checkable falsifier — not decoration. I could not construct a Product 1.0 requirement that forces domain-visible provider choreography.
+- **§7.5 / §18.4 controlled-product fence.** Legitimate under D0, not a convenience defer — see F-B3-8 discussion.
+- **Direct Oracle exclusion.** Nothing in the candidate reintroduces it, and no gap I found justifies it. But see **F-B3-1**, which shows the exclusion is weaker in practice than the text assumes.
+
+---
+
+## Findings
+
+### F-B3-1 — `loadRecords criteria` is SQL passthrough, so "sanctioned entity read" does not by itself exclude arbitrary SQL
+
+**Severity: MATERIAL** (borderline BLOCKER — the correction is small and bounded, which is the only reason it is not)
+
+**Candidate claim attacked:** §6.2, §7.2, §10.1, §15 admit `CRUDServiceProvider.loadRecords` for Produto/Estoque/Custo/CabecalhoNota/ItemNota/CompraVendavariosPedido/TipoOperacao under the discipline of "minimum explicit fieldset" and "real consumer". §20 lists as a non-goal: *"arbitrary SQL/DbExplorer access disguised as Gateway integration"*.
+
+**Authority/evidence basis:** `ARCHITECTURE.md` §5 and D4-B1 §3.5 place Direct Oracle/arbitrary database access outside the target and forbid it as fallback. I measured, read-only in **production**, that the `criteria.expression` field is passed through to the database engine substantially unmodified:
+
+- `CODPROD = ? AND 1 = (SELECT 1 FROM DUAL)` → `total=1` (Oracle-specific pseudo-table accepted);
+- `CODPROD = ? AND EXISTS (SELECT 1 FROM TGFCAB WHERE NUNOTA = 897948)` → `total=1` (**subquery against a table that is not the queried entity**, accepted).
+
+**Failure class:** the candidate's admission of `loadRecords` is framed as if the *service* provides the boundary. It does not — the boundary is entirely the adapter's own discipline over the expression it composes. Accepted as written, an implementer can satisfy every stated rule (named rootEntity, minimal fieldset, real consumer) while executing joins, subqueries and Oracle-specific functions against arbitrary tables. That is DbExplorer semantics reached through a differently-named door, and it would silently defeat the accepted Oracle exclusion without anyone violating a written clause. It also erodes the "no ERP mirror" guarantee, since arbitrary cross-table criteria make wholesale extraction easy.
+
+**Adjudication category:** DEFECT AGAINST CURRENT AUTHORITY (the accepted Oracle-exclusion invariant is not actually protected by the proposed contract).
+
+**Minimal correction:** add one bounded clause to the `loadRecords` admission — *criteria expressions are restricted to predicates over fields of the named rootEntity (and its declared sanctioned relations), composed only of comparison/logical operators with bound parameters; subqueries, cross-entity references, database-specific pseudo-tables and arbitrary SQL functions are outside the sanctioned entity-read contract, and a need for them is a capability finding, never an authorization.* No new mechanism, no framework — it closes the vector the candidate already intended to close. (Enforcement mechanism is D7/implementation; B3 need only freeze the obligation.)
+
+**Reopen required?** NO. This strengthens an existing D4-B1 invariant rather than changing it.
+
+---
+
+### F-B3-2 — Binding property validation can return a confidently WRONG answer; the candidate over-promises pre-validation
+
+**Severity: MATERIAL**
+
+**Candidate claim attacked:** §13, which requires a binding to "establish that the referenced current provider configuration still has the properties on which the selected integration contract depends", and lists among those properties **"confirmation/provider prerequisites"**. §23 also lists "binding-property/version reads" as already-evidenced.
+
+**Authority/evidence basis:** Method §Evidence ("Unknown MUST remain unknown; never convert uncertainty into a convenient default") and §Enforcement ("A control counts only when its firing can be demonstrated or credibly falsified"). Measured in **production**: `TipoOperacao` does expose a dedicated carrier-requirement property, **`EXIGETRANSP`** — and its value is **`'N'` on all six TOPs measured (14, 303, 305, 306, 307, 313)**. Yet the empirically observed confirmation of an order on TOP 14 was **rejected for exactly that missing carrier**, by an instance PL/SQL trigger (`METAL_TRG_INC_UPD_TGFCAB`, reached via `STP_CONFIRMANOTA2`). I additionally probed for sanctioned rule surfaces: `RegraNegocio` and `EventoProgramavel` **do** exist and are readable (fields include `EXPRESSAO`, `EVENTO`, `QUANDO`, `ONDE`, `ATIVO`), but the rule that actually blocked was a database trigger, which no sanctioned entity exposes.
+
+**Failure class:** this is worse than "validation is insufficient". A binding that validates declared properties would read `EXIGETRANSP='N'` and conclude *"carrier not required — safe to proceed"*, which is **affirmatively false** for this SourceInstance. The candidate's §17.10 already notes that custom rules can reject after creation succeeds, so §13 and §17 are internally inconsistent: §13 sells prevalidation as protection for consequential execution, §17 admits the protection does not hold. Accepted unchanged, this produces a control that cannot fire for the failure class it appears to cover — precisely what the Method forbids.
+
+**Adjudication category:** DEFECT AGAINST CURRENT AUTHORITY + WORDING/PRECISION.
+
+**Minimal correction:** (a) remove "confirmation/provider prerequisites" from §13's list of establishable properties; (b) split the obligation explicitly — *provider-declared configuration properties (movement class, stock effect, financial posture, pendency, fiscal-model posture, activity, effective version) are validatable and drift-detectable; instance-imposed requirements enforced by customization (database triggers, liberação/approval rules, and any rule not exposed by a sanctioned entity) are **not** pre-validatable and may contradict declared configuration*; (c) state the consequence — binding validation is a **necessary but never sufficient** precondition, execution-time fail-closed handling remains mandatory, and a validated binding must never be read as a prediction of success. No scheduler/cache is proposed (D7).
+
+**Reopen required?** NO.
+
+---
+
+### F-B3-3 — Order materialization causes an inventory effect that crosses Availability Control's authority, and the candidate never says so
+
+**Severity: MATERIAL**
+
+**Candidate claim attacked:** §12 (Business Order Intent materialization) and §7 (inventory contract) treat `ATUALEST='R'` purely as a binding property / coverage fact. §12.2 records "order movement + reservation/financial behavior" as a property of the current TOP.
+
+**Authority/evidence basis:** D1 assigns **Availability Control** ownership of "Inventory Source/Scope semantics; allocation policy; Sellable Availability; availability intent/synchronization/convergence". Measured production configuration: TOP 313 (and 303) carry `ATUALEST='R'`. Therefore **materializing a Business Order Intent through the current binding consumes real inventory availability in the source system** — my own controlled proof measured exactly this on the store lane (`RESERVADO` 61,92 → 63,21 on lot L-1377 after invoicing to the reserving TOP).
+
+**Failure class:** Materialization causes an effect whose *meaning* belongs to Availability, and the candidate frames it as an adapter detail. Two concrete failures follow. (1) Availability derives Sellable Availability from provider stock that is *already net of reservations created by MPC's own materializations* — without recognising this, an implementation can double-count or oscillate. (2) The reservation is a real allocation of a scarce resource made without Availability having decided it; if the materialization later fails or is reversed, the reservation's fate determines whether stock is silently stranded (see F-B3-7). This is not a D1 defect — Availability retains ownership — but the B3 contract must name the cross-domain effect so the consuming domain can observe it.
+
+**Adjudication category:** DEFECT AGAINST CURRENT AUTHORITY (a D1-owned meaning is affected without being surfaced to its owner).
+
+**Minimal correction:** add one clause to §12 (or §7) — *where the selected binding's native order operation carries an inventory commitment effect, that effect is a business-system fact Availability Control must be able to observe and account for; Materialization does not thereby acquire allocation authority, and MPC must not model availability as though its own materializations were inventory-neutral.* One sentence; no new entity, no new domain.
+
+**Reopen required?** NO. Availability already owns the meaning; the correction makes an existing authority's input explicit.
+
+---
+
+### F-B3-4 — Native customer create/update is a consequential external write with PII, and is not placed under the external-effect contract
+
+**Severity: MATERIAL**
+
+**Candidate claim attacked:** §11.2–11.3 — "D4 may use sanctioned Sankhya customer lookup/create/update capability where required" and "Materialization must establish a source-native partner reference sufficient for the native order before consequential order creation".
+
+**Authority/evidence basis:** `ARCHITECTURE.md` stable constraint 11 ("External writes are controlled… explicit authority/policy, duplicate protection, auditability and reconciliation") and 12 (provider PII minimized); D4-B1 §3.11 admission gate for external-effect contracts; D0 boundary invariant 30 (no invented attribution). Evidence: the e-commerce lane carries **43 distinct real customers across 48 orders** — so this is a high-frequency PII-bearing write path, not an edge case. §17 of the candidate binds "every consequential write admitted by the selected binding" to the external-effect rules, but §11 never states that customer create/update *is* such a write, and §17's enumeration is framed around order/fiscal effects.
+
+**Failure class:** a write that creates or mutates a person's record in the business system — carrying buyer PII, capable of duplicate creation, and consequential for fiscal documents — could be implemented as an unremarkable "prerequisite lookup" outside duplicate protection, ambiguity handling, auditability and authorization. Duplicate customer creation is a real, recurring, hard-to-reverse harm.
+
+**Adjudication category:** DEFECT AGAINST CURRENT AUTHORITY.
+
+**Minimal correction:** state in §11 that native customer create/update is a consequential external effect governed by §17 in full (explicit intent/anchor, no blind retry on ambiguity, authoritative reread, duplicate/ambiguity as explicit exception work, minimum PII). Note this **does not** create a Customer Master domain — I attacked that possibility and reject it: the responsibility is a bounded materialization prerequisite, no independent MPC customer lifecycle/decision was found, and **no D1 reopen is warranted** (Attack 7 answered).
+
+**Reopen required?** NO.
+
+---
+
+### F-B3-5 — "Confirmation" is drifting into MPC semantics; it should be expressed as source-required progression state
+
+**Severity: MATERIAL (wording, but semantically load-bearing)**
+
+**Candidate claim attacked:** §10.2 ("Materialization consumes semantic evidence such as native order exists / **confirmation established** / remaining materialization pendency"), §12.2 and §18.2 diagrams showing "→ confirm native order" as a step, §14.1 requiring a "readiness-gated native business-order result".
+
+**Authority/evidence basis:** the candidate's own §21 replacement test and §3 corollary "Sankhya first does not mean Sankhya model". Applying the Structural Inversion Test: *if the accepted business system were a different one tomorrow, would "confirmation" still be true?* Not necessarily — "confirmation" is a Sankhya lifecycle notion (`STATUSNOTA A→L`). Many systems have a draft→effective transition, but its existence, count and placement are provider-shaped; a system with no separate confirmation would leave an MPC-visible step permanently vacuous, and a system with two such transitions would not fit.
+
+**Failure class:** mild but real workflow-engine drift — the exact hazard §4 names. If domains consume "confirmation established", the next adapter must either fake the concept or force a domain change, which is the failure the replacement test is meant to prevent.
+
+**Adjudication category:** WORDING / PRECISION.
+
+**Minimal correction:** restate the consumed meaning provider-independently — *the native order has reached the state the source requires before it can progress toward fiscal materialization* — and keep "confirmation" (and `A→L`) strictly inside the Sankhya adapter as the current realization of that state. The diagrams may stay, labelled as the current Sankhya realization.
+
+**Reopen required?** NO.
+
+---
+
+### F-B3-6 — The Availability fence is written in provider-partition vocabulary
+
+**Severity: MATERIAL (wording)**
+
+**Candidate claim attacked:** §7.5 — "**Availability Control must not collapse provider-native inventory partitions** before interchangeability/satisfaction semantics are sufficiently established".
+
+**Authority/evidence basis:** D1 forbids provider DTO/protocol vocabulary crossing into business contexts; the candidate's §20 forbids MPC `CONTROLE`. The rule as written obliges a D1 domain to reason about a provider topology concept.
+
+**Failure class:** the correct invariant is about *satisfiability of evidence*, not about provider partitions. As written, a future source with no partition concept makes the rule vacuous, and a source with a different decomposition makes it ambiguous — while the real risk (treating an aggregate as sellable when no single satisfiable commitment exists) is provider-independent.
+
+**Adjudication category:** WORDING / PRECISION.
+
+**Minimal correction:** restate as — *Sellable Availability may not treat an aggregate quantity as sellable unless the evidence establishes that the quantity is actually satisfiable under the source's own commitment rules; where the source decomposes stock into partitions, the adapter supplies that decomposition as the evidence rather than a pre-aggregated total.* Same protection, no provider vocabulary in the domain rule. The measured counterexample (37203: aggregate free 340,56, largest partition 161,25) still motivates it exactly.
+
+**Reopen required?** NO. Attack 9 answered: this fits inside existing Availability Control ownership and does **not** justify a D1 reopen.
+
+---
+
+### F-B3-7 — The fate of the inventory reservation under pre-invoice reversal is unestablished
+
+**Severity: MATERIAL**
+
+**Candidate claim attacked:** §16 — observed 307 results "reverse commercial/financial pendency **without a stock write-down**".
+
+**Authority/evidence basis:** the statement is accurate but incomplete. TOP 313 reserves (`ATUALEST='R'`); TOP 307 has `ATUALEST='N'` and `ATUALFIN='-1'`. "No stock write-down" says nothing about whether the **reservation created by the order is released**. Nothing in the sanctioned configuration establishes it, and no observation in the collected evidence proves it either way.
+
+**Failure class:** if reversal does not release the reservation, real inventory is stranded — invisible to Availability, which reads net stock and would simply see less. Over a lane with recurring cancellations this silently and cumulatively understates availability. Conversely, if it does release, Availability must expect the reservation to disappear without an MPC-initiated action. Both directions have design consequences, and B3 currently asserts neither.
+
+**Adjudication category:** EVIDENCE GAP.
+
+**Minimal correction:** record the unknown explicitly in §16 and attach it to the reversal gate — *whether a pre-invoice reversal releases the inventory commitment created by the original order is not established by current evidence; Availability must not assume either outcome, and the question is closed by observation before any automated reversal path is claimed.* (Read-only observation of a real reversal against before/after stock closes it; no write needed.)
+
+**Reopen required?** NO.
+
+---
+
+### F-B3-8 — Tax gate G1 is a SourceInstance configuration dependency, not a provider capability unknown
+
+**Severity: MATERIAL (precision, affects who must act and whether B3 can close)**
+
+**Candidate claim attacked:** §8.2 and Gate **G1**, which classify expected-tax as "Provider Effective Capability currently conditioned" and make proving it a **B3 closure gate**.
+
+**Authority/evidence basis:** the measured failure was `ORA-20101: Vendedor deve ser informado` raised by an instance customization trigger during the calculation's internal movement preparation — with **zero persistence residue** verified by authoritative reread. The API is officially documented as pure calculation, and Integration Support is established. The blocker is therefore that **this SourceInstance lacks a configured "Modelo de Notas" whose prepared movement satisfies the instance's own customizations** — an operator configuration action, explicitly out of scope in the rounds that measured it.
+
+**Failure class:** conflating "the provider cannot do this" with "this instance is not configured for it yet" mis-assigns the gate. As written, G1 reads as an architecture-level capability risk that could justify STOP/SPLIT of L0 Expected Economics; correctly framed, it is a bounded configuration prerequisite plus a read-only re-probe. The distinction matters because STOP/SPLIT is a heavy outcome and should not be triggered by a missing configuration record.
+
+**Adjudication category:** WORDING / PRECISION.
+
+**Minimal correction:** restate G1 as — *expected-tax calculation is Integration-Supported and documented non-mutating; Provider Effective Capability is currently blocked by a missing SourceInstance configuration prerequisite (a native model whose prepared movement satisfies instance customizations). Closing the gate requires that configuration plus a read-only re-probe; STOP/SPLIT applies only if, once configured, the calculation proves semantically insufficient for L0.* Keep it as a B3 closure gate — I attacked deferring it to D8 and **reject that**: Expected Economics is a D0 Product 1.0 capability (D0 §3 capability 5) and letting B3 close while its only sanctioned tax path is unproven would ratify a capability MPC cannot demonstrate. The candidate is right to gate it; only the attribution needs fixing. Rejecting TGFICM/tax-engine copying is correct and should stand.
+
+**Reopen required?** NO.
+
+---
+
+### F-B3-9 — REST stock can return negative quantities; not accounted for
+
+**Severity: NON-MATERIAL** (recorded because it hides a semantic trap, not as a nitpick)
+
+**Candidate claim attacked:** §7.2's net-stock characterization.
+
+**Evidence:** measured in production — product 12910, company 1, location 10101: entity shows `ESTOQUE=0 / RESERVADO=5`; the REST resource returns **`estoque = -5`**. The provider is honest (it does not clamp), but a consumer that treats the field as "available quantity" will meet negative values representing over-commitment.
+
+**Failure class:** an implementation applying `max(0, x)` silently discards a real operational fact (existing over-commitment) and equates deficit with emptiness — a close cousin of the accepted "unknown is not zero" invariant.
+
+**Adjudication category:** WORDING / PRECISION.
+
+**Minimal correction:** note in §7.2 that the net surface may return negative values indicating commitment exceeding physical stock, and that negative is neither zero nor unknown.
+
+**Reopen required?** NO.
+
+---
+
+### F-B3-10 — No precedence rule when the REST order enumeration and the entity point read disagree
+
+**Severity: NON-MATERIAL**
+
+**Candidate claim attacked:** §10.1 designates the entity point read as authoritative for consequential state while retaining REST enumeration for bounded observation, without stating what governs a disagreement.
+
+**Failure class:** two surfaces over the same object with no stated precedence is exactly the "two authorities for one meaning" shape the Method presumes wrong until justified.
+
+**Minimal correction:** one clause — *where enumeration and authoritative point read disagree for a consequential decision, the point read governs and the divergence is explicit evidence, never silently reconciled.*
+
+**Reopen required?** NO.
+
+---
+
+## Subtractive (YAGNI) review — Attack 20
+
+I tried to delete each named concept and asked whether a *present* correctness problem appears:
+
+- **binding as a named concept** — KEEP. Deleting it hardcodes provider values; the same SourceInstance demonstrably runs multiple processes with different values, and TOP semantics are version-qualified.
+- **binding property validation (§13)** — KEEP, but only as corrected by F-B3-2. Uncorrected it is worse than absent, because it manufactures false confidence.
+- **native-customer contract (§11)** — KEEP. 43 distinct partners across 48 orders; deleting it leaves materialization unable to state a required prerequisite.
+- **controlled-product fence (§7.5/§18.4)** — KEEP. Deleting it permits aggregate-based sellability that measured evidence shows is unsatisfiable.
+- **reversal clause (§16)** — KEEP but SHRINK. Its architectural value is one distinction (pre-invoice commercial reversal ≠ post-invoice fiscal return) plus one honest unknown; the surrounding narrative can compress substantially without losing correctness.
+- **provider-independent replacement test (§21)** — KEEP as reasoning record. It introduces no runtime mechanism and costs no complexity; it is the artifact that keeps the seam honest. **It does not by itself justify any abstraction**, and the candidate correctly builds none.
+- **§18 (proof lane)** — largely restates §12/§14. Compressible; no correctness loss either way. Not a finding.
+
+I found **no** abstraction in the candidate that exists solely because a future ERP might exist. Attack 3's overengineering trap was checked and is not present: the candidate proposes no `GenericERP`, registry, capability graph or workflow DSL.
+
+---
+
+## Attacks answered without findings
+
+- **Attack 1 (leakage):** apart from F-B3-5 and F-B3-6, I found no case of TOP/NUNOTA/CACSP/TGFVAR/CONTROLE/`STATUSNOTA` being promoted into MPC business semantics. §15's explicit "Economics and Post-Sale do not read TGFVAR directly" and §20's prohibition list are correctly placed. Generic-sounding names were checked against their definitions and are not Sankhya concepts renamed.
+- **Attack 2 (workflow engine):** the store lane (3 documents) versus e-commerce lane (2 documents) is exactly the pressure point, and §12.1's rule — provider intermediate artifacts' number and sequence are adapter concerns and never configurable MPC steps — holds. MPC needs intent + convergence, not choreography. The 313→306 lane requires no MPC knowledge of 14→303→305.
+- **Attack 3 (replacement test):** with F-B3-5 corrected, no listed MPC meaning requires Sankhya knowledge to function.
+- **Attack 4 (binding vs policy):** §12.4's "a binding value never becomes business policy merely because Sankhya requires it" is the right fence and is respected. F-B3-3 is the one place where a provider effect must be *surfaced* to a domain — which is not the same as promoting configuration to policy.
+- **Attack 8 (controlled-product defer) — legitimacy question answered:** **YES, legitimate under D0.** D0 capability 3 requires automatic synchronization for *sufficiently-known* authorized availability; a partition whose interchangeability is unestablished is not sufficiently known, so the fence follows D0 rather than evading it. D0 §9.1 further permits an explicitly unsupported/external-required path provided the limitation is explicit and the path is not presented as fully MPC-controlled — which §7.5/§18.4 satisfy. D0 does **not** require controlled-product marketplace automation now.
+- **Attack 11 (cost):** §8.1 keeps `Custo` strictly as Cost Observations, explicitly refuses to elect a Cost Basis, and flags sentinel rows. No inheritance of `CUSSEMICM`/`CUSGER`/`CUSREP`/`CUSMED` into Cost Basis. Correct.
+- **Attack 14 (invoicing):** the D8 deferral of the first real fiscal write is **legitimate**. The command, prerequisites, result identity and correlation are all evidenced; what remains unexercised is an irreversible legal effect whose architectural signal is already obtained. Demanding a production NF-e for B3 would be ceremony. Fulfillment readiness is preserved as gating authority (§14.1) and `faturar` does not bypass it.
+- **Attack 15 (reversal):** external-required treatment is sufficient for current Product 1.0 under D0 §9.1, provided the limitation stays explicit — the candidate does this. Provider-side ML Return/Refund is correctly kept distinct from ERP fiscal consequence. F-B3-7 is the residual gap.
+- **Attack 16 (coverage/delta):** nothing here is B3-correctness-blocking. Full/scoped enumeration as baseline, delta as prerequisite-bound optimization, and not enabling `LOGTABOPER` are all correct; cadence/recovery are properly D7.
+- **Attack 17 (operational viability):** measured facts (300s token TTL, heavy PII-rich order payloads, absent rate-limit headers, bounded loadRecords latency) are correctly D7 mechanics. The candidate does not under-claim: it explicitly records rate/concurrency ceilings as Unknown rather than assuming headroom.
+- **Attack 18 (sandbox divergence):** correctly scoped. Sandbox remains usable for local protocol/shape questions; it is **not** sufficient for materialization/effect claims — the featurelock proved that. I verified two sandbox-derived read claims (§7.2, §10.1) against production and both held, so the candidate's evidence base is not silently sandbox-contaminated. Generalizing "sandbox is useless" is not supported.
+- **Attack 19 (B1/B2 coherence):** B3 follows the same principle accepted for ML, and correctly refuses to unify Marketplace Installation with SourceInstance. §21's closing paragraph is right to reject a generic `IntegrationInstance`.
+
+---
+
+## Strongest rejected alternatives
+
+1. **Reject `loadRecords` entirely, restricting B3 to dedicated REST resources.** Rejected: measurement proves REST loses the reservation decomposition, exposes no cost surface, and has empirically broken order point filters. This would force either fabricated availability or a capability gap — worse than the bounded admission plus F-B3-1's closure.
+2. **Promote "confirmation" to an MPC lifecycle stage** so materialization is uniform across providers. Rejected: it is provider-shaped (F-B3-5) and would be the first brick of the workflow engine §4 forbids.
+3. **Introduce an MPC inventory partition/Lot entity** to carry `CONTROLE`. Rejected: `CONTROLE` is an opaque free string that also carries `ENCOMENDA`, has no sanctioned attribute surface, and a single control-type code is in use. An MPC entity would invent semantics the source does not express.
+4. **Demand a production NF-e before B3 acceptance.** Rejected: ceremony over evidence; the architectural claim is already grounded and the effect is irreversible with legal cost.
+5. **Defer the tax gate to D8.** Rejected: L0 Expected Economics is a D0 Product 1.0 capability; closing B3 with its only sanctioned path unproven would ratify an undemonstrable capability (see F-B3-8).
+6. **Create a Customer Master domain** to hold the native partner responsibility. Rejected: no independent MPC lifecycle or decision authority was found; a bounded materialization prerequisite is sufficient and a new domain would be unowned complexity.
+
+---
+
+## OVERALL VERDICT — **PASS WITH MATERIAL AMENDMENTS**
+
+I could not refute the candidate's core direction. Alternatives A and B remain correctly rejected, the workflow-engine falsifier is genuine and unmet, the replacement test survives, and no speculative-provider abstraction was found. Two production re-measurements of sandbox-derived claims sustained them.
+
+The direction is sound; the candidate requires the bounded corrections in F-B3-1 through F-B3-8 (F-B3-9/10 are optional precision). **F-B3-1 and F-B3-2 are the two that must land** — the first because the accepted Oracle-exclusion invariant is not actually protected by the contract as written, the second because a control that returns a confidently wrong answer is worse than no control.
+
+None of these corrections introduces a new business requirement, and none moves authority. Each is a defect correction against current authority or a wording tightening.
+
+### Is B3 whole acceptance possible now?
+
+**No.** Not because the direction fails, but because the candidate itself carries closure gates that are unclosed, and this review adds one observation obligation.
+
+### Residual gates before canonical B3 acceptance
+
+- **G1 — Expected Tax** (B3 closure gate; re-attributed per F-B3-8: SourceInstance configuration prerequisite + read-only re-probe).
+- **G2 — Native customer/partner prerequisite** (must now also satisfy the external-effect framing from F-B3-4).
+- **F-B3-7 observation** — whether pre-invoice reversal releases the inventory commitment (read-only; closes cheaply).
+- **G3 (first selected-lane fiscal effect) → D8**, **G4 (controlled-product lane) → deferred**, **G5 (post-invoice fiscal return) → deferred as external-required** — all three legitimately outside B3 closure.
+
+### Reopen analysis
+
+**No reopen is genuinely required** for D0, D1, D2, D3, D4-B1 or D4-B2. Specifically: F-B3-3 surfaces an existing Availability-owned input rather than relocating authority; F-B3-4 stays a bounded materialization prerequisite (no D1 Customer domain); F-B3-6 fits inside Availability Control as already accepted; the controlled-product fence follows D0 rather than contradicting it. Provider-specific detail did not, anywhere, amount to a domain contradiction.
+
+### Is Direct Oracle still excluded?
+
+**Yes.** No authority changed and no gap I found justifies it — I explicitly declined to use SQL as a shortcut even where the gateway accepted it. But F-B3-1 shows the exclusion currently rests on discipline rather than on the contract, and the proposed clause is what makes the exclusion mean something in practice.
+
+---
+
+## HANDOFF → GPT
+
+Adjudicate each finding against current authority before amending the candidate; findings are evidence, not requirements. Priority: **F-B3-1** (close the criteria vector — the accepted Oracle exclusion depends on it) and **F-B3-2** (binding validation is necessary, insufficient, and can be affirmatively wrong — `EXIGETRANSP='N'` on a TOP whose confirmation was rejected for a missing carrier). Then **F-B3-3** (surface the inventory-commitment effect to Availability), **F-B3-4** (customer write under §17), **F-B3-5/6** (provider vocabulary out of two domain-facing statements), **F-B3-7** (record the reservation-fate unknown), **F-B3-8** (re-attribute G1 without weakening it). This reviewer did not modify the candidate, D4, the router, `ARCHITECTURE.md`, the ADR registry, D0–D3 or any product code, performed no mutation, and does not open, accept or canonize B3.
