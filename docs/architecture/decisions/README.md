@@ -40,12 +40,12 @@ Status vocabulary in this registry:
 | 016 | reopened — D5 |
 | 017 | historical predicate retained as evidence until target Fact ADR rehomes still-valid domain-judgment clauses |
 | 018 | reopened — D7 (D1/D3 semantic portions adjudicated; generic Mutation owner/table/poller not target authority) |
-| 019 | reopened — D3-B2 (B1 rehomes explicit-consumer/recoverable-propagation semantics; delivery/recovery contract remains) |
+| 019 | historical — D1/D3 rehomed accepted-consumer, duplicate/idempotency and recoverable-propagation semantics |
 | 020 | reopened — D4 (D1 portion adjudicated) |
 | 021 | carried constraint — TanStack Query owns frontend server state; active home: `ARCHITECTURE.md` |
 | 022 | superseded by rebaseline as identity law — D2 preserves pre-dispatch correspondence safety; D4 re-verifies concrete provider mapping |
 | 023 | superseded by rebaseline — D1/`ARCHITECTURE.md` own semantic boundaries and private-implementation prohibition |
-| 024 | reopened — D3-B2 (B1 rehomes single semantic owner; ordering/trigger-convergence anti-regression remains) |
+| 024 | historical — D1/D3 rehomed single semantic owner, trigger convergence and anti-regression semantics |
 | 025 | carried constraint — provider PII minimization; active home: D0 / `ARCHITECTURE.md` |
 | 026 | reopened — D7 (D3 semantic portion adjudicated; no global phase vocabulary carried forward) |
 | 027 | carried constraint — partial-pull absence is not closure; active home: D0 / `ARCHITECTURE.md` |
