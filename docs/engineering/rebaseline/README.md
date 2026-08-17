@@ -119,16 +119,16 @@ D4-B1 accepted:
 
 - concrete provider/business-system adapters implement consumer-owned semantic ports; no Integration business domain or universal provider entity graph;
 - Mercado Livre Installation binds fail-closed to the authoritative external seller namespace, including acquisition-time attribution when the provider exposes a namespace marker;
-- Sankhya SourceInstance remains transport-independent;
+- Sankhya SourceInstance remains stable across sanctioned credential/protocol mechanics while the authoritative namespace is unchanged;
 - credentials/auth are protocol/runtime secrets, not business identity;
 - provider notification is a trigger/pointer and current provider meaning comes from authoritative reread where material;
 - point/enumeration/delta/notification coverage claims are operation-scoped and fail-honest;
 - Integration Support, Provider Effective Capability/Requirement and Effective Business Capability remain distinct authorities;
 - later external effects must define acceptance/ambiguity and an authoritative reconciliation surface; HTTP/provider transport success is not convergence;
-- **Sankhya API Gateway is the default target transport for new MPC↔Sankhya contracts.** Direct database access is no longer the normative default and can survive only as an explicitly evidenced B3 exception;
-- client-specific contractual prohibition/entitlement for direct DB is currently **Unknown**, not fabricated in either direction;
-- B3 must prove sanctioned-surface correctness, coverage and operational viability without D4 choosing D7 scheduling/runtime;
-- ADR-004 D4 plugin-framework meaning is superseded; ADR-010 polling-only D4 meaning is superseded while D7 runtime residue remains; ADR-006/007 direct-Oracle/godror default meaning is no longer target authority, pending only a possible explicitly proven B3 exception.
+- **Sankhya API Gateway is the target transport for MPC↔Sankhya integration. Direct Oracle/database access is explicitly outside the target architecture and is not a fallback path;**
+- the former Oracle/godror target existed historically because the project did not yet have a known/usable sanctioned Sankhya API path; that historical reason no longer constrains the target;
+- B3 must prove Gateway/API correctness, coverage and operational viability; if the sanctioned surface cannot satisfy a required Product 1.0 claim, B3 stops and returns to explicit operator/architecture adjudication rather than enabling database access implicitly;
+- ADR-004 D4 plugin-framework meaning is superseded; ADR-010 polling-only D4 meaning is superseded while D7 runtime residue remains; ADR-006/007 are historical for target architecture after their transport-independent lessons were rehomed.
 
 No D0/D1/D2/D3 reopen was required by B1.
 
@@ -148,7 +148,7 @@ While D4-B2 is the active next decision batch:
 - do not let provider APIs, ERP schema, current adapters, legacy DTOs or historical ADRs become target business authority by inheritance;
 - do not create semantic dependencies outside D1 or bypass D2/D3 semantics through integration code;
 - do not promote a provider callback/notification/2xx into domain truth or convergence without the accepted D4 evidence/reread/reconciliation contract;
-- do not assume direct Oracle is an automatic fallback if the Sankhya Gateway surface is inconvenient;
+- do not introduce Direct Oracle/database access for Sankhya as an implementation shortcut or API fallback;
 - do not choose HTTP/frontend/runtime topology prematurely;
 - do not treat `AI-DIALOG.md`, review candidates or reviewer/chat summaries as target authority.
 
@@ -184,7 +184,8 @@ A fresh session should conclude that:
 - consumer-owned ports and provider-local protocol remain distinct;
 - Marketplace Installation/SourceInstance external namespace binding is explicit and fail-closed;
 - source coverage/reread/reconciliation semantics are now canonical D4 grounding;
-- Sankhya Gateway is the default target transport, direct DB only a possible evidenced B3 exception, and client-specific entitlement/compliance remains Unknown until proven;
+- **Sankhya API Gateway is the target transport and Direct Oracle is not an admitted fallback;**
+- a Gateway/API capability gap causes STOP / explicit re-adjudication rather than database access by convenience;
 - current modules/contexts/schema/legacy ADRs remain evidence, not target authority by inheritance;
 - implementation remains blocked until D9;
 - the exact next action is D4-B2 independent design/review from canonical D4-B1 plus current official Mercado Livre evidence.
