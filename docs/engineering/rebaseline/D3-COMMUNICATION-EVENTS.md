@@ -1,10 +1,11 @@
 # D3 — Communication / Events
 
-> **Status:** CLOSURE CANDIDATE — D3-B1+B2 accepted and consolidated; final Global Coherence completed; pending explicit operator ratification of D3 as a whole  
+> **Status:** CLOSED / ACCEPTED AS A WHOLE — D3-B1+B2 accepted and consolidated; final Global Coherence completed / PASS; explicitly ratified by operator  
 > **Program:** Architecture Rebaseline / Technical System Design  
 > **Parent authorities:** `D0-PRODUCT-SYSTEM-DEFINITION.md`, `D1-DOMAINS-BOUNDARIES.md`, `D2-IDENTITY-TENANT-DATA-OWNERSHIP.md`  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
-> **Opened:** 2026-08-16
+> **Opened:** 2026-08-16  
+> **Accepted:** 2026-08-16
 
 ## 1. Purpose and boundary
 
@@ -356,7 +357,7 @@ owning domain establishes its MPC meaning
 D3 domain event, only if event-worthy
 ```
 
-A duplicate/out-of-order provider notification therefore does not automatically become duplicate/out-of-order MPC business truth. D4 and B2/D7 later close concrete acquisition, ordering and recovery mechanics.
+A duplicate/out-of-order provider notification therefore does not automatically become duplicate/out-of-order MPC business truth. B2 §4 defines the semantic duplicate/order/recovery contract; D4/D7 later close concrete acquisition and runtime mechanics.
 
 ### 3.17 Cross-owner atomicity
 
@@ -425,7 +426,7 @@ The durable semantic lesson is generalized:
 
 Legacy one-row-per-item/PK/sentinel schema mechanics do not constrain the clean target database.
 
-B2 still must define concrete missed/duplicate-delivery/recovery semantics before the D3 portion is fully retireable.
+B2 §4 now closes the missed/duplicate-delivery/recovery semantics; final ADR-019 disposition is recorded in §4.16.
 
 #### ADR-024 — single writer for order ingest
 
@@ -434,7 +435,7 @@ The target preserves:
 1. one Marketplace Sales semantic interpretation/write authority for provider sale meaning; and
 2. trigger convergence/anti-regression: multiple acquisition triggers must converge on the owner's one interpretation path, and a late older observation cannot regress a newer committed interpretation merely because of scheduling order.
 
-The first principle is B1 authority topology; the second becomes a B2 ordering/duplication contract. Legacy import/backfill/webhook worker names and current code shape are evidence only.
+The first principle is B1 authority topology; the second is closed by B2 §4.6. Legacy import/backfill/webhook worker names and current code shape are evidence only.
 
 #### ADR-026 — scheduler phase vocabulary
 
@@ -971,27 +972,24 @@ D3 used the same accelerated protocol proven in D2:
 7. The operator explicitly ratified each converged batch before canonical consolidation.
 8. Review candidates are disposable after consolidation.
 9. D3 received the final Global Coherence + YAGNI / Overengineering / Future-Cost review in §5.
-10. D3 closes only after explicit operator ratification as a whole.
+10. D3 closed only after explicit operator ratification as a whole.
 
 `AI-DIALOG.md`, review candidates, chat summaries and reviewer statements are not architecture authority.
 
 ---
 
-## 7. Current D3 state / exact next action
+## 7. Current D3 state / handoff
 
-D3 is a **CLOSURE CANDIDATE**.
+D3 is **CLOSED / ACCEPTED AS A WHOLE**.
 
 - **D3-B1 — Communication Topology & Edge Matrix: ACCEPTED / CANONICAL.**
 - **D3-B2 — Communication Contract & Failure Semantics: ACCEPTED / CANONICAL.**
 - **Final Global Coherence + YAGNI / Overengineering / Future-Cost review: COMPLETED / PASS.**
 - **B3: NOT REQUIRED.**
+- **Whole-stage operator ratification: COMPLETED on 2026-08-16.**
 
-Exact next action: **explicit operator ratification of D3 as a whole**.
+D3 has no remaining planned decision batch. Reopen only the implicated D3 decision under the material triggers above; do not reopen D3 because a later stage chooses a concrete provider or runtime mechanism.
 
-If ratified:
+The repository router owns program sequencing. **D4 — External Integrations** is the exact next stage.
 
-1. mark D3 `CLOSED / ACCEPTED`;
-2. update the rebaseline router so **D4 — External Integrations** becomes the exact next stage;
-3. do not begin product implementation; implementation remains blocked until D9.
-
-If a material issue is found, reopen only the implicated D3 decision rather than re-running the whole stage.
+Product implementation remains blocked until D9 is accepted.
