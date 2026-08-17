@@ -1853,3 +1853,178 @@ G2 is closable at architecture-contract level now. G1 is not closed and cannot b
 ## HANDOFF → GPT
 
 Adjudicate: (1) accept **G1 CONDITIONED** with `MODEL DISCOVERY = EXTERNAL-REQUIRED` recorded as a first-class fact — including the `CabecalhoNotaModelo` naming trap, which is implementation-relevant; (2) accept **G2 PASS WITH EXPLICIT EXCEPTION PATH** and fold into the candidate's §12 the three measured facts that change its shape — the REST customer surface has no point-lookup filter, document equality does not match while `LIKE` does, and production already contains a 7-way duplicate reached by an e-commerce partner; (3) rule whether G2's contract closure is sufficient for that gate or whether a D8 controlled customer write must precede B3 acceptance; (4) confirm **B3 = PARTIAL** pending the operator's Nota Modelo action, and decide whether to hold B3 open or split the tax capability. This round changed no authority file, executed no mutation or configuration change, and does not open, accept or canonize B3.
+
+
+## FABLE — D4-B3 G1/G2 Correction + Root-Cause Closure (2026-08-17)
+
+**HEAD:** `77a809d08a648e3aaa725cbb822c38ad8fb3c13c`. Authority unchanged since the last round: D0–D3 CLOSED/ACCEPTED, D4 OPEN/ACTIVE, B1/B2 ACCEPTED/CANONICAL, B3 NEXT/NOT YET OPENED, implementation BLOCKED until D9. This round changes no authority file and canonizes nothing.
+
+**Scope:** correct two false claims recorded in the previous G1/G2 round, and close the G1 root cause. Operator-supervised, read-only for business state except the operator's own ERP work described below. 16 tax-calculation calls were made (documented non-persisting); **residue verified zero** by three independent predicates after the sequence — no document, no negative-NUNOTA virtual note, model count unchanged.
+
+---
+
+## RETRACTION 1 — the `LIKE` clause is FALSE
+
+The previous round recorded, as a contract-shaping finding, that `CGC_CPF = ?` fails to match while `LIKE` matches, and concluded that "an adapter using ordinary equality would create a duplicate on every marketplace sale."
+
+**That is wrong and is withdrawn.** Controlled re-test:
+
+| predicate | value | result |
+|---|---|---|
+| `CGC_CPF = ?` | clean | **total=1** |
+| `CGC_CPF LIKE ?` | clean | total=1 |
+| `CGC_CPF = ?` | with trailing `\r` | total=0 |
+| `CGC_CPF LIKE ?` | with trailing `\r` | **total=0** |
+
+Root cause: a `\r` (CRLF) introduced by the reviewer's own temporary file. The first loop tested `=` with dirty values; the second tested `LIKE` with cleaned values. Two variables changed at once and the result was attributed to the wrong one. **The operator was right to challenge it.** Method note: this is a self-inflicted measurement defect, not provider behaviour.
+
+**What survives, re-verified with `=` and clean values:** the duplicate is real — the legal document of `CODPARC 140758` returns **7 partner records** (all PF, all active, all customers; one registered 19/08/2023, one 08/03/2025, **five on 10/03/2025**). Operator states these originated from a period when the integration was broken. That does not weaken the contract requirement — it is empirical proof that unguarded automated resolution produces duplicates.
+
+**Also confirmed as still true:** numeric-typed parameter raises `ORA-01722` (the column is character-typed), so the document parameter must be bound as string.
+
+## RETRACTION 2 — `MODEL DISCOVERY = EXTERNAL-REQUIRED` is FALSE
+
+The previous round concluded that no sanctioned surface can discriminate a Modelo de Notas e Pedidos from an ordinary document, and recorded model discovery as external-required.
+
+**That is wrong and is withdrawn. The marker is `TIPMOV='Z'`.**
+
+Sanctioned read `CabecalhoNota` with `TIPMOV = 'Z'` returns **23 records** — exactly the count the Sankhya Om "Modelo de Notas e Pedidos" screen displays, confirmed by observing the screen's own `DatasetSP.loadRecords` response (`total: 23`) while the operator had it open. Example: NUNOTA `426890`, company 1, TOP 101 (NFE-VENDA), observation *"Nota temporária para apoiar calculo de rentabilidade"*.
+
+Why it was missed: the search probed `STATUSNOTA='M'`, field names containing `MODELO`, and model-named entities — never `TIPMOV`. Worse, NUNOTA `426890` had already appeared in the reviewer's own earlier sweep carrying `TIPMOV='Z'` and the connection was not made.
+
+**The `CabecalhoNotaModelo` trap recorded previously remains valid and useful:** that entity is an alias returning the same real-order population, so it is not the registry. The registry is the `TIPMOV='Z'` predicate on `CabecalhoNota`.
+
+---
+
+## G1 — root cause closed (verdict unchanged: CONDITIONED)
+
+### The operator configured a correct model
+
+The operator created NUNOTA **898307** in the Om screen. Verified by sanctioned read: `TIPMOV='Z'`, company 1, **TOP 313**, **CODVEND 1019**, series `PA`, negotiation type empty, observation `MODELO CALCULO IMPOSTO MPC`. This is a properly formed model for the e-commerce lane.
+
+A side finding while creating it: negotiation type **27 (`ECOMERCE - MERCADO LIVRE`) cannot be used in a model**, raising `CORE_E01315`. Cause measured: type 27 is `ATIVO='S'` but carries `GRUPOAUTOR='L'`, and Sankhya restricts a negotiation type to customers in the same authorization group (e-commerce partners measured carry `VCL`/`VC`). A model has no customer, so the group cannot be satisfied. This is consistent with the 23 pre-existing models, nearly all of which carry no negotiation type. **No configuration was changed to work around this** — negotiation type is irrelevant to tax calculation and was simply left empty.
+
+### The blocker, precisely characterized
+
+With the correct model, the calculation still fails:
+
+```
+ORA-20101: Vendedor deve ser informado.
+METALPRD.TRG_INC_UPD_TGFCAB_METAL, line 72
+```
+
+The operator supplied the trigger source. Two clauses explain everything:
+
+```sql
+WHEN (NEW.STATUSNOTA = 'L')            -- fires only on CONFIRMED notes
+...
+IF :NEW.TIPMOV IN ('V', 'P') THEN
+    IF NVL(:NEW.CODVEND,0) = 0 THEN
+      RAISE_APPLICATION_ERROR(-20101, 'Vendedor deve ser informado.');
+```
+
+Combined with measurement, the mechanism is:
+
+1. the calculation API builds a **virtual note with a negative NUNOTA** (`-9999999998`, observed in a provider error message);
+2. it builds that note **already confirmed** (`STATUSNOTA='L'`) — necessarily, because **Sankhya computes taxes at confirmation**;
+3. confirmed + a sale TOP (`TIPMOV` `P` or `V`) fires the house trigger;
+4. the API never populates `CODVEND` → the guard raises.
+
+### Every injection path was exhausted (all read-only)
+
+| Path attempted | Result |
+|---|---|
+| Model `898307` carrying `CODVEND=1019` | not propagated |
+| Customer `142691` carrying `CODVEND=1019` on the partner record | not propagated |
+| Request body: `codigoVendedor`, `vendedor`, `codVend`, `CODVEND` | field absent from schema |
+| **A real confirmed TOP-313 order used as `notaModelo`** (carries `CODVEND=1019`) | not propagated |
+| 7 alternative calculation routes suggested by Context7 | all HTTP 404 — only `/v1/fiscal/impostos/calculo` exists |
+| Default-vendedor property on `TipoOperacao` | no such field |
+| TOP override to other sale TOPs | same guard |
+
+Discriminating evidence that the API *does* read the model but not this field: using order `893446` (company 2) as model while sending `codigoEmpresa=1` changed the error to *"Empresa do Cabeçalho deve ser apenas uma"* — company and TOP are consumed from the model; `CODVEND` is consumed from nowhere.
+
+Diagnostic control: a model on TOP 10 (`TIPMOV='C'`) passes the vendedor guard entirely and fails later on a purchase-specific rule — confirming the guard is scoped to `TIPMOV IN ('V','P')` and that the earlier interpretation ("the model's vendedor satisfied the trigger") was wrong; that trigger simply had not run.
+
+> **Classification: the sanctioned Expected-Tax surface is structurally incompatible with this SourceInstance's customization.** Not missing configuration — the API cannot transport a value the instance requires. `STATUSNOTA` cannot be influenced either: the API must confirm to obtain taxes, and no parameter requests otherwise.
+
+### Operator-declared remediation (pending, not performed by MPC)
+
+The operator states they will apply, on 2026-08-18, a guard exception in the trigger via database access. Reviewer's recommended minimal form, fail-closed:
+
+```sql
+IF NVL(:NEW.CODVEND,0) = 0 AND NVL(:NEW.NUNOTA, 1) > 0 THEN
+```
+
+Rationale recorded: real documents always carry a positive NUNOTA, so the rule remains fully in force for operational documents and is bypassed only for the API's transient virtual note; `NVL(...,1)` ensures a null NUNOTA still validates rather than silently skipping. Scope limited to the vendedor check, leaving promotor/decorador validations untouched. Recompilation risk (an invalid trigger would block all note confirmation) was surfaced to the operator with the recommendation to retain the original source and verify a normal confirmation afterwards.
+
+**MPC performed no trigger, configuration or parameter change.** After the operator applies it, closing G1 requires only two read-only calculations (in-state vs out-of-state customer) plus residue reread.
+
+### G1 verdict
+
+**CONDITIONED — SourceInstance customization prerequisite.** Root cause now exact and remediation identified. `STOP / SPLIT PREREQUISITE` remains not-yet-live: the sanctioned path has never been exercised under a satisfied precondition, so its semantic sufficiency for L0 is still untested.
+
+### Alternative worth adjudicating: L0 from historical realized evidence
+
+If trigger remediation proves unavailable or slow, an alternative exists that does **not** create a second fiscal authority:
+
+MPC derives Expected-Tax evidence from **realized tax already recorded on prior notes** (item-level ICMS/ST/IPI plus `TGFDIN` DIFAL), scoped by product × destination UF × operation, rather than from an ex-ante simulation.
+
+- it is **observation, not rule** — MPC never learns to compute ICMS, it observes what Sankhya charged on comparable operations;
+- it uses only sanctioned reads already proven;
+- it feeds the accepted **R1** reconciliation naturally: every new invoice recalibrates the estimate;
+- honest limits: no history for a new product, a new destination UF, or after a rate/MVA change → the answer must be explicit unknown, never a fabricated estimate.
+
+This is offered as evidence-backed input, **not** a reviewer-imposed requirement; Commercial Economics retains authority over Expected Economics, and the sanctioned calculation API remains preferred if it becomes usable.
+
+---
+
+## G2 — verdict unchanged, one clause removed
+
+**G2 PASS WITH EXPLICIT EXCEPTION PATH**, with the `LIKE` clause struck. Corrected contract:
+
+- REST customer family (list/create/update/contacts) has **no point read and no filter** — confirmed against the complete official index (445+ pages); transportadora and motorista both expose `getbyid`, customer does not. The official page states customer attributes are *"mapeados pela entidade Parceiro"*, which is why the sanctioned `Parceiro` entity read is the correct lookup surface — the operator's reading was right;
+- lookup by legal document uses **ordinary equality with a string-bound parameter**;
+- **one match** → consume the native reference; **zero** → create only when every required fact comes from legitimate sale evidence, else external-required; **multiple** → AMBIGUOUS, explicit exception work, never a guessed pick or a new duplicate;
+- origin custom fields (`AD_ORIGECOM`, `AD_PARCEIROECOM`) exist but are populated on 2/30 sampled partners — unusable as correspondence today;
+- master overwrite is **not** required: 48/50 e-commerce orders carry delivery UF on the document itself and `CODPARCDEST` is unused, so transaction-scoped delivery data does not require mutating the Partner master;
+- any customer create/update remains a consequential external effect under the full external-effect contract.
+
+---
+
+## Supporting evidence: `PAN_GET_CUSVAR_MNOBRE` (operator-supplied)
+
+The operator supplied the house "variable cost" function as current-state evidence (source read as text, **not** via DbExplorer/SQL — the reviewer declined that channel as outside accepted authority).
+
+Architecturally decisive: **the function does not compute tax.** It *reads* tax Sankhya already computed — `ITE.VLRICMS`, `ITE.VLRSUBST`, `ITE.VLRIPI`, and `TGFDIN` for DIFAL — and adds managerial percentages (`TGFCGM` by company + `DTREF`), partner-level `PERCCUSVAR`, commission, and ICMS/ST restitution (applied only when the partner's city UF ≠ 13, i.e. outside MG). It also substitutes measured PIS/COFINS for the managerial percentage when `TGFDIN CODIMP 6,7` rows exist.
+
+Two consequences:
+
+1. **It is ex-post by construction** — its signature is `(NUNOTA, SEQUENCIA)`, requiring an existing document. It is therefore not an alternative to ex-ante calculation and cannot serve L0.
+2. **It confirms the operator's own architectural position** — the house already practises "Sankhya computes, we read". Copying it into MPC would copy a formula that itself depends on the provider's engine.
+
+This addresses the operator's dentro/fora-do-estado concern: destination handling already lives in the provider engine (DIFAL arrives pre-computed in `TGFDIN`); the function only branches on UF for restitution.
+
+**B4 inputs surfaced (not B3 scope):** `TGFCGM` managerial percentages versioned by company + reference date; partner-level `PERCCUSVAR`; ICMS/ST restitution outside MG; commission at item level.
+
+**R1 note:** the operator described wanting simulated-vs-realized delta calibration. This is already accepted authority (D0 §D0.7f `L0 → R1 → L1`), not a new requirement, and their stated preference to source realized values **from the invoice rather than from the private function** keeps the integration on sanctioned public surfaces.
+
+---
+
+## Hidden-rule evidence strengthening the earlier binding finding
+
+The trigger source is direct proof of the earlier review finding that binding property validation is necessary but insufficient. `TRG_INC_UPD_TGFCAB_METAL` alone encodes: TOP 64 restricted to MG partners; TOP 14/714 pendency and mandatory-observation rules; TOP 131 only for paid-order invoicing; TOP 106 only consignment; TOP 133 only consignment return; vendedor mandatory on `TIPMOV IN ('V','P')`. **None of these is exposed by `TipoOperacao`.** Execution-time fail-closed handling therefore remains mandatory, and a validated binding must never be read as a prediction of success.
+
+---
+
+## B3 whole-acceptance readiness
+
+**PARTIAL** — unchanged. G2 is closable at contract level. G1 has an exact root cause and an operator-declared remediation scheduled for 2026-08-18, plus a documented fallback (historical-observation L0) if remediation does not land. No architectural obstacle remains unidentified.
+
+## Reopen analysis
+
+**No reopen required** for D0, D1, D2, D3, D4-B1 or D4-B2. Direct Oracle remains excluded — the reviewer declined DbExplorer even when offered, and the operator's own trigger work is ERP maintenance by the system owner, not an MPC integration path. No SQL was used in this round; `criteria` stayed restricted to root-entity predicates with bound parameters.
+
+## HANDOFF → GPT
+
+Adjudicate: (1) accept both retractions and strike the `LIKE` clause and the `MODEL DISCOVERY = EXTERNAL-REQUIRED` claim from any candidate text derived from the prior round; (2) record `TIPMOV='Z'` as the sanctioned model-discovery predicate and the `CabecalhoNotaModelo` alias as an implementation trap; (3) accept the G1 root cause as characterized — a structural incompatibility between the sanctioned calculation API and a SourceInstance customization, not a configuration gap — and decide whether B3 may close on the operator's scheduled remediation or must carry the historical-observation alternative as the contracted L0 path; (4) confirm G2 as corrected; (5) route the `TGFCGM`/`PERCCUSVAR`/restitution/commission observations to B4 rather than B3. Nothing was canonized, no authority file touched, no business state mutated.
