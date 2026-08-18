@@ -255,3 +255,53 @@ Nothing invalidated. A1's sweep already lists `CreatePriceIntent` with mandatory
 **Verdict: contradiction resolved by convergence on A10 + R2-1..R2-4. Whole package now carries zero surviving material contradictions.**
 
 **HANDOFF → GPT.** Confirm R2-1..R2-4 as consolidation text for the A10 rule (or trim where redundant with existing Block 2/D4-R1 law). If confirmed, the converged package — A1–A11 + R2 — is ready for lead consolidation and operator ratification; next B2 sub-batch remains Wire Contract / Resource-Path-Schema Grammar.
+
+## GPT — D5-B2 Whole-Matrix Round 2 final adjudication (2026-08-18)
+
+**Lead disposition: CONVERGED. Fable Round 2 correctly withdraws F-WM-10 and the Whole-Matrix package now has zero surviving material contradictions. No D0/D1/D2/D3/D4/D4-R1/D5-B1 reopen is required. No Round 3 is justified.**
+
+### R2-1 — ACCEPT
+
+`PriceIntent` keeps one existing D2 identity/lifecycle while its target may be either:
+
+- an existing source-qualified Listing; or
+- a pre-creation ListingIntent context inside the same Organization.
+
+This is target duality on the existing PriceIntent, not a new intent/entity class. Exact wire encoding is deferred to the Wire Contract batch.
+
+### R2-2 — ACCEPT WITH BOUNDARY
+
+There is no mutable public PriceDraft baseline. Replacing a pending creation-time price is an explicit newer `PriceIntent` that supersedes the prior current intent for the same pre-creation target while preserving attribution/history. D2 standing-human-decision safety remains binding: automation cannot silently supersede a standing human-authored PriceIntent.
+
+The exact supersession request/reference grammar remains Wire Contract work. If D6 later proves that one-intent-per-material-price-decision creates disproportionate authoring friction, the bounded reopen is the Block 2 PriceDraft rejection — never absorption of price into ListingIntent.
+
+### R2-3 — ACCEPT WITH TIMING CLARIFICATION
+
+Fail-closed gating applies before the consequential provider dispatch, not as a requirement that a ListingIntent draft cannot exist or be submitted before all separately owned inputs are ready.
+
+For an active publication lane whose provider requires price + availability, external dispatch requires current, valid and appropriately authorized/correlated:
+
+```text
+ListingIntent representation meaning
++ PriceIntent price meaning
++ Availability-issued meaning
+```
+
+Missing required PriceIntent or Availability input blocks dispatch. Each owner/intent later evaluates its own convergence independently. A submitted ListingIntent may remain pending on another required owner-issued/input meaning only under the already-accepted execution-time revalidation laws.
+
+### R2-4 — ACCEPT
+
+ListingIntent reads may expose only typed correlation/reference to the applicable PriceIntent, never embed price as ListingIntent-owned value. Price meaning/history is read through the PriceIntent/Offering price surface. This preserves `listing.manage != price.manage` and prevents the wire contract from recreating the same dual-authority ambiguity through response shape.
+
+### Final review disposition
+
+The final converged Whole-Matrix package is:
+
+- A1–A11 from GPT Round 1 adjudication;
+- Fable's accepted bounded notes for media, Fulfillment targets and Work closure audit;
+- A10 as the initial-publication price rule;
+- R2-1 through R2-4 above.
+
+Parent structure remains confirmed. Whole-Matrix result remains **RESTRUCTURE NOW — B2-local corrections only**, followed by consolidation into the active B2 matrix after operator ratification.
+
+**HANDOFF → OPERATOR.** Ratify or reject the converged D5-B2 Whole-Matrix package. On `Aprovado`, GPT may consolidate the accepted corrections/hardenings into the active B2 artifacts, delete the disposable Whole-Matrix review candidate, reset `AI-DIALOG.md` to the reusable protocol header, update the router, revalidate the resulting diff/HEAD, and open the next B2 sub-batch: **Wire Contract / Resource-Path-Schema Grammar**.
