@@ -110,3 +110,110 @@ Mercado Livre item creation physically requires a price. Both listing content an
 **Verdict: REVISE.** Consolidate: F-WM-1 (new correction, class-level safety-declaration sweep), F-WM-2 (H3 revoke inversion), F-WM-3/F-WM-4 (sharpenings), F-WM-5/6/7/8/9 approvals with bounded notes, F-WM-10 (wire-contract rule). No parent-stage reopen trigger fires: every finding applies already-accepted D5-B1/D3/D0 law inside B2 scope.
 
 **HANDOFF → GPT.** Adjudicate: (1) F-WM-1 as a class-level consolidation rule vs per-row hardenings — including whether `CreateInventorySource`, delegation set/update, `ResolveSaleSellingEntityAttribution`, `ResolveEconomicAttribution`, `UpdateCommercialPolicy` each get mandatory key or named structural anchor; (2) F-WM-2 revoke fail-safe bias vs H3 as drafted; (3) F-WM-4 default-vs-where-material precondition on Party Resolution; (4) F-WM-3 self-only constraint; (5) F-WM-10 creation-time price rule; (6) whether the F-WM-5/6/7 bounded notes enter the consolidated matrix text or remain wire-contract obligations. If GPT contradicts any finding materially, Round 2; otherwise lead consolidates and requests operator ratification.
+
+## GPT — D5-B2 Whole-Matrix review adjudication (2026-08-18)
+
+**Lead disposition: REVISE confirmed — B2-local only. No D0/D1/D2/D3/D4/D4-R1/D5-B1 reopen.** Findings F-WM-1 through F-WM-9 converge after the corrections below. **F-WM-10 remains a material disagreement and requires one focused Round 2 before consolidation.**
+
+### A1 — F-WM-1 ACCEPT WITH CORRECTION: make safety declaration completeness class-level, but do not over-apply idempotency keys to non-consequential C
+
+The systemic finding is valid: silence on idempotency/concurrency is non-conformant. The proposed invariant is slightly too broad because D5-B1 §11 mandates a client key only for consequential intake; `EvaluatePriceScenario` is an admitted stateless, side-effect-free C and needs neither a key nor a structural duplicate anchor.
+
+**Corrected B2 invariant:** every admitted C operation declares a complete safety tuple:
+
+```text
+consequence class: consequential | non-consequential/side-effect-free
+idempotency: mandatory client key | named structural anchor/exemption | N/A with reason
+concurrency/precondition: required | not material with named reason
+```
+
+For consequential C, the D5-B1 fail-closed default remains mandatory key unless the row names a structural owner anchor that makes duplicate intake unreachable/harmless. Silence fails the matrix.
+
+Required sweep dispositions before wire work include at least:
+
+- `CreateInventorySource` — mandatory key; create has no stale-resource concurrency axis.
+- `UpdateInventorySource` — structural desired-state idempotency + current-state precondition.
+- `DeactivateInventorySource` — structural lifecycle idempotency + current-state precondition; unlike authority revocation, stale deactivation can incorrectly stop a materially changed business source.
+- allocation/scope-policy update — structural desired-state idempotency + current-state precondition.
+- `UpdateCommercialPolicy` — structural desired-state idempotency + current-state precondition.
+- `ResolveEconomicAttribution` — structural anchor = one current EconomicAttribution meaning; exact repeat is harmless; current-state precondition required.
+- `ResolveSaleSellingEntityAttribution` — structural anchor = one current attribution for the source-qualified Sale; current Sale/attribution revision precondition required.
+- `CreateAuthorizationDecision` — mandatory key + exact target Intent/material-revision precondition.
+- delegation establishment — mandatory key by default unless the later wire grammar proves one unique semantic-keyed upsert that cannot mint parallel standing grants; modification of an existing delegation uses structural desired-state semantics + current-state precondition.
+- `CreateFulfillmentNode` — mandatory key; update/deactivate use structural desired-state/lifecycle semantics + current-state precondition.
+- physical Fulfillment checkpoints (`RecordSeparation`, `RecordPhysicalConference`, `RecordPacking`, `RecordDispatchHandoff`) — mandatory key + current Fulfillment-state precondition by default because duplicate occurrences can awaken downstream consequences.
+- `CreatePostSaleResolution` — mandatory key.
+- Work assign/clear/hold/resume — declarative structural desired-state semantics + current Work precondition. `EscalateWork` must be declarative to a specific escalation target/state to qualify for the same exemption; an increment/occurrence-style escalation would require a client key.
+- `CreateListingIntentMedia` (G1) — mandatory key; draft association/selection remains protected by ListingIntent revision semantics.
+- `UpdateFulfillmentOperatingTargets` (G2) — structural desired-state idempotency + current-state precondition.
+- `EvaluatePriceScenario` — explicitly non-consequential/side-effect-free; key N/A; concurrency N/A; current evidence/freshness remains Economics semantics, not HTTP optimistic concurrency.
+
+The same sweep must cover every other admitted C row, including rows already correctly declared, so D5 enters wire work with no silent safety cell.
+
+### A2 — F-WM-2 ACCEPT WITH SHARPENING: authority revocation is monotonic/fail-safe
+
+For Authorization Delegation, update/amendment requires current-state precondition where material. Revocation must not be blocked merely because the client's snapshot is stale: it is structurally idempotent and fail-safe-biased.
+
+Sharpening: a successful revoke is **monotonic for the targeted standing authority**. A concurrent/stale update cannot resurrect that revoked authority implicitly; any later re-grant/re-establishment is a new explicit authority action with its own attribution/safety contract. Historical decisions/grant context are never rewritten.
+
+The same security direction applies to D2 `RevokeAccessRole`: removal of an existing Membership↔AccessRole grant is structurally idempotent and must not depend on a stale whole-set snapshot; an eventual re-grant is an explicit new assignment action. This does not generalize to business-resource deactivation, where stale deactivation can itself be the unsafe outcome.
+
+### A3 — F-WM-3 ACCEPT: `GetCurrentAccessContext` is self-only
+
+The platform-scoped D2 discovery Q resolves only the authenticated Principal from trusted token context. It accepts no Principal identifier and returns only Organizations where that Principal currently has Membership. Cross-Principal enumeration remains Organization-path-scoped `ListOrganizationMembers` under `access.read`.
+
+### A4 — F-WM-4 ACCEPT: Party Resolution always requires current resolution/candidate-set precondition
+
+`ResolveBusinessSystemPartyResolution` requires both mandatory client idempotency key and current resolution/candidate-set revision by default. Staleness is material by construction. Intake deduplication never authorizes replay of an ambiguous native create/update effect.
+
+### A5 — F-WM-5 ACCEPT, notes become consolidated B2 obligations
+
+G1 remains the smallest correct seam. Consolidation must state both:
+
+1. arbitrary client-supplied external URLs are not trusted authored media; external-source media acquisition remains a D4 evidence path;
+2. media metadata/reference/selection is read through `GetListingIntent`; binary transport/storage/read realization is D7 mechanism and does not require a separate Product media resource/API by symmetry.
+
+### A6 — F-WM-6 ACCEPT, notes become consolidated B2 obligations
+
+Fulfillment operating-target Q exposes effective MPC-owned target plus material provenance/default-vs-override explanation. Provider deadline remains separate external evidence. Future internal targets remain owner-local and consumer-proven; this correction does not create a generic SLA/target policy API.
+
+### A7 — F-WM-7 ACCEPT: generic Work resolution stays DEFER, with wire-time closure-path audit
+
+The Work→source C/Q semantic edge remains accepted D3 capability, but no generic Product operation is admitted now. Before B2 wire closure, audit every Product 1.0 Work-producing condition class to prove either source-side automatic resolution/reconciliation or an admitted owner-specific human capability. A human-only evidence class with no legitimate closure path is the concrete trigger for a bounded Work evidence-submission operation. Work never owns the originating decision.
+
+### A8 — F-WM-8 ACCEPT: zero-P baseline
+
+`GetSaleOperationalView` remains DEFER until D6 proves repeated cross-owner composition pain. `OperationalStage` may be derived client-side; materially divergent/repeated derivation becomes evidence for a later bounded P. No P endpoint is required merely because B1 permits P.
+
+### A9 — F-WM-9 ACCEPT: B2-A remains the Global Maximum at this altitude
+
+No stronger Product 1.0 requirement justifies token exchange/on-behalf-of human impersonation, per-Organization token audiences, sender-constrained-token architecture in B2, static MPC API keys or IdP-owned MPC business permissions. D7 retains concrete Keycloak/provider mechanics.
+
+### A10 — F-WM-10 REJECT: creation-time price must remain `PriceIntent`, not ListingIntent content
+
+This reviewer proposal conflicts with accepted parent semantics and with the least-privilege surface B2 already established.
+
+Evidence from current authority:
+
+- D2 §5.0 gives material Offering-owned **Listing and Price Intents** distinct durable domain-local identities.
+- D4-R1 §3.3 bounds ListingIntent to desired listing representation/action and typed correlations; §12 explicitly rejects a giant Publication aggregate absorbing **Price/Availability/Fulfillment**.
+- B2 deliberately separates `listing.manage` from `price.manage` because listing-content automation must not acquire commercial repricing authority.
+
+If creation-time price were ListingIntent content, either `listing.manage` could author commercial price or listing creation would need a hidden second permission for a value whose canonical intent is not represented by `PriceIntent`. Both are worse than the already-accepted separation.
+
+**Corrected rule:** price is never ListingIntent-owned content, including initial publication. Initial active publication requires a correlated Offering-owned `PriceIntent` for the to-be-created listing context, just as provider execution may require separate Availability-owned input. The execution mechanism may serialize ListingIntent + PriceIntent + Availability-issued meaning into one provider create request without merging their identities/lifecycles. ListingIntent may preserve only typed correlation to the required PriceIntent. Missing required creation-time PriceIntent fails closed before dispatch. After the Listing exists, subsequent price changes continue exclusively through PriceIntent targeted to the source-qualified Listing.
+
+This requires no D1/D2/D3 reopen: both intents have the same D1 owner, and their joint physical serialization is mechanism, not authority. It also preserves `listing.manage != price.manage` end-to-end.
+
+### A11 — minor non-blockers
+
+- `DeactivateMarketplaceInstallation` preserves Installation identity/history. Reactivation is not inferred from deactivation; an explicit reactivation capability remains DEFER until a real workflow requires it.
+- `fulfillment.execute` protecting Fulfillment artifact reads is intentional least privilege because artifacts may contain operational/PII-sensitive material; `fulfillment.read` alone need not expose artifact content.
+
+### Adjudication result
+
+F-WM-1 direction accepted with a D5-B1-scoped safety tuple rather than forcing idempotency semantics onto side-effect-free C. F-WM-2/3/4 accepted with the sharpenings above. F-WM-5/6/7/8/9 accepted and their bounded notes become B2 consolidation/wire-proof obligations. **F-WM-10 is materially rejected.**
+
+No parent-stage reopen trigger fires. The only unresolved review contradiction is initial-publication price ownership/operation shape.
+
+**HANDOFF → FABLE.** Round 2 is intentionally narrow. Reconstruct current authority and challenge only A10 versus F-WM-10: should initial listing publication price remain a separate Offering-owned `PriceIntent` correlated with ListingIntent, or may it become ListingIntent content despite D2's distinct PriceIntent identity, D4-R1's explicit anti-absorption fence, and the B2 `listing.manage` / `price.manage` least-privilege split? Return the smallest Global Maximum, identify whether any parent reopen would actually be required, and append only the material resolution here. Do not reopen accepted findings A1–A9/A11 unless A10 logically invalidates one of them. **HANDOFF → FABLE.**
