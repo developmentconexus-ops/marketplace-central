@@ -1,10 +1,11 @@
 # D5-B2 — Operation Admission Matrix
 
-> **Status:** OPEN / ACTIVE — Blocks 1–4 ACCEPTED IN-STAGE; Block 5 next  
+> **Status:** OPEN / ACTIVE — Blocks 1–5 ACCEPTED IN-STAGE; Whole-Matrix Global Coherence review next  
 > **Parent B2:** `D5-B2-PRODUCT-OPERATION-SURFACE.md`  
 > **Parent authorities:** accepted D0→D4 + D4-R1 + D5-B1 + Decision Reconciliation Baseline + B2-A  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
-> **Opened:** 2026-08-18
+> **Opened:** 2026-08-18  
+> **Block 5 accepted:** 2026-08-18
 
 ## 1. Governing admission rule
 
@@ -123,7 +124,7 @@ Permission floor: `readiness.read`, `readiness.manage`.
 | direct `UpdateMarketplaceListing` | both | C | — | **REJECT** |
 | direct `Pause/Reactivate/CloseListing` APIs | both | C | — | **REJECT AS PARALLEL BASELINE AUTHORITY** |
 
-Listing identity remains Marketplace Installation + provider-native Listing key. Collection pagination/filtering is justified by real population use. Read contracts expose Offering interpretation + source freshness/convergence, never raw provider DTOs.
+Listing identity remains Marketplace Installation + provider-native Listing key. Read contracts expose Offering interpretation + source freshness/convergence, never raw provider DTOs.
 
 ## 3.3 ListingIntent
 
@@ -264,34 +265,6 @@ Permission floor: `economics.read`, `economics.policy.manage`, `economics.reconc
 
 > **Governance decides consequential authorization, Sales owns marketplace-sale meaning, and Materialization owns business-system intents/results. Client access, approval, upstream domain facts and runtime execution are distinct. A durable domain Intent may be publicly readable without being client-created when its legitimate cause is an accepted owner reaction.**
 
-Rejected local maxima:
-
-```text
-POST /actions
-PATCH /workflow/status
-POST /erp/orders
-POST /invoice
-POST /retry
-```
-
-Selected structure:
-
-```text
-action-owner Intent
-  → Governance AuthorizationDecision when required
-  → owner revalidation/execution
-
-provider sale evidence
-  → Marketplace Sales commits Sale meaning
-  → E to Materialization/Fulfillment/Economics
-
-SaleCommitted
-  → Materialization creates/advances BusinessOrderIntent
-
-Fulfillment physical-readiness checkpoint
-  → Materialization creates/advances InvoicingIntent
-```
-
 ## 5.2 Controlled Action Governance
 
 | Candidate operation | Client | Class | Permission | Admission |
@@ -311,12 +284,11 @@ Binding decisions:
 
 - Authorization Decision is a durable Governance-owned occurrence, not an `approved=true` field or Intent-status mutation;
 - decision targets one concrete owner Intent/material revision/context and preserves decision Principal, authority context, outcome and exact authorized target-scope snapshot;
-- authorized scope is constrained by intended scope and never widens it;
-- `CreateAuthorizationDecision` requires client idempotency because a lost response must not create duplicate decision occurrences;
-- current Intent revision/context is a material precondition; stale approval is rejected rather than silently applied to newer meaning;
-- approval never executes an effect, mutates owner Intent, waives business validity or becomes eternal authorization; the action owner revalidates at execution time;
-- approval queue/work responsibility is not a second Governance queue authority; Work/projection handles actionable attention later;
-- D2 intentionally did not freeze physical Grant/Delegation identity/cardinality, so B2 admits bounded list/set/update/revoke semantics without inventing a mandatory universal `GrantID` model prematurely.
+- authorized scope never widens intended scope;
+- `CreateAuthorizationDecision` requires idempotency and current Intent revision/context preconditions;
+- approval never executes, mutates the owner Intent, waives domain validity or becomes eternal authorization;
+- actionable approval responsibility belongs to Work/projection, not a second Governance queue authority;
+- bounded delegation semantics are admitted without prematurely forcing a universal physical Grant identity/cardinality.
 
 Permission floor: `governance.read`, `governance.decide`, `governance.manage`.
 
@@ -332,17 +304,11 @@ Permission floor: `governance.read`, `governance.decide`, `governance.manage`.
 | `SyncSales` / `RefreshOrders` | both | C | — | **REJECT PRODUCT API** |
 | provider Pack/Shipment absorbed as Sales entities | both | Q | — | **REJECT** |
 
-Binding decisions:
-
-- Sale identity remains Marketplace Installation + provider-native Sale/Order key; no synthetic MPC Sale alias exists merely for normalization;
-- Sale reads preserve source observation/freshness and Sales-owned interpretation/context/correlation/transaction-specific Selling Entity attribution without absorbing downstream Materialization/Fulfillment/Economics/Post-Sale state as mutable ownership;
-- Sales is externally originated; Product clients do not create/update provider sales;
-- transaction-specific Selling Entity attribution may normally be established automatically by Sales, but a genuinely ambiguous case admits explicit human resolution;
-- ambiguous attribution resolution requires current-state concurrency when stale overwrite could replace a newer decision; exact repeat may be structurally idempotent.
+Sale identity remains Marketplace Installation + provider-native Sale/Order key. Sales is externally originated and read-centric; only genuine Sales-owned ambiguity such as transaction-specific Selling Entity attribution admits explicit human resolution.
 
 Permission floor: `sales.read`, `sales.manage`.
 
-## 5.4 Business Order Intent — owner-triggered, client-readable
+## 5.4 Business Order / Party / Destination
 
 | Candidate operation | Client | Class | Permission | Admission |
 |---|---|---|---|---|
@@ -351,34 +317,15 @@ Permission floor: `sales.read`, `sales.manage`.
 | `CreateBusinessOrderIntent` | both | C | — | **REJECT BASELINE** |
 | `RetryBusinessOrderMaterialization` | both | C | — | **REJECT** |
 | direct `CreateSankhyaOrder` / `ConfirmSankhyaOrder` | both | C | — | **REJECT** |
-
-Normal-path BusinessOrderIntent creation belongs to Materialization reacting to committed Sales meaning, not to React/agent commands. Duplicate/replayed Sale occurrences must not create duplicate semantic BusinessOrderIntents; D7 chooses the enforcement mechanism for this owner-level idempotency property.
-
-BusinessOrderIntent Q may expose owner meaning/prerequisites, Party/Destination resolution state, source-qualified native result references, accepted/rejected/pending/ambiguous outcome and owner-specific convergence without exposing TOP/NUNOTA/CACSP/status choreography as Product semantics.
-
-## 5.5 Party Resolution and Destination Realization
-
-| Candidate operation | Client | Class | Permission | Admission |
-|---|---|---|---|---|
 | `GetBusinessSystemPartyResolution` | both | Q | `materialization.read` | **ADMIT** |
 | `ResolveBusinessSystemPartyResolution` | human baseline | C | `materialization.resolve` | **ADMIT** |
 | `GetDestinationRealization` | both | Q | `materialization.read` | **ADMIT** |
 | `ResolveDestinationRealization` | human | C | `materialization.resolve` | **DEFER / CONDITIONED ON D8 PROOF** |
-| generic Customer/Party CRUD | both | C | — | **REJECT** |
-| generic Address/Contact CRUD | both | C | — | **REJECT** |
-| raw `SelectCODPARC` / mutate Partner address | human/both | C | — | **REJECT PROVIDER VOCABULARY / UNSAFE MASTER MUTATION** |
+| generic Customer/Party/Address/Contact CRUD | both | C | — | **REJECT** |
 
-Binding decisions:
+Normal-path BusinessOrderIntent creation belongs to Materialization reacting to committed Sales meaning, not to React/agent commands. Duplicate/replayed Sale occurrences must not create duplicate semantic BusinessOrderIntents; D7 chooses enforcement. Party Resolution is bounded Materialization correctness state, not CRM mastery. Destination realization remains distinct and write capability is not claimed until D8 proves the safe selected Sankhya lane.
 
-- Party Resolution is a bounded Materialization prerequisite, not Customer/CRM authority;
-- a human resolution chooses a compatible source-qualified native party meaning, never a raw provider code as MPC business ontology;
-- zero-match native creation may occur only under owner rules and sufficiently known legitimate transaction evidence; the client does not author arbitrary Customer master data;
-- resolution targets one existing PartyResolution/current version; structural idempotency may be used only if later proof shows duplicate consequential native creation cannot occur, otherwise B1's idempotency-key default applies;
-- Destination Realization remains distinct from Party Resolution and never overwrites registered/master address by convenience;
-- contact-based alternate destination is the strongest current Sankhya candidate but its write capability remains conditioned on D8 controlled proof, so B2 does not claim a Product C operation before that evidence exists;
-- no safe destination realization remains explicit `external-required` / Work rather than fabricated equivalence.
-
-## 5.6 Invoicing Intent — owner-triggered from Fulfillment readiness
+## 5.5 Invoicing Intent
 
 | Candidate operation | Client | Class | Permission | Admission |
 |---|---|---|---|---|
@@ -388,78 +335,210 @@ Binding decisions:
 | `RequestInvoice` / direct `SankhyaFaturar` | human/both | C | — | **REJECT** |
 | `RetryInvoice` | both | C | — | **REJECT** |
 
-Fulfillment owns physical readiness/conference. Its committed checkpoint makes Materialization eligible to create/block/advance InvoicingIntent; Product clients do not create the fiscal intent directly.
+Fulfillment owns physical readiness/conference. Its committed checkpoint makes Materialization eligible to create/block/advance InvoicingIntent. Product clients do not create the fiscal intent directly. Materialization revalidates all current prerequisites and no ambiguous provider effect is blindly retried.
 
-Materialization must revalidate current business-order state, Party/Destination prerequisites, Fulfillment readiness, applicable Governance, source binding/capability and execution-time validity before any irreversible fiscal effect. A prior event/approval is never sufficient by itself.
+Permission floor: `materialization.read`, `materialization.resolve`.
 
-## 5.7 No blind retry / no workflow command surface
-
-A provider timeout or connection loss after possible Sankhya acceptance is reconciled by authoritative reread/correlation before any further effect decision. The Product API does not expose generic `RetryBusinessOrder`, `RetryInvoice`, `AdvanceWorkflow`, TOP progression or provider-command replay.
-
-If reconciliation later establishes a new semantically safe action, the owning domain progresses its existing intent or creates a new owner-local intent according to its lifecycle; it never blindly replays an ambiguous external request.
-
-## 5.8 Permission floor
-
-- `governance.read`
-- `governance.decide`
-- `governance.manage`
-- `sales.read`
-- `sales.manage`
-- `materialization.read`
-- `materialization.resolve`
-
-The split preserves materially useful least privilege without creating one permission per endpoint.
-
-## 5.9 Explicit Block 4 exclusions
-
-Not admitted:
-
-- generic `/actions`, workflow engine or `PATCH status` orchestration;
-- domain-specific approve endpoints duplicating Governance;
-- approval queue as a second Work authority;
-- `ExecuteApprovedAction`;
-- client-created Sale;
-- Sales-owned cancellation/refund;
-- generic Sales sync/refresh;
-- client-created BusinessOrderIntent/InvoicingIntent on normal path;
-- direct Sankhya order/confirmation/invoice/TOP/NUNOTA APIs;
-- Customer/Address master CRUD;
-- unsafe Partner-address mutation;
-- generic Retry/replay operations after ambiguous external effects.
-
-## 5.10 Block 4 method outcome
-
-**Parent structure:** `CURRENT D1/D2/D3/D4-B3 STRUCTURE CONFIRMED`.
-
-**B2 outcome:**
-
-> **Expose Governance decisions/delegation and owner-tracking state; keep externally-originated Sales read-centric except explicit attribution resolution; let Materialization create BusinessOrder/Invoicing intents from accepted upstream facts rather than client commands; expose human resolution only where ambiguity is a genuine business decision; never leak Sankhya choreography or generic retry/workflow commands into Product API.**
+**Block 4 outcome:** `CURRENT D1/D2/D3/D4-B3 STRUCTURE CONFIRMED; EXPOSE GOVERNANCE/SALES/MATERIALIZATION MEANING WITHOUT CLIENT-COMMANDED OWNER REACTIONS OR SANKHYA CHOREOGRAPHY`.
 
 ---
 
-# 6. Exact next matrix work
+# 6. Block 5 — Fulfillment + Post-Sale + Operational Work + P compositions — ACCEPTED IN-STAGE
 
-**Block 5 — Fulfillment Lifecycle + Post-Sale Resolution + Operational Work + justified read-only P compositions.**
+## 6.1 Governing invariant
 
-Derive the smallest Product API surface while preserving these fences:
+> **Fulfillment owns physical execution and provider-readiness closure, Post-Sale owns scoped consequence coordination, Work owns responsibility/assignment/escalation, and P compositions are read-only convenience views. Physical facts, consequence closure, actionable-work lifecycle and projection convenience never collapse into one generic OrderWorkflow/Task/Case/status authority.**
 
-- Fulfillment owns physical readiness/execution, Fulfillment Node eligibility/selection, separation/conference/packing/dispatch and provider-requirement closure for claimed fulfillment paths;
-- Shipment remains source-qualified external identity and does not collapse into Sale/Order;
-- provider-native requirements/artifacts remain D4 evidence; Fulfillment owns business closure/readiness meaning;
-- physical conference/readiness is the legitimate owner signal that can enable Materialization invoicing; clients must not bypass it with a direct invoice command;
-- Post-Sale Resolution owns coordinated cancellation/return/refund consequence scope/closure without becoming provider Claim/Return ontology, CRM or generic reverse logistics;
-- one Sale may have 0..N scoped Post-Sale Resolutions; cancellation/return/refund are not one mutually exclusive status;
-- Operational Work owns responsibility/assignment/escalation/work state, never source truth or domain closure;
-- no-ownerless-work and source-domain closure evaluation remain binding;
-- read-only P compositions may summarize several owners for operator attention but never become write/concurrency/business truth authority;
-- no generic workflow/Task/Case/OperationalStage mutation surface;
-- no direct provider shipment/claim/refund protocol API;
-- no generic retry/sync/refresh commands by convenience;
-- pagination/filter/sort only where queues/populations create a real consumer need;
-- bulk only if a concrete fulfillment/work workflow proves member-level semantics are necessary.
+## 6.2 Fulfillment Lifecycle
 
-The block must decide which physical fulfillment checkpoints are true client capabilities, how Work mutations are scoped without stealing source-domain closure, how Post-Sale is initiated/coordinated, and which cross-owner cockpit/attention reads are justified P rather than D6-only view composition.
+| Candidate operation | Client | Class | Permission | Idempotency / concurrency | Admission |
+|---|---|---|---|---|---|
+| `ListFulfillmentStates` | both | Q | `fulfillment.read` | — | **ADMIT** |
+| `GetFulfillmentState` | both | Q | `fulfillment.read` | — | **ADMIT** |
+| `ListFulfillmentNodes` | both | Q | `fulfillment.read` | — | **ADMIT** |
+| `GetFulfillmentNode` | both | Q | `fulfillment.read` | — | **ADMIT** |
+| `CreateFulfillmentNode` | human | C | `fulfillment.manage` | idempotency by default | **ADMIT** |
+| `UpdateFulfillmentNode` | human | C | `fulfillment.manage` | concurrency where lost-update material | **ADMIT** |
+| `DeactivateFulfillmentNode` | human | C | `fulfillment.manage` | structural + current state | **ADMIT** |
+| manual `SelectFulfillmentNode` | human | C | — | — | **DEFER** |
+| `RecordSeparation` | human baseline | C | `fulfillment.execute` | idempotency + current-state precondition by default | **ADMIT** |
+| `RecordPhysicalConference` | human or explicitly proven physical-system Principal | C | `fulfillment.execute` | idempotency + current-state precondition by default | **ADMIT** |
+| `RecordPacking` | human baseline | C | `fulfillment.execute` | idempotency + current-state precondition by default | **ADMIT** |
+| `RecordDispatchHandoff` | human or explicitly proven physical-system Principal | C | `fulfillment.execute` | idempotency + current-state precondition by default | **ADMIT** |
+| generic `AdvanceFulfillmentStatus` | both | C | — | — | **REJECT** |
 
-Do not spell final HTTP paths/schemas until Block 5 admission is coherent.
+Binding decisions:
+
+- physical checkpoints are owner-specific facts/capabilities, not `PATCH status` workflow steps;
+- `RecordPhysicalConference` is the material Fulfillment fact that may awaken Materialization for invoicing under D3; the client never bypasses it with a direct invoice command;
+- an ordinary automation token cannot fabricate physical evidence merely because it has API access; machine establishment of physical facts requires a separately proven system Principal/source capable of establishing that fact;
+- repeat/lost-response safety must prevent duplicate material occurrences and duplicate downstream reactions;
+- no company-wide WMS/TMS model is introduced.
+
+## 6.3 Provider requirements and Fulfillment artifacts
+
+`GetFulfillmentState` may expose Fulfillment-owned closure/readiness plus source-qualified provider requirement/deadline evidence sufficient for the claimed path. Provider requirement/artifact truth remains D4/external authority.
+
+| Candidate operation | Client | Class | Permission | Admission |
+|---|---|---|---|---|
+| `ListFulfillmentArtifacts` | human/both read | Q | `fulfillment.execute` | **ADMIT** |
+| `GetFulfillmentArtifact` | human/both read | Q | `fulfillment.execute` | **ADMIT** |
+| generic `CreateArtifact` | both | C | — | **REJECT** |
+| generic provider report/artifact generation | both | C | — | **REJECT BASELINE** |
+
+Artifacts such as labels/handoff documents remain Fulfillment-local/source-qualified and PII-minimized. A future provider operation that must actively generate an artifact is consequential and requires its own owner/effect adjudication; it is never disguised as a read.
+
+## 6.4 Shipment / delivery observation
+
+Shipment remains Marketplace Installation + provider-native Shipment key and never collapses into Sale/Order.
+
+| Candidate operation | Client | Class | Permission | Admission |
+|---|---|---|---|---|
+| `ListShipments` | both | Q | `fulfillment.read` | **ADMIT** |
+| `GetShipment` | both | Q | `fulfillment.read` | **ADMIT** |
+| `RefreshShipment` | both | C | — | **REJECT PRODUCT API** |
+| generic `UpdateShipmentStatus` | both | C | — | **REJECT** |
+| baseline `MarkDelivered` | both | C | — | **REJECT SELECTED LANE** |
+| provider Shipment/status DTO mirror | both | Q/C | — | **REJECT** |
+
+Reads preserve interpreted Shipment meaning, relevant deadline/SLA/delivery outcome and source freshness/provenance without importing provider status/substatus ontology wholesale.
+
+## 6.5 Post-Sale Resolution
+
+| Candidate operation | Client | Class | Permission | Idempotency / concurrency | Admission |
+|---|---|---|---|---|---|
+| `ListPostSaleResolutions` | both | Q | `post_sale.read` | — | **ADMIT** |
+| `GetPostSaleResolution` | both | Q | `post_sale.read` | — | **ADMIT** |
+| `CreatePostSaleResolution` | both | C/create | `post_sale.manage` | **mandatory idempotency** | **ADMIT** |
+| generic `UpdateResolutionStatus` | both | C | — | — | **REJECT** |
+| direct `ClosePostSaleResolution` | both | C | — | — | **REJECT** |
+| direct `CancelSale` / `RefundSale` | both | C | — | — | **REJECT** |
+| provider-shaped `AcceptClaim` / `ReviewReturn` | both | C | — | — | **REJECT BASELINE** |
+| generic `SubmitPostSaleAction` | both | C | — | — | **REJECT BASELINE** |
+| concrete later post-sale decisions | human/both | C | — | — | **DEFER UNTIL SELECTED ACTION IS PROVEN** |
+
+Binding decisions:
+
+- a Resolution may be provider-originated or explicitly MPC-initiated; Product creation creates the scoped coordination obligation, not all underlying cancel/return/refund/ERP/physical effects;
+- one Sale may have 0..N Resolutions and scope may be line/item/quantity-specific;
+- cancellation, return, reverse shipment, refund and business-system/economic consequences may coexist and remain separately evidenced;
+- provider `available_actions` is capability evidence, not MPC permission or Product API operation vocabulary;
+- Post-Sale closes only when applicable consequence owners provide sufficient evidence; no single provider terminal flag or direct `close` write can fabricate closure;
+- future concrete human post-sale decisions are admitted only when a selected flow proves their semantics, avoiding a speculative CRM/claims/reverse-logistics platform.
+
+## 6.6 Operational Work
+
+| Candidate operation | Client | Class | Permission | Idempotency / concurrency | Admission |
+|---|---|---|---|---|---|
+| `ListWork` | both | Q | `work.read` | — | **ADMIT** |
+| `GetWork` | both | Q | `work.read` | — | **ADMIT** |
+| `AssignWork` | both | C | `work.manage` | structural + concurrency | **ADMIT** |
+| `ClearWorkAssignment` | both | C | `work.manage` | structural + concurrency | **ADMIT** |
+| `HoldWork` | both | C | `work.manage` | structural + concurrency | **ADMIT** |
+| `ResumeWork` | both | C | `work.manage` | structural + concurrency | **ADMIT** |
+| `EscalateWork` | both | C | `work.manage` | structural/current-state | **ADMIT** |
+| `SubmitWorkResolution` | both | C | `work.manage` | **idempotency + current-state precondition** | **ADMIT** |
+| direct `CreateWork` | both | C | — | — | **REJECT BASELINE** |
+| direct `CloseWork` | both | C | — | — | **REJECT** |
+| generic `DismissWork` | both | C | — | — | **REJECT BASELINE** |
+| generic Task/Case CRUD | both | Q/C | — | — | **REJECT** |
+
+Binding decisions:
+
+- baseline Work is born from a source-domain committed actionable condition, not arbitrary user task creation;
+- Work responsibility/assignment is distinct from D2 AccessRole/Permission;
+- `SubmitWorkResolution` submits/points to evidence for source-owner evaluation; it does not set the source condition or Work to closed by fiat;
+- closing Work alone never declares source truth resolved; source resolution/reconciliation governs legitimate closure;
+- no-ownerless-work remains binding and duplicate source-condition delivery must reconcile to one obligation rather than create silent duplicate work.
+
+Permission floor: `work.read`, `work.manage`.
+
+## 6.7 Read-only P composition
+
+One baseline composition is admitted:
+
+| Candidate operation | Client | Class | Permission | Admission |
+|---|---|---|---|---|
+| `GetSaleOperationalView` | both | P | component read permissions | **ADMIT** |
+| global cockpit / Product360 / Marketplace360 | both | P | — | **DEFER** |
+| generic cross-owner query surface | both | P | — | **REJECT** |
+| P mutation / projection concurrency authority | both | C/P | — | **REJECT** |
+
+`GetSaleOperationalView` may compose Sales + Materialization + Fulfillment + Shipment + Post-Sale summary + Work attention references and may expose a derived `OperationalStage` for convenience.
+
+Binding rules:
+
+- P is explicitly read-only and never owns business meaning, authorization, retry or write preconditions;
+- component freshness/partiality remains visible where material; no global snapshot time is fabricated;
+- any concurrency token/version from the projection cannot authorize owner writes;
+- baseline access requires the relevant component read permissions rather than a broad projection permission that bypasses owners;
+- Economics is not included by default because it has its own `GetSaleEconomics` surface and may carry different access sensitivity;
+- broader cockpit/D6-shaped compositions wait for a real repeated consumer need.
+
+## 6.8 Permission floor
+
+- `fulfillment.read`
+- `fulfillment.execute`
+- `fulfillment.manage`
+- `post_sale.read`
+- `post_sale.manage`
+- `work.read`
+- `work.manage`
+
+`fulfillment.execute` is separate from `fulfillment.manage`: operators who perform physical work do not automatically administer Fulfillment Node configuration.
+
+## 6.9 Explicit Block 5 exclusions
+
+Not admitted:
+
+- generic `OrderWorkflow`, `Task`, `Case`, `AdvanceStatus` or mutable OperationalStage authority;
+- arbitrary user-created Work/tasks;
+- direct Work close as substitute for source-domain resolution;
+- provider Shipment/Claim/Return/refund protocol mirror;
+- generic fulfillment/provider requirement/artifact framework;
+- direct client invoice command from Fulfillment;
+- generic sync/refresh/retry commands;
+- speculative support for every fulfillment mode or post-sale action;
+- global cockpit / Product360 / broad cross-owner query language before a real consumer proves it;
+- any write, authorization or concurrency authority through P.
+
+## 6.10 Block 5 method outcome
+
+**Parent structure:** `CURRENT D1/D2/D3/D4 STRUCTURE CONFIRMED`.
+
+**B2 outcome:**
+
+> **Expose owner-specific physical Fulfillment checkpoints, source-qualified Shipment observation, canonical Post-Sale Resolution and canonical Operational Work; admit one minimal read-only Sale operational composition; reject generic status/workflow/task/provider-action surfaces.**
+
+---
+
+# 7. Whole-Matrix review — EXACT NEXT WORK
+
+Blocks 1–5 now complete the first operation-admission pass. **Do not move directly to path/schema spelling.**
+
+Run a D5-B2 Whole-Matrix Global Coherence review using the Method across the admitted surface as one system. The review must challenge at least:
+
+1. **Duplicate / missing authority:** every Product 1.0 actor outcome has a legitimate surface or owner reaction, and no operation creates a second authority.
+2. **Client-class correctness:** human vs automation/system access is no broader than the facts/actions each class can legitimately establish.
+3. **Permission coherence / least privilege:** permission families are materially useful without one-per-endpoint fragmentation or broad bypasses.
+4. **Q/C/P honesty:** reads, stateless capabilities, durable intent/resource writes and projections use the correct interaction class.
+5. **Idempotency / concurrency:** default consequential safety is retained; every structural exemption has a real owner anchor; lost-update and duplicate-create failure classes are not confused.
+6. **Owner-triggered vs client-triggered behavior:** D3 reactions such as BusinessOrder/Invoicing creation are not accidentally reintroduced as Product commands.
+7. **Knowledge/freshness/evidence:** unknown/unavailable/partial/stale/provider-enriched evidence remains honest in every relevant read family.
+8. **External identity / Organization:** no bare provider/native IDs, hidden Organization inference or cross-Organization secondary reference.
+9. **Generic abstraction pressure:** no Product/PIM, generic Integration/Mutation/Workflow/Rule/Finance/Task/Operation/Provider graph emerges from repeated mechanics.
+10. **Pagination/filter/bulk:** admitted only for real collections/workflows and not by API symmetry.
+11. **P projection safety:** projections cannot bypass permissions, become snapshot/concurrency authority or absorb business writes.
+12. **Future-cost/YAGNI:** the seams needed for second marketplace/business system, stronger automation and later concrete post-sale/fulfillment modes remain possible without implementing them today.
+13. **Structural inversion:** accepted surface must remain correct if legacy routes/OpenAPI/controllers are opposite in every relevant respect.
+14. **Missing-operation challenge:** explicitly look for a Product 1.0 requirement that is currently unreachable from a legitimate client or owner-triggered reaction.
+
+Outcomes remain:
+
+- `RESTRUCTURE NOW`
+- `CURRENT STRUCTURE CONFIRMED`
+- `STOP / SPLIT PREREQUISITE`
+
+Only after the Whole-Matrix review is ratified should B2 move to resource/path grammar, HTTP methods/custom methods, request/response schemas, statuses, precondition/idempotency headers, pagination/filter grammar and OpenAPI spelling.
 
 Implementation remains blocked until D9.
