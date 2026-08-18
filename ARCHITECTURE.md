@@ -2,7 +2,7 @@
 
 > **Status:** stable product-level constraints during Architecture Rebaseline  
 > **Detailed target architecture:** intentionally under D0–D9 design; see `docs/engineering/rebaseline/README.md`  
-> **Last updated:** 2026-08-17
+> **Last updated:** 2026-08-18
 
 ## Purpose
 
@@ -93,7 +93,7 @@ Communication may duplicate, arrive late/out of order, fail or replay without ch
 
 ## External-integration principles
 
-D4-B1 and D4-B2 are accepted and canonical. External integrations obey these constraints:
+D4-B1, D4-B2 and D4-B3 are accepted and canonical. External integrations obey these constraints:
 
 - consumer context owns semantic meaning/port;
 - adapter owns provider/business-system protocol, DTOs, auth and pagination;
@@ -108,11 +108,18 @@ D4-B1 and D4-B2 are accepted and canonical. External integrations obey these con
 - seller Order-search completion does not prove cancellation-inclusive Sales coverage when provider documentation/runtime behavior does not establish a reliable complete universe;
 - the first current Mercado Livre proof lane selected by D4-B2 is deliberately narrow and time-bound; future provider configuration changes re-evaluate capability rather than creating speculative universal mode support;
 - Sankhya uses the sanctioned API Gateway target path; Direct Oracle is not an admitted fallback;
-- current unstable provider/reference behavior must be verified against current official behavior for the concrete decision that depends on it;
+- Sankhya Product/company/location/inventory/control/cost/tax/party/document concepts remain provider-local evidence/realization and never become MPC business ontology by normalization;
+- Business-System Party Resolution and Delivery Destination Realization are distinct bounded Materialization prerequisites; neither creates an MPC Customer/Party/Address master;
+- transaction-specific delivery evidence never silently authorizes customer-master overwrite or another customer record merely to represent another destination; unsupported destination realization remains explicit Work / `external-required`;
+- Business Order Intent and Invoicing Intent remain MPC-owned semantics while TOP, NUNOTA, provider statuses and native choreography remain adapter-local;
+- Expected Tax is delegated to the sanctioned Sankhya fiscal engine under an explicit, revalidatable SourceInstance binding; MPC does not reimplement the provider tax engine and does not turn unproven/absent tax components into plausible zeros;
+- provider-native negotiation/configuration may be fiscally material and therefore participates in concrete binding validation without becoming MPC commercial ontology;
+- consequential business-system effects preserve source-qualified correlation, authoritative reread and no-blind-retry semantics;
+- current unstable provider/reference behavior must be verified against current official/real behavior for the concrete decision that depends on it;
 - live integration claims require real-dependency evidence, not only mocks;
-- no speculative universal provider/integration framework is introduced.
+- no speculative universal provider/integration/ERP/workflow/customer framework is introduced.
 
-D4-B3/B4 decide the still-open Sankhya and market/economics/settlement surfaces. Installation-specific current Mercado Livre lane details and later proof obligations remain in canonical D4 rather than becoming stable global platform constants here.
+D4-B4 decides the still-open market/economics/settlement external surface. Installation-/SourceInstance-specific proof-lane details and later D7/D8 proof obligations remain in canonical D4 rather than becoming stable global platform constants here.
 
 ## API and frontend
 
