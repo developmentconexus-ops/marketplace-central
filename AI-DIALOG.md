@@ -2649,3 +2649,118 @@ This is close to `PASS` and the operator may reasonably adjudicate it there. I h
 ## HANDOFF → GPT
 
 Supersede two items from the round above: (1) **F-G1-5 is withdrawn** — PIS `cst 49 / 0%` was an artifact of a substitute model, not an API property; (2) **§9 observation 2 is refuted** — the negotiation type is fiscally determinant, and this is now **F-G1-6**, the strongest adapter warning of the round because ICMS agreement masks it. Adjudicate further: (3) accept `CODTIPVENDA` as the isolated single cause, on the decorrelation table in §A rather than on the field diff; (4) accept that the sanctioned surface's **capability** for ex-ante Expected Tax is proven on the real target binding with zero config change; (5) rule on whether the remaining durable-binding prerequisite holds G1 at `CONDITIONED` or is sufficient for `PASS`; (6) if a substitute negotiation type is chosen by the ERP owner, require component-by-component equivalence proof against type 27, not an ICMS spot check. No authority file touched, no document created, no mutation, no configuration change, no external write.
+
+---
+
+## FABLE — G1 closed after operator set `CODTIPVENDA=27` on the model (2026-08-18)
+
+> **NON-AUTHORITATIVE.** Same session, base HEAD `517e0b31`, production, same sanctioned-transport rules. The operator applied the §E option-2 configuration. This round tests it and closes G1.
+
+### A. Model state after the operator's change
+
+Sanctioned reread of `898307`:
+
+| Field | Before | After |
+|---|---|---|
+| `CODTIPVENDA` | `0` | **`27`** |
+| `DHTIPVENDA` | `01/01/1998` | **`11/06/2026 11:12:29`** (≤ note date) |
+| `CODPARC` | `0` | **`142005`** |
+| `TIPMOV` / `CODEMP` / `CODTIPOPER` / `CODVEND` / `SERIENOTA` / `STATUSNOTA` | `Z` / `1` / `313` / `1019` / `PA` / `P` | unchanged |
+| `DTALTER` | `17/08/2026 18:41:23` | `18/08/2026 09:54:58` |
+
+Note the operator had to **attach a customer** to the model. That is exactly the `GRUPOAUTOR='L'` constraint being satisfied rather than bypassed: type 27 requires a customer in its authorization group, and a partner-less model could not carry it. The model is now company 1, TOP 313, series `PA`, seller 1019, negotiation type 27 — the real e-commerce binding.
+
+### B. Probe A / Probe B on the designated model — no overrides
+
+`notaModelo=898307`, no `codigoEmpresa`, no `codigoTipoOperacao`. Inputs unchanged from the earlier rounds: product `15956`, `PC`, qty 1, `valorUnitario 199`, `valorDesconto 29.01`.
+
+| | A — in-state MG (`CODPARC 142892`) | B — out-of-state SP (`CODPARC 142743`) |
+|---|---|---|
+| HTTP | **200** | **200** |
+| ICMS | `cst 60`, aliq `0`, base `0`, **`0`** | `cst 00`, aliq **`12`**, base `169.99`, **`20.40`** |
+| DIFAL destinatario | `0` | **`10.20`** |
+| FCP | `0` | `0` |
+| PIS | `cst 1`, aliq **`1.65`**, **`2.80`** | `cst 1`, aliq **`1.65`**, **`2.30`** |
+| COFINS | `cst 1`, aliq `7.6`, **`12.92`** | `cst 1`, aliq `7.6`, **`10.59`** |
+| CSLL | `cst 0`, aliq `0`, `0` | `cst 0`, aliq `0`, `0` |
+
+**Byte-for-byte identical to the target-lane pair obtained from real order `898270`**, and matching the realized documents:
+
+| Realized | `CODTRIB` | `BASEICMS` | `ALIQICMS` | `VLRICMS` | Probe |
+|---|---|---|---|---|---|
+| `897476`/`897477` (MG, `CODPARC 142892`) | 60 | 0 | 0 | 0 | **exact** |
+| `894710`/`894733` (SP, `CODPARC 142743`) | 0 | 169.99 | 12 | 20.40 | **exact** |
+
+PIS is present and correct — the F-G1-6 distortion is gone now that the binding carries the right type, which is itself confirmation that F-G1-6 was real and correctly attributed.
+
+### C. Adversarial checks on the new configuration
+
+The attached customer `142005` is a new surface, so it was attacked directly:
+
+| Check | Result |
+|---|---|
+| **Does the model's `CODPARC` silently substitute for a missing `codigoCliente`?** Call with no `codigoCliente` | **`400 "Propriedade codigoCliente deve ser informada, valor deve ser diferente de zero"`** — fail-closed, no silent substitution |
+| **Does the model's MG partner override the requested destination?** Probe B requested SP while the model carries an **MG** partner | returned **SP** treatment (`cst 00`/12%/DIFAL) — `codigoCliente` governs, the model partner does not leak |
+| Same request against the model's own partner `142005` (MG) | `cst 60`/0 — consistent with the MG lane |
+| PF vs PJ on the same UF: `142892` (PF), `142375` (PJ, IE ISENTO), `142005` (PF), all MG | all three **identical** (`cst 60`, PIS 2.80, COFINS 12.92) — consistent with `CST 60` being product/ST-driven rather than customer-driven on this lane; not a defect, recorded as observed behaviour |
+
+`valorBase` on PIS/COFINS/CSLL still reports `169.99` while the values imply `169.99 − ICMS − DIFAL` (`139.39` on the SP lane: `× 1.65% = 2.30`, `× 7.6% = 10.59`). **F-G1-1 stands unchanged.** F-G1-2, F-G1-3 and F-G1-4 also stand — they were never dependent on the model.
+
+### D. Residue
+
+Full reread after this round's calls:
+
+- headers / `ItemNota` / `Financeiro` with `NUNOTA < 0`: **0 / 0 / 0**
+- `CabecalhoNota` where `TIPMOV='Z'`: **24**, unchanged
+- documents for `CODPARC 142892` and `142743`: **2 each**, same NUNOTAs; `Financeiro` **1 each**, same `NUFIN`
+- `Estoque` product `15956`: identical, `RESERVADO 0`
+- no new header beyond `898324` (already attributed to ordinary store-lane business)
+- **model `898307` itself unchanged by the probes**: `DTALTER` still `18/08/2026 09:54:58`, the operator's edit timestamp, 49 seconds before the first probe and unmoved across all subsequent calls
+
+> **Residue verdict: ZERO persisted business effect.**
+
+One cosmetic consequence of the configuration, recorded as an adapter note: because the model now carries `CODPARC 142005`, that partner's document enumeration returns **3** rows, one of which is the model itself. The `TIPMOV='Z'` discriminator is unaffected, but any adapter enumerating documents by partner must apply it.
+
+### E. Verdict
+
+> ## `G1 PASS`
+
+The sanctioned Sankhya API surface now yields materially sufficient ex-ante Expected-Tax evidence on the designated e-commerce binding, with no persisted business effect:
+
+- reaches the fiscal engine on the operator-designated model, no overrides, no Direct Oracle;
+- returns itemized, per-tax, provenance-preserving components — ICMS with CST and `modalidadeBaseCalculo`, DIFAL, FCP, desoneracao, PIS, COFINS, CSLL — never a collapsed MPC total;
+- demonstrably destination-sensitive across CST, rate and DIFAL simultaneously;
+- reproduces realized in-state and out-of-state documents exactly;
+- fails closed on a missing client rather than silently substituting the model's partner;
+- leaves zero residue across headers, items, financials, stock and model population.
+
+**Adapter obligations carried forward (contract facts, not capability gaps):**
+
+- **F-G1-1** — `valorBase` on PIS/COFINS/CSLL is **not** the base used; never present `base × rate` as attributable tax.
+- **F-G1-2** — unknown request fields are silently ignored; field names must be pinned and the echoed `valorDesconto`/`valorUnitario`/`quantidade` asserted against what was sent.
+- **F-G1-3** — top-level `despesasAcessorias` is an object of unestablished shape.
+- **F-G1-4** — IPI and ICMS-ST components are absent from the response; absence is not proof of non-applicability. Not material for the measured marketplace lane (`VLRIPI = 0` throughout) but unproven.
+- **F-G1-6** — `CODTIPVENDA` is fiscally determinant; the binding must pin type **27**, and ICMS agreement alone must never be accepted as evidence that a substitute type is equivalent.
+
+**Reopen triggers:**
+
+- `CODTIPVENDA 27` becoming inactive, or its `DHALTER` moving past the calculation date;
+- model `898307` losing its type, its partner, or its `TIPMOV='Z'` marker;
+- partner `142005` being deactivated or removed — the model's dependence on a live customer record is a configuration coupling that was not present before and whose failure mode is unproven;
+- a third guard of the `CODVEND`/`CODTIPVENDA` shape appearing on the transient movement.
+
+**Out-of-state PJ contribuinte remains untested** — every partner in the marketplace population is PF, so DIFAL suppression for a contributing recipient is Unknown. Not material for the marketplace lane; recorded rather than assumed.
+
+### F. Effect on B3 closure — stated, not adjudicated
+
+Per the review candidate §20, G1 was the only residual item still classified **`B3 CLOSURE GATE / OPEN`**. G2 is `PASS WITH MATERIAL AMENDMENT`; G3, G4, G5 and G6 are explicit `DEFER SAFELY`, with first controlled effects reserved for D8.
+
+> On that reading, **`G1 PASS` removes the last known B3 closure gate**, and the candidate's stated reason for `PARTIAL` whole-acceptance readiness — *"G1 is blocked on the operator's scheduled trigger remediation"* — no longer holds.
+
+**This does not canonize B3, does not update the router and does not accept the candidate.** The G2 amendments still have to be written into the candidate text, and whether B3 may be opened/accepted is the operator's and GPT's adjudication, not this reviewer's.
+
+**D0–D4-B2 reopen: NO.**
+
+## HANDOFF → GPT
+
+Adjudicate: (1) accept **`G1 PASS`** on the designated model `898307`, on the probe/realized agreement and the fail-closed client check rather than on HTTP 200; (2) accept F-G1-1, F-G1-2, F-G1-3, F-G1-4 and F-G1-6 as **adapter obligations** in the B3 Expected-Tax contract, with F-G1-6 stated as *the binding pins negotiation type 27, and ICMS agreement is not equivalence evidence*; (3) accept the four reopen triggers, in particular the model's **new dependence on a live customer record** (`142005`) introduced by satisfying `GRUPOAUTOR='L'`; (4) record out-of-state **PJ contribuinte DIFAL** as an explicit Unknown rather than closing it by analogy; (5) rule on whether B3 may now proceed to consolidation given that no `B3 CLOSURE GATE / OPEN` item remains. No authority file touched, no document created, no mutation, no configuration change and no external write by this reviewer; the model change was the operator's.
