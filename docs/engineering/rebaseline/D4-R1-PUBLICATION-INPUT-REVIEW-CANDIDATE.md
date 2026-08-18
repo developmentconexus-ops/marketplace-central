@@ -1,300 +1,290 @@
-# D4-R1 — Publication Input & Listing Authoring Contract — REVIEW CANDIDATE
+# D4-R1 — Publication Input & Listing Authoring Contract — REVISED REVIEW CANDIDATE
 
-> **Status:** NON-AUTHORITATIVE TARGETED-REOPEN REVIEW CANDIDATE  
+> **Status:** NON-AUTHORITATIVE TARGETED-REOPEN REVIEW CANDIDATE — revised after operator-approved Global Coherence direction  
 > **Stage:** targeted D4 reopen while D5-B2 remains NEXT / NOT YET OPENED  
 > **Parent authority:** accepted D0 → D4 + D5-B1  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
-> **Prepared at:** `8a01920786184d517767498c61084ca7908cf577` on `docs/global-methodology-alignment`  
-> **Purpose:** close a publication/input-contract gap discovered while deriving D5-B2. This file does not change D4/D5 authority, router status, ADR status or implementation permission.
+> **Prepared against:** `44d5d8b116a2dd11e2529be46406563ea9615380` on `docs/global-methodology-alignment`  
+> **Purpose:** close the publication/input seam discovered before D5-B2 without creating a second product architecture, duplicate authority, hidden PIM, generic integration framework or client-visible workflow choreography. This file does not change D4/D5 authority, router status, ADR status or implementation permission.
 
 ---
 
-## 1. Why D5-B2 stops here
+# 1. Why D5-B2 stops here
 
-D0 already requires a Product 1.0 actor to take an eligible source Product through channel readiness and **creation/publication → real channel observation**.
+D0 already requires Product 1.0 to take an eligible source Product through readiness and **creation/publication → real channel observation**.
 
-D1 already says:
+Accepted authority already establishes:
 
-- Product master remains external;
+- Product master remains external and source-qualified;
 - Product & Channel Readiness owns Product↔channel correspondence, channel requirements and supported/missing/conflicting/readiness meaning;
-- Marketplace Offering Operations owns marketplace offer/listing representation and lifecycle, Listing Intent, Price Intent and convergence;
-- Availability owns Sellable Availability and Availability Intent;
-- adapters own provider protocol, never business authority.
+- Marketplace Offering Operations owns offer/listing representation and lifecycle, Listing Intent, Price Intent and convergence;
+- Availability Control owns Sellable Availability and Availability Intent;
+- provider/business-system adapters own protocol, never business authority;
+- durable Listing Intent already has an owner-local MPC identity;
+- external Listing remains source-qualified provider identity;
+- D5-B1 requires a semantic Product API and forbids provider DTO/resource ontology as the client contract.
 
-D2 already says:
+What is not yet canonically decided is how external Product facts, provider publication requirements and MPC-authored channel values combine into one explainable Listing Intent without creating another Product master or a second desired-listing authority.
 
-- Product is `SourceInstance + native Product key`;
-- provider Listing/Variation is external source-qualified identity;
-- durable Listing/Price Intents may have owner-local MPC identity;
-- no MPC Product mirror exists merely for normalization.
-
-D4 already says:
-
-- consumer owns meaning; adapter owns protocol;
-- provider category/catalog/User Product/etc. topology stays provider-local;
-- Offering owns Listing Intent/convergence;
-- provider-specific evidence may survive only as source-qualified evidence serving a named consumer/correctness property.
-
-What is **not** yet decided is the contract between an external Product source and a publishable Listing Intent:
-
-- which publication inputs come from an external source such as Sankhya;
-- which values may be authored/overridden inside MPC;
-- how images/media enter when sourced externally or authored/uploaded in MPC;
-- how category/product-type and changing provider requirements are represented;
-- how source values, explicit overrides and unknowns coexist without one silently replacing another;
-- how external systems push source observations into MPC;
-- how a built-in Sankhya adapter and an external push integration share one semantic ingestion path without self-HTTP duplication;
-- what exact resolved snapshot a Listing Intent freezes before provider publication;
-- how an adapter receives enough provider-specific requirement resolution to publish without becoming the authority that selects truth;
-- how later source enrichment can replace temporary manual authoring deliberately rather than by accidental last-write-wins.
-
-D5-B2 cannot safely freeze `ListingRequirements`, `ListingIntent` request shapes or external input APIs until this seam is decided.
+D5-B2 cannot safely freeze Listing requirements, Listing Intent authoring operations or input-integration surfaces until this seam is closed.
 
 ---
 
-# 2. Decision question
+# 2. Global Coherence review correction
 
-> **What is the smallest sustainable contract that lets MPC create/edit marketplace publications when Product data may come from Sankhya or another external source, may temporarily be completed by humans/automation through MPC, and must ultimately be translated into provider-specific publication requirements without creating an MPC Product Master, generic PIM, raw provider-field bag or duplicate authority?**
+A whole-product review was performed before this candidate proceeds to independent review.
 
-The contract must support all of these present/future facts without changing product identity:
+Result:
 
-1. today, some source Product information is still incomplete or under human review;
-2. an operator or automation Principal may need to complete publication data directly in MPC so publication can proceed;
-3. Claude Code/Codex/Fable-style automation may legitimately call MPC APIs to author those MPC-owned publication inputs;
-4. Sankhya is expected to become the dominant Product source over time, including e-commerce/product presentation data and images where available;
-5. MPC may later consume source Product observations through a built-in adapter, an external connector, or a push integration;
-6. each marketplace retains materially different and changing publication requirements;
-7. provider protocol/resources must remain adapter-local.
+> **D0→D5-B1 remains globally coherent. The material correction is local to this candidate: do not create `Channel Publication Preparation` as a new durable aggregate owned by Readiness. Reuse the already accepted Offering-owned `ListingIntent` as the single authoring/draft identity for both creation and editing.**
+
+This removes a potential authority overlap:
+
+```text
+INVALID DIRECTION
+
+Readiness-owned mutable Publication Preparation
+        +
+Offering-owned desired Listing representation / ListingIntent
+```
+
+and replaces it with:
+
+```text
+Readiness
+  owns requirements / correspondence / source candidates / sufficiency
+        ↓ Q
+Offering
+  owns ListingIntent draft / desired listing representation / lifecycle
+        ↓
+D4 adapter
+  owns provider serialization only
+```
+
+The same model handles creation and later editing; no separate publication-draft architecture is introduced.
+
+A second coherence correction also applies:
+
+> **Do not introduce a generic `SourceProductObservation` business owner/service. External source acquisition is D4 mechanism/evidence. One source acquisition may feed multiple consumer-owned semantic ports; no component owns the source Product payload as a whole.**
 
 ---
 
-# 3. Evidence classification
+# 3. Decision question
 
-## 3.1 KNOWN from repository authority
+> **What is the smallest sustainable contract that lets MPC create and edit marketplace listings when Product facts may come from Sankhya or another external source, missing channel values may temporarily be authored by humans/automation in MPC, and provider-specific requirements must be satisfied without creating an MPC Product Master, generic PIM, provider-field bag, second listing-draft authority or generic integration platform?**
 
-1. Product 1.0 requires actual marketplace creation/publication, not read-only listing observation.
-2. MPC is not an ERP replacement or generic integration hub.
-3. Product master remains externally authoritative and source-qualified; no MPC Product Master/PIM domain exists.
-4. Readiness owns Product↔channel correspondence, provider/channel requirements and readiness conclusion.
-5. Offering owns listing representation/lifecycle, Listing Intent and convergence.
-6. Availability owns Sellable Availability; Offering may not absorb stock authority merely because a provider publication payload happens to carry quantity.
-7. Price Intent is Offering-owned; Economics informs but never writes marketplace price.
-8. Provider DTO/category/catalog/User Product/warehouse topology never becomes MPC ontology by normalization.
-9. Externally authoritative facts preserve source qualification/provenance/knowledge state.
-10. A valid consequential intent preserves decision-time evidence/provenance sufficiently for later explanation.
-11. D5-B1 fixes a semantic Product API, separate provider/business-system protocol ingress, source-qualified external identity, fail-closed consequential idempotency and one machine-readable Product API wire authority.
-12. D5-B1 refused a speculative third technical/admin surface but explicitly left room for one later when a real concrete consumer proves it.
-13. Current D5-B2 candidate is non-authoritative and may be revised without compatibility cost.
+The solution must support:
 
-## 3.2 External benchmark evidence — non-authoritative
+1. current incomplete source Product data;
+2. operator/automation completion through MPC;
+3. future Sankhya-dominant source enrichment, including presentation/media where available;
+4. built-in source adapters and later external connectors;
+5. provider requirement/schema churn;
+6. creation and editing through one consistent model;
+7. Mercado Livre first without making its resource topology MPC ontology;
+8. future second marketplace/business system without redesigning Product identity or owner boundaries.
 
-Current official/provider/reference research supports these structural observations:
+---
+
+# 4. Evidence classification
+
+## 4.1 KNOWN from repository authority
+
+1. Product 1.0 requires real creation/publication, not read-only observation.
+2. Product master remains externally authoritative; MPC has no Product/PIM/MDM domain.
+3. Product identity is `SourceInstance + native Product key`.
+4. Provider Listing/Variation remains external source-qualified identity.
+5. Readiness owns correspondence, channel requirements and readiness conclusion.
+6. Offering owns listing representation/lifecycle, Listing Intent, Price Intent and convergence.
+7. Availability owns Sellable Availability and Availability Intent.
+8. Economics owns pricing/economic interpretation; it never writes marketplace price.
+9. D4 adapters own provider protocol/DTO/resource selection and capability evidence.
+10. D4 final coherence already forbids one consumer or D4 from owning a provider payload/resource wholesale.
+11. A material Listing Intent may have durable owner-local identity and must remain historically explainable.
+12. D5-B1 permits owner-specific operations, source-qualified external identity, honest knowledge/freshness, fail-closed consequential idempotency and hard cutover.
+13. D5-B2 remains non-authoritative and frozen.
+
+## 4.2 Current external benchmark evidence — non-authoritative
 
 ### Mercado Livre
 
-- current User Products change publication structure materially compared with the legacy Item/Variation model;
-- product/family attributes and item sales conditions are no longer one stable flat listing shape;
-- current documentation states that some User Product fields are inherited/generated and must not be sent in the same way as legacy publication;
-- category technical-specification surfaces expose required attributes that can change by category/context;
-- edits to shared User Product characteristics may propagate across related items asynchronously;
-- stock topology may require User Product/location-specific endpoints rather than a universal item quantity field.
+Current official documentation shows the publication model is transitioning to User Products. In current User Product flows:
 
-Primary sources:
+- fields that were historically Item fields may be generated/inherited from User Product;
+- `title`, attributes, pictures, domain/catalog and availability behavior are not one stable flat payload;
+- shared characteristic changes may propagate asynchronously across related Items;
+- required/conditional attributes depend on category/context;
+- stock semantics differ by current resource/model and cannot be assumed to be one universal Listing field.
 
+Primary references:
+
+- https://developers.mercadolivre.com.br/pt-br/publicacao-de-produtos
 - https://developers.mercadolivre.com.br/pt_br/publicacao-de-produtos/user-products
-- https://developers.mercadolivre.com.br/pt_br/api-docs-pt-br/atributos
-- https://developers.mercadolivre.com.br/pt_br/autenticacao-e-autorizacao/gestao-de-estoque-multiorigem-user-products
+- https://developers.mercadolivre.com.br/pt_br/tutorial-tipos-de-publicacao-y-atualizacao-de-artigos/preco-variacao
 
 ### Amazon SP-API
 
-- Product Type Definitions returns marketplace/product-type-specific JSON Schema, including required/conditional attributes and a version;
-- product facts and sales terms can be requested separately (`LISTING_PRODUCT_ONLY`, `LISTING_OFFER_ONLY`) or together;
-- Listings Items uses the resulting schema for create/update and can represent issues/attributes/offers/fulfillment availability;
-- listing requirements/enumerations change over time, so static provider-field assumptions are unsafe.
+Current official documentation shows:
 
-Primary sources:
+- Product Type Definitions returns product-type/marketplace-specific JSON Schema and constraints;
+- Listings Items supports requirement modes including `LISTING`, `LISTING_PRODUCT_ONLY`, and `LISTING_OFFER_ONLY`;
+- product-only and offer-only workflows can differ;
+- attributes/enumerations change over time, so requirement/schema identity and historical context are materially useful.
 
-- https://developer-docs.amazon.com/sp-api/lang-en_EN/docs/manage-product-listings-guide
+Primary references:
+
 - https://developer-docs.amazon.com/sp-api/lang-en_EN/docs/building-listings-management-workflows-guide
+- https://developer-docs.amazon.com/sp-api/lang-en_EN/reference/putlistingsitem
+- https://developer-docs.amazon.com/sp-api/changelog/update-january-updates-to-listing-attribute-usage-and-enumeration-values-1
 
 ### Mirakl
 
-- catalog configuration distinguishes standard fields from channel-specific custom offer attributes;
-- channel connectors import channel catalog/taxonomy configuration;
-- synchronization distinguishes Product, Offer and Price/Stock upsert flows;
-- connectors report integration feedback after channel processing.
+Current official documentation distinguishes Product, Offer and Price/Stock flows and lets channel catalog configuration expose offer/channel-specific fields. This supports keeping provider topology in the adapter rather than forcing Product, offer, price and stock into one MPC aggregate.
 
-Primary sources:
+Primary references:
 
-- https://developer.mirakl.com/content/product/connect-channel-platform/developer-guide/catalog-configuration
 - https://developer.mirakl.com/content/product/connect-channel-platform/developer-guide/catalog-flow
+- https://developer.mirakl.com/content/product/connect-channel-platform/developer-guide/catalog-configuration
 
 ### Google Merchant Center
 
-- primary and supplemental product data sources are explicitly distinct;
-- supplemental sources may enrich/override missing or channel-specific information and can be supplied through API/file/Sheets;
-- attribute rules make source precedence explicit rather than relying on accidental write order.
+Primary and supplemental product data sources plus attribute rules demonstrate a real need for explicit source precedence/enrichment. MPC uses this only as evidence that precedence must be explicit; it does not copy Google's rule engine.
 
-Primary sources:
+Primary references:
 
 - https://support.google.com/merchants/answer/14990942
 - https://support.google.com/merchants/answer/14994083
 
-### Hub/operations benchmarks
+### PIM/hub anti-model evidence
 
-ANYMARKET, Channable and Linnworks demonstrate the real operational need for channel attribute mapping/configuration and manual/source enrichment, but they also demonstrate the risk of letting a marketplace hub become a broad Product/PIM master. MPC uses them only as competitive/operational evidence, not target authority.
+Akeneo/ANymarket-class systems legitimately centralize Product/catalog attributes because Product/PIM is part of their product authority. MPC has explicitly rejected that authority. Their existence validates the operational need for channel mapping without justifying a duplicate Product master inside MPC.
 
-### Sankhya / JET evidence
+## 4.3 INFERRED
 
-- Sankhya currently documents Product image retrieval for external applications through a Gateway/legacy image endpoint;
-- JET is an official Sankhya e-commerce partner advertised with Sankhya integration and broad marketplace connectivity;
-- exact JET internal synchronization semantics are not treated as authority here.
+1. A fixed universal `MPCListingDTO` is structurally unstable.
+2. A generic provider `attributes`/`extensions`/`map[string]any` bag only renames DTO leakage.
+3. Source truth and MPC-authored listing values require different provenance/authority.
+4. ListingIntent is the smallest existing identity that can carry mutable authoring before submission and an immutable decision-time snapshot afterward.
+5. Readiness can supply requirements/source candidates without owning desired Listing representation.
+6. Source acquisition should reuse adapter/translation mechanics, not create a business owner for the external Product payload.
+7. Embedded adapters do not need loopback HTTP; external connectors can use an ingress transport later while reaching the same D4/consumer boundaries.
+8. Baseline source resolution needs only explicit source following and explicit override; a transformation/rules engine is not yet required.
 
-Primary sources:
+## 4.4 UNKNOWN
 
-- https://ajuda.sankhya.com.br/hc/pt-br/articles/36396748479383-Obten%C3%A7%C3%A3o-de-Imagens-de-Produtos-via-API
-- https://www.sankhya.com.br/gestao-de-negocios/parceiros-sankhya-erp/encontre-um-parceiro/jet-e-commerce/
+- exact first selected Mercado Livre create/edit User Product flow;
+- whether the selected first ML publication can establish representation without simultaneously consuming Availability-owned quantity;
+- exact request/response fields of ListingIntent authoring operations — D5;
+- exact media storage/processing — D7;
+- exact source connector HTTP contract when a real external connector is admitted — D5/D7;
+- whether repeated mappings later justify a reusable transformation primitive;
+- exact provider-specific requirement fields retained by each Readiness-owned contract;
+- exact ListingIntent lifecycle/status names and persistence schema — later D5/D7.
 
-## 3.3 INFERRED
-
-1. A fixed universal `MPCListingDTO` containing every marketplace field is structurally unstable.
-2. A generic `map[string]any`/`extensions` field only hides provider DTO leakage rather than solving it.
-3. A single API that accepts both source facts and MPC-authored overrides would blur authority/provenance.
-4. Built-in pull adapters and external push connectors should converge on one semantic ingestion use case/port, but they need not use the same physical transport.
-5. A built-in Sankhya adapter calling MPC's own public HTTP API merely to reach an in-process use case adds accidental self-HTTP unless deployment separation requires it.
-6. Temporary manual/agent publication authoring and future source-driven publication can coexist sustainably if each resolved value preserves its origin and selected resolution mode.
-7. Provider requirement schemas/descriptors must be version/provenance aware enough that a Listing Intent can explain what requirements it satisfied at decision time.
-8. The current D1 boundary set may be sufficient if mutable **Channel Publication Preparation** is treated as Readiness-owned requirement-resolution/preparation state rather than live Listing representation; independent review must attack this boundary carefully.
-
-## 3.4 UNKNOWN
-
-- exact current Mercado Livre create/edit payload for every User Product branch the first real lane may encounter;
-- whether the first selected Mercado Livre creation path can always create a non-sellable/product-only representation before Availability convergence;
-- exact persisted representation/identity, if any, for Channel Publication Preparation;
-- exact media/blob storage/caching realization;
-- exact generic semantic fields, if any, that deserve promotion across multiple providers;
-- whether reusable cross-product Source→Requirement mappings are needed now or only after repeated manual resolution proves the abstraction;
-- exact Source Ingestion HTTP schema/auth/batch shape — D5/D7 after semantic contract;
-- exact API operation names/paths — D5;
-- exact UI/editor — D6;
-- runtime scheduling/polling/checkpoint/media cache — D7.
-
-Unknown stays Unknown.
+Unknown remains Unknown.
 
 ---
 
-# 4. Root cause
+# 5. Root cause
 
-D4 currently begins publication too late.
+D4 currently begins listing publication too late.
 
-It knows provider requirements/protocol and external effect semantics, while D1/D2 know Product identity, readiness and Listing Intent ownership, but no accepted contract explicitly says how source Product observations and temporary MPC-authored publication values become a provider-valid, historically explainable publication input.
+It defines provider protocol/effect semantics, while D1/D2 define Product identity, Readiness and ListingIntent ownership, but the authority path does not yet say how source facts and authored channel values become a provider-valid ListingIntent.
 
-That gap allows several defect classes:
+Without a contract, these defects remain reachable:
 
-- adapter becomes de facto truth selector (`if Sankhya field empty, invent/default/use UI value`);
-- manual authoring silently overwrites source truth or vice versa;
-- source outage/unknown becomes empty publication data;
-- provider requirement IDs/constraints leak into a generic core field bag;
-- MPC grows a duplicate Product Master/PIM by convenience;
-- source-to-provider mapping becomes scattered across adapters/UI/scripts;
-- Listing Intent cannot explain which requirement/version/value provenance it used;
-- later Sankhya enrichment cannot safely supersede temporary overrides;
-- agents/scripts bypass semantic authority by writing database/provider payloads directly;
-- built-in and external connectors implement different business rules.
+- adapter selects truth by convenience;
+- UI/script chooses fallback precedence implicitly;
+- manual data masquerades as Sankhya truth;
+- source change silently overwrites deliberate channel authoring;
+- source outage/unknown becomes empty/default listing data;
+- provider requirement fields leak into a universal core DTO;
+- Readiness grows into a hidden desired-listing owner;
+- MPC grows a hidden PIM;
+- external connector and embedded adapter implement different business rules;
+- ListingIntent cannot explain the source/override/requirements used by the attempted publication;
+- creation and editing acquire different architectures.
 
 ---
 
-# 5. Target invariant
+# 6. Target invariant
 
-> **Source Product truth, MPC publication authoring, provider requirement evidence, Listing Intent and external Listing state remain distinct authorities. Every material provider publication input is resolved under an accepted MPC owner before protocol serialization; the adapter translates the resolved meaning but never chooses which source/override is true.**
+> **External Product truth, Readiness requirement/sufficiency meaning, Offering-owned ListingIntent authoring, provider requirement evidence and external Listing state remain distinct. Every material publication value is selected under an accepted MPC owner before provider serialization; the adapter translates but never chooses business truth.**
 
 Corollaries:
 
-1. Source observation never becomes MPC-owned merely because it is persisted.
-2. An MPC-authored override never masquerades as a Sankhya/source observation.
-3. Provider requirement metadata never becomes universal Product ontology by existence alone.
-4. A missing source value remains missing/unknown unless an explicit MPC-owned authored value legitimately supplies that publication requirement.
+1. Source observation stays external evidence.
+2. Readiness owns requirement applicability/sufficiency, not desired Listing representation.
+3. ListingIntent is the single MPC-owned listing-authoring/draft identity for create/edit actions.
+4. An authored override never masquerades as source truth.
 5. No implicit last-write-wins across source and authored values.
-6. Provider-specific requirement resolution may remain source-qualified without raw DTO mirroring.
-7. Listing Intent freezes enough resolved input + requirement/provenance context to explain the attempted publication later.
-8. Price, Availability, Fulfillment and other accepted owners do not lose authority merely because a provider combines their data in one wire request.
-9. Built-in adapters, external connectors and agent/API authoring use the same accepted semantic use cases even when physical transports differ.
-10. Current implementation convenience never creates a second source of business truth.
+6. Missing/unknown source remains missing/unknown unless a legitimate explicit override satisfies the listing requirement.
+7. Provider requirement metadata is source-qualified evidence, not Product ontology.
+8. ListingIntent freezes enough resolved values + requirement/provenance context at consequential submission to explain the action later.
+9. Price, Availability and Fulfillment retain their accepted authorities even if the provider combines their values in one wire request.
+10. Source acquisition mechanism never becomes a Product/domain owner.
+11. Creation and editing use the same Offering-owned intent model.
+12. Agent automation uses the same Product API authority path as other MPC clients; no AI backdoor exists.
 
 ---
 
-# 6. Credible alternatives
-
-## A — Sankhya-only Product source; no MPC authoring
-
-Wait until every e-commerce/product field is complete in Sankhya and only then publish.
-
-**Rejected.** It blocks a present Product 1.0 operating need and makes an external data-completion process a hidden launch dependency. It also provides no legitimate path for temporary operator/agent completion.
-
-## B — MPC becomes Product/PIM master
-
-Import Product records from Sankhya, own title/description/images/attributes centrally, then let every marketplace adapter select fields from that master.
-
-**Rejected.** Contradicts D1/D2 Product authority and duplicates the external master. It is a Local Maximum resembling marketplace hubs/PIMs rather than MPC's accepted control-plane boundary.
-
-## C — Generic provider field bag on Product or ListingIntent
-
-Store arbitrary provider field names/JSON under `attributes`, `extensions` or `provider_payload` and let adapters interpret them.
-
-**Rejected.** Provider protocol becomes domain state by renaming; no clear authority, schema evolution, provenance or validation boundary exists.
-
-## D — Every built-in adapter must call MPC's public HTTP Source API
-
-Sankhya pull adapter fetches Sankhya, then loops back through the external HTTP API even when running inside the same application boundary.
-
-**Rejected as baseline.** It preserves one wire path at the cost of accidental network coupling, auth duplication and self-HTTP. If a connector is physically external, HTTP is appropriate; an embedded adapter should call the same semantic application port/use case directly.
-
-## E — Separate source ingestion + MPC authoring over one semantic core
-
-- external source facts enter through a source-qualified ingestion contract;
-- operator/agent authored values enter through Product API capabilities owned by the appropriate MPC domain;
-- built-in pull adapters and external push connectors converge on the same source-observation application use case;
-- Readiness maintains publication requirement/preparation semantics without becoming Product Master or live Listing owner;
-- Offering freezes a resolved publication snapshot into Listing Intent and owns external Listing convergence;
-- D4 adapter serializes provider protocol only.
-
-**Recommended Global Maximum.** Smallest structure that supports today + the stated Sankhya-dominant future without duplicate authority or generic PIM machinery.
-
----
-
-# 7. Four semantic planes
-
-## 7.1 Plane A — Source Product Observation
-
-Authority: external SourceInstance.
-
-Conceptual subject:
+# 7. Global architecture shape
 
 ```text
-Organization
-+ SourceInstance
-+ native Product key
+EXTERNAL PRODUCT SOURCES
+Sankhya / later source
+        ↓
+D4 source adapter / acquisition
+        ↓
+consumer-owned semantic facts / queries
+        │
+        ├───────────────┐
+        ▼               ▼
+READINESS            OTHER CONSUMERS
+requirements         Availability/Economics/etc.
+correspondence       only for their own meanings
+source candidates
+sufficiency
+        │
+        │ Q
+        ▼
+OFFERING — ListingIntent
+  draft authoring for create/edit
+  ├─ FOLLOW_SOURCE references
+  ├─ EXPLICIT_OVERRIDE values
+  ├─ selected media for listing representation
+  ├─ desired listing change
+  └─ requirement/provenance context
+        │
+        │ freeze / consequential intake
+        ▼
+Governance if required
+        │
+        ▼
+D4 MARKETPLACE ADAPTER
+        │ provider serialization/protocol
+        ▼
+MARKETPLACE
+        │ authoritative reread
+        ▼
+Offering convergence/divergence
 ```
 
-Observation may include only facts a concrete consumer actually needs, for example names/descriptions, brand/model, GTIN, physical dimensions/weight, source media references and existing e-commerce custom fields where the source legitimately owns/exposes them.
+No additional Product, PublicationPreparation, ProviderResource or generic workflow authority is introduced.
 
-Rules:
+---
 
-- source observation is qualified by SourceInstance + Product key;
-- acquisition/source time and provenance are preserved where material;
-- partial observation does not erase omitted facts;
-- explicit source-null/absence is distinct from field-not-observed;
-- unavailable acquisition never becomes empty Product data;
-- no synthetic MPC Product identity is created;
-- source-specific field names/protocol remain in the source adapter unless a consumer-owned semantic fact is actually needed.
+# 8. Readiness contract — requirements and sufficiency only
 
-This plane is external evidence, not MPC Product Master state.
+Readiness remains authority for:
 
-## 7.2 Plane B — Channel Publication Preparation
+- Product↔channel correspondence;
+- applicable channel/publication requirements;
+- source candidates/evidence relevant to those requirements;
+- missing/conflicting/unsupported state;
+- readiness/sufficiency conclusion.
 
-Leading owner: **Product & Channel Readiness**, subject to independent boundary challenge.
-
-Conceptual key:
+Conceptual subject remains:
 
 ```text
 Organization
@@ -302,581 +292,487 @@ Organization
 + SourceInstance-qualified Product
 ```
 
-Purpose:
+Readiness may query D4 through a **Readiness-owned publication-requirements port**.
 
-> hold the current preparation needed to answer whether this Product can be published/edited correctly in this channel context, including provider requirement resolution, missing/conflicting values and provenance.
+D4 adapter translates current provider/category/product-type requirements into only the semantics Readiness needs, proportionately including:
 
-This is not the live Listing and not external Product master.
+- requirement identity inside provider context;
+- required/recommended/optional/conditional applicability;
+- data kind/cardinality/options/constraints where materially needed;
+- editability/immutability when material;
+- provider schema/version/checksum/revision evidence when available;
+- acquisition/provenance/time.
 
-It may contain proportionately:
+This is not a generic Provider Requirement framework, registry or new business owner.
 
-- selected provider category/domain/product type reference;
-- provider requirement descriptor/version/checksum/provenance;
-- current resolution per admitted publication requirement;
-- current source candidate where available;
-- explicit MPC-authored override where legitimate;
-- unresolved/missing/conflicting requirement state;
-- media selection/order references needed for publication preparation;
-- readiness conclusion/reasons.
+Readiness MUST NOT own:
 
-It MUST NOT absorb:
-
-- Sellable Availability authority;
-- Price Intent/economic authority;
-- Fulfillment responsibility;
-- provider actual Listing state;
-- generic source Product lifecycle;
+- desired listing copy/text/media selection as a separate aggregate;
+- Listing lifecycle;
+- Price Intent;
+- Sellable Availability;
+- provider actual state;
 - arbitrary provider payloads;
-- universal PIM/category/attribute ontology.
-
-If review proves that this state is actually Offering-owned desired Listing representation rather than Readiness preparation, D1 must be targeted-reopened rather than silently redefining the boundary here.
-
-## 7.3 Plane C — Listing Intent publication snapshot
-
-Authority: Marketplace Offering Operations.
-
-A material create/edit/close publication action creates a Listing Intent containing or referencing an immutable decision-time snapshot sufficient to establish:
-
-- target Organization + Marketplace Installation;
-- source-qualified Product/correspondence;
-- selected provider category/product-type context when material;
-- resolved publication inputs that Offering is allowed to use;
-- provider requirement descriptor/version/provenance needed to explain validity;
-- Offering-owned desired lifecycle/commercial listing semantics;
-- applicable Price Intent/reference where the action requires it;
-- intended target scope/blast radius;
-- business disposition + authorization context lineage;
-- idempotency/correlation anchor;
-- resulting provider acceptance/convergence evidence later.
-
-The snapshot does not turn every source fact into MPC authority. It is historical decision context.
-
-## 7.4 Plane D — Provider execution / external Listing
-
-Authority split:
-
-- Offering owns Listing Intent, desired semantic action and convergence conclusion;
-- D4 adapter owns provider protocol/DTO/resource selection;
-- provider owns actual Listing/User Product/Catalog/etc. current state.
-
-Adapter receives only already-resolved semantic/provider-qualified inputs required by its publication contract.
-
-Adapter MUST NOT:
-
-- pick between competing source/manual values by convenience;
-- invent missing required values;
-- query arbitrary extra systems to fill semantic gaps secretly;
-- turn 2xx into convergence;
-- rewrite owner meaning to fit provider topology.
+- Product master lifecycle.
 
 ---
 
-# 8. Two input authorities, not one generic write API
+# 9. Offering contract — ListingIntent is the one authoring aggregate
 
-## 8.1 Source Ingestion contract — machine/source authority
+D2 already admits durable ListingIntent identity. B1 already allows owner-specific intent operations. This candidate reuses that existing concept instead of adding PublicationPreparation.
 
-This is a D4 source-integration boundary, not ordinary Product authoring.
+A ListingIntent may begin as an editable **draft** under Offering for one desired create/edit/close listing action.
 
-A source push or built-in pull path submits **Source Product Observations**.
+Conceptual subject/correlation includes:
 
-Minimum semantic obligations:
+```text
+Organization
++ Marketplace Installation
++ SourceInstance-qualified Product
++ existing source-qualified Listing where editing/closing an existing listing
+```
 
-- authenticated/configured Organization + SourceInstance binding;
-- source cannot choose another Organization merely in payload;
-- explicit native Product key;
-- observation/revision/occurrence discriminator sufficient for duplicate safety where needed;
-- source/observation time where available/material;
-- partial/full observation semantics explicit;
-- known/unknown/absent distinctions preserved;
-- media may be represented by source-qualified reference/fetch contract rather than copied blindly;
-- replay of the same observation does not create duplicate Product meaning;
-- no Business Intent/Listing creation is implied merely by source ingest.
+Exact path/addressing remains D5.
 
-### Physical entry modes
+The ListingIntent draft may carry only data whose meaning belongs to the desired listing representation/action, for example:
 
-The same semantic source-observation use case may be reached by:
+- target category/product-type selection where Offering must choose the intended listing representation context;
+- channel-facing content values needed by the provider;
+- media selection/order/role for the listing;
+- provider-qualified requirement resolutions used for this desired representation;
+- intended listing lifecycle action;
+- references to accepted owner-specific price/availability/fulfillment inputs only where the concrete provider publication contract requires them.
 
-1. **built-in pull adapter** — e.g. MPC Sankhya adapter reads sanctioned Sankhya APIs and calls the application ingestion port directly;
-2. **external push connector** — ERP/JET/other integration calls an MPC Source Ingestion HTTP contract;
-3. **bounded file/import adapter** — only if a real operational source requires it; file format is mechanism, not Product API ontology.
+It MUST NOT become Product master, Economics authority, Sellable Availability authority or Fulfillment authority.
 
-The first two are present evidence; a generic plugin framework is not introduced.
+### Creation and editing are one architecture
 
-## 8.2 Product authoring contract — MPC authority
+```text
+Create listing
+  → ListingIntent(target=no existing Listing)
 
-A human or automation Principal edits MPC-owned publication preparation/owner configuration through the Semantic Product API.
+Edit listing
+  → ListingIntent(target=existing source-qualified Listing)
+```
 
-Examples:
+Provider differences determine adapter protocol, not a second MPC authoring model.
 
-- supply a missing marketplace-specific description;
-- select/confirm category/product-type evidence;
-- resolve a required provider attribute not yet supplied by Sankhya;
-- select/reorder publication media;
-- explicitly override a source-derived publication value where business rules allow it;
-- clear an override later so the preparation follows the source again.
+---
+
+# 10. Publication value resolution — baseline only
+
+No generic rule/mapping DSL is admitted.
+
+For a publication value legitimately carried by ListingIntent, baseline resolution has only two modes.
+
+## `FOLLOW_SOURCE`
+
+The ListingIntent references one explicit source-qualified fact/candidate admitted by Readiness.
 
 Rules:
 
-- authenticated Principal/automation attribution is explicit;
-- ordinary Permission does not imply publication authorization;
-- authored values are MPC-owned preparation decisions, not source observations;
-- an automation Principal (Claude/Codex/Fable-style agent) uses the same Product API authority and audit path as another MPC client;
-- direct database writes/provider calls are not a legitimate authoring API;
-- consequential publish action still occurs only through Listing Intent/Governance/effect-safety semantics.
+- source identity/provenance is explicit;
+- current value follows the selected source fact until the intent is frozen/submitted;
+- source unavailable/unknown stays unavailable/unknown;
+- a source change triggers readiness/current-intent revalidation where material;
+- no silent fallback to a manual value.
 
----
+## `EXPLICIT_OVERRIDE`
 
-# 9. Source-following versus explicit override
-
-A global `last write wins` rule is rejected.
-
-For a publication requirement that Readiness legitimately owns resolving, the smallest baseline modes are:
-
-### `FOLLOW_SOURCE`
-
-The preparation resolves from one explicitly selected source-qualified fact/reference.
-
-- current value/provenance follows that source observation;
-- source change causes readiness/revalidation, not a hidden new manual value;
-- source unavailable/unknown remains unavailable/unknown;
-- no silent fallback to a stale/manual candidate unless an explicit rule admits it.
-
-### `EXPLICIT_OVERRIDE`
-
-The preparation uses an MPC-authored value for this channel context.
-
-- records effective Principal/automation + time/provenance;
-- does not mutate or falsify source Product truth;
-- survives later source updates until explicitly cleared/replaced;
-- source drift may be surfaced if materially relevant;
-- clearing the override may return the requirement to FOLLOW_SOURCE when a valid source binding exists.
-
-### `DERIVED` — admitted only when a named deterministic owner rule exists
-
-A derived value may be produced by a small accepted transformation whose owner and inputs are explicit.
-
-This does **not** authorize a generic expression/rules DSL.
-
-If no resolution exists, the requirement remains unresolved/unknown. There is no `DEFAULT_PLAUSIBLE` mode.
-
-### Future Sankhya takeover path
-
-Temporary authored values therefore do not create migration debt:
-
-```text
-Today:
-Sankhya fact missing
-  + EXPLICIT_OVERRIDE authored in MPC
-  -> publication can become ready
-
-Later:
-Sankhya begins supplying sufficient fact
-  -> source candidate becomes available
-  -> operator/automation deliberately clears override / selects FOLLOW_SOURCE
-  -> future preparation follows Sankhya
-```
-
-No mass migration from an MPC Product Master is required because none exists.
-
----
-
-# 10. Provider requirements are evidence, not universal fields
-
-D4 adapter acquires provider publication requirements for the concrete context.
-
-A **Provider Requirement Descriptor** may preserve as much as materially needed:
-
-- provider / Marketplace Installation / site or marketplace context;
-- category/domain/product type identity;
-- provider requirement identifier;
-- required/recommended/optional applicability;
-- data type/cardinality/allowed values/constraints/conditionality;
-- provider editability/immutability where material;
-- requirement/version/checksum/schema identity when exposed;
-- acquisition time/provenance;
-- provider ownership.
-
-Examples:
-
-- Mercado Livre category technical specs / User Product domain attributes;
-- Amazon Product Type Definition JSON Schema + productTypeVersion;
-- Mirakl category/offer custom-attribute configuration.
-
-The descriptor is source-qualified provider evidence. It is not a new universal `ProductAttribute` master.
-
-Readiness decides whether the requirement is sufficiently resolved for the Product/channel use. The adapter does not.
-
-### Semantic-core promotion test
-
-A provider field becomes a shared MPC semantic concept only after evidence proves:
-
-1. the meaning is genuinely provider-independent;
-2. at least one accepted owner needs that meaning independent of protocol;
-3. normalization reduces total complexity rather than hiding differentiated semantics.
-
-Otherwise it stays a provider-qualified requirement resolution.
-
----
-
-# 11. Media / images
-
-Images are explicitly part of this seam because current Sankhya and marketplace publication flows both expose them.
-
-Publication preparation may reference media from at least two legitimate origins:
-
-1. **source media** — e.g. a Sankhya Product image exposed by the SourceInstance adapter;
-2. **MPC-authored/uploaded publication media** — supplied by an authorized Principal/automation for the channel context.
+The ListingIntent contains an MPC-authored channel value.
 
 Rules:
 
-- source media provenance remains source-qualified;
-- MPC upload does not rewrite source Product media;
-- preparation owns selection/order/role only where that meaning is publication-specific;
-- a provider's image ID/thumbnail/CDN representation remains provider-local external state;
-- Listing Intent freezes the selected media set/provenance required to explain the attempted publication;
-- exact object/blob storage, hashing, resizing/cache/CDN and upload transport are D7/implementation decisions;
-- raw arbitrary external URLs are not automatically trusted publication media merely because the field is a string.
+- effective Principal/automation and time are recorded;
+- override never mutates or falsifies source Product truth;
+- source change does not silently replace the override;
+- source drift may make the draft stale/conflicting if Readiness/Offering semantics judge it material;
+- removing the override may return the draft to FOLLOW_SOURCE only through an explicit edit.
 
-This preserves a future in which most media follows Sankhya while allowing present publication before every source record is fully enriched.
+### No baseline `DERIVED`
 
----
+A generic derived/transformation mode is rejected for Product 1.0 baseline.
 
-# 12. Price, availability and fulfillment do not disappear into publication preparation
-
-Provider APIs may physically combine product content, price, quantity, shipping/fulfillment and offer conditions in one request. That does not merge MPC authorities.
-
-### Price
-
-Offering already owns Price Intent. Publication execution may correlate to a current Price Intent/Offering-owned price decision when the provider requires initial price, without moving pricing analysis to Readiness or adapter.
-
-### Availability
-
-Availability Control owns Sellable Availability and Availability Intent.
-
-Baseline preference:
-
-> use a provider publication path that can establish the product/listing representation without inventing sellable quantity, then let Availability converge through its own accepted path.
-
-Current Amazon evidence explicitly supports product-only listing submission distinct from offer terms. Current Mercado Livre User Products evidence separates/inherits stock differently from the legacy item model in some flows.
-
-However this is a **proof obligation, not a universal assumption**.
-
-If the selected first Mercado Livre publication effect materially cannot be performed without a simultaneous Availability-owned value and no existing accepted edge can supply it without authority distortion, STOP and targeted-reopen D1/D3. The adapter may not secretly query/decide Availability just because the provider payload requires it.
-
-### Fulfillment / shipping
-
-Provider-specific shipping/fulfillment requirements remain D4 evidence and the accepted owner retains semantic responsibility. Publication preparation may surface a requirement/dependency without absorbing Fulfillment authority.
+If repeated concrete cases later prove a deterministic owner-specific transformation materially reduces total complexity, admit the smallest explicit transformation with a named owner and proof. Do not prebuild feed rules, expression DSL, mapping engine or formula language.
 
 ---
 
-# 13. Built-in adapter versus external API — decided direction
+# 11. Source acquisition / integration ingress
 
-## Embedded/built-in adapter
+Source acquisition remains D4 mechanism/evidence, not a new Product domain.
 
-Example: target Sankhya adapter inside MPC.
+## Embedded source adapter
 
-```text
-Sankhya API Gateway
-    ↓ D4 Sankhya adapter
-Source Product Observation use case / port
-    ↓
-consumer-owned source observations
-```
-
-No mandatory loopback HTTP.
-
-## External connector
-
-Example: a separately deployed JET/ERP connector or future partner integration.
+Example: Sankhya adapter inside MPC.
 
 ```text
-External source/connector
-    ↓ authenticated MPC Source Ingestion HTTP contract
-HTTP inbound adapter
+Sankhya sanctioned API
     ↓
-SAME Source Product Observation use case / port
+D4 Sankhya adapter
+    ↓
+consumer-owned semantic ports / D4 acquisition translation
 ```
+
+No mandatory self-HTTP loopback.
+
+## Future external connector
+
+A separately deployed connector may enter through a bounded Integration Ingress HTTP adapter when a concrete consumer requires it.
+
+```text
+external connector
+    ↓ authenticated source-specific/bounded ingress
+D4 HTTP inbound adapter
+    ↓ same translation/admission logic
+consumer-owned semantic ports
+```
+
+This candidate prepares the seam but **does not freeze or require a generic Source Ingestion HTTP API now**.
+
+When the first real external connector is admitted, D5 may define the smallest contract necessary for that source class, preserving:
+
+- Organization + SourceInstance binding;
+- native Product identity;
+- observation provenance/time/revision where material;
+- partial/full/absent semantics;
+- replay/duplicate safety;
+- no ability to impersonate MPC-authored ListingIntent values.
+
+No generic `/entities`, `/resources`, plugin registry or connector platform is introduced.
 
 ## Agent/manual authoring
 
+Claude/Codex/Fable-style automation is a D2 automation Principal and uses the **Semantic Product API** to edit Offering-owned ListingIntent drafts. It does not use Integration Ingress and cannot claim a value came from Sankhya.
+
+---
+
+# 12. Media/images
+
+Media participates in listing authoring without creating Product media authority.
+
+Possible origins:
+
+- source-qualified Product media from Sankhya/another external source;
+- MPC-authored/uploaded media for this listing context.
+
+Rules:
+
+- source media remains source evidence;
+- MPC-uploaded media never rewrites the source Product;
+- ListingIntent owns only the listing-specific selection/order/role desired for publication;
+- provider image IDs/CDN/resource topology remains provider-local;
+- the consequential ListingIntent snapshot preserves enough media/provenance to explain what was attempted;
+- blob/object storage, hashing, resizing, caching/CDN and upload mechanics remain D7/implementation;
+- arbitrary external URL strings are not automatically trusted media.
+
+No `ProductAsset`/`AssetFamily`/PIM media hierarchy is introduced without new evidence.
+
+---
+
+# 13. Consequential snapshot / history
+
+Before provider dispatch, the material ListingIntent becomes immutable enough to explain the attempted action.
+
+The historical snapshot preserves, proportionately:
+
+- intent identity/action/target scope;
+- source-qualified Product + Installation + target Listing when applicable;
+- exact desired listing values;
+- per-value resolution source (`FOLLOW_SOURCE` reference or `EXPLICIT_OVERRIDE` + Principal provenance);
+- provider requirement/schema revision/provenance materially used by readiness/validation;
+- media selection/provenance;
+- decision-time readiness/disposition/authorization references;
+- correlation to provider attempt/result/convergence.
+
+This does not convert source facts into MPC current authority. It is decision/action history.
+
+Exact snapshot/reference persistence strategy remains D2/D7 realization as long as historical explanation survives later source/provider changes.
+
+---
+
+# 14. Price, Availability and Fulfillment authority fence
+
+A provider may physically combine content, price, quantity and fulfillment in one request. That does not merge MPC owners.
+
+## Price
+
+Offering already owns Price Intent. Listing creation may correlate to a valid current Price Intent when the provider requires initial price. Economics informs; adapter does not calculate/choose price.
+
+## Availability
+
+Availability owns Sellable Availability and Availability Intent.
+
+Preferred shape:
+
 ```text
-Claude/Codex/operator
-    ↓ Semantic Product API
-Principal-authenticated Product API adapter
-    ↓
-Readiness/Offering owner use case
+Listing representation can be established without inventing Sellable Availability
+        ↓
+Availability observes Offering target
+        ↓
+Availability converges through its own owner path
 ```
 
-The three paths share semantic core/use cases but preserve different authority/provenance.
+But this is **not yet assumed true for the selected first Mercado Livre creation lane**.
 
-> **Reuse the use case/port, not necessarily the network hop.**
+### OPEN GATE — R1-G1: Mercado Livre initial publication × Availability
 
-This is ports/adapters applied to input as well as marketplace output.
+Before D4-R1 can be ratified, establish from current official/real non-destructive evidence whether the selected current Mercado Livre User Product publication lane can create the required representation without an Offering/Readiness-owned fabricated quantity.
 
----
+Acceptable closure:
 
-# 14. Why one universal inbound API is rejected
+**PASS-A — separate progression works**
 
-A tempting API shape would be:
+- selected creation path establishes representation/product/offer without requiring Offering to own Sellable Availability;
+- Availability can converge afterward through its accepted path.
 
-```text
-POST /products/{id}/fields
-{
-  "title": "...",
-  "images": [...],
-  "attributes": {...},
-  "source": "sankhya|manual|agent"
-}
-```
+**PASS-B — provider physically requires quantity but existing authority can supply it without semantic distortion**
 
-Rejected because:
+- the exact accepted owner dependency is already legal under D1/D3 and adapter only composes an already-authoritative Availability meaning.
 
-- creates a synthetic MPC Product authority;
-- lets callers self-declare source authority;
-- mixes observation and authoring semantics;
-- invites arbitrary provider field bags;
-- makes source precedence a payload convention;
-- obscures Organization/SourceInstance/channel scope;
-- cannot preserve D1 ownership of price/availability/etc.;
-- makes later Sankhya migration a conflict-resolution project.
+**FAIL / REOPEN**
 
-The target separates **source observation** from **publication authoring** structurally.
+- selected initial publication semantically requires a new `Availability → Offering` or other cross-owner dependency absent from D1/D3;
+- correctness requires Offering/Readiness to own quantity;
+- provider contract forces atomic cross-owner semantics not representable by current boundaries.
+
+In FAIL, reopen only implicated D1/D3 decisions before D5-B2 resumes.
+
+No live marketplace write is authorized by this gate. Use current official docs, read-only evidence, sandbox/protocol validation or another non-destructive proof unless the operator separately authorizes a live effect.
+
+## Fulfillment
+
+Provider shipping/fulfillment requirements remain D4 evidence and Fulfillment retains business responsibility. ListingIntent may reference a Fulfillment-owned semantic input if the concrete provider contract requires it; it does not absorb Fulfillment policy/state.
 
 ---
 
-# 15. API implications for D5 — not final routes yet
+# 15. Provider execution / convergence
 
-If this candidate survives review/ratification, D5 must recognize at least these external surface classes:
+Offering owns ListingIntent and convergence conclusion.
 
-1. **Semantic Product API** — ordinary MPC clients/agents; Organization path scope; Principal-authenticated; owner-specific authoring/operations.
-2. **Source Ingestion API** — machine-to-machine integration surface for SourceInstance-qualified observations; not normal Product SDK semantics and not Principal-authored business overrides.
-3. **Provider/business-system protocol ingress** — OAuth callbacks/webhooks/notifications/provider protocol as already accepted by D5-B1/D4.
+D4 marketplace adapter receives already resolved/authorized inputs and owns:
 
-A separate source-ingestion surface is now backed by a real named consumer: Sankhya/external source synchronization and future external connectors. Therefore it is no longer speculative technical taxonomy.
+- exact provider endpoint/resource choice;
+- DTO serialization;
+- provider auth/protocol;
+- provider-specific prerequisite translation;
+- response interpretation no stronger than evidence;
+- authoritative reread/reconciliation surfaces.
 
-D5 later decides exact HTTP paths, auth mechanism, schemas, batch/pagination and generation packaging.
+Adapter MUST NOT:
 
-The built-in Sankhya adapter need not consume the HTTP Source Ingestion surface merely because external connectors do; both consume the same semantic application contract.
+- choose between competing source/override values;
+- invent missing required values;
+- query hidden systems to fabricate semantic readiness;
+- copy provider DTOs into a generic Listing model;
+- turn transport 2xx into convergence;
+- widen intended/authorized scope because provider resources are shared;
+- recalculate Price/Sellable Availability/Fulfillment meaning.
 
----
-
-# 16. Legacy/current API implications
-
-The following current shapes are evidence, not target publication architecture:
-
-- `/catalog/products*` — cannot become MPC Product Master;
-- ERP/XLSX import routes — source-ingestion mechanism only if still needed;
-- provider category/attribute routes — requirement evidence, not universal Product API taxonomy;
-- `/product-links/*/generations` — candidate-generation mechanism, not user-owned Product master;
-- generic `/mutations` — still rejected;
-- direct provider payload creation/update routes — rejected as Product API ontology;
-- manual database/scripts that fill publication/provider fields — replaced by owner API/Source Ingestion semantics.
-
-Useful requirements from current code may be rehomed; route/module shape is not preserved.
+Provider actual Listing/User Product/Catalog/etc. remains external authority.
 
 ---
 
-# 17. Authority / reopen analysis
+# 16. Credible alternatives
 
-## D0
+## A — Sankhya-only, no MPC authoring
 
-**No reopen currently required.** Creation/publication and operational source flexibility are already inside the accepted Product 1.0 mission.
+Rejected. Current product can need publication before all source e-commerce fields are complete; it also creates a hidden source-data-completion launch gate.
 
-## D1
+## B — MPC Product/PIM master
 
-**No reopen presumed. Boundary challenge required.**
+Rejected. Duplicates external Product authority and drifts toward Akeneo/commerce-hub semantics outside D0/D1.
 
-Leading interpretation:
+## C — generic provider field bag
 
-- Readiness owns mutable Channel Publication Preparation because it is requirement-resolution/readiness state for `Product + Installation`, not live Listing representation;
-- Offering owns Listing Intent, actual listing representation/lifecycle and convergence.
+Rejected. Hides provider DTO leakage and destroys authority/provenance/type evolution.
 
-Reopen D1 only if independent review/concrete provider proof shows one of:
+## D — Readiness-owned PublicationPreparation aggregate + Offering ListingIntent
 
-- publication authoring itself has an independent lifecycle/authority not safely owned by Readiness or Offering;
-- Readiness would become de facto Listing representation authority;
-- Offering needs a new semantic dependency absent from the accepted edge set;
-- Availability/Fulfillment must become part of initial publication in a way no accepted edge can supply.
+Rejected by Global Coherence. Two adjacent desired-publication authorities and creation/edit drift are foreseeable.
 
-## D2
+## E — generic SourceProductObservation service/domain
 
-**No reopen presumed.**
+Rejected. D4/source acquisition mechanism would acquire ownership of a payload that may feed multiple consumer-owned semantics; conflicts with D4 final coherence.
 
-- external Product identity already exists;
-- Listing Intent identity already exists;
-- Channel Publication Preparation can initially be relationship-scoped without inventing a new canonical Product/Draft identity;
-- Listing Intent can freeze historical preparation values/provenance.
+## F — every embedded adapter calls public HTTP ingress
 
-Reopen D2 only if correctness proves a new durable canonical identity/lineage class is actually required.
+Rejected baseline. Self-HTTP adds network/auth/deployment coupling without changing authority. External connector HTTP remains legitimate when physically external.
 
-## D3
+## G — Readiness requirements + Offering ListingIntent draft + D4 translation
 
-**No reopen presumed.**
-
-Source ingestion is acquisition/observation; Offering consuming current Readiness meaning fits existing Readiness→Offering Q direction.
-
-Reopen D3 only if concrete publication requires a new cross-owner semantic dependency or atomicity assumption not already accepted.
-
-## D4
-
-**Targeted reopen required.** This candidate closes the missing source/publication/provider-requirement contract and must be independently reviewed before D5-B2 resumes.
-
-## D5-B1
-
-**No reopen presumed.** B1 already allows a separately justified technical surface once a concrete consumer exists. Source Ingestion now supplies that evidence. B2/later D5 must classify it explicitly.
+**Recommended Global Maximum.** Reuses existing identities/owners, supports current manual/agent authoring and future Sankhya dominance, keeps source/provider distinctions honest and minimizes implementation objects.
 
 ---
 
-# 18. Complexity law / YAGNI
+# 17. Complexity / YAGNI
 
-## Essential complexity preserved
+## Essential complexity retained
 
 - source-qualified Product facts;
-- source vs MPC-authored provenance;
-- changing provider requirement schemas;
-- category/product-type context;
-- missing/conflicting requirement state;
+- provider/category/product-type-specific requirements;
+- requirement/schema churn/version evidence;
+- Readiness sufficiency;
+- ListingIntent authoring/history;
+- source-follow versus explicit channel override;
 - media origin/selection;
-- explicit override/follow-source behavior;
-- Listing Intent decision-time snapshot;
-- provider-specific serialization/convergence;
-- no hidden price/availability authority transfer;
-- multiple physical source-ingress modes over one semantic use case.
+- provider serialization/convergence;
+- price/availability/fulfillment authority separation;
+- agent attribution;
+- source acquisition provenance;
+- initial publication/Availability proof gate.
 
-## Accidental complexity rejected
+## Accidental complexity removed/refused
 
 - MPC Product Master/PIM;
-- universal product attribute catalog;
-- generic `map[string]any` provider bag;
-- generic transformation/rules DSL;
-- plugin/factory framework for hypothetical sources;
-- built-in self-HTTP requirement;
-- implicit last-write-wins;
-- source values copied into manual editable fields without provenance;
-- provider DTO stored as canonical draft;
-- one giant universal Publication object containing price/availability/fulfillment semantics from different owners.
+- PublicationPreparation aggregate;
+- universal ProductAttribute master;
+- generic ProviderRequirement business framework;
+- generic SourceProductObservation business service;
+- arbitrary provider JSON bag;
+- generic mapping/rules DSL;
+- baseline DERIVED mode;
+- connector/plugin framework;
+- mandatory self-HTTP;
+- AI-specific API/backdoor;
+- creation architecture separate from edit architecture;
+- one giant Publication aggregate owning price/stock/fulfillment.
 
-### Prepared seams, not full future capability
+---
 
-Admit now:
+# 18. Whole-product coherence checks
 
-- Source Observation semantic port;
-- external Source Ingestion as a real later D5 surface;
-- per-publication source-follow/override resolution;
-- provider requirement descriptors;
-- Listing Intent snapshot.
+This seam must remain coherent with the existing system rather than create an alternate architecture.
 
-Do **not** build now:
+## Identity
 
-- global mapping/rule designer;
-- auto-mapping ML→Amazon→Shopee attributes;
-- reusable organization-wide attribute formulas;
-- PIM catalog governance;
-- every provider's schema engine;
-- generalized connector marketplace.
+- Product remains external source-qualified identity.
+- Listing remains external source-qualified identity.
+- ListingIntent is the existing MPC-owned action identity.
+- no new ProductDraft/PublicationDraft identity is presumed.
 
-If repeated per-product resolutions prove a reusable Source→Requirement mapping materially reduces total complexity, add the smallest mapping primitive later with evidence.
+## Communication
+
+- Readiness→Offering remains Q.
+- source acquisition remains D4 boundary/mechanism.
+- provider execution remains owner intent → D4 effect → authoritative reread.
+- no new workflow bus/command taxonomy.
+
+## Work/Governance
+
+- missing/conflicting listing requirements may become explicit Work under existing semantics when materially actionable;
+- assignment never becomes authorization;
+- Governance authorizes consequential ListingIntent where policy requires it;
+- neither Work nor Governance owns listing content/business validity.
+
+## Historical explainability
+
+- mutable source facts do not rewrite past ListingIntent basis;
+- current provider requirements do not rewrite the schema/requirements used by a prior attempted publication.
+
+## Implementation posture
+
+- compatible with modular monolith + one PostgreSQL target;
+- does not require microservices, broker, schema registry, PIM engine or workflow engine;
+- D7 can choose minimal storage/runtime mechanisms later.
 
 ---
 
 # 19. Proof strategy before implementation
 
-## P1 — Today/future source transition
+## P1 — incomplete source → authored listing → future source takeover
 
-For one Product with a missing source field:
+1. Sankhya Product lacks one required publication value.
+2. Readiness reports requirement missing and exposes source candidates honestly.
+3. automation Principal creates/edits ListingIntent with EXPLICIT_OVERRIDE.
+4. readiness becomes sufficient for that intent/context.
+5. consequential intent snapshot preserves override provenance.
+6. later Sankhya supplies the value.
+7. old ListingIntent remains unchanged/history-valid.
+8. a new edit intent may explicitly FOLLOW_SOURCE.
 
-1. source observation lacks a required publication value;
-2. automation Principal authors an explicit override;
-3. readiness becomes sufficient and Listing Intent can snapshot the override;
-4. later source begins supplying a valid value;
-5. source truth updates without mutating the override;
-6. override is deliberately cleared;
-7. preparation now follows source;
-8. no Product identity or historical Listing Intent is rewritten.
+## P2 — source spoofing
 
-## P2 — Authority spoofing
+- Product API client cannot claim EXPLICIT_OVERRIDE came from Sankhya.
+- source connector/acquisition path cannot author ListingIntent override by choosing `source=manual`.
 
-A Product API client cannot mark its authored value as a Sankhya observation.
+## P3 — partial source observation
 
-A Source Ingestion client cannot author an MPC business override merely by choosing `source=manual` or changing Organization/SourceInstance in payload.
+Omitted field in partial acquisition does not clear known source fact unless source semantics establish removal/absence.
 
-## P3 — Partial source update
+## P4 — provider requirement churn
 
-A partial source payload omitting `description` does not clear a previously known description unless source semantics explicitly establish absence/removal.
+Requirement revision N supports one historical intent. Revision N+1 changes requiredness/enumeration. Historical intent remains explainable under N; current draft/readiness evaluates against N+1.
 
-## P4 — Provider-schema change
+## P5 — one architecture for create/edit
 
-Provider requirement version N allowed publication; version N+1 adds/changes a required attribute. Existing historical Listing Intent remains explainable under N; current preparation re-evaluates against N+1 and becomes missing/conflicting if necessary.
+Create and edit differ only by target Listing existence/action semantics; both use Offering ListingIntent. No second publication object appears.
 
-## P5 — Second-provider structural inversion
+## P6 — second marketplace structural inversion
 
-Map one conceptual Product into:
+Use one source Product against:
 
-- Mercado Livre User Product/Item current model;
-- Amazon Product Type Definition + Listings Item;
+- Mercado Livre User Product/Item;
+- Amazon Product Type Definition + Listings Item product/offer modes;
 - Mirakl Product/Offer/PriceStock split.
 
-The source Product identity and Readiness/Offering authorities must remain unchanged. Only provider requirement descriptors and adapter serialization differ.
+Readiness/Offering/Product identity must remain stable; only D4 requirements/serialization differ.
 
-## P6 — Media source transition
+## P7 — media
 
-Use Sankhya source image for one publication and MPC-uploaded media for another without rewriting source Product media. Listing Intent preserves which media set it attempted.
+Source media and MPC-uploaded media can both be selected without changing Product authority; intent history preserves attempted selection.
 
-## P7 — Embedded versus external connector
+## P8 — embedded versus external source connector
 
-Run the same semantic Source Product Observation through:
+Embedded Sankhya adapter and a hypothetical external connector reach equivalent consumer-owned semantic results without requiring one shared network hop or one new business owner.
 
-- embedded Sankhya adapter → application port;
-- external HTTP Source Ingestion adapter → same application port.
+## P9 — adapter truth-selection negative
 
-The committed semantic result is equivalent; no HTTP-only business rule exists.
+Remove required resolution from ListingIntent/Readiness context. Adapter must refuse pre-dispatch/return owner insufficiency; it may not select fallback/default.
 
-## P8 — No adapter truth selection
+## P10 — agent path
 
-Remove one required preparation resolution. Provider adapter must fail before dispatch/return owner-level insufficient readiness; it may not choose another source/default silently.
+Automation Principal uses normal Product API authoring and remains subject to Permission, owner validity, Governance, idempotency, audit and convergence.
 
-## P9 — Availability authority attack
+## P11 — R1-G1 Availability gate
 
-Find the concrete selected Mercado Livre creation operation and prove either:
-
-- publication representation can be established without inventing/owning Sellable Availability in Offering/Readiness; or
-- surface the exact D1/D3 contradiction and reopen before D5 resumes.
-
-## P10 — Agent path
-
-Automation Principal can author allowed publication preparation through the Product API with normal access/audit/owner semantics; no special database/provider bypass is required.
+Prove selected first ML publication lane satisfies PASS-A or PASS-B above; otherwise name the exact D1/D3 contradiction.
 
 ---
 
-# 20. Adversarial review package
+# 20. Independent Global Coherence challenge package
 
-Fable should independently reconstruct authority and attack at least:
+Fable must reconstruct repository authority independently and attack the whole architecture, not merely this text.
 
-1. Is Channel Publication Preparation genuinely Readiness-owned, or does it steal Offering representation authority?
-2. Does per-requirement FOLLOW_SOURCE / EXPLICIT_OVERRIDE introduce a hidden PIM/rules system?
-3. Is a separate Source Ingestion API really necessary, or can D4 provider/business-system ingress cover it without ambiguity?
-4. Does the Source Ingestion API create a generic integration platform contrary to D0/D1?
-5. Can a machine/source binding prevent caller authority spoofing without inventing another tenant/source registry?
-6. Should a built-in adapter ever call the HTTP Source API for structural consistency, or is shared application port correctly smaller?
-7. Does Listing Intent need to copy/freeze all resolved fields, or can immutable references/provenance be sufficient without stale-history risk?
-8. Are provider Requirement Descriptors too generic/abstract compared with provider-specific contracts?
-9. Can Amazon/Mercado Livre/Mirakl all fit without a universal PIM or provider bag?
-10. Does current Mercado Livre User Product publication force Availability/Offering coupling that reopens D1/D3?
-11. Are images/media a business concept requiring D2 identity, or can content/provenance references remain bounded?
-12. Could an explicit override silently become stale/wrong after source/provider changes, and what owner detects that?
-13. Does manual/agent authoring require separate authorization beyond ordinary access + Listing Intent Governance?
-14. Is `DERIVED` already overengineering and should baseline keep only source/override?
-15. Does Source→Requirement mapping need a reusable rule now because Sankhya custom e-commerce fields already make it a present consumer?
-16. Is Google primary/supplemental feed precedent useful, or would copying precedence/rule mechanics be accidental complexity for MPC?
-17. Are ANYMARKET/Channable/Linnworks showing a missing PIM requirement rather than merely mapping complexity?
-18. Does editing an existing Listing differ materially enough from creation to require separate preparation/intent semantics?
-19. Can provider shared-field blast radius cause one preparation change to affect multiple external Items/User Products and is that represented correctly?
-20. Does a source observation need full-population/coverage semantics for publication, or only point Product facts?
-21. Is Source Ingestion allowed to push arbitrary custom fields, and if not, how does a new source fact get admitted without code changes becoming excessive?
-22. What is the hardest future change: Sankhya becomes fully authoritative; second ERP; second marketplace; provider schema churn; multi-origin stock; and does the seam survive each?
-23. Does any proposed construct exist only because another abstraction exists?
-24. What is the smallest proof that D4 can close and D5-B2 safely resume?
-25. Is any D0/D1/D2/D3/D5-B1 reopen genuinely required by evidence rather than reviewer preference?
+Material attacks:
+
+1. Does ListingIntent-as-draft genuinely fit accepted D2/D1 meaning or silently expand Intent into a Product/PIM document?
+2. Does moving authoring to Offering fully remove Readiness/Offering overlap?
+3. Is Readiness-owned publication-requirements Q sufficient, or is an independent publication-content authority actually missing?
+4. Does `FOLLOW_SOURCE | EXPLICIT_OVERRIDE` preserve enough future evolution without a mapping engine?
+5. Is removing `DERIVED` correct YAGNI or does a present Sankhya/JET consumer already require deterministic transforms?
+6. Does D4 acquisition feeding multiple consumer-owned ports remain implementable without a generic SourceProductObservation authority?
+7. Is a future external Integration Ingress seam enough, or does a real present consumer require HTTP Source Ingestion now?
+8. Can an external connector be authenticated/bound to Organization+SourceInstance without creating a generic integration registry?
+9. Does agent automation remain an ordinary Principal rather than an AI-specific authority path?
+10. Can current Mercado Livre User Product creation/edit flows fit the seam without provider DTOs leaking into ListingIntent?
+11. Close or refute R1-G1: initial ML publication × Availability.
+12. Does current ML shared User Product blast radius require different intent scope semantics?
+13. Does provider requirement/schema versioning add only essential complexity?
+14. Does media need a new D2 identity, or are bounded content/provenance references enough?
+15. Does ListingIntent snapshot copy too much source/provider state, creating a second authority rather than history?
+16. Does creation/edit lifecycle need one intent type or separate owner-specific intents?
+17. Can Amazon product-only/offer-only modes fit without moving Product authority into MPC?
+18. Can Mirakl Product/Offer/PriceStock split fit without one giant Publication aggregate?
+19. Are ANYMARKET/Akeneo-like PIM capabilities actually a missing Product requirement, or correctly out of scope?
+20. Does Google primary/supplemental precedent justify only explicit precedence or a real rule engine now?
+21. Does any D1 boundary duplicate another after this change?
+22. Are Work and Governance still distinct and non-platform business authorities?
+23. Does Materialization↔Fulfillment remain coherent under the same intent/observation pattern used by Offering?
+24. Does the whole system still fit a modular monolith without requiring microservice/distributed-workflow machinery?
+25. Does any candidate concept exist only because another abstraction exists?
+26. Run Structural Inversion: if current implementation/OpenAPI were opposite, do these conclusions still follow?
+27. Hardest future change: Sankhya becomes complete source; second ERP; second marketplace; provider schema churn; agent-heavy operations — does any require authority migration?
+28. Is any D0/D1/D2/D3/D5-B1 reopen genuinely required by evidence rather than preference?
 
 Reviewer severity does not create authority.
 
@@ -886,41 +782,40 @@ Reviewer severity does not create authority.
 
 Reopen only the implicated parent decision when material evidence proves:
 
-1. Publication Preparation cannot be owned by Readiness without stealing Offering semantics → D1.
-2. Initial publication requires Availability/Fulfillment-owned values through a dependency absent from D1 → D1/D3.
-3. A new durable identity/lineage object is required beyond source Product + Listing Intent → D2.
-4. Publication requires atomic cross-owner mutation for correctness → D1/D3.
-5. Provider requirement/effect cannot be represented through consumer-owned resolution without raw DTO leakage → D4 redesign.
-6. Source Ingestion cannot preserve Organization/SourceInstance/provenance safely → D2/D4/D5 boundary review.
-7. A real external source/API consumer requires a compatibility/versioning obligation materially different from D5-B1 assumptions → D5.
-8. Repeated mappings prove a reusable Source→Requirement mapping primitive is essential → targeted Readiness/D4 decision, not generic PIM.
-9. A second real Product master changes source authority assumptions → D1/D2 targeted review.
-10. Current Mercado Livre User Product selected lane makes the proposed separate publication/availability progression impossible → targeted D1/D3/D4 reopen before D5.
+1. ListingIntent cannot legitimately carry editable desired listing representation before consequential submission → D1/D2 targeted review.
+2. Readiness cannot provide requirements/sufficiency without owning desired listing state → D1.
+3. R1-G1 requires a new Availability/Fulfillment semantic edge absent from D1/D3 → D1/D3.
+4. publication correctness requires atomic cross-owner mutation → D1/D3.
+5. a new durable identity/lineage class is required beyond Product external reference + ListingIntent → D2.
+6. provider requirement/effect cannot be represented through consumer-owned ports without raw DTO leakage → D4 redesign.
+7. external source connector cannot preserve Organization/SourceInstance/provenance safely → D2/D4/D5 boundary review.
+8. repeated real source→listing transformations prove a reusable mapping primitive essential → targeted Offering/Readiness/D4 decision, not generic PIM.
+9. a second real Product master changes source-authority assumptions → D1/D2.
+10. a real external connector creates a materially different API compatibility/security requirement → D5.
 
-Framework preference, provider symmetry, current code convenience and hypothetical providers are not reopen evidence.
+Framework preference, provider symmetry, current-code convenience and hypothetical providers are not reopen evidence.
 
 ---
 
 # 22. Candidate outcome
 
-**Proposed outcome:** `RESTRUCTURE NOW` for the missing publication/input seam, with no presumed D0/D1/D2/D3 or D5-B1 reopen.
+**Proposed outcome:** `CURRENT D0→D5-B1 STRUCTURE CONFIRMED` + `RESTRUCTURE NOW` for the missing D4 publication-input seam.
 
-If independent review and operator ratification converge, D4 should canonically add:
+If R1-G1 closes, independent Fable challenge converges and the operator explicitly ratifies the resulting package, canonical D4 should add only the following durable meaning:
 
-- explicit Source Product Observation ingress semantics;
-- one semantic source-observation application port shared by embedded pull adapters and external push ingress;
-- no mandatory self-HTTP for embedded adapters;
-- structurally separate source ingestion and MPC Product authoring authorities;
-- automation Principal as a legitimate Product API authoring client, never source-authority impersonation;
-- Readiness-owned Channel Publication Preparation as the leading boundary, subject to final challenge;
-- explicit FOLLOW_SOURCE / EXPLICIT_OVERRIDE provenance semantics, with DERIVED only if review keeps it;
-- provider Requirement Descriptors as source-qualified D4 evidence;
-- media/source-image versus MPC-authored publication-media provenance;
-- Listing Intent decision-time resolved publication snapshot under Offering;
-- adapter as protocol translator, never truth selector;
-- explicit authority fence for price/availability/fulfillment inputs;
-- Source Ingestion API as a now-justified later D5 external technical surface;
-- no MPC Product Master/PIM, universal field bag, generic mapping DSL or connector framework;
-- D5-B2 resume only after this contract is accepted and any genuine parent-stage contradiction is closed.
+- Readiness owns publication requirements, correspondence, source candidates and sufficiency;
+- Offering-owned ListingIntent is the single create/edit authoring/draft identity;
+- baseline listing-value resolution is `FOLLOW_SOURCE | EXPLICIT_OVERRIDE` only;
+- agent/manual authoring uses normal Product API + D2 Principal semantics;
+- external source acquisition remains D4 evidence/mechanism feeding consumer-owned semantic ports, not a Product/source-observation domain;
+- embedded adapters do not require self-HTTP;
+- external connector ingress remains a prepared D4/D5 seam until a concrete connector requires a wire contract;
+- provider requirement/schema evidence remains source-qualified and consumer-bounded;
+- media selection belongs to ListingIntent only as desired listing representation, without creating Product media master;
+- ListingIntent consequential snapshot preserves decision-time source/override/requirement provenance;
+- adapter translates resolved owner meaning and never selects truth;
+- Price/Availability/Fulfillment authorities remain intact;
+- no MPC Product Master/PIM, PublicationPreparation aggregate, generic ProviderRequirement framework, generic SourceProductObservation service, generic transformation DSL, connector framework or alternate AI architecture is introduced;
+- D5-B2 resumes only after this contract and any genuine parent-stage contradiction are closed.
 
-**D5-B2 review candidate remains non-authoritative and frozen pending this decision. Implementation remains blocked until D9.**
+**D5-B2 review candidate remains non-authoritative and frozen. Implementation remains blocked until D9.**
