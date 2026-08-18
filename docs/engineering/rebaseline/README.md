@@ -2,7 +2,7 @@
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
 > **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 OPEN / ACTIVE**  
-> **D5-B2 current state:** **B2-A Client/Auth accepted; Operation Matrix Block 1 accepted; Block 2 Offering + Availability = NEXT**  
+> **D5-B2 current state:** **B2-A accepted; Matrix Blocks 1 and 2 accepted; Block 3 Market Intelligence + Commercial Economics = NEXT**  
 > **Decision Reconciliation:** **ACCEPTED / CANONICAL**  
 > **Implementation:** BLOCKED until D9 is accepted  
 > **Last updated:** 2026-08-18
@@ -29,17 +29,15 @@ A fresh session reads, in order:
 16. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
 17. code, OpenAPI, schemas, tests and runtime only as current-state evidence when needed
 
-This file alone owns **where the program is and what happens next**. `ARCHITECTURE.md` owns stable constraints; the Decision Reconciliation Baseline routes current decision generations; the ADR registry owns ADR status; D-stage artifacts own detailed semantics.
+This file alone owns **where the program is and what happens next**. `ARCHITECTURE.md` owns stable constraints; the Decision Reconciliation Baseline routes current decision generations; the ADR registry owns ADR status; accepted D-stage/B2 artifacts own detailed semantics.
 
-`D5-API.md` remains the accepted D5-B1 authority. Its former “next action” wording is a pre-B2-opening snapshot; current D5-B2 status/next action is defined here and detailed in the active B2 artifacts.
+`D5-API.md` remains the accepted D5-B1 authority. Its former next-action wording is a pre-B2-opening snapshot. Current B2 state and next action live here.
 
-Do not reconstruct target authority from memory, Git history, retired ADRs, `AI-DIALOG.md`, review candidates or current code shape.
+Do not reconstruct target authority from memory, Git history, retired ADRs, stale candidates, `AI-DIALOG.md` or current code shape.
 
 ## 2. Program state
 
 ```text
-Documentary / governance cleanup — DONE
-  ↓
 D0 — Product / System Definition — CLOSED / ACCEPTED
   ↓
 D1 — Domains / Boundaries — CLOSED / ACCEPTED
@@ -47,32 +45,19 @@ D1 — Domains / Boundaries — CLOSED / ACCEPTED
 D2 — Identity / Tenant / Data Ownership — CLOSED / ACCEPTED
   ↓
 D3 — Communication / Events — CLOSED / ACCEPTED
-  ├─ B1 Communication Topology & Edge Matrix — ACCEPTED / CANONICAL
-  ├─ B2 Communication Contract & Failure Semantics — ACCEPTED / CANONICAL
-  └─ Final Global Coherence — PASS
   ↓
 D4 — External Integrations — CLOSED / ACCEPTED AS A WHOLE
-  ├─ B1 External Contract Grounding — ACCEPTED / CANONICAL
-  ├─ B2 Mercado Livre Operational Contract — ACCEPTED / CANONICAL
-  ├─ B3 Sankhya Business-System Contract — ACCEPTED / CANONICAL
-  ├─ B4 Market / Economics / Settlement — ACCEPTED / CANONICAL
-  ├─ Original Global Coherence — PASS
-  └─ R1 Publication Input & Listing Authoring — ACCEPTED / CANONICAL
-       └─ R1-G1 ML initial publication × Availability — PASS-B
+  └─ D4-R1 Publication Input & Listing Authoring — ACCEPTED / CANONICAL
   ↓
 Decision Reconciliation Baseline — ACCEPTED / CANONICAL
-  ├─ D0→D4/D4-R1 + D5-B1 decision set — RECONCILED / COHERENT
-  ├─ legacy ADR active tree — reduced to real D7/Fact/transition residues
-  └─ stale pre-R1 D5-B2 candidate — RETIRED TO GIT HISTORY
   ↓
 D5 — API — OPEN / ACTIVE
   ├─ B1 Semantic API Model & Contract Laws — ACCEPTED / CANONICAL
   └─ B2 Product Operation / Resource Surface — OPEN / ACTIVE
        ├─ B2-A Client & Authentication Admission Model — ACCEPTED IN-STAGE
-       ├─ Operation Admission Matrix Block 1
-       │    Identity/Access + Portfolio + Readiness — ACCEPTED IN-STAGE
-       └─ Operation Admission Matrix Block 2
-            Offering + Availability — NEXT / UNDER DERIVATION
+       ├─ Matrix Block 1 — Identity/Access + Portfolio + Readiness — ACCEPTED IN-STAGE
+       ├─ Matrix Block 2 — Offering + Price + Availability — ACCEPTED IN-STAGE
+       └─ Matrix Block 3 — Market Intelligence + Commercial Economics — NEXT / UNDER DERIVATION
   ↓
 D6 — Frontend
   ↓
@@ -89,69 +74,133 @@ Implementation
 
 Product implementation remains blocked until D9 is accepted.
 
-## 3. Accepted baseline — routing summary
+## 3. Accepted current B2 decisions
 
-Use `DECISION-RECONCILIATION-BASELINE.md` to discover the current decision generation, then read the detailed semantic home.
+### B2-A — Client / authentication
 
-Load-bearing current conclusions:
+- one standards-based OIDC/OAuth boundary for Product API clients;
+- humans use Authorization Code + PKCE semantics;
+- confidential machine clients use Client Credentials/service-account semantics;
+- MPC remains authority for Principal, Membership, AccessRole, Permission and all business/Governance meaning;
+- tokens are audience-bound to MPC API and another sibling application's token is not valid merely because the same IdP issued it;
+- no global/static MPC API key or browser secret baseline;
+- Keycloak is first implementation/proof candidate; D7 owns concrete provider/deployment/realm/HA/secrets/token-lifetime realization.
 
-- **D0:** MPC is Marketplace Operations Control Plane + Commercial Intelligence; external systems retain their own truth; no ERP/PIM/generic integration/workflow product.
-- **D1:** 12 semantic business authorities remain accepted; they do not imply 12 services/processes/databases.
-- **D2:** Organization is isolation root; Product remains source-qualified external identity; domain intents are owner-local; ordinary access is distinct from Governance/business disposition; Principal includes human/automation/system and interactive AuthN is external via OIDC.
-- **D3:** Q/C/E/P hybrid, recoverable consequential propagation, durable evidence-occurrence recovery, no global exactly-once/order, no blind replay of ambiguous effects, no cross-owner atomicity.
-- **D4:** consumer owns meaning; adapter owns protocol; sanctioned Sankhya Gateway only; provider richness without DTO mirroring; external-effect reread/convergence; explicit source admissibility and PII minimization.
-- **D4-R1:** Readiness owns requirements/source-level readiness; Offering owns `ListingIntent` create/edit draft + dispatchability; baseline values are `FOLLOW_SOURCE | EXPLICIT_OVERRIDE`; no PublicationPreparation/PIM/source-observation/rules/AI framework; provider may jointly realize owner-issued meanings without ownership merge.
-- **D5-B1:** semantic Product API, Organization path scope, source-qualified wire identity, honest knowledge/freshness, fail-closed consequential idempotency, RFC 9457 problems, one OpenAPI wire authority, hard cutover, operation-local bulk only.
-- **D5-B2-A:** Product API clients use one standards-based OIDC/OAuth authentication boundary; humans use Authorization Code + PKCE semantics, confidential machine clients use Client Credentials/service-account semantics, MPC remains Principal/Membership/Permission authority, tokens are audience-bound to MPC API, no global/static MPC Product API key or duplicate IdP-role business authority is baseline. Keycloak remains the first implementation/proof candidate; D7 owns concrete provider/deployment/realm realization.
-- **D5-B2 Matrix Block 1:** admit only minimal D2 access context/role-assignment administration, Portfolio Marketplace Installation lifecycle/configuration + Selling Entity discovery, and Readiness marketplace-context Product discovery/readiness/publication requirements/correspondence. Provider OAuth remains D4; no Product/PIM CRUD, generic Integration API, generic sync/refresh or speculative bulk.
+### Matrix Block 1 — Identity/Access + Portfolio + Readiness
 
-Detailed rules, Unknowns, proof obligations and reopen triggers remain in the named D-stage homes.
+Admitted:
+
+- current access context + minimal Membership/RoleAssignment administration;
+- Marketplace Installation lifecycle/configuration + Selling Entity discovery;
+- marketplace-context source Product search;
+- Product↔channel readiness;
+- publication requirements;
+- explicit correspondence lifecycle.
+
+Rejected/deferred:
+
+- IAM/custom-role platform;
+- SaaS Organization provisioning;
+- Product/PIM CRUD;
+- generic Integration/provider catalog;
+- provider OAuth as Product API;
+- Product/source sync/refresh commands;
+- speculative bulk.
+
+### Matrix Block 2 — Offering + Price + Availability
+
+Admitted:
+
+- provider-actual Marketplace Listing Q surface;
+- `ListingIntent` create/edit draft lifecycle and Q tracking;
+- declarative draft update + discard + submit with concurrency where stale overwrite is material;
+- `PriceIntent` Q + explicit create for exact desired price actuation;
+- Sellable Availability Q + convergence;
+- Inventory Source lifecycle/configuration;
+- Availability allocation/scope-policy Q + human configuration.
+
+Binding fences:
+
+- no giant Listing CRUD owning content + price + stock + fulfillment;
+- no direct provider Listing create/update/set-price/set-stock Product operations;
+- ListingIntent is the one create/edit authoring identity;
+- PriceIntent stays separate from ListingIntent and from Commercial Economics calculation;
+- no public PriceDraft baseline;
+- no public AvailabilityIntent creation merely because the internal identity exists;
+- no public sync/refresh mechanism;
+- no generic `LongRunningOperation`; owner-local Intents are the Product tracking resources;
+- R1-G1 remains owner-preserving: Offering and Availability may be jointly serialized by D4/D7 without ownership merge;
+- provider early success never equals whole-operation convergence;
+- intended, authorized and actual attempted/provider-affected scopes remain distinct when blast radius is material.
+
+Current Permission floor across accepted blocks:
+
+- `access.read`, `access.manage`
+- `portfolio.read`, `portfolio.manage`
+- `readiness.read`, `readiness.manage`
+- `offering.read`, `listing.manage`, `price.manage`
+- `availability.read`, `availability.manage`
+
+These are ordinary-access capabilities only; they do not grant business disposition or Governance authority.
 
 ## 4. What is prohibited now
 
-While **D5-B2 is OPEN / ACTIVE**:
+While D5-B2 is OPEN / ACTIVE:
 
 - do not begin D6–D9 target design before D5 is accepted as a whole;
 - do not implement product features; implementation remains blocked until D9;
 - do not silently alter accepted D0–D4/D4-R1/D5-B1 or accepted in-stage B2 meaning;
-- do not derive B2 from the legacy route list or the retired pre-R1 candidate;
-- do not preserve current OpenAPI/routes/SDK/controller/package shape by inheritance;
-- do not recreate Product/PIM master, PublicationPreparation, SourceProductObservation owner, generic Mutation/Workflow/Integration platform, generic listing rule engine or AI-specific authority path;
-- do not move Availability/Fulfillment meaning into Offering because a provider combines fields in one request;
-- do not create a global/shared MPC API key, browser client secret, client-supplied Principal, or treat Keycloak/IdP roles/Organizations as MPC business authority by name similarity;
-- do not choose Keycloak deployment/realm/HA/token-lifetime/secret-storage mechanics inside B2; those remain D7 realization;
-- do not expose provider OAuth, source sync, readiness refresh/recalculate or generic integration/catalog operations merely for internal/runtime convenience;
-- do not make a public AvailabilityIntent create endpoint merely because AvailabilityIntent exists internally; a real Product client authoring use must be proven;
-- do not weaken Organization scope, source-qualified identity, honest knowledge/freshness, Permission/Governance separation, idempotency, precondition, ambiguity, recovery or convergence laws;
+- do not derive routes from legacy OpenAPI/controllers/packages or the retired pre-R1 B2 candidate;
+- do not recreate Product/PIM, PublicationPreparation, SourceProductObservation, generic Integration/Mutation/Workflow/Rule/AI authority;
+- do not merge Listing representation, Price, Availability, Economics or Fulfillment because provider protocol places them together;
+- do not create generic async `Operation` business identity when the owner-local Intent already tracks the work;
+- do not choose Keycloak deployment/runtime mechanics in B2;
+- do not weaken Organization scope, source-qualified identity, honest knowledge/freshness, Permission/Governance separation, idempotency, concurrency, ambiguity, recovery or convergence;
 - do not add compatibility/versioning machinery without a real entitled consumer;
-- do not treat retained legacy ADRs as target authority beyond the exact residue named by the ADR registry;
-- do not treat `AI-DIALOG.md`, Git-history ADRs or review artifacts as target authority.
+- do not treat retained legacy ADRs/review dialogue/current implementation as target authority.
 
 ## 5. Exact next action
 
-**Derive D5-B2 Operation Admission Matrix Block 2 — Marketplace Offering Operations + Availability Control.**
+**Derive D5-B2 Operation Admission Matrix Block 3 — Market Intelligence + Commercial Economics.**
 
-The block must determine the smallest client surface for:
+The block must establish the smallest Product API surface that preserves these accepted authorities:
 
-- provider-actual Listing observation without making provider topology Product ontology;
-- `ListingIntent` create/edit draft lifecycle and current draft dispatchability;
-- consequential freeze/submit/execution request semantics without `createListing = success` collapse;
-- `PriceIntent` as Offering-owned price actuation meaning, distinct from Commercial Economics analysis;
-- Sellable Availability current meaning and convergence;
-- Inventory Source/Scope and availability-allocation policy configuration only where real Product clients need them;
-- the R1-G1 joint technical realization seam when one provider request requires owner-issued Offering + Availability inputs;
-- multi-step/partial/asynchronous provider effects while preserving `accepted != converged` and owner-specific convergence;
-- resource update versus owner-specific capability according to actual semantics, not CRUD symmetry;
-- idempotency/concurrency only where the relevant failure class exists;
-- no generic LongRunningOperation/Mutation business owner merely because provider effects are asynchronous.
+### Market Intelligence
 
-For every candidate operation record the complete admission tuple from B2's matrix predicate.
+- comparable-market observations and source-qualified evidence;
+- comparability interpretation;
+- competitive position/change;
+- market-evidence sufficiency/insufficiency;
+- no generic provider-market payload mirror;
+- no public collector/scraper/source-refresh command unless a real Product client requires an owner-level capability rather than D4/D7 mechanism.
 
-Current engineering/provider evidence must be used proportionately: standard HTTP resource semantics may guide resource update shape, while provider evidence such as Mercado Livre User Products/shared-field asynchronous propagation and separate description operations must prevent false atomic-success contracts.
+### Commercial Economics
 
-Do **not** spell final paths/schemas until Block 2 ownership and operation inventory is coherent.
+- Cost Basis and exact-money economic interpretation;
+- price/profitability simulation and trade-offs;
+- expected economics (L0);
+- order economics (L1);
+- realized/settlement economics (L2);
+- variance/calibration/reconciliation;
+- modeled/observed/realized provenance remains distinct;
+- Economics never writes marketplace price; actual price actuation stays Offering `PriceIntent`.
 
-If an operation cannot fit accepted ownership/identity/communication/external-contract meaning without distortion, stop and reopen only the implicated parent decision.
+The block must decide proportionately:
+
+1. whether price/economics simulation is stateless, durable, or split according to real consumer need — no persistent `Simulation` entity merely for history;
+2. which market evidence/competitive-position reads need pagination/filtering and which do not;
+3. how insufficient/stale/partial evidence blocks false precision;
+4. whether any recommendation resource is independently justified or is simply an economic conclusion returned by simulation/current analysis;
+5. how expected/order/realized economics remain separate without one mutable profitability row overwriting evidence stages;
+6. the minimum economic reconciliation read/capability surface without a generic finance ledger;
+7. whether any Economics policy configuration belongs in Product API now and which concrete actor needs it;
+8. no campaign/discount authoring merely because observed promotions affect price/economics.
+
+For every candidate operation record the full B2 admission tuple: consumer, client class, owner, Q/C/P, Organization, Permission, identity, knowledge/freshness, consequence/idempotency/concurrency, provider enrichment, collection semantics, bulk, ADMIT/REJECT/DEFER.
+
+Do **not** spell final HTTP paths/schemas until Block 3 operation inventory is coherent.
+
+If a required operation cannot fit accepted authority without distortion, reopen only the implicated parent decision.
 
 Implementation remains blocked until D9.
 
@@ -159,21 +208,15 @@ Implementation remains blocked until D9.
 
 A fresh session must conclude:
 
-- D0, D1, D2, D3, D4 and D4-R1 are accepted/canonical;
-- Decision Reconciliation Baseline is accepted/canonical and is routing, not a second semantic architecture;
-- ADR registry contains only real unresolved/transition legacy residues plus future target ADRs;
-- Sankhya Gateway-only target transport and no Direct Oracle fallback are unambiguous;
+- D0–D4 and D4-R1 are accepted/canonical;
+- Decision Reconciliation is accepted/canonical;
 - D5-B1 is accepted/canonical;
-- **D5-B2 is OPEN / ACTIVE**;
-- **B2-A Client & Authentication Admission Model is accepted in-stage**;
-- Product API authentication is OIDC/OAuth standards-based while MPC retains Principal/Membership/Permission/business authority;
-- Keycloak is first implementation/proof candidate but D7 owns concrete provider/deployment/realm realization;
-- **Operation Admission Matrix Block 1 is accepted in-stage**;
-- Block 1 contains only consumer-proven access/Portfolio/Readiness operations and explicitly rejects/defer speculative IAM/PIM/integration/sync/bulk surfaces;
-- **Block 2 Offering + Availability is NEXT / UNDER DERIVATION**;
-- the stale pre-R1 B2 candidate is not in the active tree;
-- `AI-DIALOG.md` contains only the reusable review protocol, not historical review authority;
+- D5-B2 is OPEN / ACTIVE;
+- B2-A is accepted in-stage;
+- Matrix Blocks 1 and 2 are accepted in-stage;
+- Block 2 preserves ListingIntent/PriceIntent/Availability authority split and rejects giant Listing CRUD/direct stock-price mutation/generic Operation;
+- Block 3 Market Intelligence + Commercial Economics is NEXT;
 - implementation remains blocked until D9;
-- exact next action is to derive Offering/Availability Product operations without merging their authorities.
+- exact next action is to derive market/economic Product operations, not paths or code.
 
 If it cannot, the active authority tree is inconsistent.
