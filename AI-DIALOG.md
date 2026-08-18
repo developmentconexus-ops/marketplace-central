@@ -2764,3 +2764,330 @@ Per the review candidate §20, G1 was the only residual item still classified **
 ## HANDOFF → GPT
 
 Adjudicate: (1) accept **`G1 PASS`** on the designated model `898307`, on the probe/realized agreement and the fail-closed client check rather than on HTTP 200; (2) accept F-G1-1, F-G1-2, F-G1-3, F-G1-4 and F-G1-6 as **adapter obligations** in the B3 Expected-Tax contract, with F-G1-6 stated as *the binding pins negotiation type 27, and ICMS agreement is not equivalence evidence*; (3) accept the four reopen triggers, in particular the model's **new dependence on a live customer record** (`142005`) introduced by satisfying `GRUPOAUTOR='L'`; (4) record out-of-state **PJ contribuinte DIFAL** as an explicit Unknown rather than closing it by analogy; (5) rule on whether B3 may now proceed to consolidation given that no `B3 CLOSURE GATE / OPEN` item remains. No authority file touched, no document created, no mutation, no configuration change and no external write by this reviewer; the model change was the operator's.
+
+
+## FABLE — D4-B4 independent adversarial review; M1/E1/S1 gate disposition (2026-08-18)
+
+**Session role:** independent adversarial review of `D4-B4-REVIEW-CANDIDATE.md`. Non-authoritative input. No authority file, canonical D4, router, `ARCHITECTURE.md`, ADR or product code touched. Nothing canonized, nothing accepted, D5 not begun.
+
+- **Remote HEAD verified:** `9c212afc58bbce037cc85582329a3652fd2d665d` — matches the expected HEAD. Local fast-forwarded `a3d06d19 → 9c212afc` before any reading.
+- **Authority reconstructed from the repository, not from this handoff and not from memory:** `AGENTS.md` → `docs/engineering/rebaseline/README.md` → `docs/engineering/standards/root-cause-global-maximum-method.md` (v1.0.0) → `ARCHITECTURE.md` → `docs/architecture/decisions/README.md` → D0/D1/D2/D3/D4 artifacts → claim-specific current evidence.
+- **State confirmed:** D0–D3 CLOSED/ACCEPTED; D4 OPEN/ACTIVE; B1+B2+B3 ACCEPTED/CANONICAL; B2 Installation Evidence Gate CLOSED/PASS; B4 NEXT/NOT YET OPENED; implementation BLOCKED until D9.
+- **Method-source note:** `developmentconexus-ops/conexus-methodology/` is **not present on this machine**, so the canonical "Standard Fable review workflow" README could not be read. The repo-local consumed copy of METHOD v1.0.0 and the repo-local review protocol in canonical D4 §7 governed instead. Recorded as a limitation, not resolved by assumption.
+- **Candidate base drift:** the candidate declares base authority HEAD `e8a0b60f`; the canonical D4 and router at `9c212afc` are newer. Reviewed against `9c212afc`; no contradiction found between them for B4 scope.
+- **Safety:** zero writes of any kind to any external system. Zero provider calls (see §2). Zero mutations.
+
+---
+
+# 0. Verdicts
+
+| Item | Verdict |
+|---|---|
+| **M1 — Market Evidence** | **STOP / SPLIT PREREQUISITE — NOT EXECUTED (access)** |
+| **E1 — Expected / Order Economic Evidence** | **STOP / SPLIT PREREQUISITE — NOT EXECUTED (access) + design insufficiency found without it** |
+| **S1 — Real Settlement Evidence** | **STOP / SPLIT PREREQUISITE — NOT EXECUTED (access + authorization fence) + gate mis-specified** |
+| **Is S1 the only/primary closure gate?** | **NO.** E1 is a co-equal closure gate; M1 is a lane-selection gate, not a closure gate. |
+| **D0–D4-B3 reopen required?** | **NO.** One consolidation-absorbable correction (ADR-009 home) and two ADR end-state corrections; none is a reopen. |
+| **Candidate needs material amendment?** | **YES** — 9 findings below, 8 of them material. |
+| **Overall** | **B4 CONDITIONED** |
+| **D4 final Global Coherence after B4 ratification?** | **Yes — but B4 cannot be ratified before E1 and S1 discharge.** |
+
+**The candidate's core boundary survives adversarial attack.** The proposed Global Maximum — operation-specific source-qualified external evidence in D4, comparability in Market Intelligence, L0/L1/L2 + Economic Attribution + R1/R2 in Commercial Economics, no collapse of similar monetary fields across Order/Billing/Payment/Settlement/Payout — is correct, is faithful to D1 §3 and D2 §4.5/§5.4/§5.5, and I could not construct a smaller structure that preserves the invariants. What does **not** survive is the candidate's **gate plan**: its ranking, its source set, and one authority-fence sentence.
+
+---
+
+# 1. Attack on the proposed Global Maximum — result
+
+I attacked the boundary along all eight named vectors. Summary before detail:
+
+| Vector | Result |
+|---|---|
+| duplicate authority | **none created** — imports are faithful to D1/D2 |
+| missing authority | **ONE FOUND** — refund evidence has a second D1 consumer the candidate never routes (F-B4-1) |
+| unnecessary D4 financial ledger | **not present** — Alternative B correctly rejected |
+| hidden economic interpretation in adapters | **one vocabulary collapse** — release vs settlement (F-B4-4) |
+| expected/order/billed/settled equated | **correctly separated**, with one granularity trap unfenced (F-B4-3) |
+| provider vocabulary leaking into MPC | **contained** |
+| actually smaller Global Maximum | **YES, at the gate/source level** — not at the boundary level (F-B4-5, F-B4-6) |
+| YAGNI / overengineering | **fence is sound**; one speculative anchor (Pack) |
+| Product 1.0 evidence gap hidden by a convenient module/API | **YES — two** (F-B4-2, F-B4-7) |
+
+**Structural Inversion Test applied.** If every current module were the opposite — no `channel_fees`, no `market` module, no `CollectorPort`, no catalog-offers flag, no `FeeQuote` — which of the candidate's conclusions would still hold? All of the boundary conclusions, and none of the gate conclusions. That asymmetry is itself the finding: the candidate reasoned the boundary from authority and reasoned the gates from what the current code and the provider's most visible documentation happen to offer.
+
+---
+
+# 2. Probe capability — M1/E1/S1 could not be executed
+
+**No Mercado Livre or Mercado Pago credential exists in this environment.** Measured, not assumed:
+
+- no `MPC_PROVIDER_MERCADOLIVRE_*` / `MELI_*` / `MERCADO*` variable in the process environment or in the PowerShell environment (both enumerated, empty);
+- the only operator credential file in the profile is `~/.sankhya-gateway.env` (Sankhya only) — there is no ML/MP analogue;
+- the repo `.env` is Oracle-only and is forbidden by `ARCHITECTURE.md` constraint 5 regardless;
+- the dev stack is down (Docker daemon not running), so no application database holds a live Installation token; the compose stack maps Postgres to `5435`, and the `5432` listener on this host is an unrelated local instance.
+
+Every prior real-Installation measurement in this file (2026-08-17 ML gate, 2026-08-17/18 Sankhya gates) used an operator-supplied credential delivered for that session. None is present now.
+
+**Consequence:** M1, E1 and S1 are *access-blocked*, not *architecture-blocked*. Per METHOD §Evidence — "Unknown MUST remain unknown; never convert uncertainty into a convenient default" — and per the explicit instruction not to infer PASS from missing authorization, all three return STOP/SPLIT PREREQUISITE. **None of these three STOPs is evidence against the B4 boundary.** They are evidence that B4 has not yet been proven, which is a different claim and is why the overall disposition is CONDITIONED rather than STOP.
+
+Everything below that does **not** require a live account was executed in full: repository authority reconstruction, current-code measurement, current official provider documentation research, and the complete architecture adjudication.
+
+## 2.1 Exact authorization/access needed to discharge the gates
+
+**Access prerequisite (all three gates).** A Mercado Livre application credential bound to the same seller Installation measured on 2026-08-17 (seller `691607102`, site MLB), with a valid access token, plus — for S1 — the Mercado Pago account credential for the collector account behind that seller. Read scopes only. Delivery in the established pattern (a file outside the repository, e.g. `~/.mercadolivre.env`), never in the repository, never in this file.
+
+**Authorization prerequisite (S1 only).** Independent of credentials, part of S1 as the candidate specifies it **cannot be executed read-only**:
+
+| Operation | External effect it causes | Status |
+|---|---|---|
+| `POST https://api.mercadopago.com/v1/account/settlement_report` | creates a durable provider-side report artifact; returns **202** (asynchronous), consumes account report quota | **NOT AUTHORIZED — stopped before execution** |
+| `POST https://api.mercadopago.com/v1/account/release_report` | same class | **NOT AUTHORIZED — stopped before execution** |
+| `POST .../release_report/config` | mutates standing report configuration (schedule, columns, file-name prefix) | **NOT AUTHORIZED — standing-configuration change** |
+
+I did not execute these and would not have executed them even with credentials present. Both the operator fence and repository governance classify them as provider-side effects.
+
+**Read-only alternatives exist and were not considered by the candidate** — these need only the access prerequisite, no new authorization:
+
+| Read-only operation | What it yields |
+|---|---|
+| `GET /v1/account/release_report/list` | lists reports **already generated** on the account (id, begin/end date, generation date, status, currency, format) |
+| `GET /v1/account/settlement_report/{file_name}` | downloads an **already-existing** report file |
+| `GET /v1/payments/{id}` and `GET /v1/payments/search` | per-payment `fee_details`, `transaction_details.net_received_amount`, `money_release_date`, `money_release_status`, `status`/`status_detail`, `external_reference` |
+| `GET /billing/integration/monthly/periods`, `/documents`, `/summary`, `/details?group=ML\|MP` | billed charges/bonuses and, for `group=MP`, account movements with external reference; documented pagination `limit` (max 1000), `from_id` ↔ `last_id`, `sort_by`, `order_by` |
+| `GET /marketplace/shipments/{id}/costs` (`x-format-new: true`) | `gross_amount`, `receiver.cost`, `senders[].cost`, `discounts[]` |
+
+**Smallest authorization the operator must grant to continue:** the ML+MP read credential alone. Report **generation** should be requested only if, after the read-only pass, the account turns out to have no pre-existing report and the payment-level path proves insufficient — and it should then be requested as an explicitly admitted external effect under canonical D4 §3.11, not as "read support" (see F-B4-8).
+
+---
+
+# 3. M1 — Market Evidence
+
+**Verdict: STOP / SPLIT PREREQUISITE — NOT EXECUTED (access).**
+
+Not executed: no credential. What I could adjudicate without the probe:
+
+**M1 is mis-classified as a peer of E1 and S1.** It is a **lane-selection gate**, structurally identical to the B2 Installation Evidence Gate — it selects which market surface applies to this Installation. It is not a closure gate, because its failure mode is benign under accepted authority: if `price_to_win` is unavailable or the listing is non-catalog, Market Intelligence returns insufficient evidence, which D0 honest-absence and D1 ("market-evidence sufficiency" is MI's own property) already admit as a correct outcome. No Product 1.0 capability collapses. Contrast E1/S1, whose failure would leave L0 and L2 — named Product 1.0 lineage in D0 §D0.7f — unprovable.
+
+**`price_to_win` is not mistaken for Price Intent in the candidate.** §7.2 states it explicitly, and D1 already blocks the path (Offering owns price intent/mutation; MI "does not own pricing/profitability authority"). The current adapter is consistent: `pricing_reader.go:80-107` reads `/items/{id}/price_to_win?version=v2` and returns `status`, `current_price`, `target_price`, `position{rank,total}` as observation only, with no recommendation derived. **No leak found.**
+
+**Catalog membership does not establish comparability — the candidate says so and is right.** Catalog competition is a provider-defined relation over one catalog product. Market Intelligence must still decide relevance, because the catalog relation answers "who else offers this exact catalog product" and not "who is my competitor". The candidate's §7.2 fourth bullet is the correct fence.
+
+**Is the candidate overclaiming competitor coverage?** No — §7.2 and the §11 fence both forbid it, and §12 counterexamples 1–2 name it. This is the candidate's strongest section.
+
+**What M1 must still measure when credentials arrive** (unchanged from the candidate, plus one addition): the four-way distinction (observed / known-empty / unavailable / partial) must be measured on a **real non-catalog listing** as well as a catalog one — the candidate's plan selects "one suitable listing", which risks selecting only the case that works. A gate that cannot fail is not a gate (METHOD §Enforcement: "A control counts only when its firing can be demonstrated or credibly falsified"). Add: on this Installation, 7/34 listings were `under_review / waiting_for_patch` at the 2026-08-17 measurement — moderation state is a plausible third outcome class for competition surfaces and should be included in the selection.
+
+---
+
+# 4. E1 — Expected / Order Economic Evidence
+
+**Verdict: STOP / SPLIT PREREQUISITE — NOT EXECUTED (access), and the gate as specified would not have detected the insufficiency I found without it.**
+
+## 4.1 The current implementation is worse than the candidate states
+
+The candidate says the present `FeeQuote` "sends only price/listing type/category". Measured — that is accurate but incomplete:
+
+`capability_adapter.go:586-596` builds exactly `price`, `listing_type_id`, `category_id`. Meanwhile `domain.FeeQuoteInput` (`capability.go:293-300`) **carries a `CurrencyID` field that is never transmitted**, and `capability_adapter.go:631` writes that untransmitted value — defaulted to the literal `"BRL"` — into the returned `FeeQuoteSnapshot`. The snapshot therefore **asserts a qualifier the provider was never asked about and never confirmed**. That is not an omitted qualifier; it is a **fabricated** one, and it is a direct violation of D2 §9.4 provenance and of the candidate's own §5 invariant. Omission produces an unqualified number; fabrication produces a number that *looks* qualified. The second is strictly more dangerous and the candidate did not find it.
+
+Secondary, same file: `PriceAmount`, `CommissionPercent`, `FixedFeeAmount` are all `float64`, and the request serializes price via `strconv.FormatFloat`. `ARCHITECTURE.md` stable constraint 9 forbids losing money correctness to floating-point convenience. B4 does not choose DTOs, but B4 **is** the batch through which fee evidence enters, so the exactness property belongs in the B4 evidence contract rather than being left to D5/D7 to notice.
+
+## 4.2 The qualifier set is larger than the candidate's, and one required qualifier may not exist
+
+Current official Mercado Libre documentation for the sale-cost resource documents the request as:
+
+```
+GET /sites/$SITE/listing_prices?category_id=&price=&currency_id=&logistic_type=
+```
+
+with `listing_type_id` and `quantity` also documented, and a `sale_fee_details` response carrying `fixed_fee`, `gross_amount`, `percentage_fee`, `meli_percentage_fee` and `financing_add_on_fee`. So `currency_id` and `logistic_type` are **documented parameters the current code does not send**, and `financing_add_on_fee` / `meli_percentage_fee` are **documented components the current snapshot discards** (it keeps only `percentage_fee` and `fixed_fee`).
+
+That much confirms the candidate's direction. The problem is what comes next.
+
+**F-B4-2 (material). The candidate's stated causal mechanism for Brazil is unverified, and the correct mechanism may be unrepresentable in `listing_prices` at all.**
+
+The candidate records as **Known** that "for Brazil under the current cost structure, fixed-fee correctness depends on logistics context". Current sources disagree about the mechanism:
+
+- Mercado Livre's own seller help still describes the per-unit cost as **price-banded** (< R$12.50 → 50% of unit value; R$12.50–R$79 → three bands; ≥ R$79 → none);
+- this repository encodes the same band model in `migrations/0081_drop_legacy_marketplaces_and_orphan_tables.sql:14-15`;
+- multiple current commercial sources state that **from 2 March 2026** the Brazilian per-unit cost became a function of **package weight and dimensions** rather than a price band.
+
+I could not settle this against a primary source: `developers.mercadolivre.com.br`, `global-selling.mercadolibre.com` and `mercadolivre.com.br/ajuda` all returned **HTTP 403** to automated fetch in this session, so only search-surfaced excerpts were readable. Recording the conflict rather than picking a side.
+
+Why this is material and not a detail: **`listing_prices` has no documented weight or dimension parameter.** If the March-2026 mechanism is real, then no amount of qualifying `listing_prices` produces a Brazil-correct expected per-unit cost, and the candidate's entire §8.2 remedy — "preserve every provider qualifier materially required" — is a remedy for the wrong defect. The correct expected-cost evidence would then have to come from a *different* surface (a shipping/cost-preview surface that accepts the package dimensions), or the component would have to remain honestly Unknown. The candidate's E1 as written probes `listing_prices` "with the full material logistics context" and would return HTTP 200 with a plausible number in exactly this failure mode — the gate would pass while the claim it is supposed to protect is false. That is the same failure class as B3's F-G1-2 (unknown request fields silently ignored, 200 returned, +17% wrong), which the accepted B3 contract already fences.
+
+**Required amendment to E1:** the probe must include a **decorrelation control**, not just a successful quote. Vary one qualifier at a time (`logistic_type`, `quantity`, and — if any dimension-bearing input exists — the package attributes) against a fixed price/category/listing type, and record whether the returned `fixed_fee` and `percentage_fee` actually move. A quote that does not move when a supposedly material qualifier changes has proven the qualifier is *not* the mechanism. Agreement of one number with one expectation proves nothing; this is the lesson already paid for in B3, where ICMS agreed while PIS was silently zeroed by a wrong negotiation type.
+
+## 4.3 F-B4-7 (material) — the expected seller-shipping surface is named only by reference
+
+§8.3 requires expected seller-borne shipping "from the applicable provider shipping-quotation/cost surface" and names none, while §8.2 names `listing_prices` concretely. For MLB, seller-borne shipping — the free-shipping subsidy on items ≥ R$79 — is plausibly the **largest** provider-dependent component of L0 after commission, and on the selected `me2 / xd_drop_off` lane it is unavoidable. Leaving it as a reference means E1 can be declared passed without ever having quoted it. Given F-B4-2, this is also where the answer to the fixed-cost question may actually live. **E1 must name the concrete surface and probe it, or record expected shipping as an explicit Unknown that blocks the L0 claim.**
+
+## 4.4 F-B4-3 (material) — the L1 fee granularity trap is unfenced
+
+§8.4 lists "`order_items[].sale_fee` or equivalent transaction fee evidence" with no granularity qualification. This repository already records that **ML `sale_fee` is per unit, not per line**: `migrations/0081_drop_legacy_marketplaces_and_orphan_tables.sql:13-14` — "the commission comes per listing from the ML Fees API (sale_fee, per unit)" — and `internal/modules/channelfees/domain/validate.go:10-22` enforces that a realized commission row must carry a decomposed `detail.sale_fee_unit` + `detail.quantity`, precisely so the realized-vs-estimated audit can recover the per-unit value.
+
+An L1 contract that records `sale_fee` without stating its granularity understates the transaction fee by a factor of `quantity` on every multi-unit order, and R1 (Expected ↔ Order) would then report a variance that is an artifact of the contract rather than of the business. The accepted B3 contract fences the isomorphic case explicitly (F-G1-1: do not reconstruct attributable tax as `base × rate` when evidence disproves the identity). B4 must carry the same obligation: **transaction fee evidence preserves the provider's own granularity — per unit, per line or per order — as part of the evidence, never as an adapter assumption.**
+
+## 4.5 What the candidate got right in B4-B
+
+- Expected sale fee, expected seller shipping, order transaction fee and realized shipment cost held as four distinct components — correct, and the fourth is now confirmed obtainable: `GET /marketplace/shipments/{id}/costs` returns `gross_amount` with `receiver.cost` (buyer) and `senders[].cost` (seller) as separate fields, which is the documented proof that counterexample 6 ("buyer shipping charge ≠ seller cost") is real and representable.
+- "L0 quote is not substituted for L1 when transaction-specific evidence exists" — correct and necessary.
+- No margin computed in D4 — correct.
+- **No unnecessary component invented.** I looked specifically for one and did not find it.
+
+---
+
+# 5. S1 — Real Settlement Evidence
+
+**Verdict: STOP / SPLIT PREREQUISITE — NOT EXECUTED (access + authorization fence), and the gate is mis-specified independently of both.**
+
+## 5.1 F-B4-5 (material) — Billing is required by S1 for a job Billing officially does not do
+
+S1 item 1 makes an authorized ML Billing surface a **closure requirement of the settlement gate**. But current official Mercado Livre guidance states the Billing Reports resources "are strictly intended for post-sales operations and have the sole purpose of **tax reconciliation and billing report generation**". The candidate itself writes in §9.2 that Billing "does not become … cash-settlement authority". Both cannot hold: a source that is definitionally not settlement authority cannot be a closure condition for the settlement gate.
+
+The resolution is not to drop Billing — it is to **re-file** it. Billing is the authoritative source for **billed charges, rebates and bonuses**, which is a genuinely distinct fourth evidence class the candidate folded into B4-C by adjacency. It feeds Economic Attribution and the Billing-vs-Order-fee divergence (counterexample 7), not L2 cash. Its natural gate is E1's neighbourhood, not S1's.
+
+## 5.2 F-B4-6 (material) — a smaller sufficient source set exists and was never evaluated
+
+The smallest source set sufficient for Product 1.0 L2/R2 was not derived; the candidate assumes a two-report set (ML Billing + MP account/release reports) and designs the gate around it. A smaller set is available:
+
+```
+ML Order  →  payments[].id  →  GET /v1/payments/{id}
+                                 ├─ fee_details[]                    (realized provider fee, per payment)
+                                 ├─ transaction_details.net_received_amount
+                                 ├─ money_release_status             (released vs not)
+                                 └─ money_release_date               (when)
+```
+
+This is **read-only, per-sale, already Order-correlated through the Order's own payment reference, and requires no report artifact at all**. For per-sale R2 correctness — "Order Economics ↔ authoritative marketplace/payment settlement/realized evidence" (D2 §5.5) — that is plausibly sufficient on its own.
+
+What payment-level evidence cannot do is establish the **completeness of the account movement universe**: withdrawals, financing costs, chargebacks arriving weeks later, and adjustments with no Order anchor exist only at account level. So the honest decomposition is **two questions, not one source set**:
+
+| Question | Smallest source | Report artifact needed? |
+|---|---|---|
+| per-sale realized fee + release (R2 per Sale) | `GET /v1/payments/{id}` from the Order's payment reference | **no** |
+| account movement universe completeness (unanchored movements, period closure) | account/release report **or** ML billing `group=MP` details | only if no report already exists |
+
+**S1 must therefore be staged:** (a) read-only pass — payment-level evidence + `GET /v1/account/release_report/list` + billing `group=MP` details; (b) escalate to the operator for report generation **only if** (a) proves insufficient, and then as an explicitly admitted external effect. Designing the gate to require report generation up front is what forced the whole gate into the authorization fence.
+
+## 5.3 F-B4-4 (material) — "release" is collapsed into "settlement"
+
+The candidate's false-equivalence ladder is Order Payment → Billing charge → settlement → payout → bank receipt. Mercado Pago's own model inserts a rung the candidate omits: **release** — funds becoming available in the MP account, carried by `money_release_status` / `money_release_date` — which is distinct from a **withdrawal/payout** out of the account and from any bank credit. §9.2 nevertheless describes the released-money report as a source for "actual account-impact/release/**settlement** movements", equating three states in one clause.
+
+This matters for correctness, not vocabulary. R2 asks whether Order Economics reconciles against *realized* evidence. If "released" silently reads as "settled", then a payment that is `approved` but not yet released — the candidate's own counterexample 8 — is counted as realized, and L1 becomes L2 by a naming accident. The candidate knows the failure (it is listed) and then permits it in the contract prose. **Amendment: name release as its own state, and state which rung R2 actually reconciles against.**
+
+## 5.4 F-B4-8 (material) — report generation is reclassified as "read support"
+
+§10 says: "Report-generation endpoints may create provider report artifacts as read-support mechanism." A `POST` that creates a durable provider-side artifact, returns **202** asynchronously and consumes account quota is a **consequential external effect** under canonical D4 §3.11, which requires an admitted effect to name its target, intent/correlation anchor, prerequisites, what the response actually proves, ambiguity conditions and an authoritative reread surface. Calling it a read-support mechanism is exactly the reclassification-by-convenience that §3.11 and `ARCHITECTURE.md` constraint 11 exist to prevent, and it sits inside a section titled "No B4 write surface by symmetry" — i.e. the one sentence in the section undoes the section's title.
+
+Note the asymmetry with accepted B3: B3 admitted `POST /v1/fiscal/impostos/calculo` only after **verifying non-persistence by authoritative reread**, and even then recorded the residue check in detail. A report POST demonstrably *does* persist. It should either be excluded from the target (require pre-existing/scheduled reports) or admitted explicitly under §3.11. It must not be admitted by adjective.
+
+## 5.5 Where the candidate is right about S1
+
+- Every false equivalence it names is real and the sources support the distinctions: MP release reports do carry disputes/refunds/chargebacks/withdrawals as distinct families; ML billing exposes charges **and bonuses** (so counterexample 7 — Billing fee ≠ Order fee via rebate — is structurally expected, not hypothetical); billing pagination is `limit` (max 1000) with `from_id`/`last_id` and explicit `sort_by`/`order_by`, so partial traversal is detectable.
+- "Do not correlate by amount/date similarity" and "missing anchor is a real unresolved Economic Attribution condition" — correct, and consistent with D2 §5.4 (attribution may be exact/partial/ambiguous/unresolved).
+- R3 left unclaimed until a bank source exists — correct per D2 §5.5 and D0 (bank is explicitly not a launch gate).
+- ERP receivable/baixa refused as marketplace settlement authority — correct and already binding per D2 §5.5.
+
+---
+
+# 6. Architecture challenges — adjudication
+
+**1. Operation-specific evidence contracts vs generic D4 financial ledger — CANDIDATE UPHELD.** D2 §4.5 already fixes provider financial movements as external/source-qualified with no synthetic MPC identity; a D4 ledger would create the duplicate authority METHOD §Authority presumes wrong. Alternative B is correctly rejected. No change.
+
+**2. Market Intelligence owns comparability — UPHELD.** Verbatim D1 §3 and the D1 edge "Market Intelligence → Commercial Economics: … Economics does not independently reinterpret provider competitor payloads". The candidate restates it accurately. No change.
+
+**3. Commercial Economics owns L0/L1/L2 + Economic Attribution + R1/R2 — UPHELD.** D1 §3 and D2 §5.4/§5.5. No change.
+
+**4. Provider financial movements remain source-qualified external identities — UPHELD.** D2 §4.5. No change.
+
+**5. Expected, Order, Billing and Settlement evidence remain distinct — UPHELD IN PRINCIPLE, AMENDED IN FACT.** The four-way separation is correct and is required by D2 §9.4 ("A modeled fee, provider-observed fee and realized settlement movement may carry the same numeric amount while remaining semantically different evidence"). Amendments: add **release** as a distinct state (F-B4-4); re-file Billing as billed-charge evidence rather than a settlement-gate component (F-B4-5); carry provider fee **granularity** as part of the evidence (F-B4-3).
+
+**6. No B4 write surface by symmetry — UPHELD, WITH ONE SENTENCE STRUCK.** The conclusion is right; §10's "read-support mechanism" clause must go or be admitted under §3.11 (F-B4-8).
+
+**7. No scraping by convenience — UPHELD, BUT HOMELESS.** The rule is correct and I found no Product 1.0 claim that requires scraping. But if ADR-020 is superseded and the rule survives only inside a B4 sentence, a marketplace-wide source-admissibility rule ends up scoped to one batch. The ADR README's legacy-retirement gate 2 requires a carried constraint to have an active home before its legacy file is removed. **Recommend: rehome source admissibility to `ARCHITECTURE.md` external-integration principles (or D0 source admissibility), and let B4 cite it.**
+
+**8. ADR-009 provenance principle survives without `channel_fees` / layer ontology — UPHELD, WITH A CORRECTION.** The principle survives; the table and the 1/2/3 layer ladder are correctly refused. **Correction:** the ADR registry already records ADR-009 as "carried constraint — fee/value provenance; **active home: D2 provenance semantics**", and D2 §9.4 carries it verbatim. The candidate's §8.5 restates the invariant as though B4 were its home, which risks creating a second home for one meaning — the exact condition METHOD §Authority calls presumed wrong. B4 should **cite** D2 §9.4 and add only what is B4-specific (which provider components must be preserved for which claim). Consolidation-absorbable; not a reopen.
+
+**9. ADR-014 on-demand/local-runtime target meaning — SHOULD NOT SURVIVE; and its residue is empty.** Agree with supersession. Going further than the candidate: after the runtime shape goes to D7 and the honesty rule is recognised as already carried by D0 honest-absence + D4-B1 §3.8 coverage semantics, **ADR-014 has no remaining D4-B4 residue at all**. Its correct end state is **historical**, with the runtime portion explicitly handed to D7 — not "carried constraint". The candidate leaves this ambiguous; B4 should close it cleanly so the registry can retire the file.
+
+**10. ADR-020 generic `CollectorPort` — SHOULD NOT SURVIVE.** Agree. Confirmed present as current-state evidence at `internal/modules/market/ports/collector.go`; existence is not authority. A generic collector abstraction fails METHOD's add-an-abstraction test: there is one real market source (ML catalog competition), so the abstraction has no second consumer and would only move complexity. The no-scraping clause survives but needs the rehome in challenge 7.
+
+**11. ADR-032 default-off flag — SHOULD NOT SURVIVE AS ARCHITECTURE.** Agree, unreservedly. This is the candidate's cleanest disposition and it is exactly D4-B1 §3.10: a runtime flag is neither Integration Support nor Provider Effective Capability nor Effective Business Capability. Flag off proves nothing about the provider; toggles are D7 mechanics. No change.
+
+**12. R3 unclaimed until a real bank source exists — UPHELD.** D2 §5.5 and D0 non-goals. One addition the candidate half-makes: MP **withdrawal** movements are the *provider side* of R3 and are observable today; recording them is not a bank claim and does not open R3. Worth stating explicitly so a future session does not read "R3 unclaimed" as "withdrawals unobservable".
+
+## 6.1 F-B4-1 (material) — the one missing authority
+
+Canonical D4-B2 §4.5 rule 7 defers provider "Payment/Refund/Fee/Adjustment/Settlement/Payout authority" to **B4**, and adds that "physical return closure never fabricates financial closure and vice versa". D1 gives **Post-Sale Resolution** the "coordination/correlation/closure of material cancellation/return/refund consequences", and D2 §5.3 says a Resolution "closes only when applicable consequences for its explicit scope are sufficiently evidenced".
+
+So refund-movement evidence has **two** legitimate D1 consumers: Commercial Economics (Economic Attribution / L2 / R2) and Post-Sale Resolution (consequence closure). The candidate's §9.1 and its §14 target diagram route provider financial movements **only** to Economic Attribution. Under that routing, a Post-Sale Resolution whose scope includes a refund has no named B4 evidence source for its own closure condition — and the B2 clause that deferred it to B4 is left unanswered.
+
+This is not a duplicate authority: closure and attribution are genuinely different decisions over the same external movement, and D2 §5.4 already permits Economic Attribution's subject to be a Resolution. It is a **missing consumer edge**. B4 must name Post-Sale Resolution as a consumer of refund/chargeback/adjustment evidence, and state that financial-movement evidence sufficient for attribution is not automatically sufficient for resolution closure.
+
+## 6.2 Minor findings
+
+**F-B4-9 (minor).** §9.1 requires preserving **Pack ID** as a correlation anchor. D4-B2 §4.4 keeps Pack provider-native with no MPC entity, and no B4 consumer is named for it. Requiring an anchor with no consumer is speculative under the candidate's own §11 fence — keep it as *available if exposed*, not as a preserved requirement.
+
+**Observation (not a finding).** The candidate's §9.1/§9.3 field lists together read close enough to a schema that a later stage could materialize them as a table by inheritance — the precise failure the candidate diagnoses in §4 as the root cause. Adding one sentence ("this is an evidence contract; persistence shape is D7") would close the loop it opened.
+
+---
+
+# 7. Counterexamples confronted
+
+| # | Counterexample | Disposition |
+|---|---|---|
+| 1 | fee quote 200 with a required qualifier omitted | **Confirmed structurally, live-unverified.** `currency_id` and `logistic_type` are documented parameters; current code sends neither. Worse: `CurrencyID` is fabricated into the snapshot (§4.1). |
+| 2 | current quote ≠ actual Order fee | Requires live E1. Contract already separates L0/L1; granularity fence missing (F-B4-3). |
+| 3 | seller shipping cost ≠ buyer shipping charge | **Documentation-confirmed.** `GET /marketplace/shipments/{id}/costs` returns `receiver.cost` and `senders[].cost` separately. Candidate correct. |
+| 4 | Billing fee ≠ Order fee via rebate/discount/adjustment | **Documentation-supported.** ML billing exposes charges **and bonuses**; divergence is expected, not hypothetical. Candidate correct; source re-filed per F-B4-5. |
+| 5 | Payment approved but money not released | **Documentation-confirmed.** `money_release_status` / `money_release_date` are distinct payment fields. Candidate correct in §12, self-contradicted in §9.2 (F-B4-4). |
+| 6 | refund/chargeback after earlier settlement | **Documentation-supported.** MP release reports carry disputes/refunds/chargebacks as distinct families. Candidate correct; second consumer missing (F-B4-1). |
+| 7 | movement with no exact Sale/Order correlation | **Structurally certain** — withdrawals and account-level adjustments have no Order. Candidate correct: unresolved stays unresolved. |
+| 8 | report/page partial | **Documented and detectable** — billing `limit`/`from_id`/`last_id`; MP report is a file with generation status. Candidate correct. |
+| 9 | same movement in overlapping periods/reports | Requires live S1. Native movement identity is the right semantic defence; unproven on this account. |
+| 10 | payout exists, no bank integration | **Structurally certain.** R3 provider side only. Candidate correct. |
+| 11 | `price_to_win` unavailable on a real non-catalog listing | Requires live M1; **M1 must be designed to hit this case**, not avoid it (§3). |
+| 12 | current code makes one table/interface look canonical | **Confirmed in tree** — `migrations/channel_fees*`, `market/ports/collector.go`, catalog-offers flag. All three correctly refused. |
+
+---
+
+# 8. Findings register
+
+| ID | Severity | Finding |
+|---|---|---|
+| **F-B4-1** | material | Refund/chargeback/adjustment evidence has a second D1 consumer — **Post-Sale Resolution** — that B4 never routes; B2 §4.5 rule 7 deferred exactly this to B4. |
+| **F-B4-2** | material | The Brazil expected-cost **mechanism** is unverified (price bands vs weight/dimensions from 2026-03-02), and `listing_prices` has no weight/dimension parameter — the candidate's remedy may not address the real defect. E1 needs a decorrelation control, not a successful quote. |
+| **F-B4-3** | material | L1 transaction-fee evidence does not fence provider **granularity**; ML `sale_fee` is per unit, as this repo already records and enforces elsewhere. |
+| **F-B4-4** | material | **Release** is collapsed into **settlement** in §9.2, permitting the very L1→L2 promotion the candidate lists as counterexample 8. |
+| **F-B4-5** | material | S1 requires ML Billing as a **settlement-gate closure** condition, though Billing is officially scoped to tax reconciliation/billing. Re-file as billed-charge evidence. |
+| **F-B4-6** | material | A **smaller sufficient source set** exists for per-sale R2 (payment-level `fee_details` + `money_release_*`, read-only, Order-correlated) and was never evaluated; S1 should be staged read-only-first. |
+| **F-B4-7** | material | Expected seller-shipping surface is named only by reference; on the selected `me2/xd_drop_off` lane it is unavoidable and possibly where the fixed-cost answer lives. |
+| **F-B4-8** | material | §10 reclassifies report **generation** as "read-support mechanism", contradicting canonical D4 §3.11 and the section's own title. |
+| **F-B4-9** | minor | Pack ID required as a correlation anchor with no named consumer — speculative under the candidate's own YAGNI fence. |
+| **C-1** | correction | ADR-009's active home is already D2 §9.4; B4 should cite, not re-home. |
+| **C-2** | correction | ADR-014's correct end state after supersession is **historical** (runtime → D7), not a carried constraint. |
+| **C-3** | correction | ADR-020's surviving no-scraping rule needs a home outside B4 before the legacy file can retire. |
+
+**Gate-ranking correction (not numbered above because it is structural):** the candidate's ranking — S1 primary, M1/E1 "small" — is inconsistent with accepted precedent. B3 held **G1 Expected Tax** as a batch closure gate on the reasoning that Expected Economics is a named D0 Product 1.0 capability and a batch may not close while its only sanctioned path is unproven. E1 is the exact structural analogue for the marketplace side of L0. Correct ranking: **E1 and S1 are co-equal closure gates; M1 is a lane-selection gate.**
+
+---
+
+# 9. Final disposition
+
+**`B4 CONDITIONED`.**
+
+The architecture core is sound. The boundary — D4 owns operation-specific, source-qualified external economic/market evidence; Market Intelligence owns comparability; Commercial Economics owns L0/L1/L2, Economic Attribution and R1/R2; similar monetary fields do not collapse across Order/Billing/Payment/Release/Settlement/Payout — survived every attack I could mount and is faithful to D0 §D0.7f, D1 §3, D2 §4.5/§5.4/§5.5 and D4-B1 §3.10/§3.11. No generic D4 ledger, no scraping, no write-by-symmetry, no `channel_fees`/`CollectorPort`/flag inheritance. I found no smaller *structure*.
+
+What remains is concrete and bounded: two closure-critical evidence gates undischarged, one gate mis-ranked, one gate mis-sourced, and nine amendments — none of which requires reopening D0–D4-B3.
+
+- **M1 verdict:** `STOP / SPLIT PREREQUISITE — NOT EXECUTED (access)`. Not closure-critical; reclassify as lane-selection.
+- **E1 verdict:** `STOP / SPLIT PREREQUISITE — NOT EXECUTED (access)`, plus F-B4-2 / F-B4-3 / F-B4-7, which the gate as specified would not have caught.
+- **S1 verdict:** `STOP / SPLIT PREREQUISITE — NOT EXECUTED (access + authorization fence)`, plus F-B4-5 / F-B4-6 / F-B4-8. Must be staged read-only-first.
+- **Is S1 the only/primary closure gate?** No. E1 is co-equal. M1 is not a closure gate.
+- **Any D0–D4-B3 reopen required?** **No.** C-1/C-2/C-3 are consolidation-absorbable ADR-home corrections.
+- **Does the candidate need material amendment?** Yes — F-B4-1 through F-B4-8, plus the gate-ranking correction.
+- **Can D4 final Global Coherence start after B4 ratification?** Yes. But B4 cannot be ratified before E1 and S1 discharge, because L0 and L2 are named Product 1.0 lineage in D0 §D0.7f, and B3's own precedent forbids closing a batch whose only sanctioned path for a claimed capability is unproven.
+
+**Explicitly not claimed:** no probe was run; no provider capability is measured by this review; no gate is passed; B4 is not accepted; D5 is not begun; implementation remains blocked until D9.
+
+## HANDOFF → GPT
+
+Adjudicate: (1) the **gate-ranking correction** — E1 promoted to co-equal closure gate, M1 demoted to lane-selection — against the B3/G1 precedent cited; (2) **F-B4-1**, whether Post-Sale Resolution must be named a B4 evidence consumer or whether B2 §4.5 rule 7's deferral is discharged some other way; (3) **F-B4-5/F-B4-6**, whether S1 is re-scoped to read-only-first with Billing re-filed as billed-charge evidence, and whether payment-level release evidence is accepted as the candidate minimum for per-sale R2; (4) **F-B4-8**, whether report generation is struck from the target or admitted explicitly under canonical D4 §3.11; (5) **F-B4-2**, whether the Brazil fixed-cost mechanism conflict is recorded as an explicit Unknown blocking the L0 claim until E1's decorrelation control resolves it; (6) **C-1/C-2/C-3**, the three ADR-home corrections; (7) the operator action — supply the ML/MP read credential outside the repository so E1 and S1 can be discharged, and decide separately whether report generation is ever authorized. No authority file, canonical D4, router, ADR or product code was touched by this reviewer, and no external system was contacted.
