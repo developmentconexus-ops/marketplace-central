@@ -3637,3 +3637,209 @@ Current official flow: description is created after the item; family-level edits
 
 HANDOFF → GPT
 Expect back: adjudication of F-R1-1..F-R1-5 against repository authority — incorporate the corrected invariants (joint-realization composition for R1-G1; Readiness source-level readiness vs Offering draft-dispatchability split; D2 §10.3 restatement for automation-over-human overrides; decision-point revalidation wording; multi-step partial-outcome naming) into the candidate or refute them with evidence and citation — then operator ratification of the R1 package before D5-B2 resumes.
+
+---
+
+## FABLE — Decision Reconciliation Baseline Independent Review (pre-D5-B2) (2026-08-18)
+
+**Subject:** Independent Decision Reconciliation Review of `docs/engineering/rebaseline/DECISION-RECONCILIATION-BASELINE-REVIEW-CANDIDATE.md` before D5-B2 opens: CURRENT-decision verification, superseded/rejected/historical proof, boundary re-checks, Open/Unknown/Deferred audit, Implementation Reconciliation Guard audit, baseline authority-model attack, legacy ADR KEEP/RETIRE falsification (001–035), active-tree cleanup adjudication, fresh-reviewer test, architecture prerequisite check.
+**Head reviewed:** `85ae3cc595371e2831fb78a039999b9ee661856f` on `docs/global-methodology-alignment`. Local clone was at `699a0283`; fast-forwarded to the named head before reading anything. The candidate was prepared against `1adc22e8`; the only delta to the reviewed head is the candidate file itself, so it was reviewed against effectively current authority.
+**Authority chain read in full at this head, in order:** `AGENTS.md` → rebaseline router → Method v1.0.0 → `ARCHITECTURE.md` → ADR registry → D0 → D1 → D2 → D3 → D4 (whole stage incl. §9 Global Coherence) → D4-R1 → `D5-API.md` (B1) → Evidence Register. Then, as NON-AUTHORITATIVE review input only: the candidate. All 35 legacy ADR files were read in full for the KEEP/RETIRE falsification. The stale `D5-B2-REVIEW-CANDIDATE.md` was opened only at section-header level to adjudicate its deletability; it was not used as review input or authority. No provider/marketplace call of any kind was performed; this round is repository-evidence-only.
+
+### VERDICT: REVISE
+
+The candidate is what it claims to be: a decision-disposition/routing map, not a second architecture. Its §3 CURRENT set was verified item-by-item against D0→D4 + D4-R1 + D5-B1 and **no superseded decision is presented as CURRENT, and no CURRENT decision is being retired by mistake**. The §4 lineage table is correct in every row checked. The conflict rule points the right way. Six findings force revision before canonicalization; all are correctable inside the candidate plus one registry-row adjudication. None is a REJECT ground and none reopens D0–D5-B1.
+
+### 1. CURRENT-decision verification — result
+
+Every §3.1–§3.7 bullet was traced to its claimed authority. Verified correct, including the generation-sensitive cases the handoff named:
+
+- dashboard/module product → Marketplace Operations Control Plane (D0 §2) — candidate current ✓;
+- Product mirror → external Product = `SourceInstance + native key` (D2 §4.1; D4-B3 §5.3) ✓ — note: D4-R1 §3.1 spells the full tuple `Organization + SourceInstance + native key`; the candidate's shorter spelling is safe because `SourceInstance` is itself Organization-qualified (D2 §3.7, D4-B1 §3.4.1). Non-finding;
+- generic plugin framework → concrete adapters + consumer-owned ports (D4-B1 §3.2, ADR-004 superseded) ✓;
+- Direct Oracle/godror → sanctioned Gateway only, no fallback (D4-B1 §3.5) ✓;
+- generic Mutation owner → domain-local Business Intents + shared execution-safety mechanism (D1 §4.5, D2 §5.0, D3 §3.19) ✓;
+- divergence ledger → originating-domain truth + Operational Work (D2 §11 ADR-011 row) ✓;
+- provider DTO ontology → semantic core + provider-enriched evidence (D4-B4 §6.1) ✓;
+- generic Customer/Party/Address → bounded Party Resolution / Destination Realization (D4-B3 §5.6/§5.7) ✓;
+- manual OpenAPI+SDK → one OpenAPI wire authority + derived/conformant clients/server (D5-B1 §15, ADR-016 historical) ✓;
+- PublicationPreparation — rejected ✓; SourceProductObservation owner — rejected ✓ (D4-R1 §12);
+- Listing authoring → Offering-owned ListingIntent, one create/edit identity (D4-R1 §3.3) ✓;
+- Readiness source-level readiness vs Offering draft dispatchability (D4-R1 §3.4) ✓;
+- `FOLLOW_SOURCE | EXPLICIT_OVERRIDE` only, no DERIVED (D4-R1 §4) ✓;
+- AI path → automation Principal + normal Product API (D4-R1 §5) ✓;
+- joint technical realization without authority merger; R1-G1 = PASS-B; Offering never owns quantity (D4-R1 §9) ✓;
+- multi-step/partial/async publication; no `createListing = success` (D4-R1 §10) ✓.
+
+Boundary re-checks (Readiness/Offering/Availability; Governance/ordinary access; Work/originating truth; Sales/Materialization/Fulfillment; D4/consumers incl. coherence fences C1+C2): all correctly represented. C1 (D4 evidence contract ≠ evidence authority/store) and C2 (provider resource ownership does not move wholesale to one consumer) both survive into §3.5 explicitly. The Materialization⇄Fulfillment cycle is represented at the correct altitude (two owner-specific flows; no shared workflow object implied).
+
+Open/Unknown/Deferred audit (§5): no Unknown was converted to CURRENT; no Deferred disappeared (checked against D4 §5.14 G4/G5/G6, §6.4 S1-B, §6.8 R3, fail-honest fiscal Unknowns, D4-R1 paused/zero-quantity path, D5 §20); no listed-open item is actually closed; no item is assigned to the wrong stage. The aggregation of the three fiscal Unknowns (PJ-contributor branch, IPI/ICMS-ST visibility, despesasAcessorias shape) into one line is acceptable at index altitude because D4-B3 §5.14 remains the detailed home.
+
+Guard overreach check: **no D6/D7 freeze found.** All 21 guard items are semantic; §5 explicitly leaves package topology, schemas, RLS, workers, queue, outbox, transactions, caching, deployment, generators, screens, media storage and the B2 endpoint set open. The handoff's overreach concern does not materialize.
+
+### 2. Material findings
+
+#### F-DR-1 (material) — the index under-represents accepted safety-class laws in two places, and the guard reads as exhaustive
+
+**Evidence.** Candidate §6 says "They MUST NOT re-decide by convenience:" followed by a closed list of 21 items; §3.4 presents "Current laws" for communication. Both lists drop accepted safety invariants that an implementation stage is *most* tempted to re-decide by convenience:
+
+Missing from §6 guard:
+
+- **D0.7n execution-time authorization validity** — a prior approval does not execute blindly after material governing drift; approval cannot waive mandatory safety invariants (D0 §8.2 inv. 71–76). A D7 executor that runs from stale permission would violate accepted authority while passing every listed guard item.
+- **Multi-target scope separation + member-level outcomes** — intended (action owner) / authorized (Governance snapshot) / attempted-outcome (execution evidence) scopes and confirmed/rejected/ambiguous/not-executed member states (D0 §8.2 inv. 64–70; D1 §4.5; D3 §4.13; D5-B1 §18). Guard item 18 (owner-specific convergence) does not cover this.
+- **Provider PII minimization** (D0 §6; `ARCHITECTURE.md` constraint 12; D4-B4 §6.1).
+- **Source admissibility** — absence of an admitted market-data source never authorizes fabricated evidence or an unadjudicated scraping path (D4-B4 §6.6; `ARCHITECTURE.md` external-integration principles).
+- **Externally governed policy provenance** — external rules are never silently converted into editable MPC policy; internal targets may tighten but never relax external obligations (D0 §3.2, §8.2 inv. 4/40).
+
+Missing from §3.4 current-law list:
+
+- **Recoverable consequential propagation** — loss of a required reaction is detectable and recoverable, never a silent permanent stall; `commit → best-effort publish → forget` is insufficient (D3 §3.5/§4.7);
+- **Evidence-edge occurrence recoverability** — material occurrences remain recoverable from the smallest sufficient durable authority; latest state cannot erase them (D3 §3.4/§4.8);
+- **Cutover preserves pending recoverable reactions** (D3 §4.14);
+- **No-ownerless-work propagation** — a source-committed material actionable condition ends represented in Work or explicitly reconciled (D3 §3.11).
+
+**Root cause.** The candidate was compressed from an ownership/authority lens (D1–D5 vocabulary); D0's cross-cutting action-safety invariants and D3's recovery laws are not owned by any single boundary, so the compression dropped them disproportionately.
+
+**Corrected reconciliation.** (a) Add the five guard items and the four §3.4 laws above, one line each with home citation. (b) Add an explicit non-exhaustiveness clause to §6: *"This list routes; `ARCHITECTURE.md` and the accepted D-stage artifacts remain the complete constraint set. Absence from this list is never permission."* Without (b), every future accepted invariant creates a maintenance race between the guard and its home.
+
+**Proof strategy.** A one-pass mapping of each D0 §8.2 invariant and each `ARCHITECTURE.md` stable constraint to either a guard/§3 line or an explicit "detail stays in home" disposition. Anything mapped to neither is a candidate defect.
+
+**Reopen trigger.** None — local correction.
+
+#### F-DR-2 (material) — after canonicalization there would be two ADR-disposition authorities, and the conflict rule does not rank the registry at all
+
+**Evidence.** Candidate §4 carries a disposition column per legacy idea ("superseded", "rejected", "historical") and §7.2/§7.3 keep the ADR registry alive as the transition index. The registry (`docs/architecture/decisions/README.md`) is today the authority for legacy-ADR status, with its own status vocabulary and per-ADR rows. The candidate's §2 conflict rule orders router → `ARCHITECTURE.md` → D-stage artifacts → baseline → evidence, and never mentions the registry. Two documents independently asserting ADR dispositions is exactly the duplicate-authority condition the Method presumes wrong (Method §3, Authority) and the failure class this baseline exists to remove.
+
+**Root cause.** The baseline absorbed a routing convenience (the lineage table) without deciding which document owns legacy-ADR status after cleanup.
+
+**Corrected reconciliation.** Pick one owner explicitly. Recommended: **the ADR registry remains the sole legacy-ADR status authority** (shrunken per §7.3 to retained residues + one retirement statement + future ADR-036+ entries); the baseline's §4 table is recast as derived routing ("old idea → current semantic home") that cites the registry/D-stage dispositions and carries no independent status vocabulary. Add the registry to the §2 conflict-rule ordering. The inverse assignment (baseline owns status, registry is pure index) is also coherent — but exactly one must be written down.
+
+**Proof strategy.** Grep-level check after canonicalization: no ADR number has a status stated in two active documents with independent vocabulary.
+
+**Reopen trigger.** A future target ADR (036+) changing a disposition must show up in exactly one place; if it must be edited twice, the ownership choice was wrong.
+
+#### F-DR-3 (material) — the KEEP set is over-inclusive by one: ADR-003 has no identifiable open-decision consumer
+
+**Evidence.** ADR-003 (20 lines, 2026-04-10) decides only the execution sequencing of a retired integration foundation: OAuth → fee sync → frontend UX, "strictly 1 → 2 → 3". The registry row says "reopened — D9 only; D4-B1 rehomed credential/identity-binding prerequisite and superseded the old OAuth→fee→frontend implementation sequence." D4-B1 §3.12 confirms the rehoming. What remains in the file after D4-B1's adjudication is *only* the superseded sequencing of modules (`integrations`, fee sync, connection UX) that D1 already dissolved. D9 is an adversarial review of the accepted D0–D8 target; I could not name a single open D9 decision for which a 2026-04 sequencing note of a retired foundation is unique evidence, and the file contains no carried constraint absent from active authority. The "D9 residue" is vestigial routing, not residue.
+
+**Corrected reconciliation.** At canonicalization, adjudicate the registry row: ADR-003 → historical (credential prerequisite rehomed by D4-B1; sequencing superseded), and retire the file with the rest. This amends the registry, so it requires explicit operator ratification — it cannot ride in as a silent cleanup.
+
+**Proof strategy.** Falsification standard the candidate itself sets (§9.3): name the later-stage open decision that needs the file. None was nameable; if GPT adjudication names one, KEEP stands and this finding dies.
+
+**Reopen trigger.** None; Git history preserves the file either way.
+
+#### F-DR-4 (material, low) — ADR-035 stays, but its embedded constraint/reopened tables are frozen at 2026-08-14 and now partially contradict later authority
+
+**Evidence.** ADR-035 §"Still-binding constraints during the rebaseline" lists **ADR-006** ("Oracle/Sankhya reads are MPC-owned behind application adapter boundaries") and **ADR-007** ("godror/OCI is the current canonical Oracle runtime") as still binding. D4-B1 §3.5 has since superseded Direct Oracle/godror as target transport entirely, and the registry marks both historical. ADR-035's reopened table likewise still routes 011/012/015/019/020/022/024/028/031/032 to stages that have since adjudicated them. ADR-035 is a KEEP file that a fresh reader is told to trust for transition authority; its stale internal tables are the one place in the retained active tree from which a reader could resurrect a godror constraint.
+
+**Corrected reconciliation.** One disposition line — in the canonical baseline and/or a dated amendment note in ADR-035 — stating: *"ADR-035's embedded still-binding and reopened tables are a 2026-08-14 snapshot; the ADR registry and accepted D-stage artifacts own current dispositions and supersede those tables where they differ (notably ADR-006/007 → historical per D4-B1)."* ADR-035's governing role (§§1–6: rebaseline governs target design) is untouched and remains KEEP until program closure (D2 §12.2 gate 4).
+
+**Proof strategy.** Fresh-reviewer probe: ask what the target Sankhya transport is reading only the retained active tree; the answer must be Gateway-only with no reachable path to "godror is canonical."
+
+**Reopen trigger.** None.
+
+#### F-DR-5 (minor) — detail creep in §3.5 realization subsections invites the drift the candidate itself forbids
+
+**Evidence.** §3.5's "Mercado Livre current realization" / "Sankhya current realization" subsections restate stage-level realization detail including provider-local surface names (CACSP/SelecaoDocumentoSP/TOP/NUNOTA) and the time-bound first proof lane. §2's own defect rule says: if the baseline restates enough detail to disagree with the underlying authority, it must shrink. Time-bound Installation facts are the fastest-churning content in the whole authority set; carrying them in a reconciliation index maximizes the probability of exactly that disagreement.
+
+**Corrected reconciliation.** Shrink each realization subsection to disposition lines only ("provider topology remains adapter-local evidence — home: D4-B2/B3") and drop restated time-bound facts; keep the invariant lines. The disposition statements ("X remains adapter realization") are fine — it is the enumerations and lane facts that should go.
+
+**Proof/reopen.** None needed; size and churn-surface of the canonical file is the measurable.
+
+#### F-DR-6 (minor / process) — cleanup ordering and channel preservation
+
+1. **Stale D5-B2 candidate deletion is safe** — it predates D4-R1, the router already forbids using it by inheritance, D4-R1 §15 orders re-derivation, and its only content (a candidate operation-family sketch) is content D5-B2 must re-derive from current authority anyway. But the router (§6 exact-next-action text and §7 fresh-session test) currently *names the file's existence*; the deletion commit must update those router lines in the same change or the router fails its own fresh-session test.
+2. **AI-DIALOG deletion is safe only after this round's findings are adjudicated and the reconciliation is ratified** — and note the channel is still required: D5-B2, D6, D7, D8 and D9 all owe independent review rounds under the canonical Fable workflow (`AGENTS.md`). Deleting the file means recreating it (protocol header) at the next round. Resetting it to the protocol header at canonicalization achieves the same pollution removal with less friction; either is acceptable, Git history preserves all rounds. Deleting it *without* preserving the workflow's ability to recreate it would break the review protocol — that is a process observation, not an architecture one.
+3. **`docs/architecture/decisions/_citations/` retires with its ADRs.** The citation-harvest tree (RENUMBERING-REGISTRY.md + per-ADR harvest files) exists only to support the reconstructed legacy ADRs; when those retire, the harvest files' remaining consumers are the retained files (017/034 cite `adr-017-citations.md`; 018/026/030 cite theirs). Retire every harvest file whose citing ADRs all retire; retain only those cited by KEEP files. Leaving the full `_citations/` tree active after retiring its ADRs would recreate the archaeology this baseline removes.
+4. **No other active review candidates / handoff artifacts found.** Tracked candidate files at this head: the reconciliation candidate itself and the stale D5-B2 candidate — nothing else. `.mnfs/` is untracked local working state, not repository pollution (the retired mission paths the legacy ADRs cite are already Git-history-only), and is out of this review's scope.
+
+### 3. Legacy ADR falsification — 001–035, file by file
+
+Candidate KEEP set attacked: {003, 008, 010, 017, 018, 026, 030, 034, 035}. Result: **eight of nine confirmed; ADR-003 falsified (F-DR-3). No RETIRE-set member needed rescue.**
+
+| ADR | Disposition | Basis (verified this round) |
+|---|---|---|
+| 001 | RETIRE | superseded 2026-07-07; MetalShopping direct-read has no target meaning; nothing cites it as open evidence |
+| 002 | RETIRE | superseded 2026-07-07; same-cluster schema topology dead; D2 clean baseline owns target persistence posture |
+| 003 | **RETIRE (falsifies candidate KEEP)** | F-DR-3: credential prerequisite rehomed (D4-B1 §3.12); sequencing superseded; no open D9 decision consumes it; requires registry-row adjudication + operator ratification |
+| 004 | RETIRE | plugin/self-registration superseded (D4-B1 §3.12); adapter/composition meaning active in D4-B1 §3.2 |
+| 005 | RETIRE | carried constraint fully rehomed: D0 §6 + `ARCHITECTURE.md` constraint 6 state ML-first independently |
+| 006 | RETIRE | historical; Gateway-only supersession active in D4-B1 §3.5 + `ARCHITECTURE.md` constraint 5 + registry transition note |
+| 007 | RETIRE | historical; same home as 006; F-DR-4 note required so ADR-035's stale list cannot resurrect it |
+| 008 | **KEEP** | open decision: production deploy topology; stage: D7; unique meaning: measured delivery/publisher evidence incl. the 2026-08-10 amendment (CI publisher retired — 18/18 GHCR 403 failures — `scripts/release.sh` is the publisher) and backup/host posture; note its Oracle/Tailscale-to-Sankhya path is dead under Gateway-only and must be re-derived, not inherited; retire when D7 adjudicates deployment |
+| 009 | RETIRE | carried provenance constraint rehomed: D2 §9.4 (modeled vs observed vs realized fee) + D4-B4 §6.6 confirmation ("remains homed in D2") |
+| 010 | **KEEP** | open decision: acquisition cadence/refresh runtime mechanics; stage: D7 (D4 meaning already superseded per registry); unique meaning: polling-only operational evidence + visible-staleness consequence trail; retire when D7 adjudicates acquisition runtime (the staleness-visibility semantic home is already D0.7j) |
+| 011 | RETIRE | superseded as target structure by D2 §11; divergence meaning → originating domain + Work |
+| 012 | RETIRE | superseded by D2 §11; one-authority/no-fabricated-rate principles active in D2/D4-B3 fiscal contract |
+| 013 | RETIRE | carried constraint rehomed: D4-B1 §3.7 (notification is pointer; authoritative reread) + D3 §3.16 + D0 §5.2 |
+| 014 | RETIRE | historical per D4-B4 §6.6; collection runtime is D7's question from scratch |
+| 015 | RETIRE | historical per D4-B2 §4.9; B2 owns all surviving listing-contract meaning |
+| 016 | RETIRE | historical per D5-B1 §16; both durable lessons explicitly rehomed there |
+| 017 | **KEEP** | gate: D2 §12.2 rule 3 — still-valid domain-judgment clauses (§3 named unknowns, §10 opaque-stays-opaque, §5 no cross-source fallback, §13 lenient ingestion, etc.) must be rehomed in a new target Fact ADR before removal; stage: the D2-owned Fact-ADR authoring action; retire when that ADR exists |
+| 018 | **KEEP** | open decision: execution-safety runtime realization (poller/claim/`FOR UPDATE SKIP LOCKED`/restart-resume evidence); stage: D7 (D3 §4.16: "remains reopened — D7 only"); retire when D7 adjudicates execution mechanics |
+| 019 | RETIRE | historical per D3 §4.16 (consumer-starvation lesson fully rehomed in B1 + §4.7 + §§4.3/4.5) |
+| 020 | RETIRE | CollectorPort target shape superseded per D4-B4 §6.6; source-admissibility rehomed in D4/`ARCHITECTURE.md` |
+| 021 | RETIRE | carried constraint rehomed: `ARCHITECTURE.md` constraint 3 states TanStack ownership independently; legacy-page carve-out concerns code D2's clean baseline already declares disposable; D6 re-adjudicates topology from current-state evidence directly |
+| 022 | RETIRE | superseded as identity law; pre-dispatch consistency safety active in D2 §10.1; ML evidence in D4-B2 |
+| 023 | RETIRE | superseded per registry; boundary/private-import prohibition active in D1 §6 + `ARCHITECTURE.md` proof bar; `internal/`-enforcement mechanics are re-derivable D7/implementation evidence in Git history |
+| 024 | RETIRE | historical per D3 §4.16 (single-writer + anti-regression fully rehomed in B1/§4.6) |
+| 025 | RETIRE | carried constraint rehomed: D0 §6 + `ARCHITECTURE.md` constraint 12 + D4 imports |
+| 026 | **KEEP** | open decision: scheduler/cursor phase mechanics; stage: D7 (D3 §4.16: reopened — D7 only; no global phase vocabulary carried); unique meaning: measured scheduler/cursor behavior incl. the 2026-08-01 sweep amendment; retire when D7 adjudicates scheduling |
+| 027 | RETIRE | carried constraint rehomed: D0 invariants 53–58 + `ARCHITECTURE.md` constraint 13 + D4-B1 §3.8 coverage semantics |
+| 028 | RETIRE | superseded as identity law; corroboration + no-silent-override safety active in D2 §10.2/§10.3; Readiness owns matching policy |
+| 029 | RETIRE | carried constraint rehomed: D0 §6 + D3 §4.11 + D4 §3.11/§5.12 + `ARCHITECTURE.md` constraint 11 |
+| 030 | **KEEP** | open decision: process/scheduler instance topology; stage: D7; unique meaning: per-installation scheduler constraint evidence + sync-health observability rationale; retire when D7 adjudicates worker/scheduler topology |
+| 031 | RETIRE | superseded as target mechanism per D2 §11; honest-absence semantics active in D0/D4; no Product mirror survives |
+| 032 | RETIRE | historical per D4-B4 §6.6; capability is contextual, flags are D7 mechanics |
+| 033 | RETIRE | carried constraint rehomed: `ARCHITECTURE.md` constraint 7 + D1 edges + D4-B1 §3.2 state adapter/port ownership independently |
+| 034 | **KEEP** | same gate as 017 (D2 §12.2 rule 3); it is the current implementation/evidence anchor D2 §9.3 names; retire only together with 017 when the target Fact ADR lands |
+| 035 | **KEEP** | program gate (D2 §12.2 rule 4): governs the rebaseline authority transition itself; retire at D0–D9 closure; subject to the F-DR-4 staleness note |
+
+Corrected KEEP set: **{008, 010, 017, 018, 026, 030, 034, 035}** — the candidate's set minus 003.
+
+### 4. Baseline authority model — direct answers to the eight attacks
+
+1. **Does it reduce ambiguity?** Yes — it collapses the "which generation is current" question that today requires reading five transition notes plus the registry.
+2. **Second-authority risk?** Contained if and only if F-DR-2 (single ADR-status owner) and F-DR-5 (shrink realization detail) land. The §2 self-defect rule ("baseline disagreeing with authority is defective and shrinks") is the right containment and should survive verbatim into the canonical file.
+3. **Conflict rule sufficient?** Almost — it omits the ADR registry entirely (F-DR-2).
+4./5. **Authority path membership and position:** yes, as §8 proposes — after `ARCHITECTURE.md`, before the (shrunken) ADR registry. It routes; it must be readable in one sitting.
+6. **Always read, or only before target/implementation work?** Always. A routing map that is sometimes skipped is a map nobody trusts; keeping it index-sized (F-DR-5) is what makes always-read cheap.
+7./8. **Copying too much detail / sections that must shrink?** Yes: §3.5's two realization subsections (F-DR-5). Everything else sits at acceptable index altitude.
+
+### 5. Fresh reviewer test and Structural Inversion
+
+After the proposed cleanup (with F-DR findings incorporated), the §8 read shape answers all 13 handoff questions without archaeology: product (D0 via §3.1), owners (§3.2/D1), identity (§3.3/D2), communication (§3.4/D3), external entry (§3.5/D4), publication create/edit (§3.6/D4-R1), source vs override (§3.6), price/availability/fulfillment ownership (§3.2), safe effects/reconciliation (§3.4/§3.5), D5 remaining (§5), D6/D7 remaining (§5), real Unknowns (§5), exact next action (router). No question requires the retired ADRs, deleted candidates or AI-DIALOG.
+
+Structural Inversion: passes. Every CURRENT item in §3/§4 was derivable from the D-stage artifacts alone; none depends on current code/OpenAPI/package shape, and the candidate's own §9 inversion clause is correctly stated. If the entire implementation were inverted, the reconciliation map would still follow from D0→D5-B1.
+
+### 6. Architecture prerequisite check
+
+**No D0–D4/D4-R1 gap of authority, identity, communication, external contract or correctness invariant blocks D5-B2.** The publication-input seam — the one real gap discovered during the first B2 attempt — is closed by D4-R1 (ACCEPTED / CANONICAL, R1-G1 PASS-B). Everything else pending is D5-B2's own work (operation inventory, schemas, Permission map), D6 (screens), D7 (runtime), D8 (proofs) or D9. The reconciliation baseline itself is hygiene, not an architecture prerequisite: D5-B2 could lawfully open from the router today. Canonicalizing the baseline first is the better sequence for the fresh-reviewer property, but it is an ordering choice, not a blocker.
+
+### Explicit answers
+
+- **A.** Yes — D0→D4 + D4-R1 + D5-B1 are reconciled and globally coherent; no contradiction between the candidate's CURRENT set and repository authority was found.
+- **B.** No missing CURRENT *decision*; but accepted safety-class *laws* are under-represented in §3.4 and §6 (F-DR-1) — that is an index-completeness defect, not a missing decision.
+- **C.** No superseded decision is presented as CURRENT.
+- **D.** No CURRENT decision is retired by mistake — every carried-constraint ADR proposed for retirement (005/009/013/021/025/027/029/033) was verified to have its full active meaning in `ARCHITECTURE.md` and/or accepted D-stage artifacts.
+- **E.** Not as drafted — provided F-DR-2 and F-DR-5 are incorporated; the §2 shrink-on-conflict rule is the correct permanent containment.
+- **F.** Function: decision-disposition/routing map only. Position: authority-path member, read always, after `ARCHITECTURE.md` and before the shrunken ADR registry; the registry stays the ADR-status authority (F-DR-2 recommended assignment).
+- **G.** KEEP set correct minus one: ADR-003 falsified (F-DR-3).
+- **H.** Retire now: 001, 002, 004, 005, 006, 007, 009, 011, 012, 013, 014, 015, 016, 019, 020, 021, 022, 023, 024, 025, 027, 028, 029, 031, 032, 033 — plus 003 after its registry row is adjudicated with operator ratification. Plus the `_citations/` harvest files whose citing ADRs all retire (F-DR-6.3).
+- **I.** Remain: 008, 010, 017, 018, 026, 030, 034, 035 — each with the open decision, adjudicating stage and retirement condition stated in the table above.
+- **J.** Yes — stale D5-B2 candidate deletion is safe after canonicalization, with the router's references updated in the same change (F-DR-6.1).
+- **K.** Yes — after this round's findings are adjudicated and the reconciliation is ratified; prefer reset-to-protocol-header over permanent deletion because D5-B2→D9 still owe review rounds through this channel (F-DR-6.2). Git history preserves everything either way.
+- **L.** The `_citations/` harvest tree (retires with its ADRs). No other tracked review candidate/handoff artifact exists at this head. `.mnfs/` is untracked local state, out of scope.
+- **M.** No — no material architecture prerequisite blocks D5-B2 (§6 above).
+- **N.** Yes — the fresh-reviewer test passes on the post-cleanup read shape (§5 above).
+- **O.** Yes — D5-B2 may open immediately after reconciliation canonicalization; strictly it is unblocked already, so the canonicalization must not be allowed to grow into a delay-generating second architecture pass — incorporate the findings, ratify, open B2.
+
+### Evidence honesty
+
+- Repository-evidence-only round: no marketplace/provider/business-system call, no live write, no sandbox write.
+- All 35 legacy ADR files, all 13 authority-path documents and the candidate were read at head `85ae3cc5`. The stale D5-B2 candidate was read at section-header level only, solely to adjudicate deletability.
+- The KEEP-set falsification for ADR-003 is an argument from absence (no nameable open-decision consumer); it is stated as adjudicable, not as fact — if GPT names a concrete D9 consumer, KEEP stands and F-DR-3 dies.
+- Nothing in the repository was modified beyond this appended round: no candidate, router, `ARCHITECTURE.md`, ADR, registry, D-stage artifact, Evidence Register, OpenAPI, schema or code file was touched. Implementation remains blocked until D9. Reviewer severity is evidence, never authority.
+
+HANDOFF → GPT
+Expect back: finding-by-finding adjudication of F-DR-1..F-DR-6 against repository authority; reconciliation of the corrected ADR KEEP/RETIRE set (including the ADR-003 registry-row adjudication); a converged cleanup plan (candidate deletion + router text update, AI-DIALOG reset-vs-delete, `_citations/` disposition); then the operator ratification gate before `DECISION-RECONCILIATION-BASELINE.md` is canonicalized, the registry is shrunk, and D5-B2 opens.
