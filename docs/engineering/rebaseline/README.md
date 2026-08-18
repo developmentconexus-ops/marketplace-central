@@ -1,7 +1,7 @@
 # Marketplace Central — Architecture Rebaseline
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
-> **Current phase:** **D5 — API — NEXT / NOT YET OPENED; D4 CLOSED / ACCEPTED AS A WHOLE**  
+> **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 NEXT / NOT YET OPENED**  
 > **Implementation:** BLOCKED until D9 is accepted  
 > **Last updated:** 2026-08-18
 
@@ -19,8 +19,9 @@ A fresh session reads, in order:
 8. `docs/engineering/rebaseline/D2-IDENTITY-TENANT-DATA-OWNERSHIP.md`
 9. `docs/engineering/rebaseline/D3-COMMUNICATION-EVENTS.md`
 10. `docs/engineering/rebaseline/D4-EXTERNAL-INTEGRATIONS.md`
-11. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
-12. code, OpenAPI, schemas, tests and runtime only as current-state evidence when needed
+11. `docs/engineering/rebaseline/D5-API.md`
+12. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
+13. code, OpenAPI, schemas, tests and runtime only as current-state evidence when needed
 
 This file alone answers **where the program is and what happens next**. Stable architecture belongs in `ARCHITECTURE.md`; accepted/current stage semantics belong in D-stage artifacts; Git history is the archive.
 
@@ -53,7 +54,9 @@ D4 — External Integrations — CLOSED / ACCEPTED AS A WHOLE
   │    └─ S1 Realized / Release Evidence — CLOSED / PASS
   └─ Final Global Coherence + YAGNI / Overengineering / Future-Cost — COMPLETED / PASS
   ↓
-D5 — API — NEXT / NOT YET OPENED
+D5 — API — OPEN / ACTIVE
+  ├─ B1 Semantic API Model & Contract Laws — ACCEPTED / CANONICAL
+  └─ B2 Product Operation / Resource Surface — NEXT / NOT YET OPENED
   ↓
 D6 — Frontend
   ↓
@@ -109,6 +112,7 @@ The 12 D1 business boundaries do **not** imply 12 services, databases, processes
 - semantic idempotency under duplicate delivery;
 - no global arrival-order authority;
 - known/known-empty/unknown/unavailable query semantics;
+- freshness-for-use through owner-controlled provenance/time where material;
 - accepted/rejected/pending/ambiguous capability semantics where applicable;
 - no blind replay of ambiguous external effects;
 - projections as rebuildable read state, never write authority;
@@ -192,6 +196,35 @@ Two final coherence fences are binding:
 1. **D4 evidence contract is not D4 evidence authority/store.** D4 preserves enough evidence across the boundary; persistent MPC semantic ownership follows the D1/D2 owner. Technical caches/raw acquisition artifacts, if later justified, are D7 mechanism and never canonical business truth.
 2. **Provider resource ownership does not move wholesale to one consumer.** One provider acquisition may translate into multiple consumer-owned semantic views/ports. No consumer owns the provider payload as a whole, and no generic provider-resource/raw-payload entity bypasses D1/D3 authority edges.
 
+### D5 — OPEN / ACTIVE
+
+`D5-API.md` is the current D5 authority.
+
+D5-B1 **Semantic API Model & Contract Laws** is ACCEPTED / CANONICAL with `RESTRUCTURE NOW` relative to the current API shape.
+
+B1 establishes:
+
+- a semantic/domain-oriented MPC Product API, distinct from provider/business-system protocol ingress;
+- HTTP/REST resource semantics where truthful plus explicit owner-specific operations where CRUD would lie;
+- no generic Mutation/Action/Command/Operation business API owner;
+- Organization-owned Product API operations under `/organizations/{organization_id}/...`;
+- fail-closed same-Organization resolution for secondary body/query references;
+- ordinary Principal access distinct from business disposition and Governance authorization;
+- Q/C/P wire semantics preserving knowledge, freshness/provenance and effect meaning;
+- source-qualified external identity at the wire boundary; no bare provider/native correlation key;
+- accepted/rejected/pending/ambiguous outcomes where materially reachable;
+- mandatory fail-closed idempotency key by default for consequential intake, with only explicit operation-local structural-idempotency exemptions;
+- optimistic concurrency only where stale client state is materially unsafe;
+- RFC 9457 Problem Details for API-level failures, distinct from valid domain outcomes;
+- provider-rich, source-qualified enrichment without provider DTO/payload ontology;
+- OpenAPI as the single machine-readable Product API wire authority, with supported client contracts derived/conformant and server behavior mechanically conformant;
+- conformance controls must be shown to fire through negative drift fixtures;
+- hard cutover with no compatibility/versioning tax absent a real consumer;
+- bulk admitted only per real operation/workflow with member-level correctness;
+- ADR-016 historical; no D0–D4 reopen.
+
+The exact Product 1.0 operation inventory, schemas, Permission mapping, pagination/filter/sort needs, concrete provider-rich fields, concrete bulk endpoints and concrete OpenAPI tooling remain later D5 questions.
+
 ## 4. Engineering method and repo lifecycle
 
 Engineering reasoning follows the **DevelopmentConexus Engineering Method** identified in `AGENTS.md`; the local file in this authority path is only the consumed context copy.
@@ -200,41 +233,45 @@ This router defines the Marketplace Central D0–D9 status/lifecycle and allowed
 
 ## 5. What is prohibited now
 
-While **D5 — API** is the next unopened stage:
+While **D5 — API** is OPEN / ACTIVE and B2 is next:
 
-- do not begin D6–D9 target design before D5 is accepted;
+- do not begin D6–D9 target design before D5 is accepted as a whole;
 - do not implement product architecture/features; implementation remains blocked until D9;
-- do not silently alter accepted D0–D4 authority;
+- do not silently alter accepted D0–D4 or D5-B1 authority;
 - do not treat current OpenAPI/routes/SDK/controller/package shape as D5 target authority by inheritance;
 - do not expose provider DTO/resource vocabulary as MPC API semantics when a D1-owned semantic contract exists;
-- do not turn D5 into a generic CRUD/API framework exercise disconnected from Product 1.0 consumers;
-- do not make frontend or runtime topology decisions as side effects of API design;
-- do not use projections/caches as consequential write authority;
-- do not weaken known/unknown/unavailable/partial, authorization, idempotency, precondition, ambiguity or external-convergence semantics already accepted in D0–D4;
+- do not revive generic `/mutations`, `/commands`, provider-resource or integration-platform business surfaces;
+- do not turn D5-B2 into a generic CRUD/API framework exercise disconnected from Product 1.0 consumers;
+- do not make frontend or runtime topology decisions as side effects of API operation design;
+- do not use projections/caches as consequential write or concurrency authority;
+- do not weaken Organization path scope, same-Organization secondary-reference checks, source-qualified external identity, known/unknown/unavailable/partial/freshness, authorization, idempotency, precondition, ambiguity or external-convergence semantics already accepted;
+- do not add compatibility/versioning machinery without a real entitled consumer;
 - do not treat `AI-DIALOG.md`, deleted review candidates or chat/reviewer summaries as target authority.
 
 Existing OpenAPI/code/schema remains current-state evidence only.
 
 ## 6. Exact next action
 
-**Open D5 — API from accepted D0–D4 authority.**
+**Open D5-B2 — Product Operation / Resource Surface from accepted D0–D4 + D5-B1 authority.**
 
-D5 must decide the smallest coherent API contract by which clients interact with the accepted business authorities, proportionately including:
+Do not begin from the legacy route list. Derive the smallest coherent Product 1.0 external operation surface from accepted owners and real product consumers.
 
-- public query/capability/mutation operations mapped to D1 owners and D3 Q/C/P semantics;
-- stable resource/operation naming in MPC business language rather than provider DTO vocabulary;
-- Organization and Principal/access scoping at the API boundary;
-- known / known-empty / unknown / unavailable / partial representation where material;
-- pagination/filter/sort/cursor contracts only where real consumers need them;
-- command/precondition/idempotency/concurrency/duplicate semantics for consequential actions;
-- accepted/rejected/pending/ambiguous outcomes where the owner/external effect can reach them;
-- bulk/member-level partial outcome semantics only where a real Product 1.0 workflow requires bulk;
-- validation/error/problem semantics that preserve domain/provider distinction without leaking raw provider errors as business truth;
-- OpenAPI/generation/SDK authority and drift-prevention rules;
-- ordinary access Permission→API-operation enforcement while keeping business disposition and consequential authorization with their accepted owners;
-- API cuts required by provider-rich Market Intelligence and economic views without forcing lowest-common-denominator provider fields into universal contracts.
+For each candidate Product API operation, establish proportionately:
 
-D5 must **not** choose frontend component topology (D6), worker/queue/outbox/retry/transaction/deployment topology (D7), golden-flow execution/proof choreography (D8), or product implementation.
+- real Product 1.0 consumer/use;
+- one accepted semantic owner / accepted D2 substrate authority;
+- Q / C / P interaction class;
+- Organization path scope and same-Organization secondary-reference rule;
+- ordinary Permission requirement;
+- canonical or source-qualified subject identity;
+- read knowledge/freshness/provenance semantics where applicable;
+- consequential Intent/outcome/idempotency/precondition/concurrency semantics where applicable;
+- projection/read-only status for composed views;
+- provider-enriched fields only where a named consumer/correctness need exists;
+- pagination/filter/sort/cursor only where the real consumer requires them;
+- bulk only where a real Product 1.0 workflow requires member-level bulk semantics.
+
+B2 must not choose D6 screens or D7 runtime/generator framework as side effects. If an operation cannot fit accepted D1/D2/D3/D4/B1 meaning without distortion, stop and reopen only the implicated parent decision.
 
 Implementation remains blocked until D9.
 
@@ -243,18 +280,21 @@ Implementation remains blocked until D9.
 A fresh session should conclude that:
 
 - D0, D1, D2, D3 and D4 are **CLOSED / ACCEPTED**;
-- D4-B1/B2/B3/B4 are **ACCEPTED / CANONICAL**;
-- B2 Installation gate and B4 M1/E1/S1 are **CLOSED / PASS**;
-- Final D4 Global Coherence is **COMPLETED / PASS** with no earlier-stage reopen;
+- D4-B1/B2/B3/B4 are **ACCEPTED / CANONICAL** and final D4 coherence is PASS;
 - consumer-owned semantics and provider-local protocol remain distinct;
 - provider-rich evidence is retained when materially useful without becoming universal ontology or payload mirroring;
-- D4 does not own a generic persistent evidence store;
-- one provider resource may feed multiple consumer-owned semantic views without transferring whole-resource authority;
 - Sankhya API Gateway remains the target transport and Direct Oracle is not an admitted fallback;
-- Market Intelligence owns competitive interpretation, Commercial Economics owns L0/L1/L2 attribution/reconciliation, Offering owns Price Intent, Post-Sale owns refund-consequence closure, and Materialization/Fulfillment retain their accepted meanings;
-- D7/D8 proof obligations do not reopen D4 merely because their future concrete effect has not yet executed;
-- **D5 — API is NEXT / NOT YET OPENED**;
+- **D5 — API is OPEN / ACTIVE**;
+- **D5-B1 Semantic API Model & Contract Laws is ACCEPTED / CANONICAL**;
+- the Product API is semantic/domain-oriented and distinct from protocol ingress;
+- Organization Product API scope is explicit in `/organizations/{organization_id}/...` and secondary references cannot cross Organizations;
+- source-qualified external identity, honest knowledge/freshness, effect ambiguity and consequential idempotency survive the wire;
+- OpenAPI is the single machine-readable Product API wire authority; manual SDK duplication is not target architecture;
+- ADR-016 is historical;
+- hard cutover remains allowed because no production compatibility consumer exists;
+- no D0–D4 reopen was required by D5-B1;
+- **D5-B2 Product Operation / Resource Surface is NEXT / NOT YET OPENED**;
 - implementation remains blocked until D9;
-- the exact next action is to open D5 from D0–D4 authority, not to implement or jump to frontend/runtime design.
+- the exact next action is to derive the Product 1.0 operation/resource surface from accepted authority, not to repair the legacy API or jump to frontend/runtime design.
 
 If it cannot, the authority path is incomplete or contradictory.

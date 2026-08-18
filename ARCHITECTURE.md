@@ -43,6 +43,7 @@ It must support trustworthy flows for:
 13. **Partial observations are honest.** Absence from a partial provider/source pull does not prove closure/deletion (ADR-027).
 14. **No compatibility tax without a consumer.** There are no production users requiring current route/schema/package compatibility; hard cutover is allowed under ADR-035.
 15. **Git history is history.** Active source/document trees do not keep `old/` copies or parallel legacy roadmaps.
+16. **Semantic Product API.** MPC clients use a semantic/domain-oriented Product API, not provider/integration ontology. Organization-owned Product API operations are path-scoped under `/organizations/{organization_id}/...`; provider/business-system protocol ingress remains a separate D4 boundary. OpenAPI is the single machine-readable Product API wire authority; supported client contracts derive/conform to it and server behavior conforms to the same contract. A hand-written second wire authority is not target architecture.
 
 ## Architecture Rebaseline authority
 
@@ -53,7 +54,7 @@ The following are **not currently frozen target decisions** even if old code/ADR
 - exact context/module set beyond accepted D1 semantic authorities;
 - exact database schemas/tables/FKs and physical persistence realization;
 - exact scheduler/process/worker topology;
-- exact HTTP path namespace and operation set;
+- exact HTTP path namespace and operation set beyond D5-B1's Organization path-scoping law;
 - generated server/client technology choice;
 - frontend feature/package topology;
 - exact transaction/outbox implementation;
@@ -61,6 +62,8 @@ The following are **not currently frozen target decisions** even if old code/ADR
 - old manual SDK or proxy-table synchronization mechanisms.
 
 The legacy direct-Oracle/godror Sankhya shape is no longer merely “unfrozen”: **D4-B1 explicitly supersedes it as target architecture.**
+
+The legacy manual OpenAPI+SDK same-commit shape is likewise no longer open target structure: **D5-B1 supersedes ADR-016 and requires one machine-readable Product API wire authority.**
 
 A future session must not infer target architecture from existing artifacts before their responsible D-stage accepts the relevant meaning.
 
@@ -131,11 +134,28 @@ Installation-/SourceInstance-specific proof-lane details, B4 Payment/fee observa
 
 ## API and frontend
 
-The current OpenAPI/SDK/routes are **current runtime contract evidence**, not an obligation to preserve every operation.
+D5-B1 is accepted and canonical.
 
-D5 may delete/redesign legacy operations because there is no external-client compatibility requirement. It will also decide generator/validation authority.
+The Product API obeys these stable constraints:
 
-D6 maps every target screen to explicit API/query/mutation ownership and decides frontend feature/package topology.
+- client-facing vocabulary follows MPC semantic owners, not Mercado Livre/Sankhya/provider DTO/resource nouns;
+- provider/business-system protocol ingress is a separate D4 boundary and is not part of the normal Product SDK;
+- Organization-owned Product API operations are scoped under `/organizations/{organization_id}/...`;
+- secondary Organization-owned references in body/query must resolve inside that path Organization;
+- provider/native identifiers are source-qualified through Marketplace Installation / SourceInstance or an unambiguous operation scope; bare external IDs are never Product API correlation keys;
+- Q results preserve known/known-empty/unknown/unavailable/partial and owner-controlled freshness/provenance where material;
+- consequential C outcomes preserve accepted/rejected/pending/ambiguous and never collapse acceptance into completion/application/convergence;
+- consequential intake requires a fail-closed idempotency key by default, with only explicit operation-local structural-idempotency exemptions;
+- RFC 9457 Problem Details represents API-level failures; valid business/domain outcomes do not become transport problems by convenience;
+- provider-rich evidence may appear only as source-qualified, owner-bounded enrichment for a named Product 1.0 need; raw provider payload mirroring and lowest-common-denominator flattening are both rejected;
+- OpenAPI is the single machine-readable Product API wire authority; supported SDK/client contracts derive/conform to it and server behavior conforms to the same contract;
+- contract/conformance controls must be shown to fire through negative fixtures;
+- no current API compatibility/versioning machinery is required because there is no entitled production client;
+- bulk is operation-local and admitted only for a real consumer/workflow with member-level correctness.
+
+The exact operation inventory, final path nouns beyond Organization scoping, request/response schemas, Permission mapping, pagination/filter/sort/bulk decisions and concrete generator/server technology remain D5/later realization questions.
+
+D6 maps every target screen to explicit accepted API/query/capability ownership and decides frontend feature/package topology. D6 may not invent a second client-side business authority.
 
 ## Runtime and persistence
 
@@ -151,6 +171,11 @@ A structural rule should, where reasonable, fail at the strongest available boun
 - invalid value combination → type/constructor/schema failure;
 - foreign/unowned write → structurally unavailable or mechanically blocked;
 - contract drift → generation/validation red;
+- missing required consequential idempotency key → API rejection before durable intake;
+- same key reused for materially different semantic request → explicit API problem;
+- cross-Organization secondary resource reference → fail closed before semantic resolution/effect;
+- bare external identity collision across Installation/SourceInstance → schema/SDK negative fixture red;
+- materially stale known response without required owner provenance → contract review/fixture red;
 - RLS/isolation bypass → boot/integration failure;
 - custom guard → negative fixture proves it fires;
 - external namespace mismatch → fail closed before attribution/effect where the source exposes authoritative qualification;

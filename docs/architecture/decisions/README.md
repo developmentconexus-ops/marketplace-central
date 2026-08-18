@@ -37,7 +37,7 @@ Status vocabulary in this registry:
 | 013 | carried constraint — webhook payload is not domain truth; active home: D0 / D3 / D4-B1 external-evidence semantics |
 | 014 | historical — D4-B4 superseded the on-demand/local-Docker market runtime as target meaning; honest evidence/absence is homed in D0–D4 and collection runtime/cadence belongs D7 |
 | 015 | historical — D4-B2 accepted/canonical; legacy read-only listings module/composite-ID/manual-refresh/absence=>closed target shape is superseded and durable semantics are rehomed in D1/D2/D4 |
-| 016 | reopened — D5 |
+| 016 | historical — D5-B1 supersedes the manual OpenAPI+SDK same-commit target shape; active contract authority is D5 / `ARCHITECTURE.md` |
 | 017 | historical predicate retained as evidence until target Fact ADR rehomes still-valid domain-judgment clauses |
 | 018 | reopened — D7 (D1/D3 semantic portions adjudicated; generic Mutation owner/table/poller not target authority) |
 | 019 | historical — D1/D3 rehomed accepted-consumer, duplicate/idempotency and recoverable-propagation semantics |
@@ -49,7 +49,7 @@ Status vocabulary in this registry:
 | 025 | carried constraint — provider PII minimization; active home: D0 / `ARCHITECTURE.md` |
 | 026 | reopened — D7 (D3 semantic portion adjudicated; no global phase vocabulary carried forward) |
 | 027 | carried constraint — partial-pull absence is not closure; active home: D0 / `ARCHITECTURE.md` / D4-B1/B2 |
-| 028 | superseded by rebaseline — D1/D2 Readiness owns correspondence/corroboration policy; D4-B2 supplies current provider identifier evidence and pre-dispatch consistency inputs |
+| 028 | superseded by rebaseline — D1/D2 Readiness owns correspondence/corroboration policy; D4-B2 supplies current Mercado Livre mapping/identifier evidence while Readiness retains sufficiency authority |
 | 029 | carried constraint — no blind retry of ambiguous external writes; active home: D0 / D3 / `ARCHITECTURE.md` |
 | 030 | reopened — D7 |
 | 031 | superseded by rebaseline — no target Product mirror; honest absence remains current authority |
@@ -113,6 +113,28 @@ Current target authority is:
 ADR-014 is historical, ADR-020's generic CollectorPort target shape is superseded, and ADR-032 is historical. ADR-009 remains carried with its active home in D2.
 
 This transition does not reopen D0–D4-B3.
+
+## D5-B1 API contract transition note
+
+D5-B1 **Semantic API Model & Contract Laws** is **ACCEPTED / CANONICAL**.
+
+Current target authority is:
+
+- the client-facing Product API follows MPC semantic owners, not provider/business-system/resource topology;
+- provider/business-system protocol ingress remains a separate D4 boundary and does not enter the normal Product SDK;
+- Organization-owned Product API operations are path-scoped under `/organizations/{organization_id}/...`, with secondary Organization-owned references required to resolve inside the same Organization;
+- provider/native identifiers remain source-qualified through Marketplace Installation / SourceInstance or an unambiguous operation scope; bare external IDs are not Product API correlation keys;
+- Q/C/P wire semantics preserve honest knowledge, freshness/provenance, business outcome and projection authority boundaries;
+- consequential intake is fail-closed idempotent by default and never authorizes blind replay of ambiguous external effects;
+- RFC 9457 Problem Details owns API-level failure shape while valid domain outcomes remain domain semantics;
+- provider-rich evidence may be exposed only as source-qualified, owner-bounded enrichment for a named Product 1.0 need;
+- OpenAPI is the **single machine-readable Product API wire authority**; supported clients derive/conform to it and server behavior conforms to the same contract;
+- no second manually authoritative wire representation is admitted, and conformance controls must be demonstrated to fire;
+- no legacy compatibility/versioning tax is carried because no production client is entitled to the current surface.
+
+ADR-016's same-commit manual OpenAPI+SDK target shape is therefore historical. Its two durable lessons are rehomed in D5-B1: converge duplicate wire authorities rather than hand-synchronize them, and prove contract-conformance controls by demonstrated failure.
+
+This transition does not reopen D0–D4.
 
 ## Legacy-retirement gates
 
