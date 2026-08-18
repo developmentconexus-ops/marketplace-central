@@ -1,6 +1,6 @@
 # D5-B2 — Operation Admission Matrix
 
-> **Status:** OPEN / ACTIVE — Blocks 1, 2 and 3 ACCEPTED IN-STAGE; Block 4 next  
+> **Status:** OPEN / ACTIVE — Blocks 1–4 ACCEPTED IN-STAGE; Block 5 next  
 > **Parent B2:** `D5-B2-PRODUCT-OPERATION-SURFACE.md`  
 > **Parent authorities:** accepted D0→D4 + D4-R1 + D5-B1 + Decision Reconciliation Baseline + B2-A  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
@@ -113,17 +113,6 @@ Permission floor: `readiness.read`, `readiness.manage`.
 
 > **Marketplace Listing observation, Offering-owned authoring/price intent, Availability-owned sellable quantity/configuration and provider execution remain distinct meanings. A provider request may physically compose owner-issued inputs, but Product API contracts never collapse those authorities into one giant Listing mutation or generic asynchronous Operation.**
 
-Rejected local maximum:
-
-```text
-PATCH Listing
-  = content
-  + price
-  + stock
-  + fulfillment
-  + provider protocol
-```
-
 ## 3.2 Marketplace Listing observation
 
 | Candidate operation | Client | Class | Permission | Admission |
@@ -151,16 +140,13 @@ Listing identity remains Marketplace Installation + provider-native Listing key.
 
 Binding decisions:
 
-- create/edit use the same ListingIntent identity (`target = none | existing Listing`);
-- draft updates are declarative desired-state changes, not a mutation-command DSL;
+- create/edit use one ListingIntent identity (`target = none | existing Listing`);
+- draft updates are declarative desired-state changes, not a mutation DSL;
 - only `FOLLOW_SOURCE | EXPLICIT_OVERRIDE` baseline value modes are admitted;
-- `GetListingIntent` can expose resolved values, requirements/provenance, dispatchability/blockers, lifecycle/convergence and concurrency token;
 - stale automation cannot overwrite or submit against a newer human decision;
-- `SubmitListingIntent` is the consequential client boundary; clients do not separately invoke technical freeze/authorize/execute/reconcile steps;
+- `SubmitListingIntent` is the consequential client boundary; technical freeze/authorize/execute/reconcile are not separate client operations;
 - `submitted != authorized != externally applied != converged` remains binding;
-- no generic LongRunningOperation is admitted because owner-local Intents already provide the durable tracking identity.
-
-Listing pause/reactivate/close/edit remain ListingIntent semantics when admitted; provider-shaped direct mutations do not become a parallel architecture.
+- no generic LongRunningOperation is admitted because owner-local Intents already provide durable tracking identity.
 
 ## 3.4 PriceIntent
 
@@ -173,7 +159,7 @@ Listing pause/reactivate/close/edit remain ListingIntent semantics when admitted
 | public mutable PriceDraft | both | C | — | — | **REJECT BASELINE** |
 | withdraw/cancel pending PriceIntent | both | C | — | — | **DEFER** |
 
-`PriceIntent` expresses desired exact Money target. Economics owns reasoning/simulation; Offering owns actuation. No `decrease 5%`/`match competitor` economic logic is moved into Offering.
+`PriceIntent` expresses desired exact Money target. Economics owns reasoning/simulation; Offering owns actuation.
 
 ## 3.5 Availability
 
@@ -192,29 +178,11 @@ Listing pause/reactivate/close/edit remain ListingIntent semantics when admitted
 | `SetAvailableQuantity` | both | C | — | **REJECT** |
 | `SyncAvailability` / `RefreshAvailability` | machine/both | C | — | **REJECT PRODUCT API** |
 
-Availability Q preserves desired Sellable Availability, provider actual evidence, knowledge/freshness/provenance and owner-specific convergence. Inventory Source and allocation/scope policy remain distinct meanings. Creation of Inventory Source requires idempotency unless a stronger semantic anchor is proven; unsafe configuration update uses concurrency.
+Availability Q preserves desired value, provider actual evidence, knowledge/freshness/provenance and owner-specific convergence. Inventory Source and allocation/scope policy remain distinct meanings.
 
 ## 3.6 Joint Offering × Availability realization
 
-D4-R1 R1-G1 remains binding:
-
-```text
-ListingIntent / Offering-issued meaning
-            +
-Availability-issued sellable-quantity meaning
-            ↓
-D4/D7 execution mechanism
-            ↓
-one provider call when required
-            ↓
-authoritative rereads
-   ├─ Offering convergence
-   └─ Availability convergence
-```
-
-`SubmitListingIntent` never accepts quantity as Offering-owned content. Missing required Availability input fails closed before provider dispatch. A submitted Offering intent may wait on another owner-issued prerequisite only with later execution-time revalidation; submission is not eternal authorization. No cross-owner atomicity is claimed.
-
-Material multi-step/blast-radius effects preserve intended scope, authorized scope and actual attempted/provider-affected outcomes plus member/aspect confirmed/rejected/pending/ambiguous/not-executed distinctions where required.
+D4-R1 R1-G1 remains binding. `SubmitListingIntent` never accepts quantity as Offering-owned content. D4/D7 may jointly serialize owner-issued Offering + Availability meanings; missing required Availability input fails closed before dispatch; no cross-owner atomicity is claimed; provider blast radius never silently widens business intent.
 
 Permission floor: `offering.read`, `listing.manage`, `price.manage`, `availability.read`, `availability.manage`.
 
@@ -228,196 +196,270 @@ Permission floor: `offering.read`, `listing.manage`, `price.manage`, `availabili
 
 > **Market Intelligence owns competitive interpretation/evidence sufficiency; Commercial Economics owns economic meaning, simulation and L0/L1/L2 lineage; Offering alone owns PriceIntent. Hypothetical exploration does not gain durable identity by default, while economic evidence/decisions that materially participate in later explanation or reconciliation remain durable under Economics.**
 
-Rejected extremes:
+## 4.2 Market Intelligence
+
+| Candidate operation | Client | Class | Permission | Admission |
+|---|---|---|---|---|
+| `ListCompetitivePositions` | both | Q | `market.read` | **ADMIT** |
+| `GetCompetitivePosition` | both | Q | `market.read` | **ADMIT** |
+| `ListComparableOffers` | both | Q | `market.read` | **ADMIT** |
+| generic `Get/CreateMarketObservation` | both | Q/C | — | **REJECT** |
+| `CollectMarketNow` / `RefreshCompetitivePosition` | both | C | — | **REJECT PRODUCT API** |
+| manual `SetComparableOffer` | both | C | — | **DEFER** |
+| generic scraper/collector configuration | human | C | — | **REJECT** |
+
+Provider-rich evidence remains source-qualified/optional and enters only for explanation/correctness. Source/provider population never implies universal market completeness.
+
+Permission floor: `market.read`.
+
+## 4.3 Expected Economics and scenario evaluation
+
+| Candidate operation | Client | Class | Permission | Idempotency | Admission |
+|---|---|---|---|---|---|
+| `ListExpectedEconomics` | both | Q | `economics.read` | — | **ADMIT** |
+| `GetExpectedEconomics` | both | Q | `economics.read` | — | **ADMIT** |
+| `EvaluatePriceScenario` | both | C — stateless/side-effect-free | `economics.read` | not required | **ADMIT** |
+| persistent `Simulation` resource | both | C | — | — | **REJECT BASELINE** |
+| persistent `Recommendation` resource | both | C | — | — | **REJECT BASELINE** |
+| generic mutable `Profitability` blob | both | Q/C | — | — | **REJECT** |
+
+Scenario input may state legitimate hypothetical variables but cannot impersonate authoritative fee/tax/cost/market evidence. No SimulationID exists merely for history. When a consequential PriceIntent is later created, Economics preserves/re-establishes the material decision-time L0 basis required for future explanation without trusting client-computed evidence.
+
+## 4.4 Sale Economics and lineage
+
+| Candidate operation | Client | Class | Permission | Admission |
+|---|---|---|---|---|
+| `ListSaleEconomics` | both | Q | `economics.read` | **ADMIT** |
+| `GetSaleEconomics` | both | Q | `economics.read` | **ADMIT** |
+| `GetEconomicPerformanceSummary` | both | Q | `economics.read` | **ADMIT** |
+| separate mutable Order/Realized Economics CRUD | both | Q/C | — | **REJECT** |
+| universal `Reconciliation` resource | both | Q/C | — | **REJECT** |
+
+`SaleEconomics` preserves distinct L0 expected basis, L1 order economics, L2 realized/settlement evidence and R1/R2 reconciliation. Later refunds/reversals append/reinterpret lineage rather than erasing prior material occurrences. Period summaries preserve explicit scope/coverage/partiality. R3 bank-side reconciliation remains deferred.
+
+## 4.5 Commercial policy and Economic Attribution
+
+| Candidate operation | Client | Class | Permission | Admission |
+|---|---|---|---|---|
+| `GetCommercialPolicy` | both | Q | `economics.read` | **ADMIT** |
+| `UpdateCommercialPolicy` | human | C/update | `economics.policy.manage` | **ADMIT** |
+| generic Policy CRUD / rules DSL | both/human | C | — | **REJECT** |
+| `ListEconomicAttributions` | both | Q | `economics.read` | **ADMIT** |
+| `GetEconomicAttribution` | both | Q | `economics.read` | **ADMIT** |
+| `ResolveEconomicAttribution` | human baseline | C | `economics.reconcile` | **ADMIT** |
+| generic `MarkReconciled` | both | C | — | **REJECT** |
+| `ReconcileNow` | both | C | — | **REJECT PRODUCT API** |
+
+Commercial policy remains Economics-owned; Governance does not acquire business thresholds. Policy updates use concurrency where lost-update is material. Economic Attribution is persistent Economics state; explicit ambiguity resolution is human baseline and requires current-state concurrency where necessary.
+
+Permission floor: `economics.read`, `economics.policy.manage`, `economics.reconcile`.
+
+**Block 3 outcome:** `CURRENT D1/D2/D4-B4 STRUCTURE CONFIRMED; USE STATELESS HYPOTHETICAL ANALYSIS + DURABLE MATERIAL ECONOMIC LINEAGE, KEEP PRICE ACTUATION IN OFFERING`.
+
+---
+
+# 5. Block 4 — Controlled Action Governance + Marketplace Sales + Business-System Materialization — ACCEPTED IN-STAGE
+
+## 5.1 Governing invariant
+
+> **Governance decides consequential authorization, Sales owns marketplace-sale meaning, and Materialization owns business-system intents/results. Client access, approval, upstream domain facts and runtime execution are distinct. A durable domain Intent may be publicly readable without being client-created when its legitimate cause is an accepted owner reaction.**
+
+Rejected local maxima:
 
 ```text
-persist every simulation/recommendation
-→ duplicate lifecycle/authority + accidental complexity
-
-calculate everything transiently
-→ cannot explain expected vs order vs realized outcomes later
+POST /actions
+PATCH /workflow/status
+POST /erp/orders
+POST /invoice
+POST /retry
 ```
 
 Selected structure:
 
 ```text
-Market Intelligence Q
-        ↓ interpreted source-qualified evidence
-Commercial Economics stateless scenario evaluation
-        ↓ decision support
-human / automation decision
-        ↓
-Offering PriceIntent
-        ↓
-material decision-time Economic basis retained when required
-        ↓
-L1 Order Economics
-        ↓
-L2 Realized Economics
-        ↓
-R1 / R2 reconciliation + variance/calibration
+action-owner Intent
+  → Governance AuthorizationDecision when required
+  → owner revalidation/execution
+
+provider sale evidence
+  → Marketplace Sales commits Sale meaning
+  → E to Materialization/Fulfillment/Economics
+
+SaleCommitted
+  → Materialization creates/advances BusinessOrderIntent
+
+Fulfillment physical-readiness checkpoint
+  → Materialization creates/advances InvoicingIntent
 ```
 
-## 4.2 Market Intelligence
-
-| Candidate operation | Consumer / use | Client | Class | Permission | Admission |
-|---|---|---|---|---|---|
-| `ListCompetitivePositions` | commercial/operator/agent scans market position | both | Q | `market.read` | **ADMIT** |
-| `GetCompetitivePosition` | inspect one interpreted competitive position/explanation | both | Q | `market.read` | **ADMIT** |
-| `ListComparableOffers` | explain/evidence the comparison behind Market Intelligence conclusion | both | Q | `market.read` | **ADMIT** |
-| generic `GetMarketObservation` | provider/evidence-object exposure without consumer semantic need | both | Q | — | **REJECT** |
-| `CreateMarketObservation` | client authors external evidence | both | C | — | **REJECT** |
-| `CollectMarketNow` / `RefreshCompetitivePosition` | D4/D7 acquisition/runtime mechanism | both | C | — | **REJECT PRODUCT API** |
-| manual `SetComparableOffer` | manually alter comparability absent proven workflow | both | C | — | **DEFER** |
-| generic scraper/collector configuration | speculative source platform | human | C | — | **REJECT** |
-
-Binding decisions:
-
-- Competitive Position is semantic context, not necessarily a synthetic identity/resource ID;
-- provider-rich evidence such as buyer shipping, free-shipping state, provider competition reasons or provider price guidance may be exposed only as bounded source-qualified enrichment needed for explanation/correctness;
-- another provider need not fabricate equivalent fields;
-- comparable-offer pagination is legitimate where source population is larger, but source/provider population never implies universal market completeness;
-- stale/insufficient evidence is an honest Q result, not permission to expose a generic refresh mechanism.
-
-Permission floor: `market.read`.
-
-## 4.3 Expected Economics current meaning
+## 5.2 Controlled Action Governance
 
 | Candidate operation | Client | Class | Permission | Admission |
 |---|---|---|---|---|
-| `ListExpectedEconomics` | both | Q | `economics.read` | **ADMIT** |
-| `GetExpectedEconomics` | both | Q | `economics.read` | **ADMIT** |
-| generic mutable `Profitability` blob | both | Q/C | — | **REJECT** |
-
-Expected Economics remains L0 meaning composed from material evidence such as current marketplace context, Cost Basis, Expected Tax, expected marketplace fee, expected seller shipping and material promotion/discount evidence.
-
-The response must preserve which components are known/modeled/derived/unknown/unavailable/partial/stale. It cannot produce plausible precision from missing material components.
-
-Collection filtering/pagination is justified by commercial-intelligence needs such as low/negative margin or insufficient/stale evidence; exact spelling is later B2 schema work.
-
-## 4.4 Stateless price-scenario evaluation
-
-| Candidate operation | Consumer / use | Client | Class | Permission | Idempotency | Admission |
-|---|---|---|---|---|---|---|
-| `EvaluatePriceScenario` | operator/agent asks Economics to evaluate a hypothetical candidate price/context | both | C — stateless, side-effect-free owner capability | `economics.read` | not required | **ADMIT** |
-| create persistent `Simulation` resource for every evaluation | both | C | — | — | **REJECT BASELINE** |
-| persistent `Recommendation` resource | both | C | — | — | **REJECT BASELINE** |
+| `ListAuthorizationDecisions` | both | Q | `governance.read` | **ADMIT** |
+| `GetAuthorizationDecision` | both | Q | `governance.read` | **ADMIT** |
+| `CreateAuthorizationDecision` | human baseline | C/create | `governance.decide` | **ADMIT** |
+| `ListAuthorizationDelegations` | human | Q | `governance.manage` | **ADMIT** |
+| set/update bounded Authorization Delegation | human | C | `governance.manage` | **ADMIT** |
+| revoke Authorization Delegation | human | C | `governance.manage` | **ADMIT** |
+| separate `ListPendingApprovals` queue authority | human | Q | — | **REJECT BASELINE** |
+| domain-specific `ApproveListingIntent` / `ApprovePriceIntent` | human | C | — | **REJECT** |
+| `ExecuteApprovedAction` | both | C | — | **REJECT** |
+| generic approval/policy/rules engine | both | C | — | **REJECT** |
 
 Binding decisions:
 
-- hypothetical analysis is an Economics capability, not current-owner Q truth;
-- scenario input may state legitimate hypothetical variables such as candidate price/context but cannot impersonate authoritative evidence by supplying arbitrary fake fee/tax/cost/competitor facts;
-- no SimulationID is created merely for history;
-- no Recommendation business authority is created; Economics may return conclusions/ranges/reasons when evidence supports them;
-- when a consequential PriceIntent is later created, Economics must be able to preserve/re-establish the material decision-time L0 basis required for future expected↔order↔realized explanation without trusting client-computed economic evidence.
+- Authorization Decision is a durable Governance-owned occurrence, not an `approved=true` field or Intent-status mutation;
+- decision targets one concrete owner Intent/material revision/context and preserves decision Principal, authority context, outcome and exact authorized target-scope snapshot;
+- authorized scope is constrained by intended scope and never widens it;
+- `CreateAuthorizationDecision` requires client idempotency because a lost response must not create duplicate decision occurrences;
+- current Intent revision/context is a material precondition; stale approval is rejected rather than silently applied to newer meaning;
+- approval never executes an effect, mutates owner Intent, waives business validity or becomes eternal authorization; the action owner revalidates at execution time;
+- approval queue/work responsibility is not a second Governance queue authority; Work/projection handles actionable attention later;
+- D2 intentionally did not freeze physical Grant/Delegation identity/cardinality, so B2 admits bounded list/set/update/revoke semantics without inventing a mandatory universal `GrantID` model prematurely.
 
-## 4.5 Sale Economics and economic lineage
+Permission floor: `governance.read`, `governance.decide`, `governance.manage`.
 
-| Candidate operation | Consumer / use | Client | Class | Permission | Admission |
-|---|---|---|---|---|---|
-| `ListSaleEconomics` | operator/manager/agent scans sales profitability/reconciliation | both | Q | `economics.read` | **ADMIT** |
-| `GetSaleEconomics` | inspect one Sale's L0/L1/L2 lineage and reconciliation | both | Q | `economics.read` | **ADMIT** |
-| `GetEconomicPerformanceSummary` | period/portfolio commercial-intelligence aggregate | both | Q | `economics.read` | **ADMIT** |
-| separate mutable `OrderEconomics` / `RealizedEconomics` CRUD | both | Q/C | — | **REJECT** |
-| universal `Reconciliation` resource with generic ID | both | Q/C | — | **REJECT** |
+## 5.3 Marketplace Sales
 
-`SaleEconomics` is an Economics-owned read surface keyed by the source-qualified Sale context, not a single mutable row that overwrites history. It preserves distinct rungs proportionately:
+| Candidate operation | Client | Class | Permission | Admission |
+|---|---|---|---|---|
+| `ListMarketplaceSales` | both | Q | `sales.read` | **ADMIT** |
+| `GetMarketplaceSale` | both | Q | `sales.read` | **ADMIT** |
+| `ResolveSaleSellingEntityAttribution` | human baseline | C | `sales.manage` | **ADMIT** |
+| `CreateSale` / generic `UpdateSale` | both | C | — | **REJECT** |
+| `CancelSale` / `RefundSale` | both | C | — | **REJECT — POST-SALE CONCERN** |
+| `SyncSales` / `RefreshOrders` | both | C | — | **REJECT PRODUCT API** |
+| provider Pack/Shipment absorbed as Sales entities | both | Q | — | **REJECT** |
 
-```text
-expected economic basis (L0 reference when material)
-order economics (L1)
-realized/settlement economics (L2)
-reconciliation
-  R1 expected ↔ order
-  R2 order ↔ realized
-```
+Binding decisions:
 
-Later refund/reversal/settlement evidence appends/reinterprets realized lineage; it does not erase an earlier approval/release/order fact merely because the final economic result changed.
+- Sale identity remains Marketplace Installation + provider-native Sale/Order key; no synthetic MPC Sale alias exists merely for normalization;
+- Sale reads preserve source observation/freshness and Sales-owned interpretation/context/correlation/transaction-specific Selling Entity attribution without absorbing downstream Materialization/Fulfillment/Economics/Post-Sale state as mutable ownership;
+- Sales is externally originated; Product clients do not create/update provider sales;
+- transaction-specific Selling Entity attribution may normally be established automatically by Sales, but a genuinely ambiguous case admits explicit human resolution;
+- ambiguous attribution resolution requires current-state concurrency when stale overwrite could replace a newer decision; exact repeat may be structurally idempotent.
 
-Performance summaries are derived Qs with explicit period/scope/coverage. Partial reconciliation or missing material evidence must remain visible; a period aggregate cannot present itself as complete merely because an arithmetic value is available.
+Permission floor: `sales.read`, `sales.manage`.
 
-R3 bank-side reconciliation remains deferred until an accepted bank source exists.
+## 5.4 Business Order Intent — owner-triggered, client-readable
 
-## 4.6 Commercial Economics policy
+| Candidate operation | Client | Class | Permission | Admission |
+|---|---|---|---|---|
+| `ListBusinessOrderIntents` | both | Q | `materialization.read` | **ADMIT** |
+| `GetBusinessOrderIntent` | both | Q | `materialization.read` | **ADMIT** |
+| `CreateBusinessOrderIntent` | both | C | — | **REJECT BASELINE** |
+| `RetryBusinessOrderMaterialization` | both | C | — | **REJECT** |
+| direct `CreateSankhyaOrder` / `ConfirmSankhyaOrder` | both | C | — | **REJECT** |
 
-| Candidate operation | Client | Class | Permission | Idempotency | Concurrency | Admission |
-|---|---|---|---|---|---|---|
-| `GetCommercialPolicy` | both | Q | `economics.read` | — | — | **ADMIT** |
-| `UpdateCommercialPolicy` | human | C/resource update | `economics.policy.manage` | structural desired-state | **required where lost-update material** | **ADMIT** |
-| generic Policy CRUD | both | C | — | — | — | **REJECT** |
-| rule/expression/condition DSL editor | human | C | — | — | — | **REJECT** |
+Normal-path BusinessOrderIntent creation belongs to Materialization reacting to committed Sales meaning, not to React/agent commands. Duplicate/replayed Sale occurrences must not create duplicate semantic BusinessOrderIntents; D7 chooses the enforcement mechanism for this owner-level idempotency property.
 
-Commercial Economics owns only its policy meaning, such as material Cost Basis policy/selection, margin floors, price boundaries and economic approval-trigger thresholds. Governance does not own those thresholds merely because they may cause an approval requirement.
+BusinessOrderIntent Q may expose owner meaning/prerequisites, Party/Destination resolution state, source-qualified native result references, accepted/rejected/pending/ambiguous outcome and owner-specific convergence without exposing TOP/NUNOTA/CACSP/status choreography as Product semantics.
 
-Policy update is a current-state lost-update problem, not a duplicate-create problem; concurrency is therefore primary and generic idempotency key is not baseline.
+## 5.5 Party Resolution and Destination Realization
 
-## 4.7 Economic Attribution / exception reconciliation
+| Candidate operation | Client | Class | Permission | Admission |
+|---|---|---|---|---|
+| `GetBusinessSystemPartyResolution` | both | Q | `materialization.read` | **ADMIT** |
+| `ResolveBusinessSystemPartyResolution` | human baseline | C | `materialization.resolve` | **ADMIT** |
+| `GetDestinationRealization` | both | Q | `materialization.read` | **ADMIT** |
+| `ResolveDestinationRealization` | human | C | `materialization.resolve` | **DEFER / CONDITIONED ON D8 PROOF** |
+| generic Customer/Party CRUD | both | C | — | **REJECT** |
+| generic Address/Contact CRUD | both | C | — | **REJECT** |
+| raw `SelectCODPARC` / mutate Partner address | human/both | C | — | **REJECT PROVIDER VOCABULARY / UNSAFE MASTER MUTATION** |
 
-| Candidate operation | Consumer / use | Client | Class | Permission | Admission |
-|---|---|---|---|---|---|
-| `ListEconomicAttributions` | inspect exact/partial/ambiguous/unresolved economic attribution work | both | Q | `economics.read` | **ADMIT** |
-| `GetEconomicAttribution` | inspect one persistent attribution + provenance | both | Q | `economics.read` | **ADMIT** |
-| `ResolveEconomicAttribution` | human resolves a materially ambiguous/unresolved economic meaning/scope | human baseline | C | `economics.reconcile` | **ADMIT** |
-| generic `MarkReconciled` | client sets status without owner semantics | both | C | — | **REJECT** |
-| `ReconcileNow` | run internal reconciliation mechanism/job | both | C | — | **REJECT PRODUCT API** |
+Binding decisions:
 
-Economic Attribution is persistent MPC-owned Economics state because D2 already established its semantic identity. Resolution requires current-state concurrency where stale overwrite could replace a newer decision. Exact repeat may be structurally idempotent.
+- Party Resolution is a bounded Materialization prerequisite, not Customer/CRM authority;
+- a human resolution chooses a compatible source-qualified native party meaning, never a raw provider code as MPC business ontology;
+- zero-match native creation may occur only under owner rules and sufficiently known legitimate transaction evidence; the client does not author arbitrary Customer master data;
+- resolution targets one existing PartyResolution/current version; structural idempotency may be used only if later proof shows duplicate consequential native creation cannot occur, otherwise B1's idempotency-key default applies;
+- Destination Realization remains distinct from Party Resolution and never overwrites registered/master address by convenience;
+- contact-based alternate destination is the strongest current Sankhya candidate but its write capability remains conditioned on D8 controlled proof, so B2 does not claim a Product C operation before that evidence exists;
+- no safe destination realization remains explicit `external-required` / Work rather than fabricated equivalence.
 
-Human is the baseline client for explicit ambiguity resolution. Automatic sufficiently-known attribution may occur inside Economics without creating a client operation; broader automated exception resolution requires explicit policy/evidence before widening client class.
+## 5.6 Invoicing Intent — owner-triggered from Fulfillment readiness
 
-Permission floor: `economics.read`, `economics.policy.manage`, `economics.reconcile`.
+| Candidate operation | Client | Class | Permission | Admission |
+|---|---|---|---|---|
+| `ListInvoicingIntents` | both | Q | `materialization.read` | **ADMIT** |
+| `GetInvoicingIntent` | both | Q | `materialization.read` | **ADMIT** |
+| `CreateInvoicingIntent` | both | C | — | **REJECT BASELINE** |
+| `RequestInvoice` / direct `SankhyaFaturar` | human/both | C | — | **REJECT** |
+| `RetryInvoice` | both | C | — | **REJECT** |
 
-## 4.8 Explicit Block 3 exclusions
+Fulfillment owns physical readiness/conference. Its committed checkpoint makes Materialization eligible to create/block/advance InvoicingIntent; Product clients do not create the fiscal intent directly.
+
+Materialization must revalidate current business-order state, Party/Destination prerequisites, Fulfillment readiness, applicable Governance, source binding/capability and execution-time validity before any irreversible fiscal effect. A prior event/approval is never sufficient by itself.
+
+## 5.7 No blind retry / no workflow command surface
+
+A provider timeout or connection loss after possible Sankhya acceptance is reconciled by authoritative reread/correlation before any further effect decision. The Product API does not expose generic `RetryBusinessOrder`, `RetryInvoice`, `AdvanceWorkflow`, TOP progression or provider-command replay.
+
+If reconciliation later establishes a new semantically safe action, the owning domain progresses its existing intent or creates a new owner-local intent according to its lifecycle; it never blindly replays an ambiguous external request.
+
+## 5.8 Permission floor
+
+- `governance.read`
+- `governance.decide`
+- `governance.manage`
+- `sales.read`
+- `sales.manage`
+- `materialization.read`
+- `materialization.resolve`
+
+The split preserves materially useful least privilege without creating one permission per endpoint.
+
+## 5.9 Explicit Block 4 exclusions
 
 Not admitted:
 
-- generic MarketObservation CRUD;
-- public market collection/refresh mechanism;
-- generic market collector/scraper platform;
-- persistent Simulation resource by default;
-- Recommendation authority/resource;
-- client-provided fake economic evidence/overrides;
-- mutable all-in-one Profitability object;
-- separate API authorities for expected/order/realized rungs merely for symmetry;
-- universal ReconciliationID/resource;
-- `ReconcileNow` runtime command;
-- generic financial ledger;
-- bank/Open Finance/R3 API before accepted source/consumer;
-- campaign/discount authoring merely because observed promotion evidence affects economics;
-- price actuation inside Economics.
+- generic `/actions`, workflow engine or `PATCH status` orchestration;
+- domain-specific approve endpoints duplicating Governance;
+- approval queue as a second Work authority;
+- `ExecuteApprovedAction`;
+- client-created Sale;
+- Sales-owned cancellation/refund;
+- generic Sales sync/refresh;
+- client-created BusinessOrderIntent/InvoicingIntent on normal path;
+- direct Sankhya order/confirmation/invoice/TOP/NUNOTA APIs;
+- Customer/Address master CRUD;
+- unsafe Partner-address mutation;
+- generic Retry/replay operations after ambiguous external effects.
 
-## 4.9 Block 3 method outcome
+## 5.10 Block 4 method outcome
 
-**Parent structure:** `CURRENT D1/D2/D4-B4 STRUCTURE CONFIRMED`.
+**Parent structure:** `CURRENT D1/D2/D3/D4-B3 STRUCTURE CONFIRMED`.
 
 **B2 outcome:**
 
-> **Use stateless Economics capabilities for hypothetical analysis; persist material economic authority/history only where future explanation/reconciliation requires it; preserve L0/L1/L2 and financial occurrences instead of overwriting them; expose Market Intelligence as interpreted source-qualified evidence; keep actual Price actuation exclusively in Offering.**
+> **Expose Governance decisions/delegation and owner-tracking state; keep externally-originated Sales read-centric except explicit attribution resolution; let Materialization create BusinessOrder/Invoicing intents from accepted upstream facts rather than client commands; expose human resolution only where ambiguity is a genuine business decision; never leak Sankhya choreography or generic retry/workflow commands into Product API.**
 
 ---
 
-# 5. Exact next matrix work
+# 6. Exact next matrix work
 
-**Block 4 — Controlled Action Governance + Marketplace Sales + Business-System Materialization.**
+**Block 5 — Fulfillment Lifecycle + Post-Sale Resolution + Operational Work + justified read-only P compositions.**
 
-Derive the minimum Product API surface while preserving these fences:
+Derive the smallest Product API surface while preserving these fences:
 
-- Governance owns authorization delegation/grant semantics and concrete Authorization Decision/context; it does not own business thresholds, domain validity, intent, execution or provider protocol;
-- ordinary Permission remains distinct from domain disposition and Governance authorization;
-- a concrete Authorization Decision must preserve exact authorized target scope and historical actor/authority context without mutating the underlying domain Intent;
-- approval does not prove execution and cannot waive execution-time revalidation;
-- Marketplace Sales owns marketplace-sale interpretation/context/correlation and transaction-specific Selling Entity attribution, not Materialization/Fulfillment/Economics/Post-Sale;
-- provider Sale/Order identity remains Marketplace Installation + native key; no synthetic MPC sale alias exists by default;
-- Business-System Materialization owns Business Order Intent + native-order convergence and Invoicing Intent + fiscal convergence;
-- Sankhya TOP/NUNOTA/status/protocol remains D4 adapter-local and never enters Product API semantics;
-- Party Resolution and Destination Realization are bounded Materialization prerequisites, not Customer/Address master CRUD;
-- material consequential creates require idempotency unless stronger owner anchors prove structural safety;
-- no generic workflow/advance-status/ERP-command API;
-- no direct `/sankhya/orders` or `/sankhya/invoices` Product surface;
-- material ambiguous/duplicate/native-correlation failures become explicit owner state/Work rather than blind retries.
+- Fulfillment owns physical readiness/execution, Fulfillment Node eligibility/selection, separation/conference/packing/dispatch and provider-requirement closure for claimed fulfillment paths;
+- Shipment remains source-qualified external identity and does not collapse into Sale/Order;
+- provider-native requirements/artifacts remain D4 evidence; Fulfillment owns business closure/readiness meaning;
+- physical conference/readiness is the legitimate owner signal that can enable Materialization invoicing; clients must not bypass it with a direct invoice command;
+- Post-Sale Resolution owns coordinated cancellation/return/refund consequence scope/closure without becoming provider Claim/Return ontology, CRM or generic reverse logistics;
+- one Sale may have 0..N scoped Post-Sale Resolutions; cancellation/return/refund are not one mutually exclusive status;
+- Operational Work owns responsibility/assignment/escalation/work state, never source truth or domain closure;
+- no-ownerless-work and source-domain closure evaluation remain binding;
+- read-only P compositions may summarize several owners for operator attention but never become write/concurrency/business truth authority;
+- no generic workflow/Task/Case/OperationalStage mutation surface;
+- no direct provider shipment/claim/refund protocol API;
+- no generic retry/sync/refresh commands by convenience;
+- pagination/filter/sort only where queues/populations create a real consumer need;
+- bulk only if a concrete fulfillment/work workflow proves member-level semantics are necessary.
 
-The block must decide which authorization/grant operations have real Product clients, whether Business Order/Invoicing intents are directly client-created or owner-triggered from Sales/Fulfillment conditions, and which Materialization prerequisite resolutions need Product operations versus automatic/internal resolution.
+The block must decide which physical fulfillment checkpoints are true client capabilities, how Work mutations are scoped without stealing source-domain closure, how Post-Sale is initiated/coordinated, and which cross-owner cockpit/attention reads are justified P rather than D6-only view composition.
 
-Do not spell final HTTP paths/schemas until the operation inventory is coherent.
+Do not spell final HTTP paths/schemas until Block 5 admission is coherent.
 
 Implementation remains blocked until D9.
