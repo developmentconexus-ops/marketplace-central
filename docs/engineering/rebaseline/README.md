@@ -2,7 +2,7 @@
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
 > **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 OPEN / ACTIVE**  
-> **D5-B2 current state:** **B2-A + Operation Matrix Blocks 1–5 ACCEPTED IN-STAGE; Whole-Matrix review candidate PREPARED; independent Fable review = NEXT**  
+> **D5-B2 current state:** **B2-A + Operation Matrix Blocks 1–5 ACCEPTED IN-STAGE; Whole-Matrix Fable Round 1 COMPLETE; GPT adjudication COMPLETE; one focused price-intent contradiction remains; Fable Round 2 = NEXT**  
 > **Decision Reconciliation:** **ACCEPTED / CANONICAL**  
 > **Implementation:** BLOCKED until D9 is accepted  
 > **Last updated:** 2026-08-18
@@ -66,7 +66,9 @@ D5 — API — OPEN / ACTIVE
        └─ Whole-Matrix Global Coherence
             ├─ lead review — RESTRUCTURE NOW / B2-local corrections identified
             ├─ review candidate — PREPARED / NON-AUTHORITATIVE
-            └─ Fable independent review — NEXT
+            ├─ Fable Round 1 — COMPLETE / REVISE B2-LOCAL
+            ├─ GPT adjudication — COMPLETE
+            └─ focused Fable Round 2 — NEXT / initial-publication price only
   ↓
 D6 — Frontend
   ↓
@@ -83,7 +85,7 @@ Implementation
 
 Product implementation remains blocked until D9 is accepted.
 
-## 3. Accepted B2 baseline before whole-matrix review
+## 3. Accepted B2 baseline before whole-matrix consolidation
 
 ### B2-A — Client/Auth
 
@@ -99,65 +101,73 @@ Product implementation remains blocked until D9 is accepted.
 - **Block 2:** Listing actual state is Offering Q; `ListingIntent` is create/edit authoring/tracking; `PriceIntent` is separate; Availability owns Sellable Availability; no giant Listing CRUD, direct price/stock set or generic async Operation.
 - **Block 3:** Market Intelligence exposes competitive interpretation; Economics owns stateless scenario evaluation plus durable material L0/L1/L2 lineage; no Recommendation/Simulation authority, generic ledger or price actuation in Economics.
 - **Block 4:** Governance decisions/delegations remain authorization-only; Sales is externally originated/read-centric; Materialization creates BusinessOrder/Invoicing intents from accepted owner reactions; no direct Sankhya/order/invoice/retry/workflow API.
-- **Block 5:** Fulfillment exposes physical checkpoints/nodes/artifacts, Shipment remains external read observation, Post-Sale uses canonical scoped Resolution, Work owns responsibility/lifecycle without source truth, and one provisional Sale operational P was admitted for whole-matrix challenge.
+- **Block 5:** Fulfillment exposes physical checkpoints/nodes/artifacts, Shipment remains external read observation, Post-Sale uses canonical scoped Resolution, Work owns responsibility/lifecycle without source truth, and the provisional Sale operational P remains subject to whole-matrix adjudication.
 
-These block decisions remain accepted in-stage until the whole-matrix review package is adjudicated and operator-ratified.
+These block decisions remain accepted in-stage until the whole-matrix package is operator-ratified and canonically consolidated.
 
-## 4. Current non-authoritative whole-matrix review package
+## 4. Whole-matrix review state
 
-`docs/engineering/rebaseline/D5-B2-WHOLE-MATRIX-REVIEW-CANDIDATE.md` records the lead's operator-approved review direction for independent challenge.
+`docs/engineering/rebaseline/D5-B2-WHOLE-MATRIX-REVIEW-CANDIDATE.md` remains non-authoritative review input.
 
-Lead disposition: **RESTRUCTURE NOW — B2-local only; no parent-stage reopen currently justified.**
+Fable Round 1 returned **REVISE — B2-local only** and found no parent-stage reopen. GPT independently adjudicated the findings in `AI-DIALOG.md`.
 
-Proposed corrections under review:
+### Converged direction from Round 1 + GPT adjudication
 
-1. **ADD** ListingIntent-scoped authored-media intake under Offering; no ProductAsset/media master.
-2. **ADD** Fulfillment-owned internal operating-target Q/C; external provider deadline remains distinct.
-3. **DEFER** generic `SubmitWorkResolution`; use source-owner-specific resolution capabilities unless a concrete bounded evidence-submission need is later proven.
-4. **DEFER** `GetSaleOperationalView` P until D6 proves repeated consumer need/benefit.
+Pending final operator ratification after Round 2, the following are converged review conclusions:
 
-Proposed hardenings under review:
+1. add ListingIntent-scoped authored-media intake; never Product/media-master authority;
+2. add Fulfillment-owned internal operating-target Q/C with effective-value provenance; never generic SLA/rules authority;
+3. defer generic `SubmitWorkResolution`; wire closure must audit every Work-producing condition for a legitimate source-owner closure path;
+4. defer `GetSaleOperationalView` until D6 proves repeated P-composition need;
+5. every admitted C operation must declare consequence class, idempotency disposition and concurrency/precondition disposition; silence is non-conformant;
+6. `ResolveBusinessSystemPartyResolution` requires mandatory client idempotency plus current resolution/candidate-set precondition by default;
+7. `GetCurrentAccessContext` is platform-scoped **self-only** discovery for the authenticated Principal; Organization-owned business routes remain Organization-path-scoped;
+8. authority revocation is fail-safe/monotonic: Authorization Delegation and AccessRole revocation are structurally idempotent and are not blocked merely by stale snapshots; re-grant is a new explicit authority action;
+9. B2-A OIDC/OAuth + MPC-owned Principal/Membership/Permission remains the selected Global Maximum;
+10. authored-media URL trust is fail-closed and media reference/selection reads remain on ListingIntent semantics; binary mechanics remain D7;
+11. Fulfillment target configuration preserves default/override provenance and does not create a generic target/SLA platform.
 
-5. `ResolveBusinessSystemPartyResolution` requires client idempotency by default.
-6. `GetCurrentAccessContext` is a bounded platform-scoped D2 discovery Q; Organization-owned business routes remain explicit Organization-path scoped.
-7. Authorization Delegation update/revoke gains stale-state concurrency/precondition protection where material.
+None of these items is canonical merely because reviewer/lead currently converge; final consolidation waits for the focused contradiction below and operator ratification.
 
-These corrections are not canonical merely because they appear here; Fable review + GPT adjudication + operator ratification precede consolidation into the active matrix.
+### One material contradiction remains
+
+Fable F-WM-10 proposed putting **creation-time price inside ListingIntent**, with `PriceIntent` only for later price changes.
+
+GPT rejected that proposal because current accepted authority already gives Listing and Price Intents distinct material identities, D4-R1 explicitly rejects a Publication aggregate absorbing Price, and B2 intentionally separates `listing.manage` from `price.manage`.
+
+GPT's proposed corrected rule is:
+
+> **Price is never ListingIntent-owned content, including initial publication. Initial active publication uses a correlated Offering-owned PriceIntent for the to-be-created listing context; D4/D7 may jointly serialize ListingIntent + PriceIntent + Availability-issued meaning into one provider create request without merging their identities/permissions.**
+
+This is the only material review disagreement that survives Round 1 adjudication.
 
 ## 5. What is prohibited now
 
-While the independent Whole-Matrix review is open:
+While focused Round 2 is open:
 
-- do not begin resource/path/schema/OpenAPI crystallization yet;
+- do not begin resource/path/schema/OpenAPI crystallization;
+- do not consolidate the candidate into the active matrix yet;
 - do not begin D6–D9 design or implementation;
-- do not mutate accepted parent D0–D4/D4-R1/D5-B1 semantics by review convenience;
-- do not treat the candidate, Fable output or `AI-DIALOG.md` as authority;
+- do not treat Fable/GPT review dialogue or the candidate as authority;
+- do not reopen already converged Round 1 findings unless the price contradiction logically invalidates one;
+- do not mutate accepted D0–D4/D4-R1/D5-B1 semantics by review convenience;
 - do not derive operations from legacy routes/current OpenAPI/provider endpoint shape;
-- do not recreate Product/PIM, generic Integration/Mutation/Action/Operation/Workflow/Rules/AI authority, generic finance ledger, Task/Case engine or market collector platform;
-- do not weaken Organization scope, source-qualified identity, honest knowledge/freshness, Permission/Governance separation, idempotency, concurrency, ambiguity, recovery, multi-target scope or convergence laws;
-- do not create direct client commands for owner reactions already owned by D3 flows;
-- do not allow a generic machine token to fabricate physical facts;
-- do not add compatibility/versioning or bulk without a real consumer/workflow.
+- do not weaken Organization scope, source-qualified identity, Permission/Governance separation, idempotency, concurrency, ambiguity, recovery or convergence laws.
 
 ## 6. Exact next action
 
-**Run one independent Fable review of the coherent D5-B2 Whole-Matrix package before any wire-contract design.**
+**Run one focused Fable Round 2 on the single surviving material contradiction: initial-publication price semantics.**
 
-Follow the canonical **Standard Fable review workflow** in `developmentconexus-ops/conexus-methodology/README.md`.
+Follow the active `AI-DIALOG.md` handoff. Fable must independently decide the smallest Global Maximum between:
 
-Fable must:
+- F-WM-10: creation-time price becomes ListingIntent content and PriceIntent begins only after Listing creation; or
+- GPT A10: creation-time price remains a separate Offering-owned PriceIntent correlated with the ListingIntent/to-be-created Listing context, preserving `listing.manage != price.manage` and joint physical provider serialization without ownership merge.
 
-1. independently reconstruct this repository's authority from `AGENTS.md` + this router;
-2. read accepted B2-A + Blocks 1–5 and the non-authoritative `D5-B2-WHOLE-MATRIX-REVIEW-CANDIDATE.md`;
-3. apply the DevelopmentConexus Method and search for a materially better Global Maximum, not agreement;
-4. challenge duplicate/missing authority, Product 1.0 reachability, client classes, Permissions, Q/C/P, idempotency, concurrency, owner-trigger vs client-trigger, Organization/source identity, provider richness, YAGNI/future cost, Structural Inversion and missing operations;
-5. specifically attack the four proposed corrections and three hardenings rather than assuming them correct;
-6. append **material findings only** to the active `AI-DIALOG.md` cycle with `APPROVE / REVISE / REJECT` and handoff to GPT;
-7. modify no other repository file unless separately authorized by the operator.
+The challenge must confront D2 PriceIntent identity, D4-R1 anti-absorption language, B2 least-privilege Permissions and the actual provider requirement that initial creation physically contains a price.
 
-After Fable, GPT independently adjudicates every material finding. Round 2 occurs only if a material contradiction survives. The converged package then requires operator ratification before corrections are consolidated into the active matrix and the disposable candidate is removed.
+Fable modifies only `AI-DIALOG.md`, appends the Round 2 material resolution and hands back to GPT. **Do not re-review A1–A9/A11 unless the price conclusion logically requires it.**
 
-If the Whole-Matrix package is then accepted, the next B2 sub-batch is **Wire Contract / Resource-Path-Schema Grammar**: concrete path/resource hierarchy, standard vs owner-specific HTTP methods, request/response families, Problem Details, idempotency/preconditions, pagination/filter/search and OpenAPI spelling — still without D6/D7 implementation choices.
+After Round 2, GPT adjudicates the last contradiction. If no contradiction survives, the converged Whole-Matrix package goes to the operator for ratification. Only after ratification do we consolidate the active matrix, remove the disposable candidate/reset review dialogue as appropriate, and open **D5-B2 Wire Contract / Resource-Path-Schema Grammar**.
 
 Implementation remains blocked until D9.
 
@@ -170,11 +180,11 @@ A fresh session must conclude unambiguously:
 - D5-B1 accepted/canonical;
 - D5-B2 OPEN / ACTIVE;
 - B2-A and Matrix Blocks 1–5 accepted in-stage;
-- the Whole-Matrix lead review found B2-local corrections but no parent-stage reopen;
-- `D5-B2-WHOLE-MATRIX-REVIEW-CANDIDATE.md` is non-authoritative and prepared for Fable;
-- `AI-DIALOG.md` has the D5-B2 Whole-Matrix review cycle open;
-- independent Fable review is the exact next action;
-- wire-contract design is blocked until that review is adjudicated/ratified;
+- Fable Whole-Matrix Round 1 and GPT adjudication are complete review input, not authority;
+- no parent-stage reopen was found;
+- exactly one material contradiction remains: initial-publication price as ListingIntent content vs correlated PriceIntent;
+- focused Fable Round 2 is the exact next action;
+- wire-contract design remains blocked until review convergence + operator ratification;
 - implementation remains blocked until D9.
 
 If not, the active authority tree is inconsistent.
