@@ -1,32 +1,36 @@
 # D5-B2 — Product Operation / Resource Surface
 
-> **Status:** OPEN / ACTIVE — B2-A Client & Authentication Admission Model accepted in-stage; operation matrix under derivation  
+> **Status:** OPEN / ACTIVE — B2-A + Operation Admission Matrix + Whole-Matrix Global Coherence **ACCEPTED IN-STAGE / OPERATOR-RATIFIED**; Wire Contract next  
 > **Program:** Architecture Rebaseline / Technical System Design  
 > **Parent authorities:** accepted D0→D4 + D4-R1 + D5-B1 + `DECISION-RECONCILIATION-BASELINE.md`  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
-> **Opened:** 2026-08-18
+> **Opened:** 2026-08-18  
+> **Whole-Matrix ratified:** 2026-08-18
 
 ## 1. Purpose and stage boundary
 
-D5-B2 derives the smallest coherent **Product 1.0 operation/resource surface** that real MPC clients need to interact with accepted semantic owners.
+D5-B2 derives the smallest coherent **Product 1.0 operation/resource surface and wire contract** that real MPC clients need to interact with accepted semantic owners.
 
-B2 is not a legacy-route cleanup exercise. It does not begin from the retired pre-R1 candidate, current OpenAPI, controller/package layout, provider endpoint inventory or frontend screen list.
+B2 is not a legacy-route cleanup exercise. It does not begin from retired candidates, current OpenAPI, controller/package layout, provider endpoint inventory or frontend screen list.
 
-B2 determines, before final path/schema spelling:
+The operation-admission phase is now ratified in `D5-B2-OPERATION-ADMISSION-MATRIX.md`. B2 next crystallizes that accepted meaning into resource/path/schema/HTTP/OpenAPI shape without moving business authority.
+
+B2 determines:
 
 - which external Product API operations are admitted at all;
 - which accepted owner owns each operation;
-- whether each interaction is Q / C / P;
-- which client classes may invoke it;
+- Q / C / P classification;
+- legitimate client classes;
 - ordinary Permission requirements;
-- Organization and identity scope;
+- Organization and source-qualified identity scope;
 - read knowledge/freshness/provenance semantics;
-- consequential intent/outcome/idempotency/concurrency semantics;
-- provider enrichment, pagination/filter/sort and bulk only when justified by a real consumer.
+- owner outcomes, idempotency and concurrency/precondition semantics;
+- provider enrichment, pagination/filter/search and bulk only when justified;
+- the one machine-readable Product API wire authority.
 
-B2 does **not** choose D6 screen/component topology or D7 process, worker, transaction, queue, RLS, deployment, Keycloak realm/deployment, secret-storage or token-lifetime realization.
+B2 does **not** choose D6 screen/component topology or D7 process, worker, transaction, queue, RLS, blob storage, deployment, Keycloak realm/deployment, secret-storage or token-lifetime realization.
 
-The status/next-action wording in `D5-API.md` §21 predates formal B2 opening. The router is the sole current-program status authority; this file is the current B2 in-stage artifact.
+The router remains the sole current-program status/next-action authority.
 
 ---
 
@@ -34,19 +38,29 @@ The status/next-action wording in `D5-API.md` §21 predates formal B2 opening. T
 
 > **A Product API operation exists only when a real Product 1.0 client/actor needs to read one accepted owner's meaning (Q), ask one accepted owner to perform/accept owner-owned work (C), or consume a justified read-only composition (P). Public API symmetry, legacy routes, provider endpoints and internal implementation convenience do not create Product operations.**
 
-Every admitted operation must map to:
+Every admitted operation maps to:
 
 ```text
 real consumer/use
   → allowed client class
   → exactly one semantic owner / accepted D2 substrate authority
   → Q | C | P
-  → explicit Organization scope
+  → explicit Organization scope where business-owned
   → ordinary Permission
   → canonical/source-qualified subject identity
   → knowledge/outcome contract
-  → idempotency/concurrency when consequential
+  → complete C-operation safety tuple when C
 ```
+
+Every admitted C declares:
+
+```text
+consequence class
+idempotency disposition
+concurrency / precondition disposition
+```
+
+Silence is non-conformant. Idempotency never substitutes for concurrency and never authorizes blind retry of ambiguous external acceptance.
 
 An operation that cannot fit this model without inventing authority stops and returns to the implicated parent decision.
 
@@ -56,21 +70,21 @@ An operation that cannot fit this model without inventing authority stops and re
 
 ## 3.1 Root cause
 
-D5-B1 defined authorization and Product API semantics but intentionally did not yet decide the concrete client classes and authentication contract by which a real human application or non-human automation proves who/what is calling the API.
+D5-B1 defined authorization and Product API semantics but intentionally did not decide the concrete client classes and authentication contract by which a real human application or non-human automation proves who/what is calling the API.
 
-Without that decision, B2 could enumerate write-capable operations while leaving reachable failure classes such as:
+Without that decision, B2 could freeze write-capable operations while leaving reachable failures such as:
 
-- a global/shared API key with excessive blast radius;
+- global/shared API keys with excessive blast radius;
 - browser-embedded secrets;
 - client-supplied Principal identity;
 - one credential implicitly authorizing every Organization;
 - IdP roles becoming a second business-Permission authority;
-- automation being attributed to the human who provisioned it;
-- tokens for another application being accepted by MPC;
-- human and machine clients requiring unrelated authentication architectures;
-- building a second MPC credential/token authority even though the chosen IdP stack already supplies standards-based machine credentials.
+- automation attributed to the provisioning human;
+- tokens for sibling applications being replayed against MPC;
+- unrelated human/machine authentication architectures;
+- a second MPC credential/token authority duplicating external IdP capability.
 
-This is essential API security complexity, not a D7 runtime detail: B2 must know which client classes can legitimately invoke each Product operation and how authenticated identity reaches MPC Principal/access semantics.
+This is essential API security complexity, not merely D7 runtime detail.
 
 ## 3.2 Known / inferred / unknown / deferred
 
@@ -78,147 +92,104 @@ This is essential API security complexity, not a D7 runtime detail: B2 must know
 
 Accepted D2 already establishes:
 
-- interactive human authentication is external through an OIDC boundary;
-- stable human binding is based on OIDC `(issuer, subject)`, not email/username;
+- interactive human authentication is external through OIDC;
+- stable human binding uses OIDC `(issuer, subject)`, not email/username;
 - Principal is MPC-owned accountable actor identity;
-- automation/system Principals are distinct from humans and do not impersonate them;
+- automation/system Principals are distinct from humans and never impersonate them;
 - Membership / AccessRole / Permission / RoleAssignment are MPC-owned ordinary-access semantics;
-- Permission does not prove business disposition or consequential Governance authorization;
-- Keycloak is the preferred first self-hosted candidate, while exact provider/deployment/realm topology was intentionally deferred to later technical realization.
+- Permission does not prove business disposition or Governance authorization;
+- Keycloak is the preferred first self-hosted candidate, while exact provider/deployment/realm topology remains later realization.
 
 Current standards/provider evidence establishes:
 
-- OAuth 2.0 Authorization Code clients are protected with PKCE; current OAuth Security BCP requires PKCE for public clients and recommends it for confidential clients, with `S256` as the non-verifier-exposing method;
-- access tokens should be privilege-restricted and audience-restricted to the intended resource server, which must validate that audience;
-- OAuth Client Credentials is for confidential machine clients;
-- current Keycloak supports OIDC clients, Authorization Code, service accounts / Client Credentials, confidential client credentials, audience configuration, client-secret rotation and stronger client-authentication mechanisms including signed JWT;
-- mature integration platforms such as GitHub Apps use fine-grained permissions plus short-lived tokens to reduce credential blast radius.
+- Authorization Code clients use PKCE; current OAuth Security BCP requires PKCE for public clients and recommends it more broadly, with `S256` as the non-verifier-exposing method;
+- access tokens should be privilege- and audience-restricted to the intended resource server;
+- Client Credentials is for confidential machine clients;
+- current Keycloak supports OIDC clients, Authorization Code, service accounts / Client Credentials, audience configuration, client-secret rotation and stronger client authentication such as signed JWT;
+- mature machine-integration systems benefit from fine-grained permissions and short-lived tokens instead of broad long-lived credentials.
 
 ### Inferred
 
-For MPC's current first-party/internal client set, one standards-based authentication architecture can serve both humans and machine clients without MPC becoming an Authorization Server.
+For MPC's current first-party/internal clients, one standards-based authentication architecture can serve humans and machines without MPC becoming an Authorization Server.
 
-Sharing an IdP deployment with another internal product such as MetalDocs may reduce infrastructure duplication, but this is **not** a B2 topology decision and creates no shared Product authority, database, Organization or Permission model.
+Sharing IdP infrastructure with another internal product such as MetalDocs may reduce operational duplication, but creates no shared Product authority, database, MPC Organization or Permission model.
 
 ### Unknown / deferred
 
 D7 still owns:
 
 - exact IdP deployment and final production binding;
-- Keycloak realm topology and whether MetalDocs/MPC use one workforce realm or another bounded arrangement;
+- Keycloak realm topology, including any bounded sharing with MetalDocs;
 - HA/database/backups/upgrades;
 - token lifetime and refresh-token realization;
 - client-secret/private-key storage and rotation mechanics;
-- exact JWT/JWK validation library and caches;
-- whether/when sender-constrained tokens such as DPoP/mTLS are justified;
-- exact claim used to bind a machine service-account/client identity to an MPC non-human Principal.
+- exact JWT/JWK validation library/caches;
+- whether sender-constrained tokens such as DPoP/mTLS become justified;
+- exact machine-token claim/binding mechanics to MPC non-human Principal.
 
-Unknown/deferred does not authorize a second credential architecture by convenience.
+Unknown/deferred never authorizes a second credential architecture by convenience.
 
 ## 3.3 Credible alternatives
 
 ### A — MPC-owned global/static API keys
 
-Rejected.
-
-A global or Organization-wide shared secret creates excessive blast radius, weak attribution and a second credential/token lifecycle inside MPC. It also makes browser/client misuse easy and pushes revocation/rotation/security administration into Product code without product value.
+Rejected. They create excess blast radius, poor attribution and duplicate credential lifecycle inside Product code.
 
 ### B — MPC builds its own OAuth/authorization server
 
-Rejected.
+Rejected. Password/session/MFA/client/token/signing/key-rotation machinery is commodity identity infrastructure, not Marketplace Operations authority.
 
-Password/session/MFA/client/token/signing/key-rotation machinery is commodity identity infrastructure, not Marketplace Operations authority. Reimplementing it adds large accidental/security complexity and duplicates the accepted external-IdP boundary.
-
-### C — Standards-based external IdP for both humans and machine clients
+### C — Standards-based external IdP for humans and machines
 
 **Selected Global Maximum.**
 
-Use one authentication boundary based on OIDC/OAuth:
-
-- human clients authenticate interactively through Authorization Code + PKCE;
-- confidential machine clients obtain short-lived access tokens through Client Credentials / service-account semantics;
-- MPC validates the token as a resource server, resolves an MPC Principal, then applies MPC Organization Membership and Permission;
-- business owner disposition and Governance remain downstream and independent.
-
-This removes duplicate credential authority while staying small enough for MPC's real scale.
+```text
+human → Authorization Code + PKCE ┐
+                                  ├→ external OIDC/OAuth authority
+machine → Client Credentials      ┘
+                                     ↓ audience-bound access token
+                                  MPC resource server
+                                     ↓ resolved MPC Principal
+                                  Membership / Permission
+                                     ↓ business owner disposition
+                                  Governance when required
+```
 
 ## 3.4 Client classes
-
-B2 recognizes only the client classes needed to classify Product operations.
 
 ### Human interactive client
 
 Examples: MPC React application or another explicitly supported user-facing client.
 
-Contract:
-
-```text
-human
-  ↓ Authorization Code + PKCE
-external OIDC/OAuth authorization server
-  ↓ access token for MPC API
-MPC resource server
-  ↓ issuer + subject binding
-MPC human Principal
-```
-
-Binding rules:
+Rules:
 
 - no browser-stored confidential client secret;
-- human identity comes from authenticated token context, never request body/header Principal fields;
-- email/username does not become canonical binding;
-- resource-owner password/direct-grant flow is not baseline;
-- the Product request remains Organization-path scoped and requires current MPC Membership/Permission.
+- human identity comes from authenticated token context, never Principal request fields;
+- email/username is not canonical identity;
+- resource-owner password/direct-grant is not baseline;
+- Organization-owned business calls remain explicit Organization-path scoped and require current Membership/Permission;
+- **exception:** `GetCurrentAccessContext` is a bounded platform-scoped **self-only** discovery Q because the client cannot know its Organization memberships before discovery. It accepts no Principal parameter and returns only memberships of the authenticated Principal.
 
 ### Machine / automation / system client
 
-Examples: Claude Code/Codex-style automation, an MPC-owned background client when an HTTP client is actually needed, or a future physically external application acting under an explicitly provisioned non-human identity.
+Examples: Claude Code/Codex-style automation, bounded MPC-owned machine clients, or future physically external applications acting under explicitly provisioned non-human identity.
 
-Contract:
+Rules:
 
-```text
-confidential client
-  ↓ client authentication
-external OAuth authorization server
-  ↓ Client Credentials
-short-lived MPC-API access token
-  ↓
-MPC resource server
-  ↓ fail-closed machine identity binding
-MPC automation/system Principal
-```
+- machine is attributed to its own non-human Principal, never the provisioning human;
+- provisioning/delegation history may preserve responsible human/authority context separately;
+- client credential proves authentication only, not MPC Permission, business disposition, Governance approval or execution validity;
+- machine token resolves fail-closed to the intended non-human Principal and requested Organization access;
+- no long-lived MPC Product API key exists merely for CLI/agent convenience;
+- holding Permission does not prove epistemic/physical ability to establish a fact. Physical Fulfillment facts require human evidence or an explicitly proven system Principal/source.
 
-Binding rules:
-
-- the machine is attributed to its own non-human Principal, never to the human who provisioned it;
-- provisioning/delegation history may record the responsible human/authority context separately;
-- one client credential proves authentication only; it does not prove MPC business Permission, action disposition, Governance approval or execution validity;
-- a machine token is accepted only when it resolves fail-closed to the intended non-human Principal and the requested Organization is currently accessible to that Principal;
-- no long-lived MPC Product API key is baseline merely for CLI/agent convenience.
-
-A future third-party delegated-user application may create a materially different OAuth/consent requirement. It is not invented before a real consumer exists.
+A future third-party delegated-user application may create materially different OAuth/consent requirements; it is not invented before a real consumer exists.
 
 ## 3.5 Authentication authority versus MPC authority
 
-The external IdP/Authorization Server owns only identity/authentication protocol concerns such as:
+The external IdP/Authorization Server owns only identity/authentication protocol concerns such as credentials, login/MFA/session, OAuth/OIDC clients and token issuance/signing.
 
-- login/authentication ceremony;
-- user credentials/MFA/passkeys/session authority;
-- OAuth/OIDC client registration/credentials;
-- token issuance/signing/key rotation;
-- service-account/client credential authentication.
-
-MPC remains authority for:
-
-- Principal identity and historical attribution;
-- Organization Membership;
-- AccessRole / Permission / RoleAssignment;
-- every D1 business authority;
-- business disposition;
-- Controlled Action Governance;
-- execution-time validity and reconciliation.
-
-Therefore:
+MPC remains authority for Principal identity/history, Organization Membership, AccessRole/Permission/RoleAssignment, every D1 business meaning, business disposition, Governance and execution-time validity/reconciliation.
 
 ```text
 valid token
@@ -231,166 +202,139 @@ valid token
 
 ## 3.6 No duplicate permission authority
 
-B2 does not create a second business-permission vocabulary in OAuth scopes or IdP roles.
+MPC Permission remains the ordinary Product-access authority. IdP roles/scopes may support protocol/client administration, audience and defense-in-depth but never independently grant a Product business operation.
 
-The baseline rule is:
-
-> **MPC Permission remains the ordinary Product-access authority. IdP/client roles/scopes may support protocol/client administration, audience and defense-in-depth, but they never independently grant a Product business operation that the resolved MPC Principal cannot invoke.**
-
-For machine clients, the smallest baseline is a securely provisioned client/service-account identity mapped to one MPC non-human Principal whose current Membership/RoleAssignment yields the Product Permissions. A future proven need for an additional client-specific permission ceiling may be added only if it reduces a concrete blast-radius failure without creating duplicate business authority.
+No OAuth-scope vocabulary duplicates MPC business Permissions by default.
 
 ## 3.7 Token acceptance boundary
 
-For Product API calls, B2 freezes these protected properties independent of implementation library:
+Product API access preserves at least:
 
-- token is carried as a bearer access credential over TLS, never URL/query-string credential;
-- signature/trust chain is validated against the configured issuer/authorization-server trust;
-- issuer is accepted only from configured trusted identity authority;
-- access token is not expired/not-before-invalid;
-- token is **audience-bound to the MPC API** (or an explicitly equivalent resource indicator) and MPC rejects a token intended only for another resource/application;
-- human or machine token context resolves fail-closed to one MPC Principal;
-- Organization path scope remains explicit and current Membership/Permission is checked inside MPC;
-- raw token/secret is treated as sensitive security material and does not enter business audit payloads/logs.
+- bearer credential only over TLS, never URL/query-string credential;
+- trusted issuer/signature chain validation;
+- token time validity;
+- audience bound to MPC API, rejecting sibling-resource tokens;
+- fail-closed resolution to one MPC Principal;
+- current MPC Membership/Permission for Organization-owned requests;
+- no raw token/client secret in Product audit/history/diagnostic payloads.
 
-Exact JWT format is not elevated to business semantics; the standards boundary must remain replaceable by another conformant OIDC/OAuth provider if a later material reason justifies it.
+Exact JWT library/format is mechanism, not business semantics.
 
 ## 3.8 Keycloak disposition
 
-Keycloak is the **preferred first implementation/proof candidate** already carried from D2 and is fully capable, based on current official documentation, of satisfying the selected human + machine authentication contract.
+Keycloak remains the **preferred first implementation/proof candidate** and expected D7 realization unless later evidence falsifies it.
 
-B2 does **not** take ownership of the provider/deployment decision that D2 intentionally deferred. Therefore:
+B2 freezes OIDC/OAuth behavior, not deployment/realm topology. A shared Keycloak deployment/realm with MetalDocs, if selected in D7, cannot create shared MPC/MetalDocs business authority, Permission, Organization or database semantics.
 
-- B2 freezes the OIDC/OAuth client/authentication contract;
-- Keycloak is the first implementation/proof target and expected D7 realization unless later evidence falsifies it;
-- D7 binds concrete Keycloak deployment/realm/client configuration and may reopen only the technical provider binding if a material requirement cannot be satisfied;
-- choosing a shared Keycloak deployment/realm with MetalDocs remains a D7 operational decision and must not create shared MPC/MetalDocs business authority, Permission, Organization or database semantics.
+A Keycloak `Organization`, realm role or client role does not become MPC `Organization`, Membership or business Permission by name similarity.
 
-A Keycloak `Organization`, realm role or client role does not become MPC `Organization`, Membership or business Permission merely because the concepts have similar names.
+## 3.9 Product API versus provider protocol ingress
 
-## 3.9 Product API versus provider OAuth/protocol ingress
+The model above authenticates **Product API clients**.
 
-The authentication model above is for **clients consuming the MPC Product API**.
+Marketplace OAuth callbacks, webhook verification and business-system/provider protocol ingress remain D4/D5-B1 technical surfaces. A marketplace credential never authenticates a Product Principal.
 
-Marketplace/provider OAuth callbacks, webhook verification and business-system protocol ingress remain D4 integration-boundary concerns under D5-B1 §4.2. A Mercado Livre credential/session does not authenticate a Product API Principal.
-
-No generic `/integrations/auth` Product business API is created from these protocol needs.
+No generic `/integrations/auth` business API is created.
 
 ## 3.10 Proof / negative controls
 
 Later executable proof must demonstrate at least:
 
-1. valid token for another audience/resource server is rejected by MPC;
+1. token for another audience/resource is rejected;
 2. untrusted issuer/signature/expired token is rejected before Product semantics;
-3. authenticated human resolves to stable MPC Principal by trusted external identity binding, not email/name;
-4. machine client resolves to a distinct automation/system Principal and never inherits the provisioning human as effective actor;
-5. valid authentication with no current Organization Membership/Permission is denied as ordinary access, without pretending business rejection;
-6. client/request cannot supply another Principal identity or `approved=true` to bypass access/Governance;
-7. token for MetalDocs or another sibling resource cannot be replayed against MPC merely because the same IdP issued it;
-8. revocation/disablement of the relevant identity/client/access path prevents future invocation without rewriting historical attribution;
-9. raw bearer/client credentials never appear in Product audit/history or provider diagnostic output;
-10. business `approval-required/rejected/pending` remains reachable even after successful authentication and ordinary Permission.
-
-Exact test harness/configuration belongs to later stages, but the protected properties belong to B2.
+3. human maps by trusted external binding, not email/name;
+4. machine maps to a distinct non-human Principal;
+5. valid AuthN with no current Membership/Permission is denied as ordinary access without pretending business rejection;
+6. client cannot supply another Principal or `approved=true` to bypass boundaries;
+7. sibling-product token cannot be replayed against MPC merely because the same IdP issued it;
+8. revocation/disablement stops future access without rewriting history;
+9. raw credentials never enter Product history/diagnostics;
+10. business `approval-required/rejected/pending` remains reachable after successful AuthN/ordinary access.
 
 ## 3.11 Evidence anchors
 
-Current external evidence used for this in-stage decision:
-
-- IETF RFC 9700 — OAuth 2.0 Security Best Current Practice: PKCE, privilege restriction, audience restriction, token replay guidance;
-- IETF RFC 6749 — OAuth 2.0 Client Credentials restricted to confidential clients;
-- Keycloak current Server Administration Guide — OIDC clients, Authorization Code, service accounts / Client Credentials, confidential client credentials, role-scope intersection, audience support and stronger client-authentication options;
-- GitHub Apps official architecture — benchmark evidence that mature machine integrations benefit from fine-grained permissions and short-lived access tokens rather than broad long-lived application credentials.
-
-These sources inform mechanism/security posture; they do not override MPC D0–D5 semantic authority.
+External evidence used for this decision includes IETF OAuth Security BCP, OAuth Client Credentials, current Keycloak documentation and mature short-lived/fine-grained machine integration patterns. These sources inform mechanism/security posture; they never override MPC semantic authority.
 
 ---
 
-# 4. Operation Admission Predicate — ACCEPTED DIRECTION / MATRIX NEXT
+# 4. Operation Admission Model — ACCEPTED / MATRIX RATIFIED
 
-The operator approved the B2 direction that the Product API is **semantic-owner driven rather than CRUD-complete, screen-shaped or provider-shaped**.
+The operator ratified the semantic-owner driven Product API direction and the complete operation matrix in `D5-B2-OPERATION-ADMISSION-MATRIX.md` after Whole-Matrix adversarial review.
 
-A candidate operation is admitted only when all applicable questions can be answered:
+Every admitted operation was challenged for:
 
-1. **Consumer:** which real Product 1.0 actor/client needs it and for what outcome?
-2. **Client class:** human, machine/automation/system, or both?
-3. **Owner:** exactly one D1 semantic owner or accepted D2 substrate authority?
-4. **Interaction:** Q, C or P?
-5. **Organization:** why is the path scope legitimate and are all secondary references same-Organization?
-6. **Permission:** what ordinary product capability allows invocation without conflating Governance/business disposition?
-7. **Identity:** what canonical or source-qualified subject does the contract address?
-8. **Read semantics:** how are known/empty/unknown/unavailable/partial/freshness/provenance represented when material?
-9. **Consequence semantics:** does it create/advance a durable owner-local Intent/work item? What accepted/rejected/pending/ambiguous states are reachable?
-10. **Idempotency:** is a client key mandatory or is a structural exemption actually proven?
-11. **Concurrency/preconditions:** can stale client state cause unsafe overwrite/action?
-12. **Provider enrichment:** which named consumer/correctness property justifies any provider-specific field?
-13. **Collection semantics:** are pagination/filter/sort/cursor genuinely required?
-14. **Bulk:** is there a real workflow requiring member-level bulk semantics rather than looped individual operations?
+1. real consumer;
+2. human/machine client class;
+3. exactly one owner;
+4. Q/C/P honesty;
+5. Organization scope;
+6. ordinary Permission;
+7. canonical/source-qualified identity;
+8. honest read semantics;
+9. consequence/outcome semantics;
+10. idempotency;
+11. concurrency/preconditions;
+12. provider enrichment;
+13. collection semantics;
+14. bulk necessity.
 
-Reject the operation if its only justification is symmetry, current code, provider capability, debug convenience or hypothetical future use.
+Whole-Matrix corrections ratified:
+
+- listing-context authored-media intake added without media master;
+- Fulfillment internal operating-target Q/C added without SLA/rules platform;
+- generic Work resolution deferred in favor of source-owner resolution paths;
+- cross-owner Sale operational P deferred until D6 proves need; current baseline has **zero P operations**;
+- every admitted C now has a complete safety tuple;
+- Party Resolution requires idempotency + current candidate-set/resolution precondition;
+- current access discovery is platform-scoped self-only;
+- standing authority revocation is fail-safe/monotonic;
+- initial publication price always remains a distinct PriceIntent correlated to the pre-creation ListingIntent context; ListingIntent never owns price;
+- B2-A OIDC/OAuth + MPC-owned access/business authority remains confirmed.
+
+No D0/D1/D2/D3/D4/D4-R1/D5-B1 reopen was required.
 
 ## 4.1 Explicit baseline exclusions
 
-Do not admit by default:
+Still not admitted by default:
 
 - Product/PIM CRUD;
 - generic `/integrations`, `/mutations`, `/commands`, `/actions`, `/resources` or `/reconcile` business surfaces;
-- generic source-ingestion API before a real external connector consumer;
-- generic stock-set/sync endpoint merely because AvailabilityIntent exists internally;
-- generic provider refresh/sync-everything endpoint;
+- generic source-ingestion platform before a real external connector;
+- generic stock-set/sync;
+- generic provider refresh/sync-everything;
 - ProductAsset/media library;
 - mapping/rule DSL;
 - AI-specific API;
-- raw provider endpoint mirrors;
-- public event stream without a real external consumer;
-- bulk by symmetry;
-- BFF/cockpit write operations that merge semantic owners.
+- provider endpoint mirrors;
+- public event stream without real external consumer;
+- generic bulk;
+- generic Task/Case/Workflow;
+- generic Work resolution command bus;
+- cross-owner P/BFF surface before real D6 consumer evidence.
 
 ---
 
-# 5. Exact next B2 work
+# 5. Exact next B2 work — Wire Contract / Resource-Path-Schema Grammar
 
-Build the **Operation Admission Matrix** owner by owner from Product 1.0 actors and accepted authority.
+Derive concrete wire shape **only** from the ratified matrix.
 
-For every candidate operation record:
+The next sub-batch must determine:
 
-```text
-operation family / candidate operation
-consumer + use
-allowed client class
-semantic owner
-Q | C | P
-Organization scope
-ordinary Permission
-subject identity
-knowledge/freshness contract
-intent/outcome semantics
-idempotency
-concurrency/preconditions
-provider enrichment
-pagination/filter/sort
-bulk
-ADMIT | REJECT | DEFER
-reason / parent authority
-```
+1. resource/path hierarchy, keeping Organization-owned business operations under `/organizations/{organization_id}/...` and giving current access context only its bounded self-only platform discovery shape;
+2. standard HTTP methods versus owner-specific methods where CRUD would lie;
+3. exact request/response schema families and source-qualified identities;
+4. honest known/empty/unknown/unavailable/partial/freshness/provenance representation where material;
+5. owner outcomes such as accepted/rejected/pending/ambiguous and later applied/converged distinctions;
+6. RFC 9457 Problem Details for API/transport/access/precondition/idempotency/server problems without turning valid business outcomes into access errors;
+7. exact `Idempotency-Key` placement/validation and opaque MPC concurrency/precondition mechanism for every admitted C;
+8. pagination/filter/search/cursor grammar only for admitted real collections;
+9. exact Permission→wire-operation mapping and client-class restrictions;
+10. listing-media wire seam without D7 storage/blob/CDN design;
+11. provider OAuth/webhook/future external-connector ingress classification outside Product API;
+12. the Work closure-path audit required by the matrix before Wire Contract closure;
+13. OpenAPI operation naming/spelling and the route to one machine-readable Product API wire authority.
 
-Derive the matrix in semantic order, not legacy package order:
-
-1. identity/access substrate only where a Product client truly needs it;
-2. Marketplace Portfolio;
-3. Product & Channel Readiness;
-4. Marketplace Offering Operations;
-5. Availability Control;
-6. Market Intelligence;
-7. Commercial Economics;
-8. Controlled Action Governance;
-9. Marketplace Sales;
-10. Business-System Materialization;
-11. Fulfillment Lifecycle;
-12. Post-Sale Resolution;
-13. Operational Work;
-14. justified read-only P compositions.
-
-Do not spell final paths/schemas until the admission inventory is coherent enough that naming cannot hide duplicate/missing authority.
+Do not introduce D6 screen/BFF topology, D7 queues/workers/storage/transactions/Keycloak deployment, D8 live-effect proofs or implementation.
 
 ---
 
@@ -399,13 +343,17 @@ Do not spell final paths/schemas until the admission inventory is coherent enoug
 Targeted reopen is required if material evidence shows:
 
 - a required Product operation cannot fit one accepted owner;
-- a client interaction requires a new D1 semantic edge;
-- a machine/human authentication requirement cannot be represented by the accepted OIDC/OAuth boundary without MPC acquiring identity-provider authority;
-- a future third-party delegated-user application creates materially different consent/delegation semantics;
+- a client interaction requires a genuinely new D1 semantic edge;
+- human/machine authentication cannot fit the accepted OIDC/OAuth boundary without MPC acquiring IdP authority;
+- a future third-party delegated-user client introduces materially different consent/delegation semantics;
 - a real public/external client creates compatibility/security obligations absent from Product 1.0;
 - Keycloak cannot satisfy a material D7 realization requirement and another conformant provider is materially better;
-- operation enumeration exposes a Product 1.0 responsibility absent from D0/D1.
+- Wire Contract proves an admitted operation cannot preserve the ratified safety/identity/knowledge/outcome laws;
+- Work closure-path audit finds a Product 1.0 actionable condition with no legitimate owner-side closure path;
+- D6 proves repeated cross-owner composition pain sufficient to justify a bounded P;
+- real Product need proves a mutable PriceDraft is cheaper globally than explicit PriceIntent supersession without weakening lineage/least privilege;
+- operation/wire derivation exposes a Product 1.0 responsibility absent from D0/D1.
 
-Framework preference, desire for API symmetry, sibling-product convenience and current-route compatibility are not reopen evidence.
+Framework preference, API symmetry, sibling-product convenience, legacy-route compatibility and provider payload adjacency are not reopen evidence.
 
 Implementation remains blocked until D9.
