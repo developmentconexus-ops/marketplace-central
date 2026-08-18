@@ -3379,3 +3379,123 @@ None of these reopens D0–D4-B3; all are corrections to non-authoritative B4 ev
 9. **§14/§15** — the access prerequisite is discharged: the bound ML Installation credential is sufficient for M1, E1 and S1-A, and **no separate Mercado Pago credential is required**.
 
 **Explicitly not claimed:** no provider write was performed; no report was generated; no OAuth reconnect or manual token refresh occurred; no provider configuration was changed; no product code, candidate, canonical D4 artifact, router, `ARCHITECTURE.md` or ADR was modified; D5 is not begun; B4 is not ratified; implementation remains blocked until D9.
+
+## FABLE — D5-B1 Independent Adversarial Review (2026-08-18)
+
+**Subject:** Independent adversarial review of `docs/engineering/rebaseline/D5-B1-REVIEW-CANDIDATE.md` — Semantic API Model & Contract Laws.
+**Head reviewed:** `50803836d58160cecac0b3dbf548c110aa6e9663` on `docs/global-methodology-alignment`. Local clone was at `d9c4fa55`; fast-forwarded to the named head before reading anything.
+**Authority chain read in full at this head, in order:** `AGENTS.md` → rebaseline router → Method v1.0.0 → `ARCHITECTURE.md` → ADR registry (including full ADR-016 text) → D0 → D1 → D2 → D3 → D4 (whole stage including final Global Coherence §9) → Evidence Register. The candidate was read last and treated as non-authoritative input only.
+
+### VERDICT: REVISE
+
+Direction confirmed. Alternative E — semantic Product API + separate provider protocol ingress + one machine-readable wire authority — is the Global Maximum for the stated root cause: it is the smallest structure that removes the defect class (client contract not derived from accepted authorities; multiple manual wire representations; provider vocabulary as ontology) without building a generic platform. The proposed `RESTRUCTURE NOW` relative to the current API shape is correct under the Method: the current structure preserves the root cause.
+
+Five material findings must be incorporated before ratification. None is REJECT ground. **No D0–D4 reopen is required by this candidate or by any finding below** — every finding is a D5-local correction to the candidate's own law set or enforcement list.
+
+### Material findings
+
+#### F-D5-1 (material) — the knowledge-state wire law drops the freshness/provenance axis that D3 makes part of the same Q contract
+
+**Evidence.** D3 §4.10: "Freshness is orthogonal to those four states. When freshness-for-use is material, the Q result supplies or references enough owner-controlled provenance/observation time for the consuming domain to judge freshness. A `known value` may still be insufficiently fresh for a particular use." D0 boundary invariants 48–52 and D0 §9 outcome 16 make freshness-awareness a completion property ("Material evidence is freshness-aware… can block unsafe normal action"). The candidate's B1-D7 enumerates known / known-empty / unknown / unavailable / partial and stops. B1-D4's Q row omits freshness entirely (only the P row says "freshness/partiality remains honest"). §12's essential-complexity list omits it. Enforcement candidate 6 and proof P3 contain no freshness case.
+
+**Failure this permits.** A D6 client receives `known value` over the wire with no owner-controlled observation/acquisition time, cannot judge freshness-for-use, and either treats stale evidence as current (D0 invariant 49 violated at the client) or invents its own freshness heuristic from HTTP response time — which D3 explicitly says is not the owner's provenance. The API boundary is precisely the Q surface the frontend consumes; dropping the axis here re-creates the "stale masquerades as current" class one layer up.
+
+**Root cause.** The candidate derived B1-D7 from D3 §4.10's four states plus D0.7k's coverage/partial semantics; because D3 states freshness as *orthogonal* to the four states, it fell out of the enumeration instead of traveling with it.
+
+**Corrected invariant.** Add to B1-D7: *Where freshness-for-use is material to a client decision, the Product API response exposes or references owner-controlled observation/acquisition/provenance time sufficient for the consumer to judge freshness. HTTP exchange time and a `known` status never substitute for it. A projection's own update time never impersonates source observation time (D3 §4.12).*
+
+**Proof strategy.** Extend P3 with: (a) a materially stale known value distinguishable from a current one by owner-supplied provenance alone; (b) a projection whose `updated_at` differs from component source observation times and whose schema keeps them distinct. Extend enforcement 6: a freshness-material operation whose response schema carries no owner provenance fails contract review.
+
+**Reopen trigger.** None — D5-local.
+
+#### F-D5-2 (material) — no wire law for source-qualified external identity; a bare provider/native identifier can cross the Product API
+
+**Evidence.** D2 §4: externally authoritative identifiers are references *within their source namespace* — provider Listing/Order/Shipment scoped by Marketplace Installation; native business-system keys scoped by SourceInstance (D4-B3 §5.5: `SourceInstance + native NUNOTA`). D3 §4.2: "A bare external identifier cannot collapse identical IDs from different Organizations" — and, inside one Organization, from different Installations/SourceInstances. The candidate's target invariant preserves Organization scope, knowledge/effect semantics and ownership boundaries; B1-D12 qualifies *enrichment*; but no law anywhere states how source-qualified external identity itself is represented on the wire, and no enforcement candidate (1–12) tests it.
+
+**Failure this permits.** One Organization with two Marketplace Installations (already ordinary under D2 §3.3) or a second business-system SourceInstance (the explicit Bling seam in D0 §5.2) receives responses carrying bare `order_id` / `item_id` / native order numbers. Client-side correlation silently collapses namespaces — the exact class D3 §4.2 forbids server-side, reintroduced through the SDK. This is also the concrete gap the hardest second-business-system retrofit exposes (see adjudication 18 below): every other law survives the retrofit; this omission does not.
+
+**Root cause.** B1 treats provider containment as a vocabulary/ontology problem (paths, operation names, enrichment unions) and misses the identity-representation dimension of the same D4 boundary. The wire can leak namespace ambiguity without leaking a single provider noun.
+
+**Corrected invariant.** *A provider/native identifier appears in the Product API only with its qualifying MPC namespace identity (Marketplace Installation or SourceInstance) explicit in the schema, or unambiguous from the operation's declared scope. A bare external identifier is never a Product API correlation key.*
+
+**Proof strategy.** Schema-review rule plus negative fixture: two Installations in one Organization holding identical native identifiers must remain client-distinguishable from the response schema alone. Add to the enforcement candidate list.
+
+**Reopen trigger.** None — D5-local. (If a real case ever proves the qualifier cannot be carried without a new identity class, that is the existing D2 §15 trigger, not a D5 invention.)
+
+#### F-D5-3 (material) — B1-D5's ingress exception is worded as the inference D2 §7 / D3 §4.2 forbid
+
+**Evidence.** Candidate B1-D5: "Protocol ingress resolves the correct Organization from the already authenticated/bound Marketplace Installation or SourceInstance namespace under D4." D2 §7: "Organization scope is explicit and is not inferred from Marketplace Installation, Selling Entity, external account, IdP organization, source key or process-global default." D3 §4.2: "Installation, SourceInstance … never substitute for or determine Organization."
+
+**Analysis.** The *intended* mechanism is legitimate and D4-coherent: provider marker → fail-closed identification of the bound Installation/SourceInstance (D4-B1 §3.3.5/§3.3.7, §3.4.6) → Organization read from that identity's *explicit MPC-owned configuration binding*. That is a lookup through explicit MPC state, not inference from provider data. But the sentence as written says Organization is resolved *from* the Installation/SourceInstance — textually the forbidden substitution. The Method (§1) and `AGENTS.md` forbid resolving such conflicts by silent reinterpretation; the candidate text must say what it means.
+
+**Root cause.** Conflation of two steps: identifying the namespace identity (protocol concern, fail-closed) and determining Organization scope (explicit MPC configuration state).
+
+**Corrected invariant.** *Provider ingress never computes Organization from provider data. It identifies the bound Marketplace Installation/SourceInstance fail-closed from authenticated/authoritative markers; Organization scope is then read from that identity's explicit MPC-owned binding. Mismatch or ambiguity fails closed before attribution. Any durable acquisition state outliving the ingress execution context records Organization explicitly (D3 §4.2).*
+
+**Proof strategy.** Negative fixtures: callback whose marker matches no bound Installation → fail-closed, no attribution; marker matching an Installation while another authoritative marker in the same payload contradicts the binding → fail-closed (D4-B1 §3.3.7); durable acquisition record without explicit Organization → schema/constraint failure.
+
+**Reopen trigger.** None — D5-local wording/law correction.
+
+#### F-D5-4 (material) — the idempotency-key mandatory class must be adjudicated fail-closed, not left open (answers challenge 8)
+
+**Evidence.** B1-D9 defers "mandatory for every consequential operation or only retry-reachable classes" to review. `ARCHITECTURE.md` §11: external writes require duplicate protection. D3 §4.5: consumer-owned semantic idempotency prevents duplicate business effect; §4.11: anchor-based reconciliation for ambiguous acceptance. Method: among equally sufficient mechanisms prefer earlier feedback.
+
+**Adjudication.** Every HTTP intake is retry-reachable — client crash, timeout, proxy replay are ordinary, not exotic. An *optional* key is a fail-open contract: the duplicate-intent class remains reachable exactly when the client forgot the mechanism that was supposed to close it. Domain semantic idempotency (D3 §4.5) closes duplicates only where the owner's natural anchor can distinguish "same request retried" from "second intentional request" — a second Price Intent for the same Offering minutes apart is semantically legitimate, so the owner anchor alone cannot dedupe it; only the intake key can.
+
+**Corrected invariant.** *The idempotency key is mandatory and fail-closed (missing key → explicit API problem, no intake) for every Product API operation classified as consequential — able to create a durable Business Intent or initiate external effect — unless that operation's contract explicitly proves duplicates are unreachable or harmless through owner-anchor semantics alone. The exemption is per-operation, declared, and reviewable; the default is mandatory.*
+
+**Proof strategy.** Enforcement 8 gains: missing key on a consequential operation → explicit problem, nothing durable created. Exempted operations must carry the owner-anchor proof in the operation inventory (P1 classification column).
+
+**Reopen trigger.** None — D5-local sharpening of an intentionally open question.
+
+#### F-D5-5 (material, enforcement) — tenant fixtures miss the cross-Organization reference-smuggling class
+
+**Evidence.** Enforcement candidate 10 tests only path-scope access ("cannot access another Organization merely by changing path scope"). D2 §3.2: cross-Organization references between organization-owned business state are denied by default. D3 §4.2: duplicate predicates/correlation are evaluated inside the explicit Organization scope.
+
+**Failure this permits.** Request scoped to `/organizations/A/...` carrying, in body or query, an identifier of an Organization-B-owned resource (a Sale reference inside a Business Order Intent intake, an Offering id inside a price-intent intake). Path-scope access control passes; the smuggled reference resolves cross-tenant. This is the reachable path the fixture list does not cover.
+
+**Corrected invariant / proof.** Add enforcement fixture: *any secondary resource reference in body/query of an Organization-scoped operation must resolve inside the path Organization; a cross-Organization reference fails closed and never silently resolves.* Structural D7/D8 isolation proof still owns the final guarantee, as the candidate already states.
+
+**Reopen trigger.** None.
+
+### Adjudication of the remaining challenge package (attacked; no further material defect)
+
+1. **Product boundary.** Preserved. B1-D1's four independence claims plus "not enterprise-generic" and the explicit rule that platform generalization is a D0/D1 reopen — not an API naming choice — are exactly the D0 charter. The illustrative vocabulary in §9 maps 1:1 to D1 owners and accepted D2 identities; nothing generic hides in it. No D0 reopen.
+2. **Global Maximum.** Confirmed against the six listed alternatives and against two unlisted ones I tested: a BFF/screen-shaped API (rejected — D6 topology decided as an API side effect, prohibited by the router) and a gRPC/protobuf-first contract (rejected — no consumer; changes technology without touching the semantic root cause). Alternative E removes the root cause with the least structure.
+3. **Organization scope: path form RECOMMENDED over header; header rejected.** Concrete counterexamples against the header form: (a) an SDK or middleware that injects a default organization header once recreates ambient/process-global tenant context — the exact class D2 §7 forbids — as a one-line convenience; the path form makes that class structurally unreachable because an unscoped route does not exist; (b) a dropped or duplicated header is fail-open unless every layer revalidates; a missing path segment fails routing closed; (c) scope disappears from every URL-keyed artifact — audit trails, problem `instance` URIs, links, HTTP/client cache keys (the accepted TanStack Query client keys by URL) — creating a cross-tenant cache-bleed class that only discipline ("remember to key by header") prevents, which is the API-layer analog of the isolation-by-remembering-predicates realization `ARCHITECTURE.md` §10 declares invalid; (d) the header form adds a header-vs-resource consistency axis (header says A, path resource belongs to B) on top of the body-reference axis (F-D5-5) — the path form has one axis fewer. Counterexamples against the path form searched and not found material: the id is opaque (no PII per D2 §3.1); cross-organization administration is not Product 1.0; ownership moves are already not ordinary edits (D2 §3.2). Token-only inference remains non-credible under D2 — confirmed. The B1-D5 leading contract should be ratified as decided, not merely leading.
+4. **Q/C/P mapping.** No accepted D1 capability fails the mapping. Checked hardest cases: Governance `pending` without holding a transport open (D3 §3.10 — fits the C row); Work's dual authority (work lifecycle vs source closure — the matrix row keeps them separate); Materialization⇄Fulfillment cycle (client sees each owner's Q surface; the cycle itself never crosses the wire as one object); Sales fan-out E edges (internal; correctly not exposed as a stream by default).
+5. **Intent modeling.** No accidental universal durability: B1-D3 exposes Intents only where D2 §5.0 already requires durable domain-local identity; ephemeral calculations stay ephemeral. The wire matrix keeps intent references inside owner contracts.
+6. **HTTP outcome split.** Correct, including the two-precondition split (API conditional-request problem vs business/provider precondition translated into owner semantics). Business `rejected` on a successful HTTP exchange is right: the capability request *was* processed; encoding rejection as transport failure would collapse D3 §4.11 semantics. Enforcement 9 covers the 403-vs-rejected confusion.
+7. **Knowledge state without a universal envelope.** Enforceable: per-operation schemas plus the P3 negative fixtures. One recommendation, below law altitude: within one owner contract, the same knowledge distinction should use one consistent representation so derived clients cannot half-implement it; the candidate's "shared discriminators only where semantics genuinely identical" already points there.
+8. **Idempotency.** Adjudicated as F-D5-4. The seam itself (standard `Idempotency-Key` at intake, never replacing domain intent identity, never authorizing external replay) is correct and coheres with D3 §4.5/§4.11.
+9. **Concurrency.** MPC-level opaque tokens with conditional semantics are sufficient. I searched the accepted Product 1.0 lanes for an unavoidable provider-version exposure and found none: the measured Mercado Livre `x-version` stale-409 terminates adapter-local as a definitive rejected precondition followed by owner reread/redecision (D4 §4.3.6); nothing requires a client to hold a provider version token. If a future lane genuinely needs client-visible provider precondition state, it enters as source-qualified enrichment under B1-D12, not as an MPC concurrency token.
+10. **Provider-rich evidence.** B1-D12 holds both fences. Second-provider attack: an Amazon-class provider adds a new discriminated union member to the owning contract; Mercado Livre members are neither suppressed nor faked into parity; absence stays not-applicable/unsupported. The one wire-level gap the attack exposed is F-D5-2 (identity qualification), not enrichment.
+11. **Error model.** RFC 9457 for API-level problems plus owner semantic outcomes is sufficient; the sanitized source-qualified diagnostic rule preserves the support/reconciliation consumer without raw payload/PII leakage. No duplicate or unowned error semantics found.
+12. **Contract authority.** OpenAPI as the single machine-readable wire authority is correct, and rule 5 (semantic authority outranks the wire document) closes the authority-inversion attack. The known residual risk is a vacuous conformance check — a checker that exists but never fires; P5's mandatory demonstrated-drift red covers it and must be kept non-negotiable, consistent with the repo proof bar ("a green artifact that did not execute the relevant subject is no proof").
+13. **ADR-016.** Supersession by D5 is justified: the ADR's own Consequences concede the same-commit rule proves atomicity, not agreement, and the registry already holds it reopened → D5. Two invariants must survive into canonical D5 text: (a) *no second manually authoritative wire representation, ever* — the defect class ADR-016 managed rather than removed; (b) *conformance controls must be shown to fire* — ADR-016 §3's parity check was the mitigation that never verified agreement; P5 is its corrected descendant. No transition window needs the old rule: implementation is blocked until D9 and D2's clean baseline means the target SDK is born derived; the manual SDK dies with the legacy surface. ADR-016 becomes historical evidence at consolidation.
+14. **Surface topology.** Two surfaces are sufficient now. Health/readiness/admin endpoints are runtime mechanics with a D7 consumer, not a taxonomy-justified third API; the candidate's refusal to pre-create one is correct.
+15. **Compatibility.** Hard cutover remains correct: `ARCHITECTURE.md` §14, ADR-035 and the Evidence Register operator constraints all state no production client is entitled to the current surface. No versioning seam is worth preparing; a literal `/v1` as later spelling is harmless only if it carries no policy, as the candidate already states.
+16. **Bulk.** No B1-altitude bulk requirement proven. D0.7m multi-target actions are real product semantics, but their wire shape may legitimately be N individual operations under one Governance-authorized scope; whether a bulk *endpoint* earns admission is operation-inventory work. Operation-local admission with the stated member-partiality laws is enough.
+17. **YAGNI.** Searched for abstractions that exist only because other abstractions exist: none found. Every B1 element traces to an accepted invariant or a named defect class. Note the inverse: F-D5-1/F-D5-2 are *dropped essential complexity* — the mirror image of overengineering — and their correction adds no framework.
+18. **Hardest retrofit.** (a) Second marketplace — Amazon-class, FBA, asynchronous feeds with partial/late outcomes: ingress absorbs SP-API notifications; B1-D8's accepted/pending/ambiguous absorbs feed asynchrony; B1-D15 handles feed-bulk semantics if a real workflow admits one; B1-D12 unions absorb enrichment; provider-managed fulfillment stays honestly non-MPC-controlled (D4-B2 law). Laws hold. (b) Second business system — Bling as ERP: business-order/invoicing intents unchanged in MPC vocabulary; native binding stays adapter-local; the only thing that breaks today is a bare native order number on the wire — which is F-D5-2, and its correction is exactly the seam the retrofit needs. No generic platform required in either case.
+19. **Proof.** Each finding above states its falsification; P1–P6 otherwise stand. P6 (structural inversion) was applied during this review: none of my findings depends on the current OpenAPI/SDK/handler shape existing at all — they follow from D0–D4 text alone, which is the correct sign.
+20. **Reopen discipline.** All five findings are D5-local candidate corrections. Zero D0–D4 reopens. Nothing in the candidate silently alters accepted authority; B1-D13 rule 5 explicitly subordinates the wire document to semantic authority.
+
+### Consolidated corrected invariants
+
+1. **(F-D5-1)** Where freshness-for-use is material, the Product API response exposes/references owner-controlled observation/acquisition/provenance time; HTTP time and `known` status never substitute; projection update time never impersonates source observation time.
+2. **(F-D5-2)** A provider/native identifier crosses the Product API only with its qualifying Marketplace Installation / SourceInstance identity explicit or contract-unambiguous; a bare external identifier is never a correlation key.
+3. **(F-D5-3)** Ingress identifies the bound Installation/SourceInstance fail-closed from authenticated/authoritative markers; Organization is read from that identity's explicit MPC-owned binding, never computed from provider data; durable acquisition state records Organization explicitly.
+4. **(F-D5-4)** Idempotency key mandatory + fail-closed for consequential intake by default; per-operation exemption only with declared owner-anchor proof.
+5. **(F-D5-5)** Secondary references in body/query resolve inside the path Organization; cross-Organization references fail closed.
+
+### Process notes (non-findings)
+
+- Router says "D5 — NEXT / NOT YET OPENED" while this candidate exists — same pattern as B4's review window; acceptable only if ratification advances the router in the same consolidation (the D2 F1 filing lesson stands).
+- The pushed range `d9c4fa55..50803836` carries net-zero junk commits (`chore: test`, `chore: bad`, `chore: bad2`, staging probes); the tree is unaffected; history hygiene only.
+- The §10 external benchmarks were not load-bearing for any conclusion here; no benchmark claim required verification for this verdict.
+
+**Explicitly not claimed/changed:** no candidate, canonical D-stage, router, `ARCHITECTURE.md`, ADR or implementation file was modified; no provider call was made; D5 remains unopened in authority terms; implementation remains blocked until D9.
+
+HANDOFF → GPT
+Expect back: adjudication of F-D5-1..F-D5-5 against repository authority (incorporate the corrected invariants into the candidate or refute with evidence and citation), ratification of path-scoped Organization as decided rather than leading, and confirmation of the ADR-016 disposition with the two surviving invariants named in adjudication 13.
