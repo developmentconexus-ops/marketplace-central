@@ -3091,3 +3091,291 @@ What remains is concrete and bounded: two closure-critical evidence gates undisc
 ## HANDOFF → GPT
 
 Adjudicate: (1) the **gate-ranking correction** — E1 promoted to co-equal closure gate, M1 demoted to lane-selection — against the B3/G1 precedent cited; (2) **F-B4-1**, whether Post-Sale Resolution must be named a B4 evidence consumer or whether B2 §4.5 rule 7's deferral is discharged some other way; (3) **F-B4-5/F-B4-6**, whether S1 is re-scoped to read-only-first with Billing re-filed as billed-charge evidence, and whether payment-level release evidence is accepted as the candidate minimum for per-sale R2; (4) **F-B4-8**, whether report generation is struck from the target or admitted explicitly under canonical D4 §3.11; (5) **F-B4-2**, whether the Brazil fixed-cost mechanism conflict is recorded as an explicit Unknown blocking the L0 claim until E1's decorrelation control resolves it; (6) **C-1/C-2/C-3**, the three ADR-home corrections; (7) the operator action — supply the ML/MP read credential outside the repository so E1 and S1 can be discharged, and decide separately whether report generation is ever authorized. No authority file, canonical D4, router, ADR or product code was touched by this reviewer, and no external system was contacted.
+
+---
+
+# D4-B4 — LIVE EVIDENCE ROUND (M1 / E1 / S1) — 2026-08-18
+
+> **Status:** NON-AUTHORITATIVE REVIEW EVIDENCE. Not target authority.
+> **Base authority HEAD:** `c7e4d770e578f7f5dfaa0db62d88ea69bc35a6a9`
+> **Subject:** `docs/engineering/rebaseline/D4-B4-REVIEW-CANDIDATE.md`
+> **Scope:** live evidence only. The B4 architecture core was not re-reviewed; nothing measured below contradicts it.
+> **Mode:** read-only. Every provider call was a `GET`. No provider write, no report generation, no OAuth reconnect, no product-code change.
+> **PII/secrets:** the probe projected every provider payload through a **default-deny** field filter — a leaf value is emitted only if its key is explicitly allowlisted, otherwise only its type is emitted. No token, buyer/payer identity, address, document, e-mail or phone value was read into any artifact.
+
+## 0. Safe credential-resolution verdict — `RESOLVED (no manual re-auth)`
+
+Resolved through the repository's established path (the one `cmd/mlprobe` uses): `pgdb.LoadConfig` → `integration_installations` join `integration_credentials` (active, non-revoked, highest `version`) → `crypto.NewLocalKeyService(key, "local-key-v1").DecryptJSON`.
+
+| Fact | Value |
+|---|---|
+| Installation | `inst-mercado_livre-7e0d2125-f525-4174-9ade-8c7dc496a0e0` |
+| Tenant | `tenant_default` |
+| Provider account (`/users/me`) | `691607102`, `site_id=MLB`, `live_mode` account |
+| Token value | **never printed, never written, never committed** |
+
+**One material operational observation, recorded because the round must be reproducible — not a defect of B4.** The dev stack was down; the first resolution returned the then-active credential (`version=44`) and `/users/me` answered `HTTP 401 invalid access token`. No manual refresh or re-authorization was performed. The application's **own** composed `integrations/background.RefreshTicker` (`composition/root.go:694`, 5-minute interval) rotated the credential to `version=45` on boot; the auth-session row then read `state=valid`, `consecutive_failures=0`. All evidence below was acquired with that application-rotated credential.
+
+This is consistent with the standing MPC observation that ML token-refresh state is currently visible only in the auth-session row and not in any consuming surface. It is a D7 runtime concern, **not** a B4 evidence-contract finding.
+
+## 1. `M1` — Market Evidence lane selection → **`M1 PASS`**
+
+Seller population: **34 items**, of which **10** are `catalog_listing=true` and **24** are `catalog_listing=false`. Both lanes exist on the real Installation.
+
+### 1.1 Observed competition (positive)
+
+| Item | Status | `current_price` | `price_to_win` | Winner item | Winner price | `catalog_product_id` | Currency |
+|---|---|---|---|---|---|---|---|
+| `MLB4735324525` | `competing` | 69.90 | **26.75** | `MLB6694478112` | 79.90 | `MLB35928565` | BRL |
+| `MLB6896003262` | `competing` | 729.90 | **637.00** | `MLB7086858690` | 644.00 | `MLB19858075` | BRL |
+
+Both carry a provider `boosts[]` vocabulary (`fulfillment`, `free_installments`, `free_shipping`, `shipping_collect`, `same_day_shipping`) with per-boost `status` (`boosted` / `opportunity`).
+
+**Material measured fact.** On `MLB4735324525` the provider's `price_to_win` (26.75) is **66% below the actual winner's price** (79.90), while our own price (69.90) is already below it. The catalog offer population explains why and nothing else does:
+
+`GET /products/MLB35928565/items` → `paging.total = 2`
+
+| Offer | `price` | `shipping.cost` | `free_shipping` | shipping tags |
+|---|---|---|---|---|
+| ours (`MLB4735324525`) | 69.90 | 44.94 | `false` | — |
+| winner (`MLB6694478112`) | 79.90 | 0 | `true` | `mandatory_free_shipping` |
+
+The competitive outcome here is decided by shipping/boost dimensions, not by price alone, and `price_to_win` is **not** a price the seller should adopt. Live confirmation of the candidate's §7.2 rule and of the §11 fence ("no automatic price recommendation from `price_to_win`") — and a stronger argument for that fence than the candidate currently makes.
+
+### 1.2 Known-empty / not-applicable (negative controls)
+
+| Item | Provider state | HTTP | `status` | `reason` | price fields |
+|---|---|---|---|---|---|
+| `MLB4834219830` | active, `catalog_listing=false` | **200** | `not_listed` | `["item_not_opted_in"]` | all `null` |
+| `MLB4735378521` | **`catalog_listing=true`** (`cpid MLB15454298`), paused | **200** | `not_listed` | `["item_not_opted_in"]` | all `null` |
+
+Two things are measured. First, not-applicable arrives as an **HTTP 200 with an explicit named reason**, not as an error — an adapter classifying by status code alone cannot distinguish it from an observation. Second, `MLB4735378521` **is** a catalog listing according to `/items`, yet the competition response reports `catalog_product_id: null` and `not_listed`. **Catalog membership does not imply catalog competition evidence, and the competition payload is not an authority on catalog membership.**
+
+### 1.3 Unavailable (authorization control)
+
+`GET /items/MLB6694478112/price_to_win` (competitor's item) → **403** `forbidden`, `"Item MLB6694478112 does not belong to caller 691607102"`.
+
+### 1.4 Coverage / partiality
+
+Catalog offer traversal exposes `paging{limit,offset,total}`. No general-market completeness was inferred and none is derivable: `total=2` is the catalog-product offer population, not the market.
+
+**Verdict: `M1 PASS`** — observed, known-empty/not-applicable, unavailable and coverage-bounded states are all reachable and mutually distinguishable on the real Installation. Recorded as lane-selection evidence, not a B4 closure gate.
+
+## 2. `E1-A` — expected selling cost + decorrelation → **`PASS` with mandatory candidate amendment**
+
+Surface: `GET /sites/MLB/listing_prices`. Base context held fixed: `category_id=MLB269895`, `listing_type_id=gold_special`, `price=69.9` → `sale_fee_amount 8.04`, `sale_fee_details{percentage_fee 11.5, fixed_fee 0, gross_amount 8.04}`, `currency_id BRL`.
+
+### 2.1 Qualifiers the surface actually consumes
+
+| Varied qualifier | Result |
+|---|---|
+| `price` 29.9 / 69.9 / 200 | 3.44 @ 11.5% / 8.04 @ 11.5% / 21.00 @ **10.5%** — rate is price-banded |
+| `listing_type_id` `gold_special` → `gold_pro` | 8.04 @ 11.5% → 11.53 @ **16.5%** |
+| `category_id` `MLB269895` → `MLB1055` | 8.04 @ 11.5% → 7.69 @ **11.0%** |
+| `category_id=MLB1743` | **404** `not_found` — "Configuration not found with the parameters" (fails honestly) |
+| **`shipping_mode`** `me2`/absent → **`me1`** | `fixed_fee` **0 → 7.75**, `sale_fee_amount` **8.04 → 15.79** |
+| `shipping_mode=me1` at `price=15` / `price=200` | `fixed_fee` **6.25** / **0** — fixed fee is price-banded *and* mode-gated |
+
+### 2.2 Qualifiers the surface **silently ignores** (decorrelation fires)
+
+Each returned **HTTP 200 with a body byte-identical to the baseline**:
+
+| Varied qualifier | Values tried | Effect |
+|---|---|---|
+| `quantity` | 1, 10 | **none** |
+| `logistic_type` | `xd_drop_off`, `fulfillment`, `drop_off` | **none** |
+| `logistic_type` | `zzz_not_a_real_logistic_type` (deliberate garbage) | **none, no error** |
+| `billable_weight` | 30000 | **none** |
+| unknown parameter | `zzz_unknown_param=42` | **none, no error** |
+
+### 2.3 Two silent-fallback paths that produce a *plausible but wrong* number
+
+1. **`listing_type_id=zzz_bogus` → HTTP 200 with an array of all 7 site listing types**, `[0]` being `gold_pro` @ 16.5%. Current repository `CapabilityAdapter.ReadFeeQuote` (`capability_adapter.go:594-620`) decodes the response and takes `response[0]`. An unvalidated listing type therefore yields a confident **16.5%** where the item's real rate is **11.5%** — a 43% overstatement, with no error anywhere.
+2. **Omitting `category_id` → HTTP 200 with an array**, whose site-default rate is **11.0%** rather than the category's 11.5%. Absence of a qualifier silently changes the answer instead of failing.
+
+### 2.4 What this means for the candidate
+
+The candidate's §8.2 qualifier list is **measurably wrong for the current MLB surface** and must be amended before consolidation. This strengthens rather than contradicts §8.2's rule ("a successful provider response does not prove these inputs were consumed correctly") — the decorrelation control the candidate mandated is exactly what caught it:
+
+- `logistic_type`, `quantity` and `billable_weight` are **not** material qualifiers of `listing_prices`; listing them invites a false sense of sufficiency;
+- **`shipping_mode` is the qualifier that carries the logistics-sensitive fixed fee** and is absent from the candidate's list;
+- `category_id` and `listing_type_id` are both material, but only `category_id` fails closed; `listing_type_id` fails **open** into an all-types array, so the adapter — not the provider — must fence it;
+- current `FeeQuote` sends `price` + `listing_type_id` + `category_id`, sends **no** `shipping_mode`, and fabricates `CurrencyID: "BRL"` although the provider returns `currency_id` on every response. Confirmed current-state evidence only, and confirmed defective for any `me1` lane.
+
+## 3. `E1-B` — expected seller shipping → **`PASS`**
+
+Surface: `GET /users/691607102/shipping_options/free`. Distinct surface, distinct evidence, and — unlike `listing_prices` — it **does** consume weight/dimension/price.
+
+| Request context | `billable_weight` | `list_cost` | `discount` |
+|---|---|---|---|
+| `item_id=MLB4735324525` | 450 | **7.85** | — |
+| `dimensions=20x20x20,1000`, `item_price=69.9`, `gold_special` | 1334 | **8.05** | `promoted_amount 11.50`, `type none` |
+| `dimensions=20x20x20,5000` | 5000 | **9.75** | `promoted_amount 13.93` |
+| `dimensions=60x60x60,20000` | 36000 (volumetric) | **12.55** | `promoted_amount 17.93` |
+| same dims, `item_price=250` | 1334 | **24.65** | `type` **`mandatory`** |
+| same dims, `listing_type_id=zzz_bogus` | 1334 | **11.50** | `promoted_amount` **0** |
+| `item_id=MLB6896001442` | 1610 | **24.65** | — |
+
+Two findings:
+
+1. **The seller-borne expected shipping is fully representable** for the selected `me2 / xd_drop_off` lane, and it is the surface carrying the weight/dimension sensitivity that `listing_prices` ignores. The candidate's §8.3 choice is confirmed by measurement.
+2. **The same silent-200 defect class exists on this surface too**: a bogus `listing_type_id` does not error — it silently drops the seller shipping discount (`promoted_amount 11.50 → 0`) and raises the quoted cost from 8.05 to 11.50. The §8.2 falsification requirement must therefore be stated as applying to **every** expected-economics surface, not only to `listing_prices`.
+
+`list_cost` (7.85 for `MLB4735324525`) and the buyer-facing catalog `shipping.cost` (44.94 for the same item, §1.1) are different numbers for the same item on the same day — live proof that buyer shipping charge and seller-borne shipping cost cannot share one field.
+
+## 4. `E1-C` — L1 actual transaction evidence → **`PASS`**
+
+### 4.1 Provider transaction fee granularity
+
+| Order | Item | Qty | Unit price | `order_items[].sale_fee` | Implied rate |
+|---|---|---|---|---|---|
+| `2000017721036516` | `MLB4735324525` | **3** | 69.90 | **8.04** | 11.5% of **one unit** |
+| `2000017883544496` | `MLB6896001442` | **2** | 859.90 | **141.88** | 16.5% of **one unit** |
+| `2000017502381638` | `MLB6896039640` | 1 | 189.90 | 19.94 | 10.5% |
+| `2000017800127142` | `MLB4735328201` | 1 | 169.99 | 22.95 | 13.5% |
+
+`sale_fee` is **per unit**, re-measured on a real qty-3 order: the line fee is 24.12, not 8.04. Reading it as a line total understates the fee by (qty−1)×unit_fee. Candidate §8.4 rule 3 confirmed.
+
+Note the exact agreement between the two sides for `2000017721036516`: expected `listing_prices` per-unit fee **8.04** = actual Order `sale_fee` **8.04**. Expected and actual coincide here because the qualifiers match; the L0/L1 separation is still required, since §4.3 and §5.4 show the same sale's realized economics are not derivable from either number alone.
+
+### 4.2 Realized seller shipment cost — three distinct scopes
+
+`GET /shipments/{id}/costs`:
+
+| Shipment | `gross_amount` | `senders[].cost` (seller) | `receiver.cost` (buyer) |
+|---|---|---|---|
+| `47668318460` | 68.23 | **23.54** | 0 |
+| `47706254876` | 61.00 | **20.75** | 0 |
+| `47571204068` | 70.00 | **23.65** | 0 |
+| `47564931010` | 63.00 | **19.85** | 0 |
+
+Three different amounts per shipment, none derivable from another: gross freight, seller-borne share, buyer-borne share. Candidate §8.4 rule 4 and §5 confirmed.
+
+### 4.3 Four distinct evidence classes proven distinct on one real sale
+
+Order `2000017800127142` / shipment `47706254876` / payment `172466245610`:
+
+| Evidence | Surface | Value |
+|---|---|---|
+| expected selling fee (per unit) | `listing_prices` | rate-banded quote, no shipping component |
+| expected seller shipping | `shipping_options/free` | **20.75** (`billable_weight 784`) |
+| actual Order transaction fee | `order_items[].sale_fee` | **22.95** per unit |
+| actual seller shipment cost | `shipments/{id}/costs` `senders[].cost` | **20.75** |
+
+Expected seller shipping **20.75** = realized seller shipment cost **20.75** = payment shipping charge **20.75** (§5.2). Numerical agreement across three independent surfaces does **not** collapse them: they answer different questions, are separately unavailable, and diverge structurally — §5.4 shows a refunded case where the realized side reverses and the expected side does not.
+
+**`E1 PASS`.** Every expected component required by the selected first Product 1.0 lane is representable through a sanctioned surface, the assumed mechanism was falsified rather than assumed, and expected fee / expected seller shipping / Order transaction fee / realized seller shipment cost remain four distinct, separately sourced evidence classes. No `STOP / SPLIT PREREQUISITE` condition was reached.
+
+## 5. `S1` — realized / release evidence
+
+### 5.1 `S1-A` same-ML-token Payment call → **`200 — no separate Mercado Pago credential required`**
+
+`GET https://api.mercadopago.com/v1/payments/{id}` with `Authorization: Bearer <the existing Mercado Livre Installation access token>` → **HTTP 200** on every payment belonging to the account. Control: `/v1/payments/1` → **404** `not_found` "Payment not found". No Mercado Pago application was created, configured or reconnected.
+
+### 5.2 Semantic content measured
+
+| Payment | Order (`order.id` = `external_reference`) | `status` | `date_approved` | `money_release_status` | `money_release_date` |
+|---|---|---|---|---|---|
+| `170879770859` | `2000017721036516` | `approved` / `accredited` | 2026-08-02T20:45:38-04:00 | **`released`** | 2026-08-16T12:50:24-04:00 |
+| `173270281914` | `2000017883544496` | `approved` | 2026-08-11T16:48:38-04:00 | **`pending`** | **2026-08-25T13:47:50-04:00 (future)** |
+| `172466245610` | `2000017800127142` | `approved` | 2026-08-06T20:56:05-04:00 | `released` | 2026-08-18T09:00:46-04:00 |
+
+**`approved` ≠ `released` is measured, not merely documented**: a 14-day gap on `170879770859`, and `173270281914` carries a **populated `money_release_date` while `money_release_status` is `pending`**. A consumer reading `money_release_date` as evidence of money received would be wrong on a live record today. Candidate §5 corollary and counterexample 9 confirmed — and the field-presence trap is sharper than the candidate states: the date exists before the release does.
+
+Component decomposition (`charges_details[]`, each with `accounts{from,to}` and `amounts{original,refunded}`):
+
+`170879770859` — buyer paid 241.64, `transaction_amount` 209.70, `net_received_amount` **162.04**
+
+| Charge | Type | Amount | `accounts.from → to` |
+|---|---|---|---|
+| `-001` | fee | 31.94 | **`payer` → `collector`** |
+| `-002` | fee | 31.94 | `collector` → `mp` |
+| `-003` | fee | 5.77 | `collector` → `mp` |
+| `-004` | fee | 18.35 | `collector` → `ml` |
+| `-005` | shipping | 23.54 | `collector` → shipping account (`metadata.shipment_id = 47668318460`) |
+
+Naive `sum(original)` = **111.54 — wrong**. Direction-aware seller-outbound = 31.94 + 5.77 + 18.35 + 23.54 = **79.60**, and 241.64 − 79.60 = **162.04** = `net_received_amount`, exactly. `accounts.from/to` is **load-bearing**, not decoration: charge `-001` is money flowing *to* the seller and double-counts as a cost. Verified on two further payments:
+
+- `173270281914`: 51.59 + 47.29 (→`mp`) + 184.88 (→`ml`) + 49.30 (shipping) = 333.06; 1719.80 − 333.06 = **1386.74** = net. And 51.59+47.29+184.88 = **283.76** = 2 × `sale_fee` 141.88.
+- `172466245610`: 5.10 + 4.67 (→`mp`) + 13.18 (→`ml`) + 20.75 (shipping) = 43.70; 169.99 − 43.70 = **126.29** = net. And 5.10+4.67+13.18 = **22.95** = `sale_fee`.
+
+**Granularity finding, new and material.** The single Order-level `sale_fee` is exposed on the Payment as **two or three separate charge rows with different destinations** (`mp` vs `ml`), and the shipping cost as a further row anchored by `metadata.shipment_id`. Order-level and Payment-level fee evidence are therefore not merely different *scales* (per-unit vs per-line) but different *decompositions*. The candidate's §8.4 rule 2 must be widened: granularity is preserved **per source**, and Order fee evidence is not the Payment fee evidence re-expressed.
+
+**`fee_details[]` is not the fee source.** On `170879770859` it contained a single entry (`financing_fee 31.94`, `fee_payer collector`) — which contradicts charge `-001`'s `payer → collector` direction — and it omitted the ML commission and the shipping charge entirely. On `163602636796` (§5.4) it was **empty** while four real charges existed. Any B4 contract naming `fee_details` as the fee-component evidence would be wrong; `charges_details` + `accounts` is the sufficient surface.
+
+### 5.3 `S1-A` semantic-sufficiency verdict → **SUFFICIENT for the selected per-sale L2/R2 claim**
+
+Payment-level evidence establishes, on the bound account, without any report generation: source/account namespace (`collector_id`, `live_mode`), provider payment identity, exact Order correlation (`order.id` **and** `external_reference`), Shipment correlation (`charges_details[].metadata.shipment_id`), approval status/time **separately from** release status/time, transaction amount, refunded amount, net received, and a directionally-qualified component decomposition reconciling to the net to the cent on all four payments read.
+
+Two honest limits recorded rather than papered over:
+
+- **`net_received_amount` is not refund-adjusted** (§5.4). It is the net of the original charges, not realized cash.
+- **Withdrawal/payout and bank receipt are absent from this surface.** R3 remains unclaimed and unopened, exactly as the candidate specifies.
+
+### 5.4 Post-Sale financial-evidence control → **executed, read-only, on an existing case**
+
+Payment `163602636796`, Order `2000016891167232`, mediation `5528430246`, order tags include `delivered`. Nothing was created.
+
+| Fact | Value |
+|---|---|
+| `date_approved` | 2026-06-11T09:52:13-04:00 |
+| `money_release_status` / `money_release_date` | **`released`** / 2026-06-23T11:48:52-04:00 |
+| `status` / `status_detail` | **`refunded`** / `bpp_refunded` |
+| `date_last_updated` | 2026-06-26T01:24:30-04:00 |
+| `transaction_amount` / `transaction_amount_refunded` | 809.90 / **809.90** |
+| `net_received_amount` | **651.62 — unchanged by the refund** |
+| `fee_details` | **`[]`** |
+| `charges_details` | 39.77 →`mp`, 23.33 →`mp`, 70.53 →`ml`, 24.65 shipping — **all four `refunded` in full**, each with `refund_charges` |
+| `refunds[0]` | `amount 809.90`, own `charges_details` naming each reversed charge id/amount |
+
+This is the candidate's counterexample 10 measured on real data — **a refund after an earlier release** — and it behaves exactly as the invariant requires: the release fact is **not rewritten** (`money_release_status` stays `released`, `money_release_date` unchanged); the reversal is **appended** as distinct evidence. Prior history remains true.
+
+It also discharges **F-B4-1 by measurement**. One external occurrence carries, simultaneously and without either owner acquiring the other's authority:
+
+- **Post-Sale Resolution** consequence closure — mediation `5528430246`, order `cancelled`, `delivered` then reversed;
+- **Commercial Economics** attribution/reconciliation — per-charge reversal amounts with provider-native anchors, showing the ML commission (70.53) and seller shipping (24.65) were both returned.
+
+And it produces a **third silent-wrong-number path**: `net_received_amount` (651.62) survives a full refund untouched. Any L2 claim built on `net_received_amount` alone would book realized revenue on a fully reversed sale. B4 must state that realized net is read from the refund-aware component set, never from `net_received_amount` alone.
+
+### 5.5 `S1-B` — **not executed, and not proven necessary**
+
+Every movement class reached by this round — commission, financing fee, seller shipping, release, and full refund after release — was covered by per-sale Order→Payment reads with exact provider-native anchors. No concrete Product 1.0 correctness gap was demonstrated that per-sale anchored reads cannot cover, so under the candidate's own §9.4 staging rule S1-B was **not opened** and no account/report/list surface was queried. No report was generated or exported. Requiring Billing or Mercado Pago reports "by symmetry" remains correctly refused.
+
+Residual, named rather than assumed away: **discovery of a material movement with no Order/Payment anchor at all** (account-level adjustment, chargeback fee, or an unanchored entry against the shipping account observed as `charges_details[].accounts.to`) is *structurally* outside a per-sale-anchored read, and period/pagination/retention behaviour of any population surface is unmeasured. That is a bounded Unknown for a later, evidence-triggered S1-B — not a present B4 blocker, and not grounds to widen the target now.
+
+**`S1 PASS`.**
+
+## 6. Verdicts
+
+| # | Question | Verdict |
+|---|---|---|
+| 1 | Safe credential resolution | **RESOLVED** via the repo path; the application's own `RefreshTicker` rotated the credential; no manual refresh/re-auth; no secret value read, printed or written |
+| 2 | `M1` | **`M1 PASS`** — competing lane, catalog-offer population, known-empty/not-applicable (200 + `item_not_opted_in`), unavailable (403) and pagination all distinguishable |
+| 3 | `E1` expected fee + decorrelation | **PASS with mandatory candidate amendment** — `shipping_mode` is the material qualifier; `logistic_type`/`quantity`/`billable_weight` are silently ignored; bogus `listing_type_id` and omitted `category_id` fail **open** into wrong numbers |
+| 4 | `E1` expected seller shipping | **PASS** — representable, weight/dimension-sensitive, and subject to the same silent-200 defect class |
+| 5 | `E1` L1 fee/shipment | **PASS** — `sale_fee` per unit re-measured on a qty-3 order; gross / seller / buyer shipment costs proven distinct |
+| 6 | **Final `E1`** | **`E1 PASS`** |
+| 7 | `S1` same-ML-token Payment call | **200** — the existing ML Installation token authorizes `GET /v1/payments/{id}`; `404` control honest |
+| 8 | `S1` semantic sufficiency | **SUFFICIENT** for the selected per-sale L2/R2 claim, via `charges_details` + `accounts` + `money_release_*`; **not** via `fee_details` or `net_received_amount` |
+| 9 | Was `S1-B` necessary? | **No** — not opened, not queried, no report generated; residual unanchored-movement/coverage question recorded as a bounded Unknown |
+| 10 | Separate Mercado Pago credential | **PROVEN UNNECESSARY** for the selected Payment path on this Installation |
+| 11 | Post-Sale financial-evidence control | **Executed read-only** on existing mediation `5528430246`; dual-consumer property proven; no refund/chargeback created |
+| 12 | Any D0–D4-B3 reopen required? | **None.** Every finding is a B4 evidence-contract amendment or a confirmation of an accepted rule |
+| 13 | Remaining B4 closure gate | **None from live evidence.** `M1`/`E1`/`S1` are discharged. B4 canonical acceptance and the D4 final Global Coherence review remain operator/program steps; implementation remains blocked until D9 |
+| 14 | Final remote SHA | recorded in the commit carrying this section |
+
+## 7. Amendments the candidate needs before consolidation
+
+None of these reopens D0–D4-B3; all are corrections to non-authoritative B4 evidence text now contradicted or sharpened by measurement.
+
+1. **§8.2 qualifier list** — replace `logistic_type` / `quantity` / `billable_weight` with **`shipping_mode`**, and record that the first three are silently ignored by `listing_prices` (garbage values included).
+2. **§8.2 fail-open fence** — `listing_type_id` is not validated by the provider and an unrecognised value returns an all-types array whose first element is a different rate; `category_id` omission silently returns the site-default rate. The adapter must fence both; the provider will not.
+3. **§8.2/§8.3 scope** — state the falsification requirement for **every** expected-economics surface; `shipping_options/free` exhibits the same silent-200 degradation.
+4. **§8.4 rule 2** — widen from per-unit/per-line/per-order granularity to *per-source decomposition*: one Order `sale_fee` appears as two or three differently-destined Payment charges.
+5. **§9.1/§9.2** — name `charges_details[].accounts{from,to}` as required evidence; a component set without direction is not summable. Record that `fee_details` is incomplete and can be empty.
+6. **§9.2/§5** — record that `net_received_amount` is **not** refund-adjusted, and that `money_release_date` is populated while `money_release_status` is still `pending`.
+7. **§7.2** — cite the measured case where a `catalog_listing=true` item returns `not_listed` with `catalog_product_id: null`, and the case where `price_to_win` sits far below the winner's price because the contest is decided by shipping/boosts.
+8. **§12 / F-B4-1** — mark discharged by measurement (mediation `5528430246`).
+9. **§14/§15** — the access prerequisite is discharged: the bound ML Installation credential is sufficient for M1, E1 and S1-A, and **no separate Mercado Pago credential is required**.
+
+**Explicitly not claimed:** no provider write was performed; no report was generated; no OAuth reconnect or manual token refresh occurred; no provider configuration was changed; no product code, candidate, canonical D4 artifact, router, `ARCHITECTURE.md` or ADR was modified; D5 is not begun; B4 is not ratified; implementation remains blocked until D9.
