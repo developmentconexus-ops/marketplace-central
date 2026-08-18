@@ -2,7 +2,7 @@
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
 > **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 OPEN / ACTIVE**  
-> **D5-B2 current state:** **B2-A Client & Authentication Admission Model accepted in-stage; Operation Admission Matrix = NEXT**  
+> **D5-B2 current state:** **B2-A Client/Auth accepted; Operation Matrix Block 1 accepted; Block 2 Offering + Availability = NEXT**  
 > **Decision Reconciliation:** **ACCEPTED / CANONICAL**  
 > **Implementation:** BLOCKED until D9 is accepted  
 > **Last updated:** 2026-08-18
@@ -25,12 +25,13 @@ A fresh session reads, in order:
 12. `docs/engineering/rebaseline/D4-R1-PUBLICATION-INPUT.md`
 13. `docs/engineering/rebaseline/D5-API.md`
 14. `docs/engineering/rebaseline/D5-B2-PRODUCT-OPERATION-SURFACE.md`
-15. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
-16. code, OpenAPI, schemas, tests and runtime only as current-state evidence when needed
+15. `docs/engineering/rebaseline/D5-B2-OPERATION-ADMISSION-MATRIX.md`
+16. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
+17. code, OpenAPI, schemas, tests and runtime only as current-state evidence when needed
 
 This file alone owns **where the program is and what happens next**. `ARCHITECTURE.md` owns stable constraints; the Decision Reconciliation Baseline routes current decision generations; the ADR registry owns ADR status; D-stage artifacts own detailed semantics.
 
-`D5-API.md` remains the accepted D5-B1 authority. Its former “next action” wording is a pre-B2-opening snapshot; current D5-B2 status/next action is defined here and detailed in the active B2 artifact.
+`D5-API.md` remains the accepted D5-B1 authority. Its former “next action” wording is a pre-B2-opening snapshot; current D5-B2 status/next action is defined here and detailed in the active B2 artifacts.
 
 Do not reconstruct target authority from memory, Git history, retired ADRs, `AI-DIALOG.md`, review candidates or current code shape.
 
@@ -68,7 +69,10 @@ D5 — API — OPEN / ACTIVE
   ├─ B1 Semantic API Model & Contract Laws — ACCEPTED / CANONICAL
   └─ B2 Product Operation / Resource Surface — OPEN / ACTIVE
        ├─ B2-A Client & Authentication Admission Model — ACCEPTED IN-STAGE
-       └─ Operation Admission Matrix — NEXT / UNDER DERIVATION
+       ├─ Operation Admission Matrix Block 1
+       │    Identity/Access + Portfolio + Readiness — ACCEPTED IN-STAGE
+       └─ Operation Admission Matrix Block 2
+            Offering + Availability — NEXT / UNDER DERIVATION
   ↓
 D6 — Frontend
   ↓
@@ -99,6 +103,7 @@ Load-bearing current conclusions:
 - **D4-R1:** Readiness owns requirements/source-level readiness; Offering owns `ListingIntent` create/edit draft + dispatchability; baseline values are `FOLLOW_SOURCE | EXPLICIT_OVERRIDE`; no PublicationPreparation/PIM/source-observation/rules/AI framework; provider may jointly realize owner-issued meanings without ownership merge.
 - **D5-B1:** semantic Product API, Organization path scope, source-qualified wire identity, honest knowledge/freshness, fail-closed consequential idempotency, RFC 9457 problems, one OpenAPI wire authority, hard cutover, operation-local bulk only.
 - **D5-B2-A:** Product API clients use one standards-based OIDC/OAuth authentication boundary; humans use Authorization Code + PKCE semantics, confidential machine clients use Client Credentials/service-account semantics, MPC remains Principal/Membership/Permission authority, tokens are audience-bound to MPC API, no global/static MPC Product API key or duplicate IdP-role business authority is baseline. Keycloak remains the first implementation/proof candidate; D7 owns concrete provider/deployment/realm realization.
+- **D5-B2 Matrix Block 1:** admit only minimal D2 access context/role-assignment administration, Portfolio Marketplace Installation lifecycle/configuration + Selling Entity discovery, and Readiness marketplace-context Product discovery/readiness/publication requirements/correspondence. Provider OAuth remains D4; no Product/PIM CRUD, generic Integration API, generic sync/refresh or speculative bulk.
 
 Detailed rules, Unknowns, proof obligations and reopen triggers remain in the named D-stage homes.
 
@@ -108,13 +113,15 @@ While **D5-B2 is OPEN / ACTIVE**:
 
 - do not begin D6–D9 target design before D5 is accepted as a whole;
 - do not implement product features; implementation remains blocked until D9;
-- do not silently alter accepted D0–D4/D4-R1/D5-B1 or accepted in-stage B2-A meaning;
+- do not silently alter accepted D0–D4/D4-R1/D5-B1 or accepted in-stage B2 meaning;
 - do not derive B2 from the legacy route list or the retired pre-R1 candidate;
 - do not preserve current OpenAPI/routes/SDK/controller/package shape by inheritance;
 - do not recreate Product/PIM master, PublicationPreparation, SourceProductObservation owner, generic Mutation/Workflow/Integration platform, generic listing rule engine or AI-specific authority path;
 - do not move Availability/Fulfillment meaning into Offering because a provider combines fields in one request;
 - do not create a global/shared MPC API key, browser client secret, client-supplied Principal, or treat Keycloak/IdP roles/Organizations as MPC business authority by name similarity;
 - do not choose Keycloak deployment/realm/HA/token-lifetime/secret-storage mechanics inside B2; those remain D7 realization;
+- do not expose provider OAuth, source sync, readiness refresh/recalculate or generic integration/catalog operations merely for internal/runtime convenience;
+- do not make a public AvailabilityIntent create endpoint merely because AvailabilityIntent exists internally; a real Product client authoring use must be proven;
 - do not weaken Organization scope, source-qualified identity, honest knowledge/freshness, Permission/Governance separation, idempotency, precondition, ambiguity, recovery or convergence laws;
 - do not add compatibility/versioning machinery without a real entitled consumer;
 - do not treat retained legacy ADRs as target authority beyond the exact residue named by the ADR registry;
@@ -122,48 +129,27 @@ While **D5-B2 is OPEN / ACTIVE**:
 
 ## 5. Exact next action
 
-**Derive the D5-B2 Operation Admission Matrix from Product 1.0 actors/consumers and accepted semantic owners.**
+**Derive D5-B2 Operation Admission Matrix Block 2 — Marketplace Offering Operations + Availability Control.**
 
-The matrix is derived owner by owner, not route by route. For every candidate Product API operation establish:
+The block must determine the smallest client surface for:
 
-- real Product 1.0 actor/client consumer and concrete use;
-- allowed client class: human, machine/automation/system, or both;
-- exactly one accepted semantic owner or D2 substrate authority;
-- Q / C / P interaction class;
-- explicit Organization path scope and same-Organization secondary-reference rule;
-- ordinary Permission requirement distinct from business disposition/Governance;
-- canonical/source-qualified subject identity;
-- honest knowledge/freshness/provenance for reads;
-- consequential Intent/outcome/idempotency/precondition/concurrency laws where applicable;
-- owner-specific convergence and multi-step/partial outcome semantics where effects are involved;
-- projection/read-only status where composition is justified;
-- provider-enriched fields only for named consumer/correctness needs;
-- pagination/filter/sort/cursor only when a real consumer requires them;
-- bulk only for a real workflow with member-level correctness;
-- D4-R1 publication authoring through `ListingIntent`, never Product/PIM or provider-field-bag semantics.
+- provider-actual Listing observation without making provider topology Product ontology;
+- `ListingIntent` create/edit draft lifecycle and current draft dispatchability;
+- consequential freeze/submit/execution request semantics without `createListing = success` collapse;
+- `PriceIntent` as Offering-owned price actuation meaning, distinct from Commercial Economics analysis;
+- Sellable Availability current meaning and convergence;
+- Inventory Source/Scope and availability-allocation policy configuration only where real Product clients need them;
+- the R1-G1 joint technical realization seam when one provider request requires owner-issued Offering + Availability inputs;
+- multi-step/partial/asynchronous provider effects while preserving `accepted != converged` and owner-specific convergence;
+- resource update versus owner-specific capability according to actual semantics, not CRUD symmetry;
+- idempotency/concurrency only where the relevant failure class exists;
+- no generic LongRunningOperation/Mutation business owner merely because provider effects are asynchronous.
 
-Admission predicate:
+For every candidate operation record the complete admission tuple from B2's matrix predicate.
 
-> **A Product API operation exists only when a real Product 1.0 client needs to read an accepted owner's meaning (Q), ask one accepted owner to perform/accept owner-owned work (C), or consume a justified read-only composition (P). Symmetry, current code, provider endpoints and internal implementation convenience are insufficient.**
+Current engineering/provider evidence must be used proportionately: standard HTTP resource semantics may guide resource update shape, while provider evidence such as Mercado Livre User Products/shared-field asynchronous propagation and separate description operations must prevent false atomic-success contracts.
 
-Derivation order:
-
-1. D2 identity/access client needs;
-2. Marketplace Portfolio;
-3. Product & Channel Readiness;
-4. Marketplace Offering Operations;
-5. Availability Control;
-6. Market Intelligence;
-7. Commercial Economics;
-8. Controlled Action Governance;
-9. Marketplace Sales;
-10. Business-System Materialization;
-11. Fulfillment Lifecycle;
-12. Post-Sale Resolution;
-13. Operational Work;
-14. justified read-only P compositions.
-
-Do **not** spell final paths/schemas until the admission inventory is coherent enough that naming cannot hide duplicate/missing authority.
+Do **not** spell final paths/schemas until Block 2 ownership and operation inventory is coherent.
 
 If an operation cannot fit accepted ownership/identity/communication/external-contract meaning without distortion, stop and reopen only the implicated parent decision.
 
@@ -182,10 +168,12 @@ A fresh session must conclude:
 - **B2-A Client & Authentication Admission Model is accepted in-stage**;
 - Product API authentication is OIDC/OAuth standards-based while MPC retains Principal/Membership/Permission/business authority;
 - Keycloak is first implementation/proof candidate but D7 owns concrete provider/deployment/realm realization;
-- **Operation Admission Matrix is NEXT / UNDER DERIVATION**;
+- **Operation Admission Matrix Block 1 is accepted in-stage**;
+- Block 1 contains only consumer-proven access/Portfolio/Readiness operations and explicitly rejects/defer speculative IAM/PIM/integration/sync/bulk surfaces;
+- **Block 2 Offering + Availability is NEXT / UNDER DERIVATION**;
 - the stale pre-R1 B2 candidate is not in the active tree;
 - `AI-DIALOG.md` contains only the reusable review protocol, not historical review authority;
 - implementation remains blocked until D9;
-- exact next action is to derive admitted Product 1.0 operations from real consumers and accepted semantic owners.
+- exact next action is to derive Offering/Availability Product operations without merging their authorities.
 
 If it cannot, the active authority tree is inconsistent.
