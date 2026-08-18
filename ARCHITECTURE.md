@@ -44,6 +44,7 @@ It must support trustworthy flows for:
 14. **No compatibility tax without a consumer.** There are no production users requiring current route/schema/package compatibility; hard cutover is allowed under ADR-035.
 15. **Git history is history.** Active source/document trees do not keep `old/` copies or parallel legacy roadmaps.
 16. **Semantic Product API.** MPC clients use a semantic/domain-oriented Product API, not provider/integration ontology. Organization-owned Product API operations are path-scoped under `/organizations/{organization_id}/...`; provider/business-system protocol ingress remains a separate D4 boundary. OpenAPI is the single machine-readable Product API wire authority; supported client contracts derive/conform to it and server behavior conforms to the same contract. A hand-written second wire authority is not target architecture.
+17. **Publication authoring is not Product mastery.** External Product identity/truth remains source-qualified; Product & Channel Readiness owns publication requirements/correspondence/source-level readiness; Marketplace Offering Operations owns `ListingIntent` as the one create/edit authoring identity and owns draft dispatchability. Baseline listing-value resolution is `FOLLOW_SOURCE | EXPLICIT_OVERRIDE` only. Provider/source acquisition remains D4 mechanism feeding consumer-owned ports; no MPC PIM, `PublicationPreparation`, generic `SourceProductObservation`, rule/mapping engine, connector platform or AI-specific authority path is target architecture. A provider request may jointly realize multiple owner-issued meanings through technical execution machinery without merging business ownership.
 
 ## Architecture Rebaseline authority
 
@@ -96,7 +97,7 @@ Communication may duplicate, arrive late/out of order, fail or replay without ch
 
 ## External-integration principles
 
-D4-B1, D4-B2, D4-B3 and D4-B4 are accepted and canonical. External integrations obey these constraints:
+D4-B1, D4-B2, D4-B3, D4-B4 and the later accepted **D4-R1 Publication Input & Listing Authoring amendment** are canonical. External integrations obey these constraints:
 
 - consumer context owns semantic meaning/port;
 - adapter owns provider/business-system protocol, DTOs, auth and pagination;
@@ -107,6 +108,14 @@ D4-B1, D4-B2, D4-B3 and D4-B4 are accepted and canonical. External integrations 
 - Integration Support and Provider Effective Capability/Requirement do not become Effective Business Capability;
 - external-effect contracts distinguish acceptance/ambiguity from convergence and name an authoritative reread/reconciliation surface;
 - Mercado Livre Item/User Product/Catalog/stock/Order/Shipment/Claim topology stays provider-local and does not become MPC business ontology by normalization;
+- source Product acquisition may feed multiple consumer-owned semantic ports but does not create a generic source-Product business owner/store; embedded adapters need not loop through a public HTTP API merely for symmetry;
+- publication requirements remain provider-authoritative evidence translated for Readiness; they do not create a universal ProductAttribute/ProviderRequirement business framework;
+- Listing creation/editing uses one Offering-owned `ListingIntent` authoring model; Readiness owns source-level requirement/correspondence meaning and Offering owns draft dispatchability from that meaning;
+- `FOLLOW_SOURCE` preserves external source authority/provenance; `EXPLICIT_OVERRIDE` is MPC-authored listing intent state with Principal attribution; recurring automation never silently reverses a standing human override;
+- listing media may originate from source evidence or MPC authoring for the listing context without creating an MPC Product-media master;
+- a provider call that physically requires several owner-owned values may be one **joint technical realization** of those owner meanings; the execution mechanism correlates owner-issued inputs but cannot create a hidden `Availability → Offering`/`Fulfillment → Offering` business edge, recalculate another owner's answer or merge convergence semantics;
+- current Mercado Livre initial User Product publication × Availability is closed as **PASS-B**: active creation may require an Availability-issued quantity in the same provider call; Offering never owns that quantity and Availability evaluates its own convergence after authoritative reread;
+- publication create/edit may be multi-step, partial and asynchronous; early `2xx/201/202` never proves whole-listing convergence, and shared-User-Product blast radius remains explicit;
 - provider stock/price/fulfillment capability is context-sensitive; seller-managed does not automatically mean API-writable, provider-managed Full is not silently treated as MPC-controlled, and shared User Product effects cannot silently widen intended/authorized scope;
 - seller Order-search completion does not prove cancellation-inclusive Sales coverage when provider documentation/runtime behavior does not establish a reliable complete universe;
 - the first current Mercado Livre proof lane selected by D4-B2 is deliberately narrow and time-bound; future provider configuration changes re-evaluate capability rather than creating speculative universal mode support;
@@ -130,7 +139,7 @@ D4-B1, D4-B2, D4-B3 and D4-B4 are accepted and canonical. External integrations 
 - live integration claims require real-dependency evidence, not only mocks;
 - no speculative universal provider/integration/ERP/workflow/customer/financial framework is introduced.
 
-Installation-/SourceInstance-specific proof-lane details, B4 Payment/fee observations and later D7/D8 proof obligations remain in canonical D4 rather than becoming stable global platform constants here.
+Installation-/SourceInstance-specific proof-lane details, B4 Payment/fee observations, D4-R1 provider-documentation evidence and later D7/D8 proof obligations remain in canonical D4 artifacts rather than becoming stable global platform constants here.
 
 ## API and frontend
 
@@ -181,6 +190,8 @@ A structural rule should, where reasonable, fail at the strongest available boun
 - external namespace mismatch → fail closed before attribution/effect where the source exposes authoritative qualification;
 - partial acquisition → cannot pass as complete in contract/integration proof;
 - attempted Direct Oracle wiring for Sankhya target integration → architecture/governance failure, not accepted fallback;
+- listing publication missing a required owner-issued Availability/other-owner input → fail closed before provider dispatch rather than copy/default the value into Offering;
+- automation recurrence attempting to silently replace a standing human listing override → reject or require explicit supersession semantics with preserved lineage;
 - provider-rich evidence missing on another provider → honest unsupported/not-applicable/unavailable, never suppression of a richer supported provider or fabricated equivalence;
 - economic/provider request field silently ignored/fallbacked → cannot pass as sufficiently qualified evidence merely because transport returned 2xx.
 

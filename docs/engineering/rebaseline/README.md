@@ -19,9 +19,10 @@ A fresh session reads, in order:
 8. `docs/engineering/rebaseline/D2-IDENTITY-TENANT-DATA-OWNERSHIP.md`
 9. `docs/engineering/rebaseline/D3-COMMUNICATION-EVENTS.md`
 10. `docs/engineering/rebaseline/D4-EXTERNAL-INTEGRATIONS.md`
-11. `docs/engineering/rebaseline/D5-API.md`
-12. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
-13. code, OpenAPI, schemas, tests and runtime only as current-state evidence when needed
+11. `docs/engineering/rebaseline/D4-R1-PUBLICATION-INPUT.md`
+12. `docs/engineering/rebaseline/D5-API.md`
+13. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
+14. code, OpenAPI, schemas, tests and runtime only as current-state evidence when needed
 
 This file alone answers **where the program is and what happens next**. Stable architecture belongs in `ARCHITECTURE.md`; accepted/current stage semantics belong in D-stage artifacts; Git history is the archive.
 
@@ -52,7 +53,10 @@ D4 — External Integrations — CLOSED / ACCEPTED AS A WHOLE
   │    ├─ M1 Market Evidence lane — CLOSED / PASS
   │    ├─ E1 Expected / Order Economic Evidence — CLOSED / PASS
   │    └─ S1 Realized / Release Evidence — CLOSED / PASS
-  └─ Final Global Coherence + YAGNI / Overengineering / Future-Cost — COMPLETED / PASS
+  ├─ Original D4 Global Coherence + YAGNI / Overengineering / Future-Cost — COMPLETED / PASS
+  └─ R1 Publication Input & Listing Authoring targeted amendment — ACCEPTED / CANONICAL
+       ├─ Pre-D5-B2 whole-product Global Coherence — COMPLETED / PASS after adjudicated corrections
+       └─ R1-G1 Mercado Livre initial publication × Availability — CLOSED / PASS-B
   ↓
 D5 — API — OPEN / ACTIVE
   ├─ B1 Semantic API Model & Contract Laws — ACCEPTED / CANONICAL
@@ -121,7 +125,7 @@ The 12 D1 business boundaries do **not** imply 12 services, databases, processes
 
 ### D4 — CLOSED / ACCEPTED AS A WHOLE
 
-`D4-EXTERNAL-INTEGRATIONS.md` is the accepted D4 authority.
+`D4-EXTERNAL-INTEGRATIONS.md` remains the accepted whole-stage D4 authority for B1/B2/B3/B4 and the original closure review. `D4-R1-PUBLICATION-INPUT.md` is a later accepted targeted amendment discovered during D5-B2 preparation; it extends D4 without creating a separate product architecture.
 
 D4-B1 accepted:
 
@@ -147,16 +151,14 @@ D4-B2 accepted:
 - essential Claim/Return/reverse-shipment support stays bounded;
 - no universal OperatingMode/provider graph/framework is introduced.
 
-The B2 Installation Evidence Gate is **CLOSED / PASS**. The selected first Mercado Livre proof context is time-bound and remains subject to capability revalidation. First controlled Price/Availability write+reread and selected fiscal/label progression remain D8 proofs.
+The B2 Installation Evidence Gate is **CLOSED / PASS**. The selected first Mercado Livre proof context is time-bound and remains subject to capability revalidation. First controlled marketplace writes remain D8 proofs.
 
 D4-B3 accepted:
 
 - the sanctioned Sankhya Gateway/API surface is sufficient for the currently claimed Product 1.0 business-system contract under explicit SourceInstance capability fences;
 - Product remains `SourceInstance + native Product key`; company/location/control/cost/fiscal provider dimensions remain external evidence, not MPC ontology;
-- `CRUDServiceProvider.loadRecords` is admitted only through a bounded root-entity/read fence; arbitrary SQL/Oracle escape hatches are not admitted;
-- Party Resolution and Destination Realization are distinct bounded Materialization prerequisites and create no Customer/Party/Address master authority;
-- ambiguous correspondence fails closed; safe human-adjudicated correspondence may be retained where reread cannot reconstruct the decision;
-- destination evidence never silently authorizes customer-master overwrite or duplicate customer creation;
+- bounded sanctioned reads never become arbitrary SQL/Oracle escape hatches;
+- Party Resolution and Destination Realization remain distinct Materialization prerequisites and create no Customer/Party/Address master authority;
 - Business Order Intent and Invoicing Intent remain MPC semantics while TOP/NUNOTA/status/choreography stay provider-local;
 - Expected Tax is delegated to the sanctioned Sankhya fiscal engine under the proven stable binding; MPC does not duplicate the tax engine;
 - consequential writes preserve Organization+SourceInstance, owning intent/correlation, acceptance/ambiguity, authoritative reread and no-blind-retry semantics;
@@ -166,35 +168,44 @@ D4-B4 accepted:
 
 - **Semantic Core + Provider-Enriched Evidence** is the target: MPC does not collapse marketplaces to a lowest common denominator and does not mirror arbitrary provider payloads into business ontology;
 - provider-specific evidence is retained when it serves a named Product 1.0 consumer/correctness property; unsupported equivalents on another provider remain honestly unsupported/not-applicable/unavailable/unknown;
-- Mercado Livre enriched Market Evidence may include `price_to_win`, catalog offer/winner evidence, buyer-facing shipping/free-shipping state, shipping tags and boosts/reasons while Market Intelligence owns competitive interpretation and Offering owns Price Intent;
-- a real price/shipping/winner case proved that price-only competitive comparison is materially misleading;
-- expected selling fee, expected seller shipping, Order transaction fee and realized seller Shipment cost remain distinct evidence classes;
-- `listing_prices` requires explicit qualification/fail-open fences and proportional falsification; HTTP 200 does not prove a submitted field was consumed;
-- fee granularity/decomposition is source-specific;
-- Payment approval, money release, refund/reversal, withdrawal/payout and Bank Cash Receipt remain distinct rungs;
-- the same bound Mercado Livre Installation token can read the selected Payment API; **no separate Mercado Pago credential is required for the selected lane**;
-- `money_release_date` alone does not prove release, `fee_details` is not complete fee evidence, and `net_received_amount` is not post-refund realized authority;
-- real refund-after-release evidence is appended rather than rewriting earlier release and can feed Commercial Economics plus Post-Sale Resolution without authority transfer;
-- broader account-movement population remains a bounded safe defer until a real consumer appears;
+- Market Intelligence retains competitive interpretation; Commercial Economics retains expected/order/realized economic meaning; Offering retains Price Intent;
+- expected fee, expected seller shipping, Order fee, billed charges/rebates, Payment approval/release/refund and bank cash evidence remain distinct evidence rungs;
+- broader account-movement population and R3 bank-side evidence remain bounded defers until a real consumer appears;
 - report generation is not admitted as read support by convenience;
 - no generic financial ledger, universal fee model, generic CollectorPort or unadjudicated scraping path is introduced.
 
-Final D4 Global Coherence accepted:
+Original final D4 Global Coherence accepted:
 
-- **CURRENT STRUCTURE CONFIRMED / PASS**;
 - no duplicate or missing business authority;
-- B2/B3/B4 specialize B1 without weakening its namespace/coverage/effect-safety rules;
 - Provider Richness preserves essential provider capability without provider overfit;
-- economic rungs remain distinct without a finance ledger;
 - Sankhya and marketplace/provider bindings remain replaceable realization rather than core ontology;
 - D7/D8 defers are safe and trigger-bounded;
-- YAGNI, future-cost, later-stage leakage and legacy-ADR coherence all pass;
-- no additional D4 batch and no D0–D4 reopen is required.
+- YAGNI, future-cost, later-stage leakage and legacy-ADR coherence all pass.
 
-Two final coherence fences are binding:
+Two original coherence fences remain binding:
 
-1. **D4 evidence contract is not D4 evidence authority/store.** D4 preserves enough evidence across the boundary; persistent MPC semantic ownership follows the D1/D2 owner. Technical caches/raw acquisition artifacts, if later justified, are D7 mechanism and never canonical business truth.
-2. **Provider resource ownership does not move wholesale to one consumer.** One provider acquisition may translate into multiple consumer-owned semantic views/ports. No consumer owns the provider payload as a whole, and no generic provider-resource/raw-payload entity bypasses D1/D3 authority edges.
+1. **D4 evidence contract is not D4 evidence authority/store.** Persistent MPC semantic ownership follows the D1/D2 owner; technical caches/raw acquisition artifacts never become canonical business truth merely by persistence.
+2. **Provider resource ownership does not move wholesale to one consumer.** One provider acquisition may translate into multiple consumer-owned semantic views/ports; no generic provider-resource/raw-payload entity bypasses D1/D3 authority edges.
+
+#### D4-R1 — Publication Input & Listing Authoring — ACCEPTED / CANONICAL
+
+The targeted amendment closes the publication-input seam without changing the 12 D1 boundaries:
+
+- Product master remains external/source-qualified; no MPC Product/PIM master appears;
+- **Readiness** owns publication requirements, correspondence, source candidates and source-level readiness;
+- **Offering** owns `ListingIntent` as the single create/edit authoring/draft identity and owns draft dispatchability from current Readiness meaning;
+- Listing values use only **`FOLLOW_SOURCE` or `EXPLICIT_OVERRIDE`** at baseline; no generic DERIVED/rule/mapping engine exists;
+- humans and automation Principals author through the normal Semantic Product API; automation recurrence never silently reverses standing human overrides;
+- source acquisition remains D4 evidence/mechanism feeding consumer-owned ports; no generic `SourceProductObservation` business owner exists;
+- embedded source adapters do not require self-HTTP; external connector ingress remains a prepared seam until a real connector creates a wire-contract consumer;
+- media may be source-qualified or MPC-authored for one ListingIntent without creating a Product-media master;
+- provider requirement/schema churn remains source-qualified D4 evidence and historical ListingIntent context, not a universal ProductAttribute ontology;
+- a provider request may **jointly realize multiple owner-issued meanings** through D4/D7 execution mechanics without creating a new semantic edge or merging business authority;
+- `R1-G1 Mercado Livre initial publication × Availability = CLOSED / PASS-B`: Offering never owns quantity; Availability issues its own meaning/input; a technical execution mechanism may serialize both into one provider request and each owner later evaluates its own convergence;
+- publication create/edit is allowed to be multi-step, partial and asynchronous; early provider `2xx/201/202` never implies whole-operation convergence;
+- no D0/D1/D2/D3/D5-B1 reopen was required.
+
+The first controlled real Mercado Livre creation remains a D8 proof, including authoritative reread and shared-User-Product blast-radius verification.
 
 ### D5 — OPEN / ACTIVE
 
@@ -221,9 +232,9 @@ B1 establishes:
 - conformance controls must be shown to fire through negative drift fixtures;
 - hard cutover with no compatibility/versioning tax absent a real consumer;
 - bulk admitted only per real operation/workflow with member-level correctness;
-- ADR-016 historical; no D0–D4 reopen.
+- ADR-016 historical.
 
-The exact Product 1.0 operation inventory, schemas, Permission mapping, pagination/filter/sort needs, concrete provider-rich fields, concrete bulk endpoints and concrete OpenAPI tooling remain later D5 questions.
+D5-B2 must incorporate D4-R1 explicitly. In particular, it must not introduce a Product/PIM API, separate PublicationPreparation resource, SourceProductObservation business API, generic mapping/rules API, AI-specific authoring surface or `createListing = success` semantics.
 
 ## 4. Engineering method and repo lifecycle
 
@@ -237,14 +248,17 @@ While **D5 — API** is OPEN / ACTIVE and B2 is next:
 
 - do not begin D6–D9 target design before D5 is accepted as a whole;
 - do not implement product architecture/features; implementation remains blocked until D9;
-- do not silently alter accepted D0–D4 or D5-B1 authority;
+- do not silently alter accepted D0–D4, D4-R1 or D5-B1 authority;
 - do not treat current OpenAPI/routes/SDK/controller/package shape as D5 target authority by inheritance;
 - do not expose provider DTO/resource vocabulary as MPC API semantics when a D1-owned semantic contract exists;
 - do not revive generic `/mutations`, `/commands`, provider-resource or integration-platform business surfaces;
+- do not introduce an MPC Product/PIM master, `PublicationPreparation` aggregate, generic `SourceProductObservation` authority, generic provider-field bag or generic listing transformation/rules engine;
+- do not create a separate AI/agent authority path; automation uses D2 Principal + normal Product API semantics;
+- do not make Offering own Availability/Fulfillment meaning merely because provider protocol combines fields in one physical request;
 - do not turn D5-B2 into a generic CRUD/API framework exercise disconnected from Product 1.0 consumers;
 - do not make frontend or runtime topology decisions as side effects of API operation design;
 - do not use projections/caches as consequential write or concurrency authority;
-- do not weaken Organization path scope, same-Organization secondary-reference checks, source-qualified external identity, known/unknown/unavailable/partial/freshness, authorization, idempotency, precondition, ambiguity or external-convergence semantics already accepted;
+- do not weaken Organization path scope, same-Organization secondary-reference checks, source-qualified external identity, honest knowledge/freshness, authorization, idempotency, precondition, ambiguity or external-convergence semantics already accepted;
 - do not add compatibility/versioning machinery without a real entitled consumer;
 - do not treat `AI-DIALOG.md`, deleted review candidates or chat/reviewer summaries as target authority.
 
@@ -252,9 +266,9 @@ Existing OpenAPI/code/schema remains current-state evidence only.
 
 ## 6. Exact next action
 
-**Open D5-B2 — Product Operation / Resource Surface from accepted D0–D4 + D5-B1 authority.**
+**Open D5-B2 — Product Operation / Resource Surface from accepted D0–D4 + D4-R1 + D5-B1 authority.**
 
-Do not begin from the legacy route list. Derive the smallest coherent Product 1.0 external operation surface from accepted owners and real product consumers.
+Do not begin from the legacy route list or from the existing pre-R1 B2 review candidate by inheritance. Re-derive the smallest coherent Product 1.0 external operation surface from accepted owners and real product consumers.
 
 For each candidate Product API operation, establish proportionately:
 
@@ -271,7 +285,17 @@ For each candidate Product API operation, establish proportionately:
 - pagination/filter/sort/cursor only where the real consumer requires them;
 - bulk only where a real Product 1.0 workflow requires member-level bulk semantics.
 
-B2 must not choose D6 screens or D7 runtime/generator framework as side effects. If an operation cannot fit accepted D1/D2/D3/D4/B1 meaning without distortion, stop and reopen only the implicated parent decision.
+For publication/listing operations specifically, B2 must preserve:
+
+- Readiness requirements/source-level readiness versus Offering draft dispatchability;
+- one Offering-owned `ListingIntent` create/edit authoring model;
+- `FOLLOW_SOURCE | EXPLICIT_OVERRIDE` baseline resolution only;
+- normal automation-Principal authoring and human-override supersession safety;
+- no current generic external source-ingestion Product API; external connector ingress is admitted only when a real connector requires a wire contract;
+- joint technical realization of owner-issued Listing/Availability/Fulfillment meanings without owner merger;
+- multi-step/partial/asynchronous provider outcomes and owner-specific convergence.
+
+B2 must not choose D6 screens or D7 runtime/generator framework as side effects. If an operation cannot fit accepted D1/D2/D3/D4/D4-R1/D5-B1 meaning without distortion, stop and reopen only the implicated parent decision.
 
 Implementation remains blocked until D9.
 
@@ -279,22 +303,27 @@ Implementation remains blocked until D9.
 
 A fresh session should conclude that:
 
-- D0, D1, D2, D3 and D4 are **CLOSED / ACCEPTED**;
-- D4-B1/B2/B3/B4 are **ACCEPTED / CANONICAL** and final D4 coherence is PASS;
+- D0, D1, D2 and D3 are **CLOSED / ACCEPTED**;
+- D4 is **CLOSED / ACCEPTED AS A WHOLE** with B1/B2/B3/B4 accepted plus the later **D4-R1 Publication Input & Listing Authoring targeted amendment ACCEPTED / CANONICAL**;
+- D4-R1 whole-product coherence found one coherent system and no missing/duplicate D1 boundary;
+- `R1-G1 Mercado Livre initial publication × Availability = CLOSED / PASS-B` without D1/D3 reopen;
+- Product master remains external; Readiness owns requirements/source-level readiness; Offering owns the one create/edit ListingIntent draft and draft dispatchability;
+- publication values use `FOLLOW_SOURCE | EXPLICIT_OVERRIDE` at baseline; no PIM/rule engine/PublicationPreparation/SourceProductObservation authority exists;
+- source acquisition feeds consumer-owned ports; embedded adapters need no self-HTTP and future external ingress remains consumer-triggered rather than speculative;
+- provider requests may jointly realize multiple owner-issued meanings without business-authority merger;
+- publication effects may be multi-step/partial/asynchronous and require owner-specific authoritative reread/convergence;
 - consumer-owned semantics and provider-local protocol remain distinct;
 - provider-rich evidence is retained when materially useful without becoming universal ontology or payload mirroring;
 - Sankhya API Gateway remains the target transport and Direct Oracle is not an admitted fallback;
 - **D5 — API is OPEN / ACTIVE**;
 - **D5-B1 Semantic API Model & Contract Laws is ACCEPTED / CANONICAL**;
-- the Product API is semantic/domain-oriented and distinct from protocol ingress;
-- Organization Product API scope is explicit in `/organizations/{organization_id}/...` and secondary references cannot cross Organizations;
+- the Product API is semantic/domain-oriented and Organization-scoped;
 - source-qualified external identity, honest knowledge/freshness, effect ambiguity and consequential idempotency survive the wire;
 - OpenAPI is the single machine-readable Product API wire authority; manual SDK duplication is not target architecture;
 - ADR-016 is historical;
 - hard cutover remains allowed because no production compatibility consumer exists;
-- no D0–D4 reopen was required by D5-B1;
 - **D5-B2 Product Operation / Resource Surface is NEXT / NOT YET OPENED**;
-- implementation remains blocked until D9;
-- the exact next action is to derive the Product 1.0 operation/resource surface from accepted authority, not to repair the legacy API or jump to frontend/runtime design.
+- the existing pre-R1 D5-B2 review candidate is non-authoritative and must be revised/re-derived before any B2 ratification;
+- implementation remains blocked until D9.
 
 If it cannot, the authority path is incomplete or contradictory.
