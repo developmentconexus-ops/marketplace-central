@@ -2,7 +2,7 @@
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
 > **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 OPEN / ACTIVE**  
-> **D5-B2 current state:** **B2-A + Operation Matrix Blocks 1–5 ACCEPTED IN-STAGE; Whole-Matrix Global Coherence review = NEXT**  
+> **D5-B2 current state:** **B2-A + Operation Matrix Blocks 1–5 ACCEPTED IN-STAGE; Whole-Matrix review candidate PREPARED; independent Fable review = NEXT**  
 > **Decision Reconciliation:** **ACCEPTED / CANONICAL**  
 > **Implementation:** BLOCKED until D9 is accepted  
 > **Last updated:** 2026-08-18
@@ -31,9 +31,9 @@ A fresh session reads, in order:
 
 This file alone owns **where the program is and what happens next**. `ARCHITECTURE.md` owns stable cross-stage constraints; the Decision Reconciliation Baseline routes current decision generations; the ADR registry owns ADR status; accepted D-stage/B2 artifacts own detailed semantics in their scope.
 
-`D5-API.md` remains D5-B1 authority. Its old next-action wording is a pre-B2-opening snapshot. Current B2 status/next action is defined only here.
+The current review candidate `D5-B2-WHOLE-MATRIX-REVIEW-CANDIDATE.md` and `AI-DIALOG.md` are **not authority** and are deliberately excluded from the authority path. They are review input only.
 
-Never reconstruct target authority from memory, chat, Git history, retired ADRs, `AI-DIALOG.md`, stale candidates or current code/OpenAPI shape.
+`D5-API.md` remains D5-B1 authority. Its old next-action wording is a pre-B2-opening snapshot. Never reconstruct target authority from memory, chat, Git history, retired ADRs, `AI-DIALOG.md`, review candidates or current code/OpenAPI shape.
 
 ## 2. Program state
 
@@ -63,7 +63,10 @@ D5 — API — OPEN / ACTIVE
        ├─ Matrix Block 3 — Market Intelligence + Commercial Economics — ACCEPTED IN-STAGE
        ├─ Matrix Block 4 — Governance + Sales + Materialization — ACCEPTED IN-STAGE
        ├─ Matrix Block 5 — Fulfillment + Post-Sale + Work + P compositions — ACCEPTED IN-STAGE
-       └─ Whole-Matrix Global Coherence — NEXT / UNDER REVIEW
+       └─ Whole-Matrix Global Coherence
+            ├─ lead review — RESTRUCTURE NOW / B2-local corrections identified
+            ├─ review candidate — PREPARED / NON-AUTHORITATIVE
+            └─ Fable independent review — NEXT
   ↓
 D6 — Frontend
   ↓
@@ -80,115 +83,85 @@ Implementation
 
 Product implementation remains blocked until D9 is accepted.
 
-## 3. Accepted B2 routing summary
+## 3. Accepted B2 baseline before whole-matrix review
 
 ### B2-A — Client/Auth
 
 - Product API authentication uses one standards-based OIDC/OAuth boundary.
 - Humans use Authorization Code + PKCE semantics; confidential machine clients use Client Credentials/service-account semantics.
-- MPC remains authority for Principal, Organization Membership, AccessRole/Permission/RoleAssignment and every business decision.
-- Tokens are audience-bound to MPC API; client/request never supplies effective Principal or business approval.
-- No global/static MPC Product API key or duplicate IdP-role business authority.
-- Keycloak remains first implementation/proof candidate; D7 owns concrete provider/deployment/realm/secrets/token-lifetime realization.
+- MPC remains authority for Principal, Organization Membership, AccessRole/Permission/RoleAssignment and all business decisions.
+- Tokens are audience-bound to MPC API; no global/static MPC Product API key or IdP-role business authority.
+- Keycloak is the first implementation/proof candidate; D7 owns provider/deployment/realm/secrets/token-lifetime realization.
 
-### Matrix Block 1
+### Matrix Blocks 1–5
 
-Admitted only consumer-proven D2 access context/role-assignment administration, Portfolio Marketplace Installation lifecycle/configuration + Selling Entity discovery, and Readiness marketplace-context Product discovery/readiness/publication requirements/correspondence.
+- **Block 1:** minimal D2 access context/role assignment, Portfolio Installation lifecycle/configuration, and marketplace-context Readiness Product discovery/requirements/correspondence; no PIM/IAM/integration platform.
+- **Block 2:** Listing actual state is Offering Q; `ListingIntent` is create/edit authoring/tracking; `PriceIntent` is separate; Availability owns Sellable Availability; no giant Listing CRUD, direct price/stock set or generic async Operation.
+- **Block 3:** Market Intelligence exposes competitive interpretation; Economics owns stateless scenario evaluation plus durable material L0/L1/L2 lineage; no Recommendation/Simulation authority, generic ledger or price actuation in Economics.
+- **Block 4:** Governance decisions/delegations remain authorization-only; Sales is externally originated/read-centric; Materialization creates BusinessOrder/Invoicing intents from accepted owner reactions; no direct Sankhya/order/invoice/retry/workflow API.
+- **Block 5:** Fulfillment exposes physical checkpoints/nodes/artifacts, Shipment remains external read observation, Post-Sale uses canonical scoped Resolution, Work owns responsibility/lifecycle without source truth, and one provisional Sale operational P was admitted for whole-matrix challenge.
 
-Not admitted: Product/PIM CRUD, generic IAM platform, Organization SaaS provisioning, generic Integration API, provider sync/refresh commands or speculative bulk.
+These block decisions remain accepted in-stage until the whole-matrix review package is adjudicated and operator-ratified.
 
-### Matrix Block 2
+## 4. Current non-authoritative whole-matrix review package
 
-- Listing actual state is Offering Q; no direct provider-shaped Listing mutation.
-- `ListingIntent` is the single create/edit authoring/tracking identity with draft concurrency and controlled submit.
-- `PriceIntent` is separate from Economics and uses durable intent semantics.
-- Sellable Availability is Availability-owned; no public `SetAvailableQuantity` or baseline public AvailabilityIntent authoring.
-- Provider may jointly serialize Offering + Availability inputs without ownership merge/cross-owner atomicity.
-- No generic `LongRunningOperation`, giant Listing CRUD, direct Price set or generic mutation/action surface.
+`docs/engineering/rebaseline/D5-B2-WHOLE-MATRIX-REVIEW-CANDIDATE.md` records the lead's operator-approved review direction for independent challenge.
 
-### Matrix Block 3
+Lead disposition: **RESTRUCTURE NOW — B2-local only; no parent-stage reopen currently justified.**
 
-- Market Intelligence exposes competitive position/comparable evidence, not generic MarketObservation CRUD/collector commands.
-- `EvaluatePriceScenario` is stateless/side-effect-free; simulations/recommendations do not gain durable IDs by default.
-- Expected/Sale Economics preserve honest L0/L1/L2 lineage, coverage and R1/R2 reconciliation without one mutable profitability row.
-- Commercial policy remains Economics-owned; Governance does not acquire business thresholds.
-- Economic Attribution is persistent Economics state; explicit ambiguous resolution is human baseline.
-- No generic financial ledger, universal Reconciliation resource, public `ReconcileNow`, bank/R3 API or price actuation inside Economics.
+Proposed corrections under review:
 
-### Matrix Block 4
+1. **ADD** ListingIntent-scoped authored-media intake under Offering; no ProductAsset/media master.
+2. **ADD** Fulfillment-owned internal operating-target Q/C; external provider deadline remains distinct.
+3. **DEFER** generic `SubmitWorkResolution`; use source-owner-specific resolution capabilities unless a concrete bounded evidence-submission need is later proven.
+4. **DEFER** `GetSaleOperationalView` P until D6 proves repeated consumer need/benefit.
 
-- Governance exposes Authorization Decisions and bounded Delegation/Grant administration; approval never mutates Intent or executes effects.
-- Marketplace Sales is externally originated and read-centric; Product clients do not create/update provider sales.
-- explicit human Selling Entity attribution resolution is admitted only for genuine Sales ambiguity.
-- BusinessOrderIntent is Materialization-owned and normally created from committed Sale meaning, not client commands.
-- InvoicingIntent is Materialization-owned and normally created/advanced from Fulfillment physical-readiness checkpoints, not direct invoice commands.
-- Party Resolution exposes bounded human resolution without Customer/CRM mastery.
-- Destination Realization Q is admitted; write resolution remains conditioned on D8 controlled proof.
-- no direct Sankhya TOP/NUNOTA/order/invoice/retry/workflow API and no blind replay after possible native acceptance.
+Proposed hardenings under review:
 
-### Matrix Block 5
+5. `ResolveBusinessSystemPartyResolution` requires client idempotency by default.
+6. `GetCurrentAccessContext` is a bounded platform-scoped D2 discovery Q; Organization-owned business routes remain explicit Organization-path scoped.
+7. Authorization Delegation update/revoke gains stale-state concurrency/precondition protection where material.
 
-- Fulfillment exposes explicit physical checkpoints and Fulfillment Node configuration without generic status/WMS/TMS authority.
-- physical facts may be established only by a client/Principal legitimately capable of establishing them; a generic automation token cannot fabricate physical conference.
-- Shipment remains source-qualified external identity and read-only observation in the selected lane.
-- Post-Sale exposes canonical scoped Resolution read/create while provider Claim/Return/refund action vocabulary stays outside Product API until concrete actions are proven.
-- Work owns responsibility/assignment/hold/escalation/resolution submission; arbitrary user-created Task/Case and direct close are not baseline.
-- `GetSaleOperationalView` is the only baseline cross-owner P composition and remains read-only, component-permission-bound and non-authoritative for writes/concurrency.
+These corrections are not canonical merely because they appear here; Fable review + GPT adjudication + operator ratification precede consolidation into the active matrix.
 
-## 4. What is prohibited now
+## 5. What is prohibited now
 
-While D5-B2 is OPEN / ACTIVE:
+While the independent Whole-Matrix review is open:
 
-- do not begin D6–D9 target design or implementation;
-- do not silently alter accepted D0–D4/D4-R1/D5-B1 or ratified B2 in-stage decisions;
-- do not derive operations from legacy routes/current OpenAPI/provider endpoints;
-- do not recreate Product/PIM master, generic Integration/Mutation/Workflow/Rules/AI authority, generic finance ledger, Task/Case engine or market collector platform;
-- do not merge Offering, Availability, Economics, Governance, Sales, Materialization, Fulfillment, Post-Sale or Work because provider/ERP workflow combines fields or calls;
-- do not create global/shared MPC API keys or treat Keycloak roles/Organizations as MPC business authority;
-- do not expose provider OAuth, source sync, readiness/market refresh, reconcile-now, ERP retry or runtime commands merely for convenience;
-- do not create direct client commands for owner reactions already defined by D3 (for example normal-path BusinessOrderIntent/InvoicingIntent creation);
-- do not allow a machine client to establish a human/physical fact solely because it holds ordinary API Permission;
-- do not allow a projection/P endpoint to bypass component permissions or become write/concurrency/authorization/retry authority;
+- do not begin resource/path/schema/OpenAPI crystallization yet;
+- do not begin D6–D9 design or implementation;
+- do not mutate accepted parent D0–D4/D4-R1/D5-B1 semantics by review convenience;
+- do not treat the candidate, Fable output or `AI-DIALOG.md` as authority;
+- do not derive operations from legacy routes/current OpenAPI/provider endpoint shape;
+- do not recreate Product/PIM, generic Integration/Mutation/Action/Operation/Workflow/Rules/AI authority, generic finance ledger, Task/Case engine or market collector platform;
 - do not weaken Organization scope, source-qualified identity, honest knowledge/freshness, Permission/Governance separation, idempotency, concurrency, ambiguity, recovery, multi-target scope or convergence laws;
-- do not add compatibility/versioning or generic bulk without a real entitled consumer/workflow;
-- do not treat retained legacy ADRs, `AI-DIALOG.md`, chat summaries or Git history as current target authority.
+- do not create direct client commands for owner reactions already owned by D3 flows;
+- do not allow a generic machine token to fabricate physical facts;
+- do not add compatibility/versioning or bulk without a real consumer/workflow.
 
-## 5. Exact next action
+## 6. Exact next action
 
-**Run D5-B2 Whole-Matrix Global Coherence + YAGNI / Permissions / Client-Class / Missing-Operation review across B2-A + Blocks 1–5 as one system.**
+**Run one independent Fable review of the coherent D5-B2 Whole-Matrix package before any wire-contract design.**
 
-The review must challenge, proportionately:
+Follow the canonical **Standard Fable review workflow** in `developmentconexus-ops/conexus-methodology/README.md`.
 
-1. duplicate or missing business/API authority;
-2. Product 1.0 outcome reachability from legitimate Product clients or accepted owner-triggered reactions;
-3. human vs machine/system client-class correctness, especially physical facts and standing human decisions;
-4. Permission coherence and least privilege without one-per-endpoint fragmentation;
-5. Q/C/P classification honesty;
-6. consequential idempotency defaults and every claimed structural exemption;
-7. concurrency/lost-update coverage independent of idempotency;
-8. owner-triggered versus client-triggered lifecycle decisions;
-9. Organization/source-qualified identity and same-Organization secondary-reference safety;
-10. unknown/unavailable/partial/stale/provider-enriched read semantics;
-11. generic-abstraction pressure: Product/PIM, Integration, Mutation/Action/Operation, Workflow, Rule, Finance, Task/Case, Provider graph;
-12. pagination/filter/search/bulk admission only for real collection/workflow consumers;
-13. P projection permission/freshness/concurrency fences;
-14. future-cost/YAGNI seams for second marketplace/business system, stronger automation, additional fulfillment/post-sale modes and eventual public/external clients;
-15. Structural Inversion against legacy routes/OpenAPI/controllers;
-16. explicit missing-operation challenge.
+Fable must:
 
-Allowed review outcomes:
+1. independently reconstruct this repository's authority from `AGENTS.md` + this router;
+2. read accepted B2-A + Blocks 1–5 and the non-authoritative `D5-B2-WHOLE-MATRIX-REVIEW-CANDIDATE.md`;
+3. apply the DevelopmentConexus Method and search for a materially better Global Maximum, not agreement;
+4. challenge duplicate/missing authority, Product 1.0 reachability, client classes, Permissions, Q/C/P, idempotency, concurrency, owner-trigger vs client-trigger, Organization/source identity, provider richness, YAGNI/future cost, Structural Inversion and missing operations;
+5. specifically attack the four proposed corrections and three hardenings rather than assuming them correct;
+6. append **material findings only** to the active `AI-DIALOG.md` cycle with `APPROVE / REVISE / REJECT` and handoff to GPT;
+7. modify no other repository file unless separately authorized by the operator.
 
-- `RESTRUCTURE NOW`
-- `CURRENT STRUCTURE CONFIRMED`
-- `STOP / SPLIT PREREQUISITE`
+After Fable, GPT independently adjudicates every material finding. Round 2 occurs only if a material contradiction survives. The converged package then requires operator ratification before corrections are consolidated into the active matrix and the disposable candidate is removed.
 
-Do not spell final Product API paths/schemas until this Whole-Matrix review is operator-ratified.
-
-If the matrix passes, the following B2 sub-batch will define resource/path grammar, standard versus owner-specific HTTP methods, request/response schema families, status/problem outcomes, `Idempotency-Key` and precondition placement, pagination/filter/search grammar and OpenAPI operation spelling — still without D6/D7 implementation choices.
+If the Whole-Matrix package is then accepted, the next B2 sub-batch is **Wire Contract / Resource-Path-Schema Grammar**: concrete path/resource hierarchy, standard vs owner-specific HTTP methods, request/response families, Problem Details, idempotency/preconditions, pagination/filter/search and OpenAPI spelling — still without D6/D7 implementation choices.
 
 Implementation remains blocked until D9.
 
-## 6. Fresh-session success test
+## 7. Fresh-session success test
 
 A fresh session must conclude unambiguously:
 
@@ -197,12 +170,11 @@ A fresh session must conclude unambiguously:
 - D5-B1 accepted/canonical;
 - D5-B2 OPEN / ACTIVE;
 - B2-A and Matrix Blocks 1–5 accepted in-stage;
-- Whole-Matrix Global Coherence review is the exact next action;
-- Product API auth remains OIDC/OAuth with MPC-owned access/business authority;
-- BusinessOrder/Invoicing normal-path intent creation remains owner-triggered, not client-commanded;
-- physical Fulfillment facts cannot be fabricated by generic automation authority;
-- Work/projections never replace originating owner truth;
-- no stale pre-R1 B2 candidate is active;
+- the Whole-Matrix lead review found B2-local corrections but no parent-stage reopen;
+- `D5-B2-WHOLE-MATRIX-REVIEW-CANDIDATE.md` is non-authoritative and prepared for Fable;
+- `AI-DIALOG.md` has the D5-B2 Whole-Matrix review cycle open;
+- independent Fable review is the exact next action;
+- wire-contract design is blocked until that review is adjudicated/ratified;
 - implementation remains blocked until D9.
 
 If not, the active authority tree is inconsistent.
