@@ -2395,3 +2395,160 @@ B3 whole-acceptance readiness remains **PARTIAL**, unchanged and for the unchang
 ## HANDOFF → GPT
 
 Adjudicate: (1) accept the `0`-as-populated correction and strike the prior §G2-E evidence and conclusion from any candidate text derived from it; (2) accept **0/231 marketplace-lane transaction-destination representation** as a first-class B3 fact, including that the capability exists on TOP 313 and is simply unused, so this is incumbent behaviour rather than a provider limit; (3) rule on the master-update verdict — `BOUNDED FIELD UPDATE REQUIRED — CONDITIONED` with the additive-`Contato` preference, or hold the destination path as `external-required` until the `ENTREGAENDCONTATO` question is proven in D8; (4) accept the four algorithm amendments in §E; (5) accept **KEEP** for durable resolution state and confirm it stays Materialization-owned correspondence with no Customer Master; (6) freeze the D7 concurrency correctness property given that ERP-level document uniqueness is measurably absent; (7) route the `CODTIPVENDA=27`-spans-nine-TOPs observation to the B3 binding-scope decision rather than to party resolution. This round changed no authority file, executed no mutation, no configuration change and no external write, and does not open, accept or canonize B3.
+
+---
+
+## FABLE — G1 Expected-Tax closure probe after ERP-owner trigger remediation (2026-08-18)
+
+> **NON-AUTHORITATIVE REVIEW INPUT.** Nothing here canonizes B3, updates the router or touches a D-stage artifact.
+> Scope: **G1 only.** G2 party/destination not revisited, B3 not redesigned, B4 not investigated.
+> Base HEAD: `517e0b315ca4a8bbc58c71d0c86e9661e6d56049`. Environment: **PRODUCTION** (`api.sankhya.com.br`, token claim `ambiente=prd`, `environment=null`). Window 2026-08-18T12:20Z–12:35Z.
+> Transport: sanctioned Gateway only — `POST /v1/fiscal/impostos/calculo`, `GET /v1/estoque/produtos/{cod}`, and bounded `CRUDServiceProvider.loadRecords` with named `rootEntity`, explicit fieldset and root-entity-field predicates on bound parameters. The probe harness **refuses before transmit** any criteria expression containing `SELECT`/`FROM`/`DUAL`/`JOIN`/`UNION`/DML verbs/`;`/`--`. No Direct Oracle, no DbExplorer, no SQL, no database credentials. Zero mutations, zero configuration changes, zero external writes.
+
+### 1. Headline
+
+> **The measured G1 root cause is remediated. The sanctioned fiscal engine is now reachable, is destination-sensitive, and reproduces realized documents to the cent. But the operator's designated model `898307` still cannot reach it: a second, distinct house trigger now blocks it on a requirement the sanctioned request cannot carry.**
+
+`G1 CONDITIONED` — not `PASS`, not `STOP`.
+
+### 2. The vendedor guard is gone — proven by positive control, not by absence
+
+The old failure was `ORA-20101: Vendedor deve ser informado` from `METALPRD.TRG_INC_UPD_TGFCAB_METAL` line 72, whose clause was `IF :NEW.TIPMOV IN ('V','P') AND NVL(:NEW.CODVEND,0) = 0`.
+
+Disappearance of an error string is not evidence. The **positive control** is:
+
+| Control | Result |
+|---|---|
+| `notaModelo=572057` (an existing sanctioned model carrying **`CODVEND=0`**) + `codigoTipoOperacao=313` (`TIPMOV='P'`) | **HTTP 200**, full per-item tax returned |
+
+A confirmed `TIPMOV='P'` transient movement with **no vendedor at all** now passes. Under the previously measured guard this is exactly the case that raised. The remediation is real and is not masked by an earlier-firing trigger.
+
+### 3. New blocker — a *different* house trigger, characterized at root cause
+
+The designated model still fails, with a new error from a **different trigger at a different line**:
+
+```
+ORA-20101: Campo Tipo de negociacao obrigatorio para a nota de Nro unico:-9999999987.
+ORA-06512: em "METALPRD.TRG_INC_TGFCAB", line 462
+ORA-04088: erro durante a execucao do gatilho 'METALPRD.TRG_INC_TGFCAB'
+```
+
+Root cause, established by discriminating controls rather than by reading the message:
+
+| Probe | Result | What it establishes |
+|---|---|---|
+| `notaModelo=898307` (`CODTIPVENDA=0`), MG client | `Tipo de negociacao obrigatorio` | guard requires non-zero `CODTIPVENDA` on the transient note |
+| same, SP client / `+codigoEmpresa=1` / `+finalidadeOperacao=1` | identical error | not destination- or override-dependent |
+| request keys `codigoTipoNegociacao`, `tipoNegociacao`, `codigoTipoVenda`, `tipoVenda`, `codTipVenda`, `CODTIPVENDA`, `negociacao` (7 variants) | identical error each time | **the request schema has no negotiation-type input** |
+| `notaModelo=396793` (`CODTIPVENDA=97`) + TOP 313 override | error changes to *"Verifique se o TIPO DE NEGOCIACAO 97 esta ativo ou se sua data de alteracao e menor ou igual a data de lancamento"* | **the model IS the transport**; guard advanced past "obrigatorio" to validating the supplied value |
+| `TipoNegociacao` reread: `97` → `ATIVO='N'` | consistent | explains that second rejection exactly |
+| `notaModelo=572057` (`CODTIPVENDA=152`, `ATIVO='S'`, `DHALTER` 2016) + TOP 313 override | **HTTP 200** | full chain satisfied |
+
+So the guard chain is: the transient note needs a `CODTIPVENDA` that is **non-zero**, **`ATIVO='S'`**, and whose **`DHALTER` <= note date**; the **only** supply path is the Nota Modelo.
+
+This is the **same structural class as the original `CODVEND` failure**: an instance rule demands a header field on the transient movement, and the sanctioned request exposes no way to supply it, so the value must pre-exist on the model.
+
+And the model cannot carry the right value: negotiation type **27 `ECOMERCE - MERCADO LIVRE`** is `ATIVO='S'` but carries `GRUPOAUTOR='L'`, which Sankhya restricts to customers in that authorization group. A model has no customer, so the group cannot be satisfied — the previously measured `CORE_E01315`. That earlier finding was recorded as incidental; it is now the **live blocker**.
+
+**MPC-satisfiability: NO.** No sanctioned request field, no override, no partner-derived value. It is an ERP-owner configuration act on the model, exactly like the trigger remediation was.
+
+### 4. Probe A / Probe B — executed on a model that satisfies the chain
+
+Because `898307` cannot execute, the capability was proven on the nearest sanctioned equivalent, changing **only what was necessary**: `notaModelo=572057` (a pre-existing sanctioned model, **not created or modified by this review**) with the documented optional `codigoTipoOperacao=313` override.
+
+Fidelity of that substitution is measured, not assumed:
+
+- model `572057` is `CODEMP=2`; **company 2 is `METAL NOBRE FILIAL - VASCONCELOS`, `CODCID=1` = UBERLANDIA, `UF=13` (MG)** — same fiscal origin state as company 1, so the interstate axis is unaffected;
+- the four realized comparison documents below are themselves **`CODEMP=2`**, so the comparison is company-exact;
+- its negotiation type is `152 A PRAZO 72 DIAS`, not `27`; the ICMS outcomes still matched the realized type-27 documents exactly (below), so negotiation type did not perturb the ICMS result in these cases — **evidence, not proof**.
+
+**Common inputs (identical across both probes, mirroring real realized documents):** product `15956`, `unidade PC`, quantity `1`, `valorUnitario 199`, `valorDesconto 29.01`, TOP `313`.
+
+| | Probe A — in-state | Probe B — out-of-state |
+|---|---|---|
+| client | `CODPARC 142892` — BELO HORIZONTE, **UF 13 (MG)**, PF, `CLASSIFICMS='C'` | `CODPARC 142743` — SAO PAULO, **UF 25 (SP)**, PF, `CLASSIFICMS='C'` |
+| HTTP | **200** | **200** |
+| ICMS | `cst 60`, `modalidadeBaseCalculo 0`, aliq `0`, base `0`, **valor `0`** | `cst 00`, `modalidadeBaseCalculo 3`, aliq **`12`**, base `169.99`, **valor `20.40`** |
+| DIFAL | remetente `0` / destinatario `0` | remetente `0` / **destinatario `10.20`** |
+| FCP | `0` / `0` | `0` / `0` |
+| PIS | `cst 49`, aliq `0`, valor `0` | `cst 49`, aliq `0`, valor `0` |
+| COFINS | `cst 1`, aliq `7.6`, valor **`12.92`** | `cst 1`, aliq `7.6`, valor **`10.59`** |
+| CSLL | `cst 0`, aliq `0`, valor `0` | `cst 0`, aliq `0`, valor `0` |
+
+**Cross-checked against the realized documents for the very same product, value and partners** (sanctioned `ItemNota` reread):
+
+| Realized doc | Lane | `CODTRIB` | `BASEICMS` | `ALIQICMS` | `VLRICMS` | Probe agreement |
+|---|---|---|---|---|---|---|
+| `897476` (313) / `897477` (306), `CODPARC 142892`, `CODTIPVENDA 27` | MG | **60** | 0 | 0 | **0** | **exact** |
+| `894710` (313) / `894733` (306), `CODPARC 142743`, `CODTIPVENDA 27` | SP | **0** | **169.99** | **12** | **20.40** | **exact, to the cent** |
+
+The in-state/out-of-state pair therefore demonstrates destination-sensitive taxation on three independent axes at once — CST (`60` vs `00`), rate (`0` vs `12`), and DIFAL (`0` vs `10.20`) — and both agree with realized fiscal reality.
+
+### 5. Adversarial checks
+
+**1 — Did the call reach the fiscal engine, or fail later/differently?** Reached. HTTP 200 with itemized per-tax output including CST, `modalidadeBaseCalculo`, rate, base, value, FCP, desoneracao and DIFAL. `modalidadeBaseCalculo` even flips `0`→`3` between the lanes. Failures that did occur are engine-internal and semantically specific (inactive TOP 28/41; inactive product `11663` via `METALPRD.TRG_INC_UPD_TGFITE_ATIVO` line 31) — the transient movement is subject to real item-level house rules too, which corroborates that a genuine movement is being prepared and evaluated.
+
+**2 — Is the output materially sufficient for Expected Economics?** **Substantially yes, with five recorded defects/unknowns that MPC must not paper over:**
+
+- **F-G1-1 — `valorBase` on PIS/COFINS/CSLL is not the base used.** SP: reported `valorBase 169.99` at `aliquota 7.6` implies `12.92`, but the returned `valorImposto` is `10.59`. The value is consistent with `169.99 − 20.40 (ICMS) − 10.20 (DIFAL) = 139.39`, `× 7.6% = 10.59`. Reproduced at a second price point (no-discount run: `199 − 23.88 − 11.94 = 163.18`, `× 7.6% = 12.40`, returned `12.40`). The engine's arithmetic is coherent; the **reported base field is not the base**. MPC must treat `valorBase` on these types as unreliable provenance and never present base × rate as the attributable tax.
+- **F-G1-2 — unknown request fields are silently ignored (fail-open input contract).** `desconto` — a plausible name, and the one this reviewer first used — is accepted with **HTTP 200 and no warning** while the discount is dropped: ICMS base `199` instead of `169.99`, tax `23.88` instead of `20.40`, a **+17% overstatement** presented as a successful calculation. Only `valorDesconto` works. Same silent-ignore for item-level `despesasAcessorias`. This is a first-class adapter trap: a wrong field name produces confidently wrong Expected Economics.
+- **F-G1-3 — `despesasAcessorias` top-level shape unestablished.** Scalar input → `400 "Expected BEGIN_OBJECT but was NUMBER"`. It is an object; its shape was not probed further. Note the **response** field named `despesasAcessorias` echoes the net operation value (`169.99`), not accessory expenses — a misnamed echo.
+- **F-G1-4 — IPI and ICMS-ST components are absent from the response entirely.** No `IPI` entry, and for the MG `cst 60` case no retained-ST base/value. Absence cannot be distinguished from "not applicable". Attempts to prove the IPI branch were inconclusive: every product with realized `VLRIPI > 0` reachable through the sanctioned surface is an old inactive product (rejected by the active-product trigger). Realized marketplace documents carry `VLRIPI = 0`, so this is **not currently material for the measured marketplace lane**, but it is an **unproven coverage limit**, not a clean result.
+- **F-G1-5 — PIS `cst 49 / aliquota 0 / valor 0` alongside COFINS at `7.6%` cannot be cross-verified.** Realized PIS/COFINS is **not observable** through the sanctioned `ItemNota` surface: descriptors `VLRPIS`, `VLRCOFINS`, `BASEPIS`, `BASECOFINS`, `ALIQPIS`, `ALIQCOFINS` are all rejected as invalid (`CORE_E04064`); only `VLRIPI` resolved from that candidate set. **Honest Unknown**, not a defect claim.
+
+**3 — Does the pair prove destination-sensitive taxation?** Yes, and this was the check most at risk of a false pass. The falsifier was fixed in advance from realized data (MG `CST 60`/zero vs SP `CST 00`/12%) before the probes ran; identical outputs would have refuted it. The engine reproduced both.
+
+**4 — Did any transient calculation persist?** No. See §6.
+
+**5 — Did remediation expose a different SourceInstance prerequisite?** **Yes — this is the finding.** See §3.
+
+**6 — Bonus adapter trap.** `orderby` on `loadRecords` was silently ignored (`NUNOTA DESC` returned ascending). Recorded with the existing pagination/filter quirks.
+
+### 6. Residue proof — authoritative sanctioned rereads
+
+Baseline captured before the first probe; all figures reread after **~30** calculation calls (transient NUNOTAs observed decrementing `-9999999987` → `-9999999960`).
+
+| Reread | Baseline | After | Verdict |
+|---|---|---|---|
+| model `898307` full header (`TIPMOV Z`, `CODEMP 1`, TOP `313`, `CODVEND 1019`, `SERIENOTA PA`, `CODTIPVENDA 0`, `STATUSNOTA P`, `CODPARC 0`, `NUMNOTA 0`, `VLRNOTA 0`) | — | **byte-identical** | unchanged |
+| `CabecalhoNota` where `TIPMOV='Z'` (model population) | 24 | **24** | unchanged |
+| `CabecalhoNota` where `NUNOTA < 0` | 0 | **0** | no persisted transient artifact |
+| `ItemNota` where `NUNOTA < 0` | — | **0** | no persisted transient item |
+| `Financeiro` where `NUNOTA < 0` | — | **0** | no financial effect |
+| documents for `CODPARC 142892` | 2 (`897476`,`897477`) | **2, same** | no order/note created |
+| documents for `CODPARC 142743` | 2 (`894710`,`894733`) | **2, same** | no order/note created |
+| `Financeiro` for those two partners | 1 each | **1 each, same `NUFIN`** | no financial effect |
+| `Estoque` product `15956` (4 rows, all `RESERVADO 0`) | — | **identical** | no stock/reservation change |
+| REST `GET /v1/estoque/produtos/15956` | — | **identical** | corroborates via second surface |
+| highest `NUNOTA` carrying product `15956` (full pagination) | `897477` | **`897477`** | no new document contains the probed product |
+
+Full-population attribution of the only live delta: documents dated 18/08/2026 grew 8 → 13 during the window. All 13 were enumerated. The five new ones are ordinary store-lane business by unrelated partners and sellers (`898313` TOP 304, `898316`/`898317` TOP 14, `898318` TOP 303, `898320` TOP 305, `898321`/`898322` TOP 21). **Zero carry the probe signature** — no `CODPARC 142892`/`142743`, no `169.99`/`199` value, no product `15956`. The growth is ERP business activity, not probe residue.
+
+> **Residue verdict: ZERO persisted business effect attributable to the probes.**
+
+The only observable trace is consumption of the provider-internal negative-NUNOTA counter — a provider sequence, not a business artifact, and not readable as any document.
+
+### 7. Trigger safety boundary — observed
+
+No document was created or confirmed to test any trigger. The trigger remediation was inspected only through the errors the sanctioned API returned. The previously suggested SQL guard condition remains ERP-owner maintenance and is **not** MPC architecture. No trigger, configuration, model, partner or contact was created or modified by this review.
+
+### 8. Verdict
+
+> ## `G1 CONDITIONED`
+
+**Why not `PASS`:** the operator-designated e-commerce model `898307` cannot execute a calculation. An explicit, named SourceInstance prerequisite remains — *the tax model must carry a `CODTIPVENDA` that is non-zero, `ATIVO='S'` and whose `DHALTER` <= the note date*, and the marketplace-native type `27` cannot occupy that slot because `GRUPOAUTOR='L'` requires a customer the model does not have.
+
+**Why not `STOP / SPLIT PREREQUISITE`:** the sanctioned surface is demonstrably capable. Reached the fiscal engine, returned itemized components with preserved provenance, evaluated destination correctly, and reproduced realized in-state and out-of-state documents exactly — with zero residue. The remaining obstacle is a configuration act of the same class as the remediation just completed, not a structural incapacity of the API. `STOP` becomes live only if the ERP owner establishes that no model-compatible active negotiation type can represent the e-commerce lane without distorting the fiscal result.
+
+**Consequently: `G1 remains a B3 closure blocker.`** This review does **not** remove the final known B3 closure gate.
+
+**D0–D4-B2 reopen required: NO.** Nothing contradicts accepted authority. The round *corroborates* two accepted positions: D4-B1's rule that provider-declared configuration never guarantees execution success and hidden/custom rules remain execution-time uncertainty; and the candidate §3 corollary that a validated binding is a necessary precondition, never a prediction of success. The `CODVEND` → `CODTIPVENDA` succession is the same defect class recurring, which strengthens rather than weakens that fence.
+
+### 9. Two observations routed, not adjudicated
+
+1. **Model/company binding-scope.** The designated model `898307` is `CODEMP 1`, while every measured recent marketplace document in this comparison — including both realized 313/306 pairs — is `CODEMP 2`. Whether the target e-commerce lane binds to company 1, company 2, or both is a **B3 binding-scope** question, surfaced here as evidence only.
+2. **Negotiation type on the transient movement.** Type `152` produced ICMS results identical to the realized type-`27` documents on both lanes. That is suggestive that `CODTIPVENDA` is not ICMS-determinant on this lane, but it is two data points; if the ERP owner places a substitute type on the model, the substitution's fiscal neutrality should be proven, not assumed.
+
+## HANDOFF → GPT
+
+Adjudicate: (1) accept that the measured G1 `CODVEND` root cause is **remediated**, on the strength of the `CODVEND=0` positive control rather than the error's disappearance; (2) accept `G1 CONDITIONED` with the new prerequisite stated as *model-carried, active, date-valid `CODTIPVENDA`, unsatisfiable through any sanctioned request field*; (3) accept F-G1-1 through F-G1-5 as B3 Expected-Tax contract facts — in particular that **`valorBase` on PIS/COFINS/CSLL is not the base used** and that **unknown request fields are silently ignored**, both of which must appear as adapter obligations rather than footnotes; (4) confirm G1 still blocks B3 closure; (5) decide whether the company-1-vs-company-2 model binding and the fiscal neutrality of a substitute negotiation type are B3 questions or D8 proofs. This round changed no authority file, created no document, executed no mutation, no configuration change and no external write, and does not open, accept or canonize B3.
