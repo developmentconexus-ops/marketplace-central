@@ -2552,3 +2552,100 @@ No document was created or confirmed to test any trigger. The trigger remediatio
 ## HANDOFF → GPT
 
 Adjudicate: (1) accept that the measured G1 `CODVEND` root cause is **remediated**, on the strength of the `CODVEND=0` positive control rather than the error's disappearance; (2) accept `G1 CONDITIONED` with the new prerequisite stated as *model-carried, active, date-valid `CODTIPVENDA`, unsatisfiable through any sanctioned request field*; (3) accept F-G1-1 through F-G1-5 as B3 Expected-Tax contract facts — in particular that **`valorBase` on PIS/COFINS/CSLL is not the base used** and that **unknown request fields are silently ignored**, both of which must appear as adapter obligations rather than footnotes; (4) confirm G1 still blocks B3 closure; (5) decide whether the company-1-vs-company-2 model binding and the fiscal neutrality of a substitute negotiation type are B3 questions or D8 proofs. This round changed no authority file, created no document, executed no mutation, no configuration change and no external write, and does not open, accept or canonize B3.
+
+---
+
+## FABLE — G1 addendum: cause isolated, two of my own findings corrected (2026-08-18)
+
+> **NON-AUTHORITATIVE.** Same session, same base HEAD `517e0b31`, same sanctioned-transport rules, production. Prompted by the operator's question: *if another model runs and the designated one does not, isolate why and make it equal.* That was the right instinct and it changed two conclusions from the round above.
+
+### A. Full field diff, then decorrelation
+
+`loadRecords` accepts `fieldset: "*"` — **429 fields** on `CabecalhoNota`. Full-header diff of `898307` (fails) against `572057` (works) gives **28 differing fields**. After removing identity/date noise the live candidates were `CODTIPVENDA`, `DHTIPVENDA`, `APROVADO`, `CIF_FOB`, `CODCENCUS`, `CODEMPNEGOC`, `PENDENTE`, `STATUSNOTA`, `TIPFRETE`, `ISSRETIDO`, `IRFRETIDO`, `ORDEMCARGA`.
+
+A diff alone cannot attribute cause, so 13 `notaModelo` values were run under identical inputs (TOP 313, MG client, product `15956`):
+
+| `notaModelo` | `CODEMP` | `CODTIPVENDA` | `STATUSNOTA` | `PENDENTE` | `APROVADO` | Result |
+|---|---|---|---|---|---|---|
+| `898307`, `842145`, `842148`, `771288` | 1 | **0** | P | S | S | `Tipo de negociacao obrigatorio` |
+| `426890` | 1 | **0** | P | **N** | **N** | same error |
+| `842147`, `842151` | **2** | **0** | P | S | S | same error |
+| `396793` | 1 | **97** (`ATIVO='N'`) | **A** | S | N | advances → *"verifique se o TIPO DE NEGOCIACAO 97 esta ativo…"* |
+| `572057`, `572059` | 2 | **152** (`ATIVO='S'`) | **A** | N | N | **HTTP 200** |
+| `894710`, `897476` (real orders) | 2 | **27** | **L** | N | N | **HTTP 200** |
+| `898270` (real order) | **1** | **27** | **A** | **S** | N | **HTTP 200** |
+
+Ruled out by counterexample: `CODEMP` (both companies fail at 0, both pass with a valid type), `PENDENTE` (S passes on `898270`, N passes on `572057`), `APROVADO` (N appears on both a failure and passes), `STATUSNOTA` (`A` fails on `396793` and passes on `572057`; `L` and `A` both pass with a valid type).
+
+Held constant at `STATUSNOTA='A'`, varying only the type: inactive `97` fails, active `152` passes. And the mechanism closes it — the transient note is built **already confirmed** (`STATUSNOTA='L'`, necessarily, since Sankhya computes taxes at confirmation), so the model's own `STATUSNOTA` cannot be what a `WHEN (NEW.STATUSNOTA='L')` trigger reads.
+
+> **Cause isolated: `CODTIPVENDA`, and nothing else in the 28-field delta.** `DHTIPVENDA` moves with it as a derived copy.
+
+### B. CORRECTION 1 — real orders *are* accepted as `notaModelo` here
+
+My §3 above concluded **"MPC-satisfiability: NO."** That is correct for the designated model and **too strong as a statement about the surface**. `POST /v1/fiscal/impostos/calculo` accepts a **real TOP-313 order** as `notaModelo`, and `CODTIPVENDA=27` propagates from it — because a real order *has* a customer, so the `GRUPOAUTOR='L'` restriction that blocks type 27 on a model is satisfied there.
+
+(No contradiction with the earlier recorded rejection *"Nota modelo informada nao e um modelo valido"* — that was `POST /v1/vendas/pedidos`, a different endpoint.)
+
+### C. The target-lane pair, on the real binding, no override
+
+`notaModelo=898270` — company **1**, TOP **313**, `CODTIPVENDA=27`, the actual e-commerce binding. No `codigoTipoOperacao` override, no `codigoEmpresa`. Same inputs as before.
+
+| | A — in-state MG (`142892`) | B — out-of-state SP (`142743`) |
+|---|---|---|
+| ICMS | `cst 60`, aliq 0, **0** | `cst 00`, aliq **12**, base 169.99, **20.40**, DIFAL dest **10.20** |
+| **PIS** | `cst 1`, aliq **1.65**, **2.80** | `cst 1`, aliq **1.65**, **2.30** |
+| COFINS | `cst 1`, aliq 7.6, **12.92** | `cst 1`, aliq 7.6, **10.59** |
+| CSLL | `cst 0`, aliq 0, 0 | `cst 0`, aliq 0, 0 |
+
+ICMS still matches the realized documents exactly. **PIS is now present and correct.**
+
+### D. CORRECTION 2 — F-G1-5 withdrawn, and replaced by a worse finding
+
+F-G1-5 recorded PIS `cst 49 / aliquota 0 / valor 0` as an unverifiable anomaly. **It was not an API property — it was an artifact of my substitute model.** On the correct binding PIS is `cst 1 / 1.65%`.
+
+That inverts §9 observation 2, which suggested type `152` looked fiscally neutral because ICMS matched. ICMS did match. **PIS did not**:
+
+> **Substituting the negotiation type silently zeroed a real tax component — PIS 1.65% → 0%, `cst 1` → `cst 49`, at HTTP 200 with no warning.** On this item that is R$2.80/R$2.30; as a rule it is a whole tax silently deleted from Expected Economics.
+
+New finding, replacing F-G1-5:
+
+- **F-G1-6 — the negotiation type is fiscally determinant, and a wrong one fails silently.** `CODTIPVENDA` is not a commercial-terms detail for this endpoint. It changes PIS CST and rate while leaving ICMS untouched, so an ICMS-only spot check **passes while the result is wrong**. Third silent-corruption instance in this round, alongside F-G1-2 (ignored field name) and F-G1-1 (`valorBase` is not the base used).
+
+**F-G1-1 is reconfirmed on PIS**: reported `valorBase 169.99` both lanes, but MG `169.99 × 1.65% = 2.80` and SP `139.39 × 1.65% = 2.30`, i.e. `base − ICMS − DIFAL` again. F-G1-2, F-G1-3, F-G1-4 stand unchanged.
+
+### E. The prerequisite, now exact — and harder than I first stated
+
+Model `898307` needs **one field**: `CODTIPVENDA`.
+
+But per F-G1-6, "any active, model-compatible type" is **disproven as sufficient**. It must be type **27**, or a type independently proven fiscally equivalent to 27 across *all* returned components, not just ICMS. And 27 cannot sit on a model (`GRUPOAUTOR='L'` needs a customer; models have none; `CORE_E01315`).
+
+So the ERP owner's options, in the order I would rank them:
+
+1. **Relax the trigger guard for the transient note**, exactly as was just done for `CODVEND` — e.g. gate on `NVL(:NEW.NUNOTA,1) > 0`. This closes the whole recurring class rather than one field at a time; two guards of identical shape have already surfaced in sequence and a third cannot be excluded.
+2. **Make type 27 model-compatible** (drop/adjust `GRUPOAUTOR='L'`, or create a model-only clone of 27), then set it on `898307`.
+3. **Set a substitute type** — only with its fiscal equivalence to 27 proven component-by-component first. Given F-G1-6 this is the option I would avoid.
+
+Using a real order as `notaModelo` is **not** a recommended durable binding: `898270` is a live unconfirmed order that will be confirmed, invoiced or removed, and depending on a historical document as permanent configuration is the fragility class this contract should not adopt. It is proof of capability, not a design.
+
+### F. Residue — reverified after all additional calls
+
+All checks from §6 re-run and still clean: model `898307` byte-identical, 24 models, **0** headers / items / `Financeiro` rows with `NUNOTA < 0`, both probe partners still 2 documents and 1 `NUFIN` each, `Estoque 15956` identical with `RESERVADO 0`. Two further headers appeared (`898323` TOP 14, `898324` TOP 303) — both ordinary multi-item store-lane business by unrelated partners, no probe signature.
+
+`898270`, used as `notaModelo`, is **unchanged**: still `STATUSNOTA='A'`, 1 item, product `12910`, `VLRNOTA 1059.75`, `DTALTER 18/08/2026 08:10:38` — **earlier than the first probe**. Reading a live order as a calculation model did not touch it.
+
+### G. Verdict — unchanged label, materially stronger reasoning
+
+> ## `G1 CONDITIONED`
+
+What changed: the **capability question is now closed affirmatively**. On the exact target binding — company 1, TOP 313, type 27 — the sanctioned surface returns complete, correct, destination-sensitive, provenance-preserving Expected-Tax evidence matching realized documents, with zero residue and **zero configuration change**. That is no longer conditional on anything.
+
+What remains is a **durable-binding prerequisite**, not a capability gap: MPC has no stable, correctly-typed `notaModelo` to bind to. `898307` cannot execute; the only working anchors are transient live orders or fiscally-distorting substitutes.
+
+This is close to `PASS` and the operator may reasonably adjudicate it there. I hold `CONDITIONED` because B3 must prove *operational viability*, and an integration anchored to a document that will change state next week is not viable. **G1 therefore still blocks B3 closure.**
+
+**D0–D4-B2 reopen: still NO.** F-G1-6 reinforces D4-B1 rather than disturbing it — provider-declared configuration is not a prediction of correct execution, and here a superficially valid binding produced a silently wrong fiscal result.
+
+## HANDOFF → GPT
+
+Supersede two items from the round above: (1) **F-G1-5 is withdrawn** — PIS `cst 49 / 0%` was an artifact of a substitute model, not an API property; (2) **§9 observation 2 is refuted** — the negotiation type is fiscally determinant, and this is now **F-G1-6**, the strongest adapter warning of the round because ICMS agreement masks it. Adjudicate further: (3) accept `CODTIPVENDA` as the isolated single cause, on the decorrelation table in §A rather than on the field diff; (4) accept that the sanctioned surface's **capability** for ex-ante Expected Tax is proven on the real target binding with zero config change; (5) rule on whether the remaining durable-binding prerequisite holds G1 at `CONDITIONED` or is sufficient for `PASS`; (6) if a substitute negotiation type is chosen by the ERP owner, require component-by-component equivalence proof against type 27, not an ICMS spot check. No authority file touched, no document created, no mutation, no configuration change, no external write.
