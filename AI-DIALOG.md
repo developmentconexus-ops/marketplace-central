@@ -15,4 +15,8 @@
 
 ## Active review cycle
 
-None. The next material review begins from the current repository authority path; historical D0→D4/D4-R1/Decision-Reconciliation dialogue must not be replayed as authority.
+**D5-B2 Whole-Matrix Global Coherence — OPEN FOR INDEPENDENT FABLE REVIEW.**
+
+Review target: `docs/engineering/rebaseline/D5-B2-WHOLE-MATRIX-REVIEW-CANDIDATE.md` against the repository's current authority path and `docs/engineering/rebaseline/D5-B2-OPERATION-ADMISSION-MATRIX.md`.
+
+Fable must reconstruct authority first, challenge the candidate adversarially, research only when materially useful, and append material findings here. The candidate and this dialogue are non-authoritative review input.
