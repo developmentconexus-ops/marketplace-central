@@ -1,6 +1,6 @@
 # D4 — External Integrations
 
-> **Status:** OPEN / ACTIVE — D4-B1 accepted/canonical; D4-B2 accepted/canonical; D4-B3 accepted/canonical; D4-B4 accepted/canonical; Final D4 Global Coherence next  
+> **Status:** CLOSED / ACCEPTED AS A WHOLE — D4-B1+B2+B3+B4 accepted/canonical; final Global Coherence completed / PASS; explicitly ratified by operator  
 > **Program:** Architecture Rebaseline / Technical System Design  
 > **Parent authorities:** `D0-PRODUCT-SYSTEM-DEFINITION.md`, `D1-DOMAINS-BOUNDARIES.md`, `D2-IDENTITY-TENANT-DATA-OWNERSHIP.md`, `D3-COMMUNICATION-EVENTS.md`  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
@@ -8,7 +8,8 @@
 > **B1 accepted:** 2026-08-17  
 > **B2 accepted:** 2026-08-17  
 > **B3 accepted:** 2026-08-18  
-> **B4 accepted:** 2026-08-18
+> **B4 accepted:** 2026-08-18  
+> **Accepted as a whole:** 2026-08-18
 
 ## 1. Purpose and boundary
 
@@ -1087,20 +1088,134 @@ D4 uses the accelerated protocol established by earlier stages:
 
 ---
 
-# 9. Current D4 state / exact next action
+# 9. Final D4 Global Coherence + YAGNI / Overengineering / Future-Cost — COMPLETED / PASS
 
-D4 is **OPEN / ACTIVE**.
+**Outcome:** `CURRENT STRUCTURE CONFIRMED` with two coherence clarifications and no material restructure. No D0/D1/D2/D3 or D4-B1/B2/B3/B4 reopen is required. No additional D4 decision batch is justified.
+
+The review evaluates accepted B1+B2+B3+B4 as one external-integration system against D0–D3, `ARCHITECTURE.md` and the DevelopmentConexus Engineering Method.
+
+## 9.1 C1 — D4 evidence contract is not a D4 evidence authority/store
+
+D4 owns acquisition/protocol/capability/coverage/translation contracts and requires source namespace, provenance, time, granularity, knowledge state and provider richness to survive the external boundary.
+
+That does **not** create a canonical `ProviderEvidence`, `IntegrationEvidence`, `MarketObservation` or generic financial-evidence store owned by D4.
+
+When external evidence becomes persistent MPC semantic state, canonical ownership follows the D1/D2 owner of the meaning. Market Intelligence, Commercial Economics, Offering, Fulfillment, Post-Sale and Materialization retain their accepted ownership. Technical acquisition caches/raw artifacts, if later justified, are D7 mechanism and never canonical business truth.
+
+> **Coherence fence:** “D4 preserves evidence” means the external contract preserves enough evidence across the boundary for the consumer's claim; it never means D4 owns the persistent business interpretation or a generic evidence ledger.
+
+## 9.2 C2 — provider resource ownership does not move wholesale to one consumer
+
+A single provider resource may contain facts relevant to several accepted D1 owners. One provider acquisition may therefore translate into multiple consumer-owned semantic views/ports.
+
+Rules:
+
+1. shared acquisition/parsing/cache mechanics remain mechanism only;
+2. each consumer receives only the evidence required for its accepted meaning;
+3. provider fields repeating another owner's current meaning are corroborating external evidence, not a second MPC semantic authority;
+4. when current producer-owned MPC meaning is consequential, D3 owner-query/revalidation rules still apply;
+5. no generic provider-resource entity or cross-domain raw payload becomes a shortcut around D1 edges.
+
+A provider API combining multiple fields/actions does not merge business authorities.
+
+## 9.3 Duplicate / missing authority — PASS
+
+No duplicate or missing Product 1.0 business authority was found. D4 owns protocol/evidence contracts, not D1 business meaning. Payment/Refund/Fee evidence remains external/source-qualified; Commercial Economics owns attribution/reconciliation, Post-Sale owns consequence closure, Market Intelligence owns competitive interpretation and Offering owns Price Intent.
+
+## 9.4 B1 specialization coherence — PASS
+
+B2/B3/B4 specialize B1 without weakening namespace, coverage, knowledge-state or external-effect safety. Provider 2xx never becomes convergence by itself; silent-field-ignore/fallback evidence strengthens B1 fail-honest semantics rather than creating a parallel rule.
+
+## 9.5 Provider Richness / overfit — PASS
+
+D4 coherently rejects both lowest-common-denominator suppression and provider payload mirroring. Shared semantics are normalized only where they genuinely align; provider-distinct evidence remains source-qualified/optional and must have a named consumer/correctness property.
+
+The measured Mercado Livre price/shipping/winner case proves provider richness is essential Product 1.0 complexity, not speculative extensibility.
+
+## 9.6 Economic lineage — PASS
+
+Expected fee, expected seller shipping, Order fee, realized Shipment cost, billed charge/rebate, Payment approval, release, refund/reversal, payout and Bank Cash Receipt remain distinct. No numeric equality collapses rungs and no generic finance ledger is required.
+
+## 9.7 Cross-system / identity coherence — PASS
+
+Marketplace and Sankhya resources remain source-qualified external identities. Sankhya TOP/NUNOTA/CODPARC/CONTROLE and Mercado Livre Item/Shipment/Payment/catalog topology remain replaceable realization, not MPC identity laws or business ontology.
+
+## 9.8 External-effect safety — PASS
+
+B2/B3 writes share B1/D3 obligations: explicit source-qualified target, owning intent/correlation, current enough prerequisites, definitive rejection vs pending/ambiguity, no blind retry after possible acceptance and authoritative reread/convergence. B4 remains read/evidence-only for its current market/economic acquisition path.
+
+## 9.9 Unknown / coverage / recovery — PASS
+
+Order-search cancellation completeness, unselected provider modes, Sankhya controlled-product/return/fiscal branches, broader account-movement population and R3 bank-side evidence remain explicit trigger-bounded defers. No accepted current claim depends on pretending these properties are known.
+
+## 9.10 Shared mechanism vs authority — PASS
+
+Repeated HTTP/auth/pagination/rate-control/source-binding/falsification/acquisition/correlation/secret-refresh mechanics may later be centralized by D7 only when real duplication warrants it. Such machinery cannot decide D1 business meaning, disposition or evidence sufficiency.
+
+## 9.11 YAGNI / overengineering — PASS
+
+D4 introduces no generic Provider/Capability graph, universal ERP model, generic Customer/Address framework, universal financial ledger, `channel_fees` resurrection, generic CollectorPort, indiscriminate payload mirror, all-provider/all-ERP implementation, scraping-by-convenience, report-generation-by-symmetry, duplicated tax engine, Direct Oracle fallback or workflow DSL.
+
+Every retained seam either protects an accepted invariant or has a measured Product 1.0 consumer.
+
+## 9.12 Future-cost / replacement — PASS
+
+A second marketplace may support a different capability set without forcing false fields or suppressing Mercado Livre richness. A second business system can implement accepted consumer semantics without inheriting Sankhya topology. Payment/account and market-data seams reopen only when real capability/trust/coverage evidence requires them.
+
+No irreversible structural dead end was found.
+
+## 9.13 Later-stage leakage — PASS
+
+D4 does not decide D5 HTTP/OpenAPI/error/SDK shape, D6 UI/projection topology, D7 worker/queue/cache/retry/transaction/deployment mechanism, D8 golden-flow choreography/proof fixtures, D9 final system review or implementation.
+
+## 9.14 Legacy ADR coherence — PASS
+
+ADR-014 is historical; ADR-020 generic CollectorPort target shape is superseded with source-admissibility rehomed; ADR-032 target flag meaning is superseded/historical; ADR-009 remains a D2-carried provenance constraint. Earlier D4 legacy dispositions remain coherent.
+
+### Final coherence disposition
+
+```text
+D4-B1 External Contract Grounding          ACCEPTED / COHERENT
+D4-B2 Mercado Livre Operational Contract  ACCEPTED / COHERENT
+D4-B3 Sankhya Business-System Contract     ACCEPTED / COHERENT
+D4-B4 Market/Economics/Settlement          ACCEPTED / COHERENT
+
+Duplicate/missing authority                PASS
+Provider richness / overfit                PASS
+Cross-system identity                      PASS
+Economic lineage                           PASS
+External-effect safety                     PASS
+Unknown/coverage/recovery                   PASS
+YAGNI / overengineering                    PASS
+Future-cost / replacement                  PASS
+Later-stage leakage                        PASS
+Legacy ADR coherence                       PASS
+
+Material correction                        NONE
+Coherence clarifications                    C1 + C2 only
+Earlier-stage reopen                        NONE
+Additional D4 batch                         NOT REQUIRED
+```
+
+**Final D4 Global Coherence = COMPLETED / PASS.** The operator explicitly ratified D4 as a whole on 2026-08-18.
+
+---
+
+# 10. Current D4 state / exact next action
+
+D4 is **CLOSED / ACCEPTED AS A WHOLE**.
 
 - **D4-B1 — External Contract Grounding: ACCEPTED / CANONICAL.**
 - **D4-B2 — Mercado Livre Operational Contract: ACCEPTED / CANONICAL; Installation Evidence Gate CLOSED / PASS.**
 - **D4-B3 — Sankhya Business-System Contract: ACCEPTED / CANONICAL.**
 - **D4-B4 — Market / Economics / Settlement Contract: ACCEPTED / CANONICAL; M1/E1/S1 CLOSED / PASS.**
-- **Final D4 Global Coherence + YAGNI / Overengineering / Future-Cost review: NEXT / NOT YET COMPLETED.**
+- **Final D4 Global Coherence + YAGNI / Overengineering / Future-Cost: COMPLETED / PASS.**
+- **Whole-stage operator ratification: COMPLETED on 2026-08-18.**
 
-No D0/D1/D2/D3 or D4-B1/B2/B3 reopen is currently required.
+No D0/D1/D2/D3 or D4-B1/B2/B3/B4 reopen is required. D4 has no remaining planned decision batch.
 
-Exact next action: **run the final D4 Global Coherence + YAGNI / Overengineering / Future-Cost review across canonical B1+B2+B3+B4.** Test duplicate/missing authority, contradictions across provider/business-system/economics contracts, lowest-common-denominator vs provider-overfit pressure, repeated mechanisms that accidentally became authority, unsafe defers and foreseeable retrofit traps.
+Exact next action: **open D5 — API from accepted D0–D4 authority.** D5 owns the concrete API/OpenAPI/error/SDK contract and must preserve D1 ownership, D2 identity/knowledge semantics, D3 communication/failure semantics and D4 external capability/evidence boundaries without inheriting current routes/controllers/SDK shapes as target authority.
 
-B2/B3 real-effect obligations remain D8 proofs; B4 broader account-universe/R3 residuals remain bounded defers until a real consumer makes them material. These do not reopen accepted B1–B4 by themselves.
+B2/B3 real-effect obligations remain D8 proofs; B4 broader account-universe/R3 residuals remain bounded defers until a real consumer makes them material. These do not reopen D4 by themselves.
 
-Do not begin D5 until the final D4 Global Coherence review is accepted. Product implementation remains blocked until D9.
+Product implementation remains blocked until D9.
