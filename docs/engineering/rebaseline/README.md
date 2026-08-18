@@ -1,7 +1,7 @@
 # Marketplace Central — Architecture Rebaseline
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
-> **Current phase:** **D4 — EXTERNAL INTEGRATIONS — OPEN / ACTIVE; D4-B1 ACCEPTED / CANONICAL; D4-B2 ACCEPTED / CANONICAL; D4-B3 ACCEPTED / CANONICAL; D4-B4 NEXT**  
+> **Current phase:** **D4 — EXTERNAL INTEGRATIONS — OPEN / ACTIVE; D4-B1 ACCEPTED / CANONICAL; D4-B2 ACCEPTED / CANONICAL; D4-B3 ACCEPTED / CANONICAL; D4-B4 ACCEPTED / CANONICAL; FINAL D4 GLOBAL COHERENCE NEXT**  
 > **Implementation:** BLOCKED until D9 is accepted  
 > **Last updated:** 2026-08-18
 
@@ -47,8 +47,11 @@ D4 — External Integrations — OPEN / ACTIVE
   ├─ B2 Mercado Livre Operational Contract — ACCEPTED / CANONICAL
   │    └─ Installation Evidence Gate — CLOSED / PASS
   ├─ B3 Sankhya Business-System Contract — ACCEPTED / CANONICAL
-  ├─ B4 Market / Economics / Settlement Contract — NEXT / NOT YET OPENED
-  └─ Final D4 Global Coherence + YAGNI / Overengineering / Future-Cost — NOT STARTED
+  ├─ B4 Market / Economics / Settlement Contract — ACCEPTED / CANONICAL
+  │    ├─ M1 Market Evidence lane — CLOSED / PASS
+  │    ├─ E1 Expected / Order Economic Evidence — CLOSED / PASS
+  │    └─ S1 Realized / Release Evidence — CLOSED / PASS
+  └─ Final D4 Global Coherence + YAGNI / Overengineering / Future-Cost — NEXT / NOT YET COMPLETED
   ↓
 D5 — API
   ↓
@@ -112,7 +115,7 @@ The 12 D1 business boundaries do **not** imply 12 services, databases, processes
 - shared execution-safety mechanisms verify owner-issued proofs without owning business disposition/authorization;
 - no generic Event Bus/Command Bus/Workflow engine/event sourcing/exactly-once/global-ordering/runtime topology choice.
 
-### D4 — OPEN / B1+B2+B3 ACCEPTED
+### D4 — OPEN / B1+B2+B3+B4 ACCEPTED
 
 `D4-EXTERNAL-INTEGRATIONS.md` is the active D4 authority.
 
@@ -137,7 +140,7 @@ D4-B2 accepted:
 - seller Order search completion does not prove cancellation-inclusive Sales coverage;
 - Order and Shipment remain separate provider resources;
 - fulfillment responsibility, fiscal/label/readiness requirements and external SLA remain provider-context-sensitive evidence translated for Fulfillment closure;
-- essential Claim/Return/reverse-shipment support stays bounded and financial settlement authority remains B4;
+- essential Claim/Return/reverse-shipment support stays bounded;
 - no universal `OperatingMode`/provider graph/framework is introduced.
 
 The B2 Installation Evidence Gate is **CLOSED / PASS**. The selected current first Mercado Livre proof context remains time-bound: User Product; non-multi-origin Item availability; direct-price candidate; seller-operated `me2 / xd_drop_off`; live Shipment SLA; real Claim/Return + reverse Shipment. B2 residual R1 — first controlled Price/Availability write + reread — remains D8. B2 residual R2 — live fiscal/label progression — uses the accepted B3 materialization contract and remains D8.
@@ -155,13 +158,29 @@ D4-B3 accepted:
 - Business Order Intent maps to a bounded explicit Sankhya target binding; provider-native TOP/NUNOTA/status/choreography never becomes MPC semantics;
 - Invoicing Intent remains readiness-gated and correlates to a distinct native fiscal result; first irreversible selected-lane `313→306` effect remains D8;
 - Expected Tax uses `POST /v1/fiscal/impostos/calculo` through the stable model binding proven on 2026-08-18; MPC does not duplicate the Sankhya tax engine;
-- negotiation type is fiscally material for Expected Tax; the current proven binding preserves type `27`, and ICMS agreement alone is not fiscal-equivalence evidence for a substitute type;
-- provider-returned tax component/value/provenance is preserved honestly; unreliable/unknown tax bases/components/request shapes do not become plausible derived values;
-- controlled-product operation, reversal/return actuation and unexercised fiscal branches remain explicit safe defers/Unknowns until a claimed flow requires proof;
+- negotiation type is fiscally material for Expected Tax; current proven binding preserves type `27`;
+- provider-returned tax component/value/provenance is preserved honestly;
 - consequential Sankhya writes preserve explicit Organization + SourceInstance, owning intent/correlation, acceptance/ambiguity, authoritative reread and no-blind-retry semantics;
 - no generic ERP/workflow/customer framework and no Direct Oracle fallback is introduced.
 
-No D0/D1/D2/D3 or D4-B1/B2 reopen is required by B3.
+D4-B4 accepted:
+
+- **Semantic Core + Provider-Enriched Evidence** is the target: MPC does not collapse marketplaces to a lowest common denominator and does not mirror arbitrary provider payloads into business ontology;
+- materially useful provider-specific evidence may be preserved when it serves a named Product 1.0 consumer/correctness property; unsupported equivalents on another provider remain honestly unsupported/not-applicable/unavailable/unknown rather than fabricated;
+- Mercado Livre enriched Market Evidence may include `price_to_win`, catalog offer/winner evidence, buyer-facing shipping/free-shipping state, shipping tags and boosts/reasons while Market Intelligence retains comparability/competitive interpretation and Offering retains Price Intent;
+- a real case proved price-only market comparison materially misleading: own `69.90 + 44.94` buyer-facing shipping vs winner `79.90 + 0`, with `price_to_win=26.75` and shipping/boost evidence;
+- expected selling fee, expected seller shipping, Order transaction fee and realized seller Shipment cost remain distinct evidence classes;
+- current `listing_prices` behavior requires explicit qualification/fail-open fences: HTTP 200 does not prove fields were consumed, listing type/category/response shape must be validated, provider currency is preserved and silent-ignore behavior is falsified proportionately;
+- transaction fee granularity/decomposition is source-specific; live multi-unit evidence re-proved Order `sale_fee` per unit while Payment exposes multiple directionally distinct charge rows;
+- Payment approval, money release, refund/reversal, withdrawal/payout and Bank Cash Receipt remain distinct rungs;
+- the same bound Mercado Livre Installation token can read the selected Payment API; **no separate Mercado Pago credential is required for the selected lane**;
+- `money_release_date` alone does not prove release, `fee_details` is not complete fee evidence, and `net_received_amount` is not post-refund realized authority;
+- real refund-after-release evidence is appended rather than rewriting earlier release and can feed Commercial Economics plus Post-Sale Resolution without authority transfer;
+- broader account-movement population remains a bounded safe defer until a real unanchored-movement/period-completeness consumer appears;
+- report generation is not admitted as “read support” by convenience;
+- no generic financial ledger, universal fee model, generic CollectorPort or unadjudicated scraping path is introduced.
+
+No D0/D1/D2/D3 or D4-B1/B2/B3 reopen is required by B4.
 
 ## 4. Engineering method and repo lifecycle
 
@@ -171,62 +190,59 @@ This router defines the Marketplace Central D0–D9 status/lifecycle and allowed
 
 ## 5. What is prohibited now
 
-While D4-B4 is the active next decision batch:
+While the **Final D4 Global Coherence + YAGNI / Overengineering / Future-Cost review** is the active next action:
 
 - do not begin D5–D9 target design prematurely;
 - do not implement product architecture/features;
-- do not silently alter accepted D0–D4-B3 authority;
-- do not turn marketplace/payment/settlement provider resources into a duplicate financial/business ontology by normalization;
-- do not let existing pricing/profitability/collector modules, current schema, runtime flags or historical ADRs become B4 target authority by inheritance;
-- do not move Commercial Economics meaning into D4 adapters; adapters provide external evidence/capability, while Commercial Economics retains interpretation/attribution/reconciliation authority;
-- do not convert missing/partial fee, market or settlement evidence into plausible zero/complete results;
-- do not introduce Direct Oracle/database access for Sankhya as an implementation shortcut or fallback;
-- do not choose HTTP/frontend/runtime topology prematurely;
-- do not treat `AI-DIALOG.md`, review candidates or reviewer/chat summaries as target authority.
+- do not silently alter accepted D0–D4-B4 authority;
+- do not create a generic provider/ERP/financial framework from repeated vocabulary alone;
+- do not collapse provider-rich evidence to a lowest common denominator merely for cross-provider symmetry;
+- do not mirror provider payloads or PII merely because an API exposes them;
+- do not move Market Intelligence, Commercial Economics, Offering, Post-Sale, Fulfillment or Materialization meaning into D4 adapters;
+- do not convert bounded D7/D8 defers into reasons to reopen B1–B4 without new material evidence;
+- do not introduce Direct Oracle/database access for Sankhya;
+- do not choose HTTP/frontend/runtime topology as a side effect of D4 closure;
+- do not treat `AI-DIALOG.md`, deleted review candidates or reviewer/chat summaries as target authority.
 
 Existing code/module/context/schema shape remains current-state evidence only.
 
 ## 6. Exact next action
 
-**Open D4-B4 — Market / Economics / Settlement Contract from canonical D4-B1+B2+B3.**
+**Run the Final D4 Global Coherence + YAGNI / Overengineering / Future-Cost review across canonical D4-B1+B2+B3+B4.**
 
-B4 must independently establish the external evidence/contracts required by accepted Product 1.0 Commercial Economics and post-sale/settlement flows, including proportionately:
+The review must challenge proportionately:
 
-- official market/competitor acquisition only where justified by a real consumer and with explicit comparability/coverage provenance;
-- marketplace/provider fee evidence and rule qualification needed for Expected/Order/Realized Economics without making D4 the Cost Basis/economic authority;
-- catalog-offer / price-to-win or equivalent provider evidence only where materially required by Market Intelligence / Commercial Economics;
-- authoritative provider/payment financial movements such as Payment, Refund, Fee, Adjustment, Settlement and Payout, preserving source-qualified identity, occurrence time and scope;
-- settlement/payout completeness, pagination/window/retention and reconciliation surfaces;
-- refund/adjustment/fee attribution evidence sufficient for Commercial Economics/Post-Sale to correlate consequences without creating a generic financial ledger authority in D4;
-- explicit Unknown/unavailable/partial states and authoritative reread/recovery where material;
-- exact external-effect semantics for any B4 write only if Product 1.0 actually requires such a write; no write surface is introduced for symmetry;
-- disposition of the D4-B4 residues in legacy ADR-014/020/032 without inheriting their old runtime/module shape.
+- duplicate or missing authority across D1 consumers and D4 evidence contracts;
+- contradictions between B1 generic boundary and B2/B3/B4 specializations;
+- provider-overfit vs lowest-common-denominator pressure;
+- whether Provider Richness preserves useful evidence without becoming payload/ontology mirroring;
+- whether expected/order/billed/released/refunded evidence remains distinct without creating a generic finance ledger;
+- whether Sankhya/Marketplace provider-specific bindings remain replaceable realization rather than core semantics;
+- whether repeated transport/coverage/falsification/correlation mechanisms should remain local/shared mechanism without business authority;
+- whether D7/D8 defers are safe and owned by the correct later stage;
+- YAGNI / overengineering / foreseeable retrofit traps, including second-provider and second-business-system replacement tests.
 
-B4 must preserve D1/D2 authority: Commercial Economics owns economic interpretation, attribution and reconciliation; D4 owns only concrete external acquisition/protocol/capability/evidence. Provider-native Payment/Refund/Fee/Settlement/Payout identities remain external/source-qualified.
-
-Do not begin D5 until B4 and the final D4 Global Coherence review are accepted. Implementation remains blocked until D9.
+If no material contradiction survives, close D4 and route the next session to **D5 — API**. Do not begin product implementation; implementation remains blocked until D9.
 
 ## 7. Fresh-session success test
 
 A fresh session should conclude that:
 
 - D0, D1, D2 and D3 are **CLOSED / ACCEPTED**;
-- D4 is **OPEN / ACTIVE**;
+- D4 is **OPEN / ACTIVE** pending only its final Global Coherence review;
 - D4-B1 is **ACCEPTED / CANONICAL**;
 - D4-B2 is **ACCEPTED / CANONICAL** and its Installation Evidence Gate is **CLOSED / PASS**;
 - D4-B3 is **ACCEPTED / CANONICAL**;
-- D4-B4 is **NEXT / NOT YET OPENED**;
-- consumer-owned ports and provider-local protocol remain distinct;
-- Marketplace Installation/SourceInstance external namespace binding is explicit and fail-closed;
-- Mercado Livre topology remains provider-local evidence rather than MPC business ontology;
-- Sankhya Product/inventory/cost/tax/party/document topology remains provider-local realization rather than MPC business ontology;
-- Party Resolution and Destination Realization are distinct bounded Materialization prerequisites with no Customer Master authority;
-- Expected Tax is delegated to the sanctioned Sankhya fiscal engine under the proven SourceInstance binding, not reimplemented in MPC;
-- Business Order/Invoicing Intents remain MPC semantics while TOP/NUNOTA/provider choreography stays adapter-local;
-- **Sankhya API Gateway remains the target transport and Direct Oracle is not an admitted fallback;**
-- D7/D8 proof obligations do not reopen B1–B3 merely because their concrete effect has not yet been executed;
-- current modules/contexts/schema/legacy ADRs remain evidence, not target authority by inheritance;
+- D4-B4 is **ACCEPTED / CANONICAL** and M1/E1/S1 are **CLOSED / PASS**;
+- consumer-owned semantic ports and provider-local protocol remain distinct;
+- provider-rich evidence is preserved when materially useful without becoming universal MPC ontology or payload mirroring;
+- unsupported provider capabilities remain honest rather than suppressing richer capabilities available elsewhere;
+- Market Intelligence owns competitive interpretation; Commercial Economics owns L0/L1/L2 attribution/reconciliation; Offering owns Price Intent; Post-Sale owns refund-consequence closure;
+- the selected ML Payment path uses the bound Installation credential without requiring a separate Mercado Pago credential for the proven lane;
+- Sankhya API Gateway remains the target transport and Direct Oracle is not an admitted fallback;
+- Party Resolution and Destination Realization remain distinct bounded Materialization prerequisites;
+- D7/D8 proof obligations do not reopen B1–B4 merely because the concrete future effect has not yet executed;
 - implementation remains blocked until D9;
-- the exact next action is D4-B4 independent design/review from canonical D4-B1+B2+B3 plus current official/provider evidence needed by the concrete market/economics/settlement claims.
+- the exact next action is the final D4 Global Coherence review, not D5 and not implementation.
 
 If it cannot, the authority path is incomplete or contradictory.

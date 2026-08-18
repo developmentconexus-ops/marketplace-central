@@ -35,13 +35,13 @@ Status vocabulary in this registry:
 | 011 | superseded by rebaseline — D1/D2 own divergence/work semantics; no generic divergence authority |
 | 012 | superseded by rebaseline — D1/D2 own economics/provenance; legacy `pricing` DIFAL table is not target authority |
 | 013 | carried constraint — webhook payload is not domain truth; active home: D0 / D3 / D4-B1 external-evidence semantics |
-| 014 | reopened — D4-B4 (D1 portion adjudicated; on-demand/local-runtime shape has no authority by inheritance) |
+| 014 | historical — D4-B4 superseded the on-demand/local-Docker market runtime as target meaning; honest evidence/absence is homed in D0–D4 and collection runtime/cadence belongs D7 |
 | 015 | historical — D4-B2 accepted/canonical; legacy read-only listings module/composite-ID/manual-refresh/absence=>closed target shape is superseded and durable semantics are rehomed in D1/D2/D4 |
 | 016 | reopened — D5 |
 | 017 | historical predicate retained as evidence until target Fact ADR rehomes still-valid domain-judgment clauses |
 | 018 | reopened — D7 (D1/D3 semantic portions adjudicated; generic Mutation owner/table/poller not target authority) |
 | 019 | historical — D1/D3 rehomed accepted-consumer, duplicate/idempotency and recoverable-propagation semantics |
-| 020 | reopened — D4-B4 (D1 portion adjudicated; generic `CollectorPort` target shape not inherited) |
+| 020 | superseded by rebaseline — D4-B4 rejects generic `CollectorPort`/collector-framework target shape; source-admissibility meaning is homed in D4 / `ARCHITECTURE.md` |
 | 021 | carried constraint — TanStack Query owns frontend server state; active home: `ARCHITECTURE.md` |
 | 022 | superseded by rebaseline as identity law — D2 preserves pre-dispatch correspondence safety; D4-B2 rehomes current Mercado Livre mapping/identifier evidence while Readiness retains sufficiency authority |
 | 023 | superseded by rebaseline — D1/`ARCHITECTURE.md` own semantic boundaries and private-implementation prohibition |
@@ -53,8 +53,8 @@ Status vocabulary in this registry:
 | 029 | carried constraint — no blind retry of ambiguous external writes; active home: D0 / D3 / `ARCHITECTURE.md` |
 | 030 | reopened — D7 |
 | 031 | superseded by rebaseline — no target Product mirror; honest absence remains current authority |
-| 032 | reopened — D4-B4; current catalog-offers env flag/default-off behavior is current-state evidence, not target authority |
-| 033 | carried constraint — vendor adapters implement consumer-owned ports; active home: D1 / D4-B1/B2 / `ARCHITECTURE.md` |
+| 032 | historical — D4-B4 superseded the catalog-offers default-off flag as architectural meaning; provider-effective capability is contextual and any runtime toggle mechanics belong D7 |
+| 033 | carried constraint — vendor adapters implement consumer-owned ports; active home: D1 / D4-B1/B2/B4 / `ARCHITECTURE.md` |
 | 034 | carried implementation/evidence anchor — D2 decides target `Fact<T>` scope; replace with a new target Fact ADR before legacy cleanup |
 | 035 | carried transition constraint — rebaseline governs target design; retain until D0–D9 program closes |
 
@@ -69,7 +69,7 @@ Current target authority is:
 - provider-sanctioned Sankhya API Gateway is the target transport for MPC↔Sankhya integration;
 - Direct Oracle/database access is **not part of the target architecture and is not a fallback path**;
 - the previous Oracle path is historical evidence from a time when the project did not yet have a known/usable sanctioned Sankhya API path;
-- if D4-B3 proves the Gateway/API surface cannot satisfy a materially required Product 1.0 claim, B3 stops and returns to explicit operator/architecture adjudication rather than enabling database access implicitly;
+- if a material required claim cannot be satisfied through a sanctioned Gateway/API capability, D4 stops and returns to explicit operator/architecture adjudication rather than enabling database access implicitly;
 - any future proposal to reintroduce Direct Oracle requires an explicit operator-requested reopen with new material evidence.
 
 This transition does not reopen D0–D3.
@@ -84,7 +84,7 @@ Current target authority is:
 - Offering, Availability, Sales, Fulfillment and Post-Sale retain the D1 meanings; D4 supplies provider resources/capability/requirement/coverage/effect evidence only;
 - Item/User Product/shared-field behavior may widen provider effect scope and therefore must not silently widen domain-owned intended/authorized scope;
 - stock writability is context-sensitive to concrete provider resource, site, seller configuration and current listing/resource mode; seller-managed is not automatically API-writable and provider-managed Full stock is not an MPC-controlled stock lane by convenience;
-- seller Order search completion does not establish cancellation-inclusive Sales coverage; current official documentation and the real 2026-08-17 Installation measurement disagree about canceled-Order inclusion, so neither direction is treated as a stable completeness contract;
+- seller Order search completion does not establish cancellation-inclusive Sales coverage;
 - provider 2xx does not prove listing/price/availability/fulfillment/post-sale convergence when authoritative reread can differ;
 - the current selected first proof context is User Product + non-multi-origin Item availability + direct-price candidate + seller-operated `xd_drop_off`, with time-bound provider state revalidated when consequential;
 - first controlled Price/Availability effect + reread/convergence remains D8 proof; live selected-lane fiscal/label progression is constrained by D4-B3 materialization semantics and later D8 proof.
@@ -92,6 +92,27 @@ Current target authority is:
 ADR-015 is historical because B2 now owns the complete target listing/provider-contract meaning that remained relevant from it. Its old target structure has no authority.
 
 This transition does not reopen D0–D3 or D4-B1.
+
+## D4-B4 market/economics/settlement transition note
+
+D4-B4 is **ACCEPTED / CANONICAL** and its M1/E1/S1 evidence gates are **CLOSED / PASS**.
+
+Current target authority is:
+
+- MPC follows **Semantic Core + Provider-Enriched Evidence**, not a lowest-common-denominator marketplace contract and not a provider mirror;
+- materially useful provider-specific evidence may be preserved when a named Product 1.0 consumer/correctness property exists, while unsupported equivalents on another provider remain honestly unsupported/not-applicable/unavailable/unknown;
+- provider richness does not authorize raw payload/PII mirroring or a universal Provider/Capability/MarketObservation graph;
+- Mercado Livre `price_to_win`, catalog winner/offer shipping, free-shipping tags and boosts/reasons remain provider-enriched Market Evidence for Market Intelligence, never automatic Price Intent;
+- expected fee, expected seller shipping, Order fee, billed charge/rebate, Payment approval, release/account impact, refund/reversal, payout/withdrawal and Bank Cash Receipt remain distinct evidence/meaning rungs;
+- source-specific fee/payment decomposition and granularity are preserved; no universal `channel_fees`/Fee ledger returns as target authority;
+- the selected bound Mercado Livre Installation credential can read the selected Payment API without a separate Mercado Pago credential; this is a contextual capability fact, not a permanent provider promise;
+- broader account-movement population and R3 bank-side evidence remain bounded safe defers until a real consumer makes them material;
+- report-generation effects are not admitted as read support by convenience;
+- source-admissibility is now carried by D4/`ARCHITECTURE.md`: missing provider data never authorizes fabricated evidence or an unadjudicated scraping source.
+
+ADR-014 is historical, ADR-020's generic CollectorPort target shape is superseded, and ADR-032 is historical. ADR-009 remains carried with its active home in D2.
+
+This transition does not reopen D0–D4-B3.
 
 ## Legacy-retirement gates
 

@@ -1,13 +1,14 @@
 # D4 — External Integrations
 
-> **Status:** OPEN / ACTIVE — D4-B1 accepted/canonical; D4-B2 accepted/canonical; D4-B3 accepted/canonical; D4-B4 next  
+> **Status:** OPEN / ACTIVE — D4-B1 accepted/canonical; D4-B2 accepted/canonical; D4-B3 accepted/canonical; D4-B4 accepted/canonical; Final D4 Global Coherence next  
 > **Program:** Architecture Rebaseline / Technical System Design  
 > **Parent authorities:** `D0-PRODUCT-SYSTEM-DEFINITION.md`, `D1-DOMAINS-BOUNDARIES.md`, `D2-IDENTITY-TENANT-DATA-OWNERSHIP.md`, `D3-COMMUNICATION-EVENTS.md`  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
 > **Opened:** 2026-08-17  
 > **B1 accepted:** 2026-08-17  
 > **B2 accepted:** 2026-08-17  
-> **B3 accepted:** 2026-08-18
+> **B3 accepted:** 2026-08-18  
+> **B4 accepted:** 2026-08-18
 
 ## 1. Purpose and boundary
 
@@ -207,12 +208,12 @@ Transport 2xx never becomes convergence by itself.
 - ADR-010 polling-only/no-webhook D4 meaning: superseded; D7 runtime residue remains.
 - ADR-006/007 direct-Oracle/godror target meaning: historical/superseded by B1.
 - ADR-003 credential/identity prerequisite rehomed; its old strict implementation sequence is not target authority.
-- ADR-014/020/032 market/economics residue remains B4 evidence only.
+- ADR-014/020/032 market/economics residue is adjudicated by B4 below.
 - ADR-015 provider/listing residue is adjudicated by B2 below.
 
 ## 3.13 B1 reopen/stop triggers
 
-Reopen only the implicated decision when material evidence shows an accepted identity/authority/communication/product assumption fails, or a required Gateway capability cannot be satisfied by any sanctioned operation. Any proposal to reintroduce Direct Oracle requires explicit operator-requested reopen with new evidence. Framework preference/current-code convenience/hypothetical providers are not reopen evidence.
+Reopen only when material evidence shows an accepted identity/authority/communication/product assumption fails, or a required Gateway capability cannot be satisfied by any sanctioned operation. Any proposal to reintroduce Direct Oracle requires explicit operator-requested reopen with new evidence. Framework preference/current-code convenience/hypothetical features are not reopen evidence.
 
 ---
 
@@ -303,7 +304,7 @@ Authoritative `cancel_detail`/equivalent provider evidence remains source fact. 
 4. Reverse Shipment remains distinct from original Shipment.
 5. Provider `available_actions`/equivalent is Provider Effective Capability, never automatic MPC permission.
 6. General complaint management, buyer chat/Q&A and reputation workflows remain outside Product 1.0.
-7. Provider Payment/Refund/Fee/Adjustment/Settlement/Payout authority remains B4; physical return closure never fabricates financial closure and vice versa.
+7. Provider Payment/Refund/Fee/Adjustment/Release/Payout authority is supplied by B4; physical return closure never fabricates financial closure and vice versa.
 8. A measured 403 on one provider-native Return detail surface remains explicit access/scope Unknown rather than provider absence.
 
 ## 4.6 External-effect reconciliation specialized for Mercado Livre
@@ -761,9 +762,296 @@ Do not reopen for naming preference, abstract symmetry or hypothetical providers
 
 ---
 
-# 6. Evidence basis and proof disposition
+# 6. D4-B4 — Market / Economics / Settlement Contract — ACCEPTED / CANONICAL
 
-B1 external facts were reverified against current official provider/source documentation families during review. B2 current provider facts were independently challenged against current Mercado Livre documentation and a real read-only Installation probe. B3 combined official Sankhya/provider evidence with sanctioned sandbox/production measurements and independent Fable challenge; final Expected-Tax closure was measured on the operator-configured stable target model on 2026-08-18.
+**Outcome:** `CURRENT STRUCTURE CONFIRMED` with a **provider-rich / semantics-first** external-evidence contract. No D0/D1/D2/D3 or D4-B1/B2/B3 reopen is required.
+
+## 6.1 Global Maximum — Semantic Core + Provider-Enriched Evidence
+
+D4 rejects both extremes:
+
+- **lowest-common-denominator normalization** that discards useful Mercado Livre evidence because another provider may not expose it;
+- **provider mirroring / universal provider ontology** that copies volatile provider DTO/resource vocabulary into MPC business architecture.
+
+Accepted target:
+
+```text
+provider-specific surfaces
+        ↓
+D4 concrete adapter
+  - namespace
+  - operation support / coverage
+  - provider-native evidence
+  - provenance / time / granularity
+        ↓
+semantic core where meanings genuinely align
+        +
+provider-enriched evidence when a provider exposes more
+        ↓
+D1 consumer authority
+```
+
+> **Provider Richness Invariant:** MPC MUST NOT discard materially useful provider evidence merely because another marketplace lacks an equivalent capability. Richer evidence may be acquired when it serves a named Product 1.0 consumer or correctness property, while remaining source-qualified/optional and never becoming universal MPC ontology merely because one provider exposes it.
+
+Provider richness is capability-rich, not payload-rich. A provider field enters the target only for a named Product 1.0 consumer, a known correctness property, or materially required non-reobservable evidence. This never authorizes indiscriminate payload/PII/deprecated/debug-field retention.
+
+## 6.2 Market Evidence — Mercado Livre enriched lane
+
+Market Intelligence remains authority for comparability, competitor relevance, competitive position/change, evidence sufficiency and derived competitive explanation. Offering remains authority for Price Intent/action.
+
+Current Mercado Livre evidence proved materially useful enriched surfaces including:
+
+- `price_to_win` / catalog competition;
+- catalog offer population;
+- own/winner offer price;
+- buyer-facing shipping amount and free-shipping state;
+- provider shipping tags such as `mandatory_free_shipping` where exposed;
+- provider competition status/boosts/reasons where exposed.
+
+These are **provider-enriched Market Evidence**, not mandatory universal marketplace fields.
+
+Measured example:
+
+```text
+our offer
+  price               69.90
+  buyer shipping      44.94
+  free_shipping       false
+
+winner
+  price               79.90
+  buyer shipping       0.00
+  free_shipping       true
+  shipping tag        mandatory_free_shipping
+
+provider price_to_win 26.75
+```
+
+A price-only view would incorrectly suggest the organization's offer was cheaper. The buyer-facing delivered amounts were instead approximately `114.84` vs `79.90`, and the provider also exposed shipping/boost evidence explaining why simple item price is insufficient.
+
+D4 therefore preserves the relevant provider facts; Market Intelligence may derive delivered-price/competitive explanation; Commercial Economics may consume that interpretation plus seller-borne cost evidence; Offering alone owns any resulting Price Intent.
+
+Knowledge-state controls are also proven:
+
+- HTTP 200 may carry `not_listed` / `item_not_opted_in` rather than positive competition evidence;
+- `catalog_listing=true` does not guarantee active catalog competition evidence;
+- provider competition payload is not catalog-membership authority;
+- competitor point access may be unavailable/403;
+- catalog offer paging is bounded provider population, never general-market completeness.
+
+**M1 = PASS / CLOSED AS INSTALLATION LANE-SELECTION EVIDENCE.**
+
+## 6.3 Expected / Order Economic Evidence
+
+Commercial Economics owns L0/L1 meaning. D4 provides only provider-dependent evidence.
+
+Current L0 composition can consume:
+
+```text
+Sankhya Expected Tax           ← B3
+marketplace expected sale fee
+marketplace expected seller shipping
+provider promotion/discount evidence when material
+```
+
+### Expected sale fee
+
+Current Mercado Livre `listing_prices` live falsification proved, for the measured MLB context, materially effective inputs including:
+
+- price;
+- listing type;
+- category;
+- **shipping mode** for the logistics-sensitive fixed fee;
+- provider-returned currency/components.
+
+The measured operation silently ignored `quantity`, `logistic_type` (including an invalid value), `billable_weight` and unknown parameters. These are surface-specific findings, not universal provider laws; weight/dimensions remain material to seller-shipping estimation.
+
+Adapter obligations:
+
+1. HTTP 200 does not prove a qualifier was consumed.
+2. Validate requested listing type against returned selection/shape; never accept a fail-open all-types response and take `response[0]`.
+3. Explicitly qualify category when category-specific pricing is required; omission must not silently become a site-default quote.
+4. Preserve provider-returned currency instead of fabricating a default.
+5. Preserve returned component scope/granularity; do not invent arithmetic identities.
+6. Use decorrelation/falsification proportionately when a provider can silently ignore request fields.
+
+Current legacy `FeeQuote` remains current-state evidence only and is insufficient as target contract by inheritance.
+
+### Expected seller shipping
+
+The selected Mercado Livre seller-shipping estimation surface (`/users/{USER_ID}/shipping_options/free` family) is distinct from `listing_prices` and live evidence proved sensitivity to item/dimensions/weight/price context.
+
+D4 preserves **seller-borne expected shipping** for the requested context, never buyer-paid freight or a generic shipping number. Silent-success/falsification obligations apply to this expected-economics surface as well.
+
+### L1 Order Economics
+
+Transaction-specific evidence remains distinct from L0. Current evidence includes Order price/quantity/discount, Order `sale_fee`, Payment reference, related Shipment seller-side cost and attributable B3 fiscal/business-system evidence.
+
+Live measurement re-proved `order_items[].sale_fee` as **per unit** on a multi-unit Order. The related Payment represented that fee as multiple charge rows with different destinations plus separate shipping charge evidence.
+
+> **Granularity/decomposition is source-specific. Order fee evidence is not assumed to be Payment fee evidence re-expressed at another scale.**
+
+Commercial Economics owns aggregation/classification/attribution. Buyer shipping charge, seller shipping cost and provider fee remain distinct.
+
+Mercado Livre Billing is only billed-charge/rebate/bonus/fiscal-reconciliation evidence; it may explain divergence from Order fee but is not Payment release/cash authority.
+
+ADR-009's fee/value provenance rule remains homed in D2. No `channel_fees` ledger/layer ontology survives by inheritance.
+
+**E1 = PASS / B4 CLOSURE GATE CLOSED.**
+
+## 6.4 Financial Movement / Release / Refund Evidence
+
+D4 exposes source-qualified external financial evidence without creating synthetic MPC Payment/Refund/Settlement business entities.
+
+A material external financial occurrence preserves proportionately:
+
+- Organization + external source/account namespace;
+- provider-native identity/kind/status;
+- currency;
+- provider-returned gross/net/components;
+- approval/release/reversal occurrence times separately;
+- acquisition time;
+- Order/Payment/Shipment/external-reference anchors where exposed;
+- component direction/source/destination when needed for correct interpretation;
+- refunds/chargebacks/adjustments/withdrawals as distinct occurrences where the provider models them distinctly.
+
+Commercial Economics owns realized interpretation, Economic Attribution and R2. Post-Sale Resolution may consume the same refund/reversal evidence for consequence closure without acquiring economic authority.
+
+### Same bound ML credential → Payment API
+
+For the selected Installation, live proof established:
+
+```text
+Mercado Livre Order
+      ↓ payments[].id
+GET https://api.mercadopago.com/v1/payments/{id}
+Authorization: Bearer <same bound ML Installation access token>
+      ↓ HTTP 200
+```
+
+A nonexistent Payment control returned honest 404.
+
+Therefore **a separate Mercado Pago application/credential is not required for the selected Product 1.0 per-sale Payment path on this Installation**. This is a time-bound Installation capability fact; future authorization/scope change triggers revalidation rather than speculative duplicate credential architecture now.
+
+### Approval/release/cash separation
+
+Live evidence proved:
+
+- `approved` can precede `released` by days;
+- `money_release_date` may already be populated while `money_release_status` is `pending`;
+- timestamp presence alone does not prove release;
+- withdrawal/payout and bank receipt remain outside the selected Payment surface/R3.
+
+### Payment charge/reversal evidence
+
+The selected Payment surface exposed useful `charges_details` with native charge type/id, original/refunded amounts, `accounts.from`/`accounts.to` direction, Shipment metadata and Order/external-reference correlation.
+
+Live evidence also proved:
+
+- `fee_details` may be incomplete or empty while real charges exist;
+- `net_received_amount` is not refund-adjusted and therefore is not post-reversal realized authority;
+- unsigned component amounts are insufficient when direction is material.
+
+Target rule:
+
+> **Use the provider's directionally qualified charge/reversal evidence required by the selected L2/R2 claim; never promote `fee_details`, `net_received_amount` or `money_release_date` alone into realized authority.**
+
+A real full-refund-after-release case proved that earlier release remains historical fact and later refund/reversal is appended as a distinct occurrence. The same occurrence can feed Commercial Economics and Post-Sale Resolution without authority transfer.
+
+**S1 = PASS / B4 CLOSURE GATE CLOSED.**
+
+### S1-B broader account universe
+
+No concrete Product 1.0 correctness gap required an account/report population in the selected B4 samples. Commission components, financing-related charges, seller shipping, release and full refund were reachable through anchored per-sale reads.
+
+Therefore **S1-B = DEFER SAFELY / NOT CURRENTLY REQUIRED.**
+
+Reopen only if a real material movement appears without usable per-sale anchors, period completeness becomes required, or withdrawal/payout population becomes Product scope.
+
+## 6.5 No report-generation/write surface by convenience
+
+B4's Market/Economics/Settlement acquisition target is read/evidence-only.
+
+A provider POST that creates/generates a report artifact is an external effect, not “read support”. Report generation is not admitted merely because a later GET could consume the artifact.
+
+If a future required evidence class can only be obtained through report generation, return to explicit D3/D4 external-effect adjudication and operator authorization.
+
+## 6.6 Source admissibility / legacy ADR disposition
+
+- **ADR-014:** historical after B4; old on-demand/local-Docker market runtime has no surviving D4 target meaning. D7 owns collection runtime/cadence.
+- **ADR-020:** generic `CollectorPort` target shape superseded. One real market source does not justify a collector framework.
+- **ADR-032:** catalog-offers default-off flag target meaning superseded/historical; runtime flags do not define provider capability and D7 owns any necessary toggle mechanics.
+- **ADR-009:** carried provenance constraint remains homed in D2; B4 does not duplicate it.
+
+Stable source-admissibility rule:
+
+> **Absence of an admitted external market-data source never authorizes fabricated evidence or an unadjudicated scraping path by convenience. A materially new market-data source requires explicit source, legality/trust, coverage and provenance adjudication before its evidence can support MPC claims.**
+
+This does not permanently ban every future lawful collector; it prevents missing data from silently authorizing an unreviewed truth source.
+
+## 6.7 B4 YAGNI / overengineering fence
+
+B4 does not introduce:
+
+- lowest-common-denominator suppression of useful provider evidence;
+- indiscriminate provider payload mirroring;
+- universal Provider/Capability/MarketObservation graph;
+- generic Financial Transaction/Payment/Refund/Settlement MPC business entity merely for normalization;
+- universal D4 financial or fee ledger;
+- generic `CollectorPort` plugin/framework;
+- unadjudicated scraping infrastructure;
+- raw provider PII/payload retention by convenience;
+- one global `Fee` shape collapsing expected/order/billed/payment decompositions;
+- generic correlation by amount/time;
+- `price_to_win` as recommended price;
+- Billing as release/cash authority;
+- Payment approval or release-date presence as release;
+- `net_received_amount` as post-refund realized authority;
+- `fee_details` as complete fee authority;
+- provider release as bank receipt;
+- ERP receivable/baixa as marketplace/payment realized authority;
+- report generation by symmetry;
+- support for every provider field/report/movement class before a named consumer/correctness need exists.
+
+## 6.8 B4 proof status / safe defers
+
+- **M1 Market Evidence lane — PASS / CLOSED.**
+- **E1 Expected/Order Economic Evidence — PASS / CLOSED.**
+- **S1 Realized/Release Evidence — PASS / CLOSED.**
+- provider-rich market evidence materiality — proven by real price/shipping/winner competition case;
+- same ML Installation credential → Payment API — proven;
+- separate Mercado Pago credential for selected lane — proven unnecessary;
+- approval ≠ release; release-date presence ≠ release — proven;
+- `fee_details` incompleteness and `net_received_amount` non-refund-adjustment — proven;
+- refund appended after prior release and dual-consumer evidence use — proven;
+- **broader account movement universe — DEFER SAFELY / bounded Unknown;**
+- **R3 bank side — DEFERRED / unclaimed;**
+- **report generation — NOT ADMITTED / not required.**
+
+**No B4 closure gate remains.**
+
+## 6.9 B4 reopen triggers
+
+Reopen only the implicated decision when material evidence shows, for example:
+
+- a required provider-rich capability cannot fit source-qualified evidence without leaking provider ontology into a D1 domain;
+- a supported provider lacks a legitimate source for a Product 1.0 claim and honest insufficiency becomes unacceptable to the product requirement;
+- a new market source materially differs in legality/trust/coverage/provenance;
+- provider expected-cost/shipping semantics change so the current falsified request contract no longer proves the claim;
+- the bound ML token can no longer access required Payment evidence and no sanctioned equivalent exists;
+- a material movement appears without a usable per-sale anchor and correctness requires a population/recovery source;
+- provider monetary evidence cannot fit D2 provenance/identity semantics or D3 occurrence/partial/recovery semantics;
+- Product 1.0 genuinely requires report generation or another B4 external write;
+- a bank source becomes accepted and R3 becomes real scope;
+- a second provider proves repeated technical mechanics whose duplication is materially worse than a small shared non-authority mechanism.
+
+Naming preference, provider symmetry, current module convenience and hypothetical provider futures are not reopen evidence.
+
+---
+
+# 7. Evidence basis and proof disposition
+
+B1 external facts were reverified against current official provider/source documentation families during review. B2 current provider facts were independently challenged against current Mercado Livre documentation and a real read-only Installation probe. B3 combined official Sankhya/provider evidence with sanctioned sandbox/production measurements and independent Fable challenge; final Expected-Tax closure was measured on the operator-configured stable target model on 2026-08-18. B4 combined current official Mercado Livre/Mercado Pago documentation, independent adversarial review and live read-only evidence against the bound Installation; M1/E1/S1 all closed with explicit falsification/negative controls where material.
 
 External sources and reviewer notes are evidence, never second architecture authority. Git history is the archive for detailed probe/review narratives.
 
@@ -776,11 +1064,11 @@ D8 still owns the first controlled real effects whose semantic contracts are alr
 - first controlled alternate-destination/contact realization before claiming that concrete capability;
 - any currently unexercised fiscal branch/component that becomes material to a selected golden flow.
 
-A failed later proof narrows/reopens only the implicated concrete capability; it never authorizes Oracle fallback, master-data corruption or fabricated known values.
+A failed later proof narrows/reopens only the implicated concrete capability; it never authorizes Oracle fallback, master-data corruption, fabricated known values or provider-evidence suppression.
 
 ---
 
-# 7. Review and authority protocol
+# 8. Review and authority protocol
 
 D4 uses the accelerated protocol established by earlier stages:
 
@@ -799,20 +1087,20 @@ D4 uses the accelerated protocol established by earlier stages:
 
 ---
 
-# 8. Current D4 state / exact next action
+# 9. Current D4 state / exact next action
 
 D4 is **OPEN / ACTIVE**.
 
 - **D4-B1 — External Contract Grounding: ACCEPTED / CANONICAL.**
 - **D4-B2 — Mercado Livre Operational Contract: ACCEPTED / CANONICAL; Installation Evidence Gate CLOSED / PASS.**
 - **D4-B3 — Sankhya Business-System Contract: ACCEPTED / CANONICAL.**
-- **D4-B4 — Market / Economics / Settlement Contract: NEXT / NOT YET OPENED.**
-- **Final D4 Global Coherence + YAGNI / Overengineering / Future-Cost review: NOT STARTED.**
+- **D4-B4 — Market / Economics / Settlement Contract: ACCEPTED / CANONICAL; M1/E1/S1 CLOSED / PASS.**
+- **Final D4 Global Coherence + YAGNI / Overengineering / Future-Cost review: NEXT / NOT YET COMPLETED.**
 
-No D0/D1/D2/D3 or D4-B1/B2 reopen is currently required.
+No D0/D1/D2/D3 or D4-B1/B2/B3 reopen is currently required.
 
-Exact next action: **open D4-B4 — Market / Economics / Settlement Contract from canonical D4-B1+B2+B3.** B4 owns concrete external market/competitor, fee, provider financial movement, refund/adjustment, settlement/payout and related provenance/coverage/reconciliation contracts required by accepted Product 1.0. Commercial Economics remains authority for economic interpretation, attribution and reconciliation.
+Exact next action: **run the final D4 Global Coherence + YAGNI / Overengineering / Future-Cost review across canonical B1+B2+B3+B4.** Test duplicate/missing authority, contradictions across provider/business-system/economics contracts, lowest-common-denominator vs provider-overfit pressure, repeated mechanisms that accidentally became authority, unsafe defers and foreseeable retrofit traps.
 
-B2 R1 and B2 R2/B3 real-effect obligations remain D8 proofs; they do not reopen accepted B2/B3 by themselves.
+B2/B3 real-effect obligations remain D8 proofs; B4 broader account-universe/R3 residuals remain bounded defers until a real consumer makes them material. These do not reopen accepted B1–B4 by themselves.
 
-Do not begin D5 until B4 and the final D4 Global Coherence review are accepted. Product implementation remains blocked until D9.
+Do not begin D5 until the final D4 Global Coherence review is accepted. Product implementation remains blocked until D9.

@@ -93,7 +93,7 @@ Communication may duplicate, arrive late/out of order, fail or replay without ch
 
 ## External-integration principles
 
-D4-B1, D4-B2 and D4-B3 are accepted and canonical. External integrations obey these constraints:
+D4-B1, D4-B2, D4-B3 and D4-B4 are accepted and canonical. External integrations obey these constraints:
 
 - consumer context owns semantic meaning/port;
 - adapter owns provider/business-system protocol, DTOs, auth and pagination;
@@ -115,11 +115,19 @@ D4-B1, D4-B2 and D4-B3 are accepted and canonical. External integrations obey th
 - Expected Tax is delegated to the sanctioned Sankhya fiscal engine under an explicit, revalidatable SourceInstance binding; MPC does not reimplement the provider tax engine and does not turn unproven/absent tax components into plausible zeros;
 - provider-native negotiation/configuration may be fiscally material and therefore participates in concrete binding validation without becoming MPC commercial ontology;
 - consequential business-system effects preserve source-qualified correlation, authoritative reread and no-blind-retry semantics;
+- **provider-rich, semantics-first:** MPC does not discard materially useful provider evidence merely because another marketplace lacks an equivalent capability; shared semantics are normalized only where meanings genuinely align, while provider-distinct evidence remains source-qualified/optional and never becomes universal MPC ontology merely because one provider exposes it;
+- capability richness does not authorize payload mirroring: provider evidence is retained only for a named consumer/correctness need or materially required non-reobservable evidence, with PII minimization intact;
+- Market Evidence such as provider competition status, `price_to_win`, winner/offer shipping, free-shipping tags or boosts may enrich Market Intelligence when exposed; they never become Price Intent or automatic price recommendation;
+- expected sale fee, expected seller shipping, Order transaction fee, billed charge/rebate, Payment approval, release/account impact, refund/reversal, withdrawal/payout and Bank Cash Receipt remain distinct evidence/meaning rungs;
+- source-specific fee/financial decomposition and granularity are preserved rather than forced into one generic `Fee` model;
+- current provider read surfaces that may silently ignore/fallback on request qualifiers require fail-honest validation/falsification proportional to the economic claim; transport 200 alone is not semantic sufficiency;
+- a separate payment-provider credential is not invented when the bound Marketplace Installation credential already proves the selected sanctioned Payment read path; capability remains Installation/context-sensitive and revalidated on material change;
+- absence of an admitted external market-data source never authorizes fabricated evidence or an unadjudicated scraping path by convenience; a materially new market-data source requires explicit source, legality/trust, coverage and provenance adjudication before its evidence can support MPC claims;
 - current unstable provider/reference behavior must be verified against current official/real behavior for the concrete decision that depends on it;
 - live integration claims require real-dependency evidence, not only mocks;
-- no speculative universal provider/integration/ERP/workflow/customer framework is introduced.
+- no speculative universal provider/integration/ERP/workflow/customer/financial framework is introduced.
 
-D4-B4 decides the still-open market/economics/settlement external surface. Installation-/SourceInstance-specific proof-lane details and later D7/D8 proof obligations remain in canonical D4 rather than becoming stable global platform constants here.
+Installation-/SourceInstance-specific proof-lane details, B4 Payment/fee observations and later D7/D8 proof obligations remain in canonical D4 rather than becoming stable global platform constants here.
 
 ## API and frontend
 
@@ -147,7 +155,9 @@ A structural rule should, where reasonable, fail at the strongest available boun
 - custom guard → negative fixture proves it fires;
 - external namespace mismatch → fail closed before attribution/effect where the source exposes authoritative qualification;
 - partial acquisition → cannot pass as complete in contract/integration proof;
-- attempted Direct Oracle wiring for Sankhya target integration → architecture/governance failure, not accepted fallback.
+- attempted Direct Oracle wiring for Sankhya target integration → architecture/governance failure, not accepted fallback;
+- provider-rich evidence missing on another provider → honest unsupported/not-applicable/unavailable, never suppression of a richer supported provider or fabricated equivalence;
+- economic/provider request field silently ignored/fallbacked → cannot pass as sufficiently qualified evidence merely because transport returned 2xx.
 
 A green artifact that did not execute the relevant subject is no proof.
 
