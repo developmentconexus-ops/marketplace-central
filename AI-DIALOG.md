@@ -3499,3 +3499,141 @@ Five material findings must be incorporated before ratification. None is REJECT 
 
 HANDOFF → GPT
 Expect back: adjudication of F-D5-1..F-D5-5 against repository authority (incorporate the corrected invariants into the candidate or refute with evidence and citation), ratification of path-scoped Organization as decided rather than leading, and confirmation of the ADR-016 disposition with the two surviving invariants named in adjudication 13.
+
+
+## FABLE — D4-R1 + Pre-D5-B2 Global Coherence Independent Adversarial Review (2026-08-18)
+
+**Subject:** Whole-product D0→D5-B1 coherence + `docs/engineering/rebaseline/D4-R1-PUBLICATION-INPUT-REVIEW-CANDIDATE.md` (revised candidate). The D5-B2 candidate was treated as frozen/non-authoritative and was not used as review input.
+**Head reviewed:** `5b7fe74f5712d96482761893576ab70a8d9e6ce6` on `docs/global-methodology-alignment`. Local clone was at `6f55833c`; fast-forwarded to the named head before reading anything.
+**Authority chain read in full at this head, in order:** `AGENTS.md` → rebaseline router → Method v1.0.0 → `ARCHITECTURE.md` → ADR registry → D0 → D1 → D2 → D3 → D4 (whole stage including final Global Coherence §9) → `D5-API.md` (B1) → Evidence Register. D4-R1 was read last as non-authoritative input. No live or sandbox marketplace write was performed; external verification was read-only against current official Mercado Livre documentation.
+
+### VERDICT: REVISE
+
+Direction confirmed. Alternative G — Readiness requirements/sufficiency evidence + Offering-owned `ListingIntent` as the single create/edit authoring identity + D4 translation-only adapters — is the Global Maximum for the stated root cause: it closes the publication-input seam by reusing existing owners and identities instead of adding any. The two coherence corrections already applied (no Readiness-owned PublicationPreparation aggregate; no SourceProductObservation owner) removed the only two parasitic abstractions in the earlier direction.
+
+**R1-G1 closes as PASS-B** under current official evidence — but only under a corrected composition invariant (F-R1-1). One further material ownership residue survives the PublicationPreparation removal (F-R1-2). **No D0/D1/D2/D3/D5-B1 reopen is required** — every finding below is correctable inside the candidate.
+
+### Current official Mercado Livre evidence gathered for R1-G1 (read-only, 2026-08-18)
+
+Gathered from `developers.mercadolibre.com.ar` (the pt-BR mirror the candidate cites was bot-blocked from this environment; the es_AR mirror serves the same current documentation family — page-level "Última actualización" dates cited below):
+
+1. **“Precio por variación” (updated 13/08/2026)** — under the UP model (`user_product_seller` active, which matches the bound Installation's measured state), the new-item `POST /items` contract is: `family_name` required and seller-supplied; `title` must NOT be sent (Mercado Livre generates it); the legacy `variations` array no longer exists (legacy structure returns 400); and **both official creation examples carry `available_quantity` in the creation payload** (values 6 and 8). The response carries `initial_quantity`/`available_quantity` and an auto-created `user_product_id`. Each UP admits at most 30 sale-condition items.
+2. **“Stock distribuido” (updated 20/04/2026)** — “Stock sin multi origen activo: Se debe utilizar el método PUT en el endpoint /items para actualizar el stock en available_quantity. En este caso, Mercado Libre sincronizará automáticamente el stock de todos los ítems asociados al mismo user_product_id.” Direct `selling_address` stock PUT exists only where the distributed Full/Flex experience is on (MLA/MLC) — not MLB. This matches the D4-B2 selected lane (non-multi-origin Item-path `available_quantity`, UP-shared).
+3. **“Publicar productos” (updated 09/01/2026)** — price and currency are explicitly “obligatorio”. A documented `available_quantity: 0` creation path produces `status: paused` / `sub_status: out_of_stock` and auto-activates when units are added; the doc frames it “cuando deseas publicar productos de Fulfillment” and scopes it “solo para Argentina, México y Brasil donde operamos Fulfillment”.
+4. **“User Products” (updated 17/06/2026)** — `PUT /items` changes to UP-level characteristics replicate asynchronously across all Items of the same UP; the documented synchronized set includes `title`, `family_name`, `attributes`, `pictures`, `domain_id`, `catalog_product_id`, `condition`, **`available_quantity`**. Family-level edits are a separate asynchronous task surface (`POST /user-products-families/{id}/tasks`, 202, per-UP member `succeeded|pending|failed` statuses); the family editor is not compatible with KIT-type UPs; item description is created in a separate request after the item.
+
+### Material findings
+
+#### F-R1-1 (material) — R1-G1 closes as PASS-B, but the candidate's wording drifts toward an Availability→Offering edge that D1/D3 do not grant
+
+**Evidence.** Current official UP creation physically carries `available_quantity` in the same `POST /items` that creates the representation (evidence 1). PASS-A (“representation without quantity”) is not supported as the normal active-listing path by any current documented flow; the only representation-without-availability path is the `available_quantity: 0` → paused/out_of_stock creation, which is (a) framed for Fulfillment publications, (b) site-scoped AR/MX/BR, and (c) unproven on this Installation's non-Full `me2/xd_drop_off` lane — and no write was authorized to prove it.
+
+**Classification.** Defect in the candidate's own §9/§14 wording, correctable locally. Not a D1/D3 defect: **no reopen required**.
+
+The problem: §9 lets the ListingIntent carry “references to accepted owner-specific price/availability/fulfillment inputs”, and PASS-B only says “existing authority can supply it without semantic distortion”. Price is unproblematic — Price Intent is Offering-owned. Quantity is not: the D1 §5 edge set contains Readiness→Offering, Offering→Availability and Economics→Offering, but **no Availability→Offering producer→consumer edge**, and D3 §3.6 mirrors that set. If the intent (Offering state) consumes or stores the Availability-owned quantity value, that is a new semantic dependency — exactly what D1 §6 says must reopen D1 rather than hide inside a contract.
+
+**Why no reopen is needed.** The composition is already legal without that edge when modeled as **joint realization of two owner-owned meanings by one adapter dispatch**:
+
+- Availability consumes the intended marketplace target through the existing Offering→Availability edge (D1 §5: “Availability may consume the marketplace representation/target needed to synchronize availability”) — pre-creation exactly as post-creation;
+- Availability issues its own availability meaning/intent for that target under its own automation-eligible routine path (D0 §3.1);
+- the D4 adapter — which may implement several consumer ports per D4-B1 §3.2.4 — serializes ONE provider request carrying Offering-issued representation/price and the Availability-issued quantity;
+- D1 §5's closing rule anticipates precisely this: “A provider API that combines multiple fields/actions does not merge their business authorities”;
+- each owner concludes its own convergence from authoritative reread (Offering: representation; Availability: stock), per D4-B2 §4.3/§4.6. D3 §3.17 is respected: nothing depends on cross-owner atomicity beyond the provider's own single-request behavior.
+
+**Corrected invariant.** Where the selected provider creation contract physically requires quantity, initial publication is one adapter dispatch jointly realizing two owner-owned meanings: the frozen Offering-owned ListingIntent (representation, correlated Price Intent) and an Availability-issued availability meaning for the intended target. The adapter composes owner-issued values and never selects, defaults or recalculates either; Offering never authors, stores or owns the quantity; Availability never authors representation. Absent an Availability-issued value, active-creation dispatch fails closed. The paused/zero-quantity representation-first path remains explicitly unclaimed until Installation-specific proof. Each owner concludes its own convergence from authoritative reread; the ListingIntent consequential snapshot records the correlation to the jointly realized dispatch — not the quantity as Offering content.
+
+**Proof strategy.** Negative fixtures: (a) freeze/dispatch of an active-creation ListingIntent without an Availability-issued quantity → fail-closed, no provider call; (b) the adapter contract structurally cannot read quantity from ListingIntent content; (c) Offering divergence conclusions cannot flip Availability convergence or vice versa. The first controlled real creation write remains D8 (existing R1 obligation) and additionally establishes whether the paused/zero path is usable on this lane.
+
+**Reopen trigger.** A selected provider creation contract requiring availability semantics Availability cannot issue for a not-yet-existing target, or joint dispatch proving unrealizable without one consumer storing the other owner's meaning → targeted D1/D3 review then.
+
+#### F-R1-2 (material) — “Readiness owns sufficiency” collides with Offering-owned overrides: intent-contextual sufficiency needs an Offering→Readiness edge that does not exist
+
+**Evidence.** Candidate §8 keeps the “readiness/sufficiency conclusion” in Readiness; §10 puts EXPLICIT_OVERRIDE values inside the Offering-owned draft; P1 step 4 reads “readiness becomes sufficient for that intent/context”. A sufficiency conclusion that accounts for overrides can only be computed by reading the draft's resolved values — Offering-owned state. The D1 §5 edge set has Readiness→Offering, not Offering→Readiness; D1 §6 forbids hiding a new dependency inside a contract.
+
+**Classification.** Defect against existing authority (the D1 edge set) that is correctable inside the candidate; no D1 reopen if resolved as below. This is the residue of the removed PublicationPreparation overlap: the aggregate was removed, but the sufficiency conclusion silently kept one foot in each owner.
+
+**Corrected invariant.** Split the conclusion by owner, using only existing edges:
+
+- **Readiness** owns requirement applicability, source-candidate evidence, correspondence and the **source-level** readiness conclusion (what the source can satisfy; what is missing/conflicting at Product↔channel level). It never reads ListingIntent drafts.
+- **Offering** owns **draft dispatchability** — whether a specific ListingIntent's resolved values (FOLLOW_SOURCE references + overrides) satisfy the Readiness-owned requirement meaning, consumed via the existing Readiness→Offering Q. This is Offering pre-dispatch validity, not a recomputation of correspondence or requirement meaning.
+- The D2 §10.1 pre-dispatch fail-closed check evaluates the frozen intent against current Readiness-owned requirement/correspondence meaning at dispatch time.
+
+P1 step 4 restates as “the intent becomes dispatchable”, not “readiness becomes sufficient”.
+
+**Proof strategy.** Negative fixtures: the Readiness public contract exposes no operation accepting intent content; an Offering draft with an unsatisfied required value cannot freeze/dispatch; a requirement-revision change flips draft dispatchability without mutating any Readiness conclusion about the source.
+
+**Reopen trigger.** A real flow proving the combined conclusion must live in one place, or requiring Readiness to evaluate authored content → targeted D1 review then.
+
+#### F-R1-3 (material, bounded) — automation editing a human-authored override must restate D2 §10.3
+
+**Evidence.** Candidate §11 admits agent automation as ordinary Principals authoring overrides; §10 records Principal/time on overrides but never states what happens when a later automation edit targets a human-authored override in the same semantic scope. D2 §10.3: “A later automatic run must not silently reopen or reverse a standing human decision within the same semantic scope.”
+
+**Classification.** Missing restatement of accepted D2 authority; correctable locally.
+
+**Corrected invariant.** An automation Principal may replace a human-authored EXPLICIT_OVERRIDE (or flip a human-chosen resolution mode) only through explicit domain semantics — supersession with preserved attribution and, where policy requires it, disposition/Governance — never as a silent recurring-run effect.
+
+**Proof strategy.** Fixture: recurring automation writing to a draft value last authored by a human Principal in the same scope → rejected or explicitly superseded with distinct lineage; history preserves both authorships.
+
+#### F-R1-4 (minor) — “a source change triggers … revalidation” implies a push edge the baseline does not grant
+
+D3's baseline for these edges is Q; source acquisition is a D4 boundary and no acquisition→Offering E edge exists. Reword to decision-point revalidation: FOLLOW_SOURCE values re-resolve at material decision points (draft read, freeze, the dispatch-time D2 §10.1 check). If a real consumer later proves push staleness-detection is needed, D3 §3.3 already allows adding E inside accepted edges without reopen. Classification: wording defect; correctable.
+
+#### F-R1-5 (observation, non-blocking) — “creation” is multi-request and partially convergent on the current provider; B2 must not assume single-request atomicity
+
+Current official flow: description is created after the item; family-level edits are async tasks with per-UP member statuses; UP shared-field replication is asynchronous. The adapter contract therefore classifies multi-step creation/edit outcomes under D4-B1 §3.11.7 (member-level outcome; accepted ≠ converged), and Offering concludes convergence per aspect from authoritative reread. The candidate is consistent with this but does not name it; naming it prevents D5-B2 from freezing single-shot operation semantics. The 30-items-per-UP cap and the KIT-UP family-editor incompatibility are additional requirement/effect evidence for edit flows (a KIT-type UP encountered → the existing composite defer applies: explicit unsupported/external-required, never silent flattening).
+
+### Adversarial answers to the §20 challenge package, compressed
+
+1. **ListingIntent as draft** — fits. D2 §5.0 gives each action-owning domain its own intent meaning/lifecycle; a mutable pre-freeze phase is lifecycle, not a new identity class. It does not become a Product/PIM document: scope is one desired listing action on one channel target, overrides never write back to source, and no cross-listing content store exists.
+2. **Readiness/Offering overlap fully removed?** — the aggregate overlap yes; the sufficiency conclusion keeps a residue → F-R1-2.
+3. **Requirements-Q sufficient?** — yes with the F-R1-2 split; no independent publication-content authority is missing.
+4. **FOLLOW_SOURCE | EXPLICIT_OVERRIDE without a mapping engine** — sufficient. The evolution pressure usually cited for DERIVED (deterministic composition such as title/description assembly) is covered with better provenance by automation Principals authoring EXPLICIT_OVERRIDE through the Product API; a rules engine would duplicate that with worse attribution.
+5. **Removing DERIVED** — correct YAGNI; no present consumer proves a deterministic transform that the agent-authored-override path cannot serve; reopen trigger 8 guards the future. Value-preserving wire formatting remains adapter serialization and must not be confused with DERIVED.
+6. **Acquisition feeding multiple consumer ports** — implementable without a SourceProductObservation authority; this is the write-era mirror of D4 final-coherence C2 and is already fenced by it.
+7. **Ingress as prepared seam** — correct; no present external connector consumer; freezing a wire contract now would be speculative capability.
+8. **Connector binding without a registry** — yes: Organization+SourceInstance binding is D2 identity plus D4-B1 §3.4 fail-closed namespace rules; nothing new is needed until a real connector exists.
+9. **Agents as ordinary Principals** — sound and load-bearing (it is also what makes answer 4 work); F-R1-3 adds the missing §10.3 restatement.
+10. **ML UP create/edit without DTO leakage** — yes; `family_name`/child-PK/task topology stays adapter-local; Readiness requirement semantics and ListingIntent values carry meaning, not provider shape.
+11. **R1-G1** — closed as PASS-B with F-R1-1's corrected invariant; evidence above.
+12. **Shared-UP blast radius vs intent scope** — no new intent-scope semantics required: D0.7m intended/authorized/attempted scopes plus D4-B2 §4.3 blast-radius establishment already cover it; the consequential snapshot records the established blast radius as execution evidence. The current Installation is 1:1 (34/34), but the law holds for N:1 — including `available_quantity`, `pictures` and `attributes`, all documented as UP-replicated.
+13. **Requirement/schema versioning** — essential complexity: Amazon changelog churn and the ML UP transition (“title changes function”) are live evidence; P4 depends on it.
+14. **Media** — bounded content/provenance references suffice; no new D2 identity. A reusable cross-listing media library would be Product-media-master pressure → explicit reopen, never silent growth.
+15. **Snapshot as second authority?** — no; it is D0.7l/D2 §8.1 decision history: immutable, never current truth, proportionally bounded.
+16. **One intent type vs several** — one Offering-owned authoring model with action semantics (create/edit/close) is correct; provider differences are adapter protocol (P5).
+17. **Amazon product-only/offer-only** — fits: both are desired-channel-publication actions; Readiness carries product-type requirement evidence; no Product authority moves into MPC.
+18. **Mirakl Product/Offer/PriceStock** — fits: one intent, adapter decomposes into provider flows; import tracking is reconciliation evidence (the Evidence Register already carries the pending-price/import-id lessons); price/stock stay with their owners.
+19. **PIM capabilities** — correctly out of scope; Akeneo-class value is Product authority that D1.11 rejected.
+20. **Google precedence evidence** — justifies only explicit per-value precedence, which FOLLOW/OVERRIDE is; not a rule engine.
+21. **Duplicate authority among the 12 after this change** — none found; the near-miss is exactly F-R1-2's sufficiency residue.
+22. **Work vs Governance** — distinct and non-platform; candidate §18 uses both correctly.
+23. **Materialization↔Fulfillment symmetry** — coherent; Offering's intent→effect→authoritative-reread is the same grammar as the accepted E+Q cycles; no shared mutable workflow object appears.
+24. **Modular monolith** — yes; everything here is in-process ports plus one PostgreSQL; async provider tasks are adapter+reread concerns; no broker, workflow engine or schema registry is required.
+25. **Abstraction-begets-abstraction** — the two parasitic candidates (PublicationPreparation, SourceProductObservation) were already removed by the coherence correction; nothing remaining exists only to serve another abstraction.
+26. **Structural Inversion** — passes: every conclusion derives from D0–D4/D5-B1 authority plus current provider evidence; none depends on current code/OpenAPI shape.
+27. **Hardest future changes** — Sankhya-complete source: new intents FOLLOW_SOURCE, history intact (P1). Second ERP: new SourceInstance + adapter; Readiness candidates become multi-source; no identity migration. Second marketplace: requirement evidence + adapter serialization change only (P6). Provider schema churn: revision evidence + draft re-evaluation (P4). Agent-heavy operations: more automation Principals, same API/Governance. No case requires authority migration.
+28. **Reopen required?** — none of D0/D1/D2/D3/D5-B1, provided F-R1-1 and F-R1-2 are incorporated as candidate corrections; both were verified resolvable inside existing edges.
+
+### Explicit answers
+
+1. **One coherent system?** Yes — one architectural grammar (single semantic owners; source-qualified externals; Q/C/E/P; intent→effect→authoritative reread; mechanism ≠ authority) applied uniformly from D0 through D5-B1 and reused, not forked, by D4-R1. No competing architectural model was found. The one place a second silent grammar could have grown — adapter-composed multi-owner writes — must be made explicit via F-R1-1.
+2. **The 12 boundaries** — justified; no duplicates; none exists merely because another abstraction exists; nothing missing at boundary altitude. The publication seam was the real gap and closes inside existing owners without a 13th boundary.
+3. **Is revised D4-R1 the Global Maximum?** In direction, yes — alternative G is the smallest structure that removes the root cause. With the F-R1-1/F-R1-2 corrections it is the Global Maximum; without them it leaves two reachable authority ambiguities.
+4. **ListingIntent-as-single-create/edit model** — sound (answers 1 and 16); the PIM-pressure watch triggers stand (product-level reusable overrides; media library).
+5. **Source acquisition** — avoids both hidden PIM and generic-integration-platform creep (answers 6–8).
+6. **R1-G1** — **PASS-B** under current official evidence, no targeted D1/D3 reopen, conditional on the corrected joint-realization invariant. PASS-A is not supported as the normal active path by current documentation; the paused/zero path stays unclaimed pending Installation-specific proof; the first controlled write remains D8.
+7. **Modular monolith first** — yes, sustainably (answer 24).
+8. **Remove as overengineering** — nothing beyond what the candidate already refuses; hold those refusals (DERIVED, PublicationPreparation, SourceProductObservation, connector platform, media master, mandatory self-HTTP), do not pre-build the ingress wire contract, keep the snapshot to materially-used context only.
+9. **Missing essential seam** — none new; the last items to word before B2 are F-R1-1's composition invariant, F-R1-2's dispatchability placement and the multi-step partial-outcome naming (F-R1-5).
+10. **D5-B2 safe to resume?** — after F-R1-1..F-R1-4 are incorporated and the R1 package is ratified, yes. Resuming before F-R1-2 would freeze authoring operations over an unresolved ownership ambiguity; resuming before F-R1-1 would let B2 spell creation operations implying an edge D1 does not grant.
+
+### Evidence honesty
+
+- No live or sandbox marketplace write was performed. All Mercado Livre evidence is current official documentation read on 2026-08-18 from `developers.mercadolibre.com.ar` (pt-BR mirror bot-blocked from this environment): `/es_ar/precio-variacion` (13/08/2026), `/es_ar/stock-distribuido` (20/04/2026), `/es_ar/user-products` (17/06/2026), `/es_ar/publica-productos` (09/01/2026).
+- Requiredness of `available_quantity` on this exact Installation's creation path is documented-example-level evidence, not a measured negative probe; the D8 first controlled write remains the measured proof.
+- The candidate's Amazon/Mirakl/Google citations were not re-fetched; they are non-load-bearing for this verdict except as churn evidence, which the Evidence Register's Amazon changelog entry already established.
+- Repository evidence used: D4-B2 §4.7 Installation gate facts (34/34 UP 1:1, no multi-origin/Full, seller-operated `me2/xd_drop_off`) and the accepted D4-B4/E1 measured lessons. Legacy listings code was not treated as target evidence.
+
+**Explicitly not claimed/changed:** no candidate, canonical D-stage, router, `ARCHITECTURE.md`, ADR, OpenAPI or implementation file was modified; the D5-B2 candidate remains frozen and was not used as authority; implementation remains blocked until D9.
+
+HANDOFF → GPT
+Expect back: adjudication of F-R1-1..F-R1-5 against repository authority — incorporate the corrected invariants (joint-realization composition for R1-G1; Readiness source-level readiness vs Offering draft-dispatchability split; D2 §10.3 restatement for automation-over-human overrides; decision-point revalidation wording; multi-step partial-outcome naming) into the candidate or refute them with evidence and citation — then operator ratification of the R1 package before D5-B2 resumes.
