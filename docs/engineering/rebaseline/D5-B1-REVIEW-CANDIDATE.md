@@ -1,382 +1,328 @@
-# D5-B1 — Semantic API Model & Contract Laws — REVIEW CANDIDATE
+# D5-B1 — Semantic API Model & Contract Laws — CONVERGED REVIEW CANDIDATE
 
-> **Status:** NON-AUTHORITATIVE REVIEW CANDIDATE  
+> **Status:** NON-AUTHORITATIVE — Fable reviewed / GPT adjudicated / awaiting explicit operator ratification  
 > **Stage:** D5 — API  
 > **Batch:** B1 — Semantic API Model & Contract Laws  
 > **Parent authority:** accepted D0 → D4 plus `ARCHITECTURE.md` and ADR registry  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
-> **Purpose:** bounded package for independent adversarial review; this file does not change architecture authority, stage status, ADR status, or implementation permission.
+> **Review evidence:** `AI-DIALOG.md`, Fable D5-B1 Independent Adversarial Review, 2026-08-18  
+> **Purpose:** converged review package only. This file does not change architecture authority, router status, ADR status, or implementation permission.
 
 ---
 
-## 1. Question this batch must answer
+## 1. Question and boundary
 
-D5 must not begin by preserving, renaming, or mechanically generating the current API. The first material question is earlier:
+D5 must not begin by preserving, renaming or mechanically generating the current API.
 
-> **What external API model and wire laws let MPC clients interact with the business authorities already accepted in D0–D4 without turning legacy modules, provider protocols, transport mechanics, or generic mutation abstractions into product semantics?**
+The first material question is:
 
-The answer must preserve the accepted product boundary:
+> **What external API model and wire laws let MPC clients interact with the business authorities already accepted in D0–D4 without turning legacy modules, provider protocols, transport mechanics or generic mutation abstractions into product semantics?**
+
+The accepted product boundary remains unchanged:
 
 - MPC is the internal **Marketplace Operations Control Plane** for **Marketplace Operations + Commercial Intelligence**;
-- Mercado Livre, Sankhya, payment APIs and future external systems are participants in that operating loop, not the product ontology;
-- MPC is provider-independent and integration-independent, but the accepted Product 1.0 is not a generic enterprise-control-plane framework;
-- a future decision to make marketplace commerce merely one vertical of a broader enterprise platform is a D0/D1 product-boundary reopen, not an API naming choice.
+- Mercado Livre, Sankhya, payment APIs and future external systems participate in that operating loop but do not define MPC ontology;
+- MPC is provider-independent and integration-independent;
+- MPC is **not** currently a generic enterprise operations platform;
+- making marketplace commerce merely one vertical of a broader enterprise control plane requires a targeted D0 product-boundary reopen followed by D1 coherence/reopen as needed; D5 may not introduce that change through generic API naming.
 
-This batch deliberately decides **laws before endpoint inventory**. A later D5 batch may enumerate concrete Product 1.0 operations only after these laws survive challenge.
+This batch decides **API laws before endpoint inventory**.
 
----
+### In scope
 
-## 2. Scope / non-scope
+- client-facing semantic API model;
+- Product API versus provider/business-system protocol ingress;
+- D1 owner and D3 Q/C/P wire laws;
+- Organization and Principal/access scoping;
+- knowledge, freshness and provenance representation laws;
+- consequential-action outcome, idempotency and precondition laws;
+- HTTP/API problem semantics versus valid business outcomes;
+- source-qualified external identity and provider-rich evidence containment;
+- one machine-readable Product API wire authority and derived/conformant SDK/server contracts;
+- hard-cutover / compatibility posture;
+- bulk/partial-outcome admission laws;
+- architectural enforcement and proof obligations.
 
-### 2.1 In scope
+### Explicitly not in scope
 
-This candidate decides, at D5 altitude:
-
-1. the client-facing semantic API model;
-2. the boundary between MPC Product API and provider/business-system protocol ingress;
-3. how D1 owners and D3 Q/C/P meanings appear at the HTTP boundary;
-4. Organization and Principal/access scoping at that boundary;
-5. query knowledge-state laws;
-6. consequential-action result, idempotency and precondition laws;
-7. HTTP problem/error semantics versus valid business outcomes;
-8. provider-rich evidence containment in client contracts;
-9. one machine-readable wire-contract authority and SDK derivation;
-10. hard-cutover / compatibility posture;
-11. global bulk/partial-outcome restrictions;
-12. proof obligations that a later implementation must satisfy.
-
-### 2.2 Explicitly not in scope
-
-This candidate does **not** decide:
-
-- the complete endpoint/path/operation inventory;
-- frontend screens, feature packages, cache/query hooks or UX — D6;
-- worker, queue, outbox, retry scheduler, transaction, deployment or process topology — D7;
-- end-to-end golden-flow choreography/proof — D8;
-- product implementation — blocked until D9;
-- a concrete OpenAPI generator, Go router/framework or TypeScript HTTP runtime;
-- exact OIDC provider, token format, session topology or identity-provider deployment;
+- complete endpoint/path/operation inventory;
+- D6 frontend screens, packages, query/cache topology or UX;
+- D7 worker/queue/outbox/retry/transaction/deployment/runtime topology;
+- D8 golden-flow execution/proof choreography;
+- product implementation, still blocked until D9;
+- concrete OpenAPI generator, Go router/framework or TypeScript HTTP runtime;
+- exact OIDC provider/session/deployment topology;
 - universal pagination/filter/sort DSLs;
-- universal event streaming/SSE/WebSocket surfaces;
-- generic workflow, command, mutation, integration, evidence or provider frameworks.
+- universal event-stream/SSE/WebSocket surface;
+- generic workflow, command, mutation, integration, evidence or provider framework.
 
 ---
 
-## 3. Evidence classification
+## 2. Evidence classification
 
-### 3.1 KNOWN from accepted authority
+### KNOWN
 
-1. **Product boundary.** D0 defines MPC as a marketplace-operations control plane, not a marketplace dashboard, ERP replacement or generic integration hub.
-2. **Semantic ownership.** D1 assigns each material Product 1.0 business responsibility to one semantic authority and explicitly rejects a generic `Mutation`/`Action` business domain.
-3. **Identity/isolation.** D2 makes `Organization` the canonical tenant/isolation root, defines `Principal`, source-qualified external identity and domain-local identities for material Business Intents, and forbids inferring Organization from Installation/provider/source identity.
-4. **Communication meaning.** D3 accepts semantic Q/C/E/P communication and distinguishes known/known-empty/unknown/unavailable query outcomes plus accepted/rejected/pending/ambiguous capability outcomes where applicable.
-5. **External boundary.** D4 requires consumer-owned semantic ports, provider-local protocol/DTO knowledge, explicit namespace/capability/coverage semantics, and acceptance/ambiguity/convergence separation for external effects.
-6. **Provider richness.** D4-B4 accepts **Semantic Core + Provider-Enriched Evidence**: no lowest-common-denominator flattening and no raw provider-payload ontology.
-7. **No compatibility tax.** `ARCHITECTURE.md` and the Evidence Register state there are no production clients requiring current route/schema/package compatibility; hard cutover is allowed.
-8. **Current API is evidence only.** Current OpenAPI/routes/SDK/module names are explicitly not inherited target authority.
-9. **Current wire-authority defect exists.** OpenAPI, a hand-written SDK and handler/routing knowledge coexist. Legacy ADR-016 admits that same-commit OpenAPI+SDK discipline proves atomicity, not agreement, and leaves permanent human-transcription drift exposure.
+1. D0 defines MPC as a marketplace-operations control plane, not an ERP replacement, marketplace dashboard or generic integration hub.
+2. D1 assigns one semantic authority to each material Product 1.0 responsibility and explicitly rejects a generic `Mutation` / `Action` business owner.
+3. D2 makes `Organization` the canonical tenant/isolation root, defines `Principal`, source-qualified external identity, Marketplace Installation, SourceInstance and domain-local identities for material Business Intents.
+4. D2 forbids Organization scope from being inferred from Marketplace Installation, Selling Entity, external account, IdP organization, source key or process-global defaults.
+5. D2 denies cross-Organization references between Organization-owned business state by default.
+6. D3 accepts semantic Q/C/E/P communication, explicit Organization scope, semantic idempotency, honest query knowledge state and accepted/rejected/pending/ambiguous capability semantics where applicable.
+7. D3 makes freshness orthogonal to known/unknown state and requires owner-controlled provenance/observation time when freshness-for-use is material.
+8. D4 requires consumer-owned semantic ports, provider-local protocol/DTO knowledge, explicit namespace/capability/coverage semantics, source-qualified external evidence and acceptance/ambiguity/convergence separation for external effects.
+9. D4-B4 accepts **Semantic Core + Provider-Enriched Evidence** rather than lowest-common-denominator flattening or provider-payload mirroring.
+10. `ARCHITECTURE.md` and the Evidence Register establish no production compatibility obligation to the current routes/schema/SDK; hard cutover is allowed.
+11. Current OpenAPI/routes/SDK are evidence only, not inherited target authority.
+12. OpenAPI, a hand-written SDK and handler/routing knowledge currently coexist. Legacy ADR-016 itself admits that same-commit discipline proves atomicity, not agreement, and leaves manual transcription drift reachable.
 
-### 3.2 INFERRED
+### INFERRED
 
-1. The current API is a historical aggregation of several architectural styles rather than one coherent D0–D4 client contract.
-2. A client-facing API that exposes `/ml/...`, `/sankhya/...`, generic `/mutations`, provider callback nouns or ERP-native operation vocabulary as product semantics would reintroduce authorities already rejected by D1/D4.
-3. Generating an SDK directly from the current OpenAPI would automate the existing semantic defects rather than solve them.
-4. Endpoint inventory before API laws would create local decisions likely to be redone once ownership, knowledge state, effect semantics and provider-boundary rules are applied consistently.
+- The current external contract is a historical aggregation rather than a coherent D0–D4 semantic API.
+- Generating a client directly from the current OpenAPI would automate legacy semantic defects rather than resolve them.
+- Endpoint inventory before boundary/wire laws would create local decisions likely to be redone after applying D1–D4 authority consistently.
 
-### 3.3 UNKNOWN
+### UNKNOWN
 
-The following remain Unknown until later D5 work produces evidence:
+Still unknown until later D5 work:
 
-- exact Product 1.0 operation set;
-- exact path naming by semantic owner;
-- exact read models needed by D6 consumers;
-- exact Permission → operation catalog;
-- exact filters/sorts/cursors per operation;
-- which provider-rich fields deserve client exposure per named consumer;
-- where real bulk workflows exist;
-- which operations require optimistic-concurrency preconditions;
-- exact authentication wire scheme above the accepted OIDC boundary;
-- exact SDK package/generator technology;
-- whether a named technical/admin API surface is needed beyond the Product API and provider ingress;
+- exact Product 1.0 operation set and final path spelling;
+- exact D6 read models;
+- exact Permission → API-operation catalog;
+- per-operation pagination/filter/sort/cursor contracts;
+- concrete provider-rich fields exposed to clients;
+- concrete bulk operations;
+- concrete operations requiring optimistic concurrency;
+- exact authentication wire details above the accepted OIDC boundary;
+- concrete SDK/generator/server-conformance technology;
+- whether a separately named technical/admin surface is needed;
 - number of remaining D5 batches.
 
-### 3.4 DEFERRED
-
-- D6: frontend consumption/topology;
-- D7: runtime realization, generation framework, retries, queues, transactions and isolation mechanics;
-- D8: real golden-flow proof;
-- implementation: blocked until D9.
-
-Unknown stays Unknown. Deferral does not authorize a plausible default.
+Unknown stays Unknown. Deferral never authorizes a plausible default.
 
 ---
 
-## 4. Root cause
+## 3. Root cause and target invariant
 
-The current API problem is not primarily excessive route count or imperfect naming.
+### Root cause
 
-The structural defect class is:
+The structural defect is not primarily route count or naming.
 
-> **The external client contract is not currently derived from the accepted semantic authorities, while product operations, provider/business-system protocol concerns and multiple manually maintained wire representations coexist without one explicit contract authority.**
+> **The external client contract is not currently derived from the accepted semantic authorities, while product operations, provider/business-system protocol concerns and multiple manually maintained wire representations coexist without one explicit wire authority.**
 
-This defect can repeatedly produce:
+That defect class permits provider vocabulary to become ontology, generic Mutation semantics to steal domain intent, unknown/unavailable to collapse into defaults, provider 2xx to masquerade as convergence, unsafe retry after ambiguous acceptance, namespace ambiguity, and OpenAPI/SDK/handler drift.
 
-- provider vocabulary becoming product ontology;
-- legacy module names becoming apparent business authorities;
-- generic `Mutation` semantics stealing intent from D1 owners;
-- business rejection being confused with HTTP/access failure;
-- unknown/unavailable data being serialized as empty/default values;
-- provider 2xx being interpreted as business completion/convergence;
-- retry semantics ignoring ambiguous external acceptance;
-- SDK/OpenAPI/handler drift;
-- provider-specific enrichment either leaking wholesale or being discarded to fit a lowest common denominator.
+### Governing invariant
 
-Renaming routes or adding more parity checks does not eliminate this class.
-
----
-
-## 5. Target invariant
-
-> **Every externally invokable MPC Product API operation belongs to exactly one accepted semantic owner or accepted non-domain identity/access authority; its wire contract preserves Organization scope, current knowledge/effect semantics and ownership boundaries; provider/business-system protocol remains outside Product API semantics; and the Product API has one machine-readable wire authority from which client contracts are derived.**
+> **Every externally invokable MPC Product API operation belongs to exactly one accepted semantic owner or accepted non-domain identity/access authority; its contract preserves explicit Organization scope, source-qualified identity, honest knowledge/freshness/effect semantics and ownership boundaries; provider/business-system protocol remains outside Product API semantics; and the Product API has one machine-readable wire authority from which supported client contracts derive and against which server behavior conforms.**
 
 Corollaries:
 
 1. HTTP shape does not create business authority.
-2. A generic technical mechanism never becomes a generic business owner.
+2. Generic technical machinery does not become a generic business owner.
 3. Product API vocabulary is MPC business language.
-4. Provider-native identity/evidence may remain visible only when semantically qualified and materially useful; raw provider DTO ontology does not cross the boundary.
-5. A valid API response never makes a stronger knowledge/effect claim than the owning domain can justify.
-6. Client retry convenience cannot weaken D3/D4 ambiguity or no-blind-retry safety.
+4. Provider-native evidence may be exposed only when semantically qualified and materially useful; raw provider DTO ontology does not cross the boundary.
+5. A valid response never makes a stronger knowledge, freshness, authorization or effect claim than the owning authority can justify.
+6. Client retry convenience never weakens D3/D4 ambiguity or no-blind-retry safety.
+7. No second manually authoritative wire representation is admitted.
 
 ---
 
-## 6. Credible alternatives
+## 4. Credible alternatives
 
-### Alternative A — Clean the current OpenAPI and keep the hand-written SDK
+### A — Clean current OpenAPI + retain hand-written SDK
 
-**Local Maximum.** Improves the existing surface but preserves two manual wire descriptions and allows legacy API topology to constrain target semantics.
+Local Maximum. Leaves duplicate manual wire authority and lets legacy topology constrain target semantics. **Rejected.**
 
-Rejected as the target.
+### B — Generate SDK directly from current OpenAPI
 
-### Alternative B — Generate the SDK directly from the current OpenAPI
+Removes one drift mechanism but automates the wrong semantic contract. Useful only after semantic redesign. **Rejected as first-order solution.**
 
-Removes one drift mechanism but mechanically preserves the current mixed semantic/provider/legacy contract.
+### C — Generic platform API (`resources`, `commands`, `mutations`, generic provider/workflow/evidence models)
 
-Useful only **after** the semantic contract is corrected.
+Erases differentiated D1 meaning and introduces framework authority without a second real product/vertical. **Rejected by authority + YAGNI.**
 
-Rejected as first-order solution.
+### D — One external API per D1 domain
 
-### Alternative C — Generic platform API (`/resources`, `/commands`, `/mutations`, generic workflow/evidence/provider models)
+Preserves semantic owners but prematurely converts business boundaries into external/runtime fragmentation. **Rejected as over-partitioning.**
 
-Appears extensible but erases differentiated D1 meaning, contradicts the accepted no-generic-Mutation owner and creates framework authority without a second real product/vertical.
+### E — Semantic MPC Product API + separate provider protocol ingress + one wire authority
 
-Rejected by YAGNI and authority rules.
+Removes the root cause without genericizing the product or choosing D6/D7 topology. **Selected Global Maximum.**
 
-### Alternative D — One independent external API per D1 domain
+### F — GraphQL/gateway/gRPC/event-stream as the new architectural center
 
-Preserves owners but prematurely converts semantic boundaries into deployment/public-contract fragmentation. D1 explicitly says twelve boundaries do not imply twelve services/processes.
+No accepted consumer/failure class requires this and it does not solve semantic ownership or effect-safety defects by itself. **Rejected for now.**
 
-Rejected as over-partitioning.
-
-### Alternative E — Semantic MPC Product API + separate provider protocol ingress + one wire authority
-
-One client-facing API uses MPC business semantics and owner-specific operations. Provider callbacks/OAuth/protocol endpoints remain integration boundaries rather than Product API. OpenAPI is the machine-readable HTTP contract authority; SDK/client types derive from it.
-
-**Recommended Global Maximum.** It removes the current root cause without adding a generic platform or deciding D6/D7 topology.
-
-### Alternative F — Introduce GraphQL/gateway/event-stream API as the new architectural center
-
-No accepted consumer or failure class currently requires it. It changes API technology without solving semantic ownership, uncertainty, external-effect ambiguity or provider ontology leakage by itself.
-
-Rejected for now. Reopen only with a real consumer/constraint.
+**Outcome relative to the current API:** `RESTRUCTURE NOW`.
 
 ---
 
-# 7. Candidate decisions
+# 5. Converged decision set
 
-## B1-D1 — Product API is semantic and domain-oriented, not provider- or integration-oriented
+## B1-D1 — Product API is semantic and domain-oriented
 
 The client-facing API represents the accepted MPC marketplace-operating model.
 
 It is:
 
-- **provider-independent:** Mercado Livre does not define the API ontology;
-- **business-system-independent:** Sankhya codes/workflows do not define the API ontology;
-- **integration-independent:** adapters/protocols do not become client-facing business resources;
-- **domain-oriented:** D1 owner meanings remain visible and distinct;
-- **not enterprise-generic:** marketplace commerce remains the accepted product boundary unless D0/D1 are explicitly reopened.
+- **provider-independent** — Mercado Livre does not define API ontology;
+- **business-system-independent** — Sankhya taxonomy/choreography does not define API ontology;
+- **integration-independent** — adapters/protocols do not become Product API business resources;
+- **domain-oriented** — accepted D1 meanings remain distinct;
+- **not enterprise-generic** — marketplace commerce remains the accepted product boundary until explicitly reopened.
 
-A future broader enterprise control plane is legitimate only after product-boundary evidence exists. D5 must not prepare that future by replacing current semantic owners with generic entities/actions now.
-
-### Forbidden implication
-
-`provider-agnostic` does **not** mean `lowest-common-denominator`.
-
-D4-B4 remains binding: a provider can expose richer evidence than another provider without forcing either suppression or fabricated equivalence.
+`provider-independent` does not mean lowest-common-denominator. D4-B4 remains binding.
 
 ---
 
-## B1-D2 — External surface topology has two fundamentally different audiences
+## B1-D2 — Two external audiences; no speculative third API
 
-### A. MPC Semantic Product API
+### MPC Semantic Product API
 
-Consumed by MPC applications and future supported SDK clients.
-
-It exposes:
+Consumed by MPC applications and supported SDK clients. It may expose:
 
 - owner current meaning;
-- read projections/compositions where legitimate;
-- MPC-owned configuration/resources;
-- owner capabilities/intents;
-- Governance and Work interactions under their accepted meanings;
-- semantically qualified provider-enriched evidence where required.
+- legitimate read projections/compositions;
+- MPC-owned resources/configuration;
+- owner capabilities and domain-owned Intents;
+- Governance and Operational Work interactions under their accepted semantics;
+- qualified provider-enriched evidence when a named consumer/correctness property requires it.
 
-### B. Provider / business-system protocol ingress
+### Provider / business-system protocol ingress
 
-Callbacks, webhook receivers, OAuth callbacks/handshakes and similar protocol endpoints belong to the D4 integration boundary.
+Webhook/callback receivers, OAuth callbacks/handshakes and equivalent protocol endpoints:
 
-They:
+- may be externally reachable;
+- are not Product API business operations;
+- are not part of the normal Product SDK;
+- accept provider vocabulary only inside the D4 protocol boundary;
+- do not make notification payload domain truth.
 
-- may be externally reachable HTTP endpoints;
-- are **not** Product API business operations;
-- are not included in the normal Product SDK;
-- accept provider protocol vocabulary only inside the adapter/protocol boundary;
-- do not make notification payload fields domain truth;
-- resolve Organization/Installation/SourceInstance through the accepted authenticated namespace binding rather than requiring a provider to know MPC business identifiers it does not own.
-
-### No speculative third API
-
-Health/readiness/administration/operations endpoints may exist later if a concrete runtime/operator consumer requires them. B1 does not create a generic `Internal API` or `Admin API` by taxonomy alone.
+Health/readiness/admin/technical surfaces are not pre-created by taxonomy. A real D7/runtime/operator consumer must justify them.
 
 ---
 
 ## B1-D3 — REST/HTTP resource semantics where truthful; explicit owner operations where CRUD would lie
 
-The leading target is an HTTP/REST semantic API described by OpenAPI.
+The target Product API is an HTTP/REST semantic API described by OpenAPI.
 
-Use ordinary resource semantics where the client is genuinely reading/creating/updating an MPC-owned resource/configuration whose meaning fits those semantics.
+Use ordinary resource semantics only when the client is genuinely interacting with MPC-owned state/configuration whose meaning fits those semantics.
 
-Do **not** force consequential cross-system action into a fake direct-state CRUD contract.
+Do not pretend a direct-state `PUT` completed an externally authoritative world when MPC only accepted an intent.
 
-Material consequential actions remain represented by their D1 owner and, where D2 already requires durable domain-local identity, by owner-specific Business Intents such as:
+Consequential actions remain owned by their D1 domain and, where D2 requires durable identity, by owner-specific Business Intents such as Listing/Price Intent, Availability Intent, Business Order Intent, Invoicing Intent and material Fulfillment intents.
 
-- Offering-owned Listing/Price Intent;
-- Availability-owned Availability Intent;
-- Materialization-owned Business Order Intent / Invoicing Intent;
-- durable Fulfillment routing/dispatch intents where material.
+No target Product API business resource named generic `Mutation`, `Action`, `Command`, `Operation` or universal `BusinessIntent` exists merely to normalize these lifecycles.
 
-There is no target generic Product API resource named `Mutation`, `Action`, `Command`, `Operation` or universal `BusinessIntent` merely to normalize those lifecycles.
-
-Likewise, provider actual state remains external authority. A client request cannot truthfully pretend that a `PUT` completed the external world merely because MPC accepted an intent.
-
-### Resource-oriented does not mean CRUD-only
-
-Explicit owner operations are permitted when standard create/read/update/delete semantics would misrepresent business meaning. The operation name must remain in the owning domain's vocabulary and must not become a generic action escape hatch.
+Explicit owner operations are permitted when CRUD would misrepresent meaning. They remain in the owner's vocabulary rather than becoming a generic action escape hatch.
 
 ---
 
-## B1-D4 — D3 semantic forms map to the Product API without changing authority
+## B1-D4 — D3 Q/C/P semantics survive the wire
 
-| D3 form | Product API meaning | Baseline wire law |
+| D3 form | Product API meaning | Binding wire law |
 |---|---|---|
-| **Q** | client asks an owner for current owner-owned meaning | response preserves known/empty/unknown/unavailable/partial semantics where material; cached/projection state cannot silently impersonate current owner truth |
-| **C** | client asks an owner to accept/perform owner-owned work | request targets the owning semantic capability/resource; valid business outcome is returned as owner semantics, not disguised as provider transport status |
-| **P** | client reads a composition of multiple authorities | explicitly read-only; projection/view is never consequential write authority; freshness/partiality remains honest |
-| **E** | committed owner fact for independent consumer reaction | **not automatically translated into a public event-stream API**; external event/stream exposure requires a named consumer and later D5 decision |
+| **Q** | ask owner for current owner-owned meaning | preserve known/known-empty/unknown/unavailable/partial as applicable; when freshness-for-use is material, expose/reference owner-controlled observation/acquisition/provenance time; cache/projection/HTTP time cannot impersonate owner freshness |
+| **C** | ask owner to accept/perform owner-owned work | return owner semantic outcome, never raw provider transport status |
+| **P** | read composition of multiple authorities | read-only; projection never becomes write/concurrency authority; component freshness/partiality remain honest and projection `updated_at` never substitutes for source observation time |
+| **E** | committed owner fact for independent reaction | not automatically a public stream; external event/stream API requires a named consumer and later D5 decision |
 
-D3 communication mechanism remains an internal semantic concern. D5 exposes product interaction, not the internal event topology by default.
+D5 exposes product interaction, not the internal communication topology by default.
 
 ---
 
-## B1-D5 — Organization scope is explicit in the Product API
+## B1-D5 — Organization is path-scoped and fail-closed
 
-For Organization-owned Product API operations, the leading contract is:
+For every Organization-owned Product API operation, the contract is scoped under:
 
 ```text
 /organizations/{organization_id}/...
 ```
 
+This is **decided**, not merely a leading candidate.
+
 Reasons:
 
-1. D2 requires Organization to be explicit and forbids inferring it from Installation/provider/source identity.
-2. The tenant boundary becomes visible in operation identity, logs, authorization checks and SDK call shape.
-3. A client cannot accidentally rely on process-global or token-only default tenant context.
-4. One-Organization Product 1.0 proof does not hard-code a singleton into the contract.
+1. D2 requires Organization to be explicit.
+2. Required path scope removes ambient/token-only/default-tenant dependency.
+3. Organization becomes part of operation identity, links, logs and URL-keyed cache/client artifacts.
+4. Missing scope fails routing closed.
+5. The first one-Organization proof does not hard-code a singleton into the contract.
 
-The backend must verify that the authenticated Principal has ordinary access to the requested Organization; the path value is a scope claim, never self-authorizing.
+The path is a scope claim, never self-authorization. The authenticated Principal must have current ordinary access to that Organization.
 
-### Provider ingress exception is not a contradiction
+### Secondary-reference fence
 
-Provider callbacks normally do not know MPC `organization_id`. Protocol ingress resolves the correct Organization from the already authenticated/bound Marketplace Installation or SourceInstance namespace under D4. That resolution is adapter protocol behavior, not Product API tenant inference.
+Any Organization-owned identity/reference supplied in path, query or body must resolve inside the path Organization. A request scoped to Organization A cannot smuggle a Sale, Offering, Intent, Work item or other Organization-B-owned reference through a secondary field. Cross-Organization reference fails closed.
 
-### Alternative retained for adversarial review
+### Provider-ingress organization rule
 
-An explicit mandatory Organization header is technically credible. Fable should challenge whether it offers a materially better Global Maximum than the path-scoped form. **Token-only inferred Organization is not a credible target** under D2.
+Provider ingress does **not** compute or infer Organization from provider data.
+
+The protocol boundary:
+
+1. identifies the bound Marketplace Installation / SourceInstance fail-closed from authenticated/configured context plus authoritative provider/source markers where available;
+2. reads Organization from that identity's explicit MPC-owned binding;
+3. fails closed on missing, ambiguous or contradictory binding/markers before attribution;
+4. records Organization explicitly in any durable acquisition/recovery state that can outlive the ingress execution context.
+
+Installation/SourceInstance qualify namespace **inside** explicit Organization scope; they never substitute for Organization.
 
 ---
 
-## B1-D6 — Principal/access and business authorization remain separate
-
-Interactive Principal identity comes from the accepted OIDC boundary; exact token/session technology remains later realization.
+## B1-D6 — Principal/access and consequential authorization remain separate
 
 At the Product API boundary:
 
-- authentication proves/binds the Principal;
-- ordinary identity/access state proves Membership/Permission for the operation;
-- caller-supplied `principal_id`, role name or `approved=true` never substitutes for that proof.
+- AuthN binds the Principal through the accepted OIDC boundary;
+- current Membership/Permission determines ordinary invocation/view access;
+- caller-supplied `principal_id`, role names or `approved=true` never substitute for those proofs.
 
-D5 later maps stable Permissions to concrete API operations.
+`401/403` are AuthN/ordinary-access problems.
 
-Critically:
+They are not:
 
-- `401/403` represent authentication / ordinary-access failure;
-- an action-owning domain's `prohibited`/`approval-required`/invalid business disposition is not ordinary access denial;
-- Governance approval/rejection is not an API-role check;
-- successful ordinary API access never implies consequential business authorization.
+- domain business rejection/prohibition;
+- approval-required disposition;
+- Governance approval/rejection;
+- proof of consequential authorization.
 
-Business action disposition remains with the action owner. Controlled Action Governance retains its accepted grant/delegation/Authorization Decision semantics.
+Action owners retain business disposition/validity. Controlled Action Governance retains consequential grant/delegation/Authorization Decision semantics.
 
 ---
 
-## B1-D7 — Query knowledge state is semantic output, not an HTTP failure shortcut
+## B1-D7 — Knowledge and freshness are semantic output
 
-Where knowledge state is material, the wire representation must distinguish enough states to preserve the owner's actual claim, including as applicable:
+Where material, Product API contracts preserve enough structure to distinguish:
 
 - known value;
 - known empty/absent;
-- unknown / insufficient evidence;
+- unknown / insufficiently known;
 - unavailable;
 - partial / incomplete coverage.
 
-B1 does **not** mandate a universal `Fact<T>` JSON envelope around every field or response.
+No universal `Fact<T>` JSON envelope is required.
 
-The law is semantic:
+> **No null, zero, `false`, empty object/list or HTTP success code may silently collapse a materially different knowledge state.**
 
-> **No null, zero, `false`, empty object, empty list or HTTP success status may silently collapse a materially different knowledge state.**
+Freshness is a separate axis:
 
-Examples:
+> **Where freshness-for-use is material to a client decision, the response exposes or references owner-controlled source/effective/observation/acquisition/provenance time sufficient for that use. HTTP exchange time, `known` status and projection update time never substitute for source freshness.**
 
-- `items: []` may represent known-empty only when the owning contract can prove the queried universe/scope is empty;
-- source timeout/auth/rate-limit/outage cannot become an empty result;
-- unsupported/not-applicable provider enrichment cannot become fabricated parity with another provider;
-- a projection with incomplete components cannot present itself as complete current truth.
+A successful HTTP exchange may legitimately carry semantic `unknown`, `unavailable` or `partial` meaning.
 
-A successful HTTP exchange may therefore return a valid semantic `unknown`, `unavailable` or `partial` owner outcome. Transport/application availability and domain knowledge availability are different concerns.
-
-Exact shared discriminators/schema reuse are admitted only where repeated semantics are genuinely identical; no universal Evidence/Knowledge graph is introduced.
+Shared discriminators are reused only where semantics are genuinely identical; no universal Evidence/Knowledge graph is introduced.
 
 ---
 
-## B1-D8 — Consequential capability outcomes remain distinct from HTTP/API problems
+## B1-D8 — Capability outcomes are not HTTP/API problems
 
-For a contract-valid owner capability request, the domain may legitimately return, where applicable:
+For a contract-valid owner capability request, applicable semantic outcomes include:
 
-- **accepted** — owner accepted the requested work/intent;
-- **rejected** — owner definitively refused the requested work under current semantics/preconditions;
-- **pending** — no final owner decision/effect yet;
-- **ambiguous** — a possibly accepted external effect cannot yet be classified safely.
-
-These are semantic outcomes, not raw provider transport statuses.
+- **accepted**;
+- **rejected**;
+- **pending**;
+- **ambiguous** possible acceptance.
 
 Binding distinctions:
 
@@ -384,161 +330,152 @@ Binding distinctions:
 accepted != completed
 completed != externally applied
 externally applied != converged
-```
 
-and:
-
-```text
 rejected != access denied
 pending != failed
 ambiguous != failed
 ambiguous != safe-to-retry
 ```
 
-Provider timeout after possible dispatch cannot be converted into a failed/rejected business result merely for API convenience.
+A provider timeout after possible dispatch cannot become failed/rejected merely for API convenience.
 
-### HTTP-level preconditions versus owner/external preconditions
+Two precondition classes remain distinct:
 
-Two classes must not be collapsed:
-
-1. **API concurrency/representation precondition** — e.g. a client supplies a stale MPC ETag/version for an update that explicitly requires current-version matching. This may be an HTTP conditional-request problem.
-2. **Business/provider execution precondition** — e.g. the owner/provider detects current business/readiness/provider version state while evaluating/executing a valid intent. The resulting owner intent state remains domain semantics; provider `409`/status vocabulary does not leak through unchanged.
-
-Fable should challenge exact status-code mapping, but the semantic separation is required.
+1. API representation/concurrency conditional failure may be an HTTP problem;
+2. business/provider execution precondition belongs to the owner outcome/intent semantics after provider translation.
 
 ---
 
-## B1-D9 — Consequential API intake has explicit idempotency without replacing domain intent identity
+## B1-D9 — Consequential intake is idempotent by default and fails closed without its key
 
-For client requests capable of creating a new material Business Intent or initiating consequential work/effects, the leading contract requires a stable client retry token such as standard `Idempotency-Key` semantics.
+For every Product API operation that can create a durable Business Intent or initiate a consequential external effect, HTTP intake requires an `Idempotency-Key` by default.
 
-The key is a **request-deduplication mechanism**, not:
+Missing key fails explicitly **before durable intake/effect**.
 
-- the canonical Business Intent identity;
+A per-operation exemption is allowed only when the operation contract proves duplicate requests are structurally unreachable or harmless through owner-anchor/resource semantics alone. The exemption and its proof are recorded in the later operation inventory; optional-by-convenience is not allowed.
+
+The key is request-deduplication mechanism, not:
+
+- canonical Business Intent identity;
 - provider idempotency proof;
 - authorization;
 - permission to replay an ambiguous external write.
 
-Baseline laws:
+Laws:
 
-1. the same Organization + semantic operation + idempotency key + semantically equivalent request resolves to the same MPC intake result / durable intent where one was created;
-2. reuse of a key for a materially different semantic request fails explicitly rather than creating another effect under the same token;
-3. a retry after the first call becomes locally uncertain must resolve existing MPC intake before creating another intent;
-4. if the owner already created a durable domain-local Intent, idempotent retries resolve to that Intent rather than inventing a generic Mutation record;
-5. external-effect ambiguity is still reconciled according to D3/D4; the HTTP idempotency key cannot authorize blind redispatch.
+1. same Organization + semantic operation + key + semantically equivalent request resolves the same MPC intake result / durable Intent;
+2. same key + materially different semantic request fails explicitly;
+3. retry after local uncertainty resolves existing intake before another Intent can be created;
+4. if a domain Intent exists, retry resolves that owner Intent rather than a generic Mutation record;
+5. external ambiguity still follows D3/D4 reconciliation and never authorizes blind redispatch.
 
-Exact persistence, retention, locking and cleanup of idempotency records are D7 mechanisms. Exact scope may be sharpened during operation design; it must remain at least Organization + semantic operation so identical string keys in unrelated boundaries cannot collide by accident.
-
-Fable should adversarially challenge whether the key should be mandatory for every consequential operation or only operation classes whose intake is retry-reachable.
+Exact storage, retention, locks and cleanup are D7 mechanisms.
 
 ---
 
-## B1-D10 — Optimistic concurrency/preconditions are explicit only where stale client state can invalidate correctness
+## B1-D10 — Optimistic concurrency only where stale state matters
 
-D5 does not impose version tokens on every resource.
+D5 does not impose version tokens everywhere.
 
-Where a client update/capability depends materially on the current MPC-owned version, the API uses an opaque MPC-level concurrency/precondition token with standard HTTP conditional semantics where suitable.
+When client action materially depends on current MPC-owned version/state, use an opaque MPC-level concurrency/precondition token with HTTP conditional semantics where suitable.
 
-Rules:
+Provider-native version tokens remain adapter-local unless a D1-owned semantic contract genuinely requires qualified exposure.
 
-- stale pre-dispatch client state cannot silently overwrite newer authoritative MPC meaning;
-- provider-native version tokens such as external `x-version` remain adapter-local unless a D1-owned semantic precondition genuinely requires qualified exposure;
-- a provider stale-version response is translated into the owning domain's semantics and authoritative reread/redecision flow;
-- projections/read models are not valid concurrency authorities for consequential writes.
-
-Exact operations requiring preconditions are determined in later D5 operation mapping.
+Stale provider version responses are translated into owner semantics + authoritative reread/redecision. Projection state is not consequential concurrency authority.
 
 ---
 
-## B1-D11 — HTTP/API problems use one standard problem shape; valid business outcomes do not
+## B1-D11 — One standard HTTP problem model; business outcomes stay outside it
 
-The leading baseline for HTTP/API-level failures is **RFC 9457 Problem Details** (`application/problem+json`) with MPC-owned stable extensions only where real consumers require them.
+HTTP/API-level failures use **RFC 9457 Problem Details** (`application/problem+json`) plus only MPC-owned stable extensions required by real programmatic consumers.
 
-API-level problem classes include proportionately:
+API-problem classes include as applicable:
 
 - malformed/unparseable request;
-- schema/contract validation failure;
-- authentication failure;
+- schema/contract validation;
+- authentication;
 - ordinary Permission/access denial;
-- unsupported HTTP/operation contract;
-- API concurrency/conditional-request failure;
-- idempotency-key misuse/conflict;
+- unsupported operation/HTTP contract;
+- API concurrency/conditional failure;
+- missing/misused/conflicting idempotency key;
 - unexpected MPC server failure.
 
-A stable MPC machine-readable `code` may specialize the problem `type`/extensions where programmatic handling needs more precision. Validation details may be structured.
+A stable MPC machine-readable `code` may specialize the problem type/extensions where real handling requires it.
 
-### Provider diagnostic containment
-
-Raw provider/business-system error DTOs, arbitrary text and PII do not become Product API problem truth.
-
-Where a named support/operations consumer materially needs external-cause detail, the owning API may expose a **sanitized, source-qualified diagnostic** that:
-
-- is clearly diagnostic/evidence rather than MPC business disposition;
-- preserves enough provider/source correlation for support/reconciliation;
-- does not mirror raw payloads or secrets/PII;
-- never replaces the MPC semantic outcome.
-
-### Non-errors
-
-The following do not become Problem Details merely because they are undesirable outcomes:
+These are **not** Problem Details merely because they are undesirable:
 
 - business `rejected`;
-- `approval-required` / pending Governance decision;
+- approval-required/pending Governance decision;
 - `ambiguous` possible external acceptance;
 - valid query `unknown`/`unavailable`/`partial`;
-- provider capability honestly `unsupported` / `external-required` where the operation contract admits those outcomes.
+- admitted `unsupported` / `external-required` business/provider capability outcome.
+
+Raw provider/business-system error DTOs, arbitrary text, secrets and PII never become Product API problem truth. A named support consumer may receive sanitized source-qualified diagnostics without replacing MPC semantic outcome.
 
 ---
 
-## B1-D12 — Provider-rich evidence is allowed only as domain-owned qualified enrichment
+## B1-D12 — External identities and provider-rich evidence stay source-qualified
 
-D4-B4 remains fully visible at the API boundary.
+### External identity law
 
-The Product API must not choose between two invalid extremes:
+A provider/native identifier crosses the Product API only when its qualifying MPC namespace identity is explicit in the contract:
 
-1. flatten every marketplace to a lowest-common-denominator schema; or
-2. expose raw provider DTO/resource topology as the product contract.
+- Marketplace Installation for marketplace-native identity; or
+- SourceInstance where that is the accepted source qualifier.
 
-Target rule:
+The qualifier may be explicit in the serialized identity shape or be unambiguous from the operation's declared scope. A bare external identifier is never a Product API correlation key.
 
-> **A D1 owner may expose provider-specific enriched evidence when it serves a named Product 1.0 consumer/correctness property, but the enrichment remains source-qualified, bounded inside that owner contract and optional/unsupported when another provider lacks the same meaning.**
+Example correctness test: two Installations in one Organization may hold identical-looking native IDs and must remain distinguishable from the client contract alone.
 
-Consequences:
+This does not create a universal `ExternalReference`/entity graph. Owner contracts use the smallest typed source-qualified representation their semantics require.
 
-- provider richness may appear in Market Intelligence/economic/operational views where materially useful;
-- provider-specific fields do not define top-level MPC resource identity or owner boundaries;
-- absence of an equivalent field on another provider remains unsupported/not-applicable/unknown as appropriate;
-- SDK types may use bounded discriminated enrichment unions without creating a universal `ProviderResource` graph;
-- raw arbitrary provider payload passthrough is rejected.
+### Provider-rich evidence law
 
-Whether a concrete evidence field belongs in Product API is decided later against a named client/use case, not because D4 can acquire it.
+A D1 owner may expose provider-specific enriched evidence only when it serves a named Product 1.0 consumer/correctness property.
+
+The enrichment remains:
+
+- source-qualified;
+- bounded inside the owner contract;
+- optional/unsupported/not-applicable/unknown when another provider lacks an equivalent;
+- prohibited from becoming top-level MPC owner/resource ontology merely because one provider exposes it.
+
+Bounded discriminated enrichment unions are allowed. Arbitrary raw-payload passthrough is rejected.
 
 ---
 
-## B1-D13 — OpenAPI is the single machine-readable wire authority for the Semantic Product API
+## B1-D13 — OpenAPI is the single machine-readable Product API wire authority
 
-Accepted D-stage artifacts and `ARCHITECTURE.md` remain **semantic architecture authority**. OpenAPI does not become authority over business meaning.
+Accepted D-stage artifacts and `ARCHITECTURE.md` remain semantic architecture authority. OpenAPI never outranks them.
 
-Within D5's HTTP boundary, however:
+Within the HTTP Product API boundary:
 
-> **One OpenAPI document/set is the machine-readable authority for the Semantic Product API wire contract: paths, operations, parameters, headers, status codes and serialized schemas.**
+> **One OpenAPI document/set is the machine-readable authority for paths, operations, parameters, headers, status codes and serialized schemas.**
 
 Rules:
 
-1. there is no independently authoritative hand-written SDK type model;
-2. supported SDK/client types are mechanically derived from the OpenAPI contract or otherwise mechanically proven to conform to it;
-3. server handlers must be mechanically validated against the same wire contract; exact codegen/router technology is later realization;
-4. a change that makes implementation or generated client disagree with OpenAPI must fail verification;
-5. a change in OpenAPI that conflicts with accepted D-stage semantics is an API-spec defect; machine-readable wire authority never outranks semantic architecture authority;
-6. provider protocol-ingress schemas may have their own executable contracts when needed but do not contaminate the Product SDK or redefine Product API authority.
+1. **No second manually authoritative wire representation is admitted.**
+2. Supported SDK/client contracts are mechanically derived from OpenAPI or mechanically proven to conform to it.
+3. Server request/response/status/header behavior is mechanically validated against the same contract.
+4. Implementation/client disagreement with OpenAPI fails verification.
+5. OpenAPI disagreement with accepted D-stage semantics is an OpenAPI defect.
+6. Provider ingress may have separate executable protocol contracts when useful but does not contaminate Product SDK/authority.
+7. Conformance controls count only when a negative/drift fixture demonstrates that they actually fire.
 
-### ADR-016 disposition candidate
+Exact generator/router/runtime tooling remains later realization.
 
-ADR-016 solved the historical no-generator condition with same-commit manual OpenAPI+SDK discipline. Its own Consequences state that this proves **atomicity, not agreement** and leaves permanent transcription risk.
+### ADR-016 disposition upon canonical B1 consolidation
 
-If B1 is accepted and later consolidated, ADR-016's target meaning should become **superseded by D5**. Its useful historical lesson is retained as evidence: duplicated manual wire authorities require procedural synchronization and remain drift-prone.
+ADR-016 becomes **historical** when this batch is ratified and consolidated.
 
-D5 should converge the authorities rather than add more same-commit guards.
+Its old target mechanism — manual OpenAPI + manual SDK same-commit synchronization — is intentionally removed rather than strengthened.
+
+Two lessons survive as active D5 invariants:
+
+1. never maintain a second manually authoritative wire model;
+2. conformance/drift controls must be demonstrably capable of failing.
+
+No compatibility transition window needs the old rule because Product implementation is still blocked until D9 and no production client is entitled to the legacy SDK/API.
 
 ---
 
@@ -546,306 +483,252 @@ D5 should converge the authorities rather than add more same-commit guards.
 
 There are no production clients entitled to the current API.
 
-Therefore target cutover may:
+Target cutover may delete/rename/replace routes, resources, schemas, generic Mutation surfaces and the manual SDK without compatibility aliases or dual-version infrastructure.
 
-- delete routes;
-- rename resources/operations;
-- replace request/response schemas;
-- delete generic Mutation/provider-facing Product API surfaces;
-- replace the manual SDK contract;
-- remove obsolete compatibility aliases.
+A literal `/v1` path segment is not itself prohibited, but it carries no compatibility policy by implication.
 
-D5 must not introduce parallel legacy versions, compatibility adapters, deprecation windows or dual-write/dual-read API contracts merely because mature public APIs often have them.
-
-Whether the final base path contains a literal `/v1` prefix is a naming decision for later D5 operation topology; a version segment alone must not smuggle in a compatibility policy with no consumer.
-
-If a real external/public client compatibility obligation appears later, that is material new evidence and reopens the versioning/compatibility decision.
+A real future compatibility entitlement is material new evidence and reopens this decision.
 
 ---
 
-## B1-D15 — Bulk is not a universal API primitive
+## B1-D15 — Bulk is operation-local, never a universal primitive
 
-No generic batch/mutation envelope is created.
+No generic batch/mutation envelope exists.
 
-A bulk operation is admitted only when a named Product 1.0 workflow/consumer materially needs bulk semantics that cannot be adequately composed by individual operations.
+A bulk endpoint is admitted only when a named Product 1.0 workflow/consumer materially requires bulk semantics beyond adequate composition of individual operations.
 
-When admitted:
+If admitted:
 
-- intended target scope remains owner-defined;
-- authorization scope remains distinct;
-- member-level attempted/outcome state remains distinct where partial success/ambiguity can occur;
-- one member's confirmed success does not authorize blind replay of the whole batch;
-- one `success: false` boolean cannot collapse confirmed/rejected/ambiguous/not-executed members;
-- provider bulk/import identifiers remain external reconciliation evidence, not MPC generic Batch identity by default.
-
-Exact bulk endpoints are later D5 work.
+- intended scope remains owner-defined;
+- authorized scope remains distinct;
+- attempted/member outcome scope remains distinct;
+- confirmed/rejected/ambiguous/not-executed members remain distinguishable where material;
+- one ambiguous member cannot turn the whole batch into safe blind replay;
+- provider import/batch IDs remain external reconciliation evidence, not generic MPC Batch identity by default.
 
 ---
 
-# 8. Wire-semantics matrix
+# 6. Wire-semantics matrix
 
-This table is a contract-law matrix, not an endpoint inventory.
-
-| Interaction class | Semantic authority | Typical HTTP meaning | Valid semantic result | Idempotency / concurrency | Must never mean |
-|---|---|---|---|---|---|
-| Owner current query (**Q**) | D1 owner / accepted D2 substrate | request was processed | known / known-empty / unknown / unavailable / partial as applicable | safe read retry subject to freshness/coverage semantics | `[]`, `0`, `null` fabricated as knowledge |
-| Read projection (**P**) | no new authority; composes owners | projection returned | complete/partial/freshness-qualified view | read-only | projection becomes write/concurrency authority |
-| Create/update ordinary MPC-owned configuration | owning domain/substrate | resource/config accepted | created/updated representation | idempotent resource semantics and conditional update where materially required | provider actual state was changed merely because MPC config changed |
-| Consequential owner capability (**C**) | action-owning domain | valid invocation reached owner | accepted / rejected / pending / ambiguous where applicable; often references domain-owned Intent | retry key when duplicate intake is reachable; domain/precondition semantics preserved | provider 2xx == converged; timeout == failed; generic Mutation owns intent |
-| Governance interaction | Controlled Action Governance | valid authorization request/decision interaction | pending / approved-authorized / rejected/invalidated under Governance semantics | decision identity/history preserved; reapproval does not rewrite past | 403 ordinary access == Governance rejection |
-| Operational Work interaction | Operational Work for work lifecycle; source owner for source truth | valid work interaction | work state plus source-domain resolution semantics as separate authorities | Work idempotency/dedupe stays Work-owned | closing Work mutates source truth |
-| Provider protocol ingress | D4 adapter/protocol only | provider message/handshake received | acquisition pointer/protocol result; later owner semantics after translation/reread | provider-specific duplicate/auth semantics behind boundary | callback DTO becomes Product API/domain truth |
+| Interaction | Authority | Valid semantic result | Intake/precondition law | Must never imply |
+|---|---|---|---|---|
+| Owner query **Q** | D1 owner / accepted D2 substrate | known / known-empty / unknown / unavailable / partial + freshness/provenance when material | read retry subject to owner freshness/coverage semantics | empty/default fabricated as knowledge; HTTP time == freshness |
+| Projection **P** | no new authority | composed read with honest component freshness/partiality | read-only | projection update time == source freshness; projection becomes write authority |
+| Ordinary MPC-owned config/resource | owner/substrate | created/updated representation | resource idempotency + conditional update only where material | MPC config write == provider state changed |
+| Consequential owner capability **C** | action owner | accepted / rejected / pending / ambiguous as applicable | `Idempotency-Key` mandatory by default; owner/precondition semantics preserved | provider 2xx == converged; timeout == failed; generic Mutation owns intent |
+| Governance | Controlled Action Governance | pending / authorized / rejected/invalidated under Governance meaning | decision identity/history preserved | 403 ordinary access == Governance rejection |
+| Operational Work | Work lifecycle owner + originating owner for source truth | Work state and source-resolution meaning remain separate | Work-local idempotency | closing Work mutates source truth |
+| Provider ingress | D4 protocol boundary | acquisition/protocol result before owner translation/reread | provider-specific auth/duplicate mechanics + explicit Organization binding | callback DTO becomes Product API/domain truth |
 
 ---
 
-# 9. Naming and boundary examples — illustrative, not endpoint inventory
-
-The following examples show the semantic direction only.
-
-### Semantically plausible Product API vocabulary
-
-```text
-/organizations/{organization_id}/marketplace-installations/...
-/organizations/{organization_id}/readiness/...
-/organizations/{organization_id}/offerings/...
-/organizations/{organization_id}/price-intents/...
-/organizations/{organization_id}/availability/...
-/organizations/{organization_id}/availability-intents/...
-/organizations/{organization_id}/market-intelligence/...
-/organizations/{organization_id}/economics/...
-/organizations/{organization_id}/sales/...
-/organizations/{organization_id}/business-order-intents/...
-/organizations/{organization_id}/invoicing-intents/...
-/organizations/{organization_id}/fulfillment/...
-/organizations/{organization_id}/post-sale-resolutions/...
-/organizations/{organization_id}/work/...
-/organizations/{organization_id}/authorization-decisions/...
-```
-
-Not all of these must survive later operation mapping, and plural/path spelling is not decided here.
-
-### Product API vocabulary that requires rejection or explicit proof
-
-```text
-/ml/items/...
-/ml/catalog-listing/...
-/sankhya/orders/...
-/sankhya/invoices/...
-/integrations/{provider}/...
-/mutations/...
-/commands/...
-/provider-resources/...
-```
-
-A provider/business-system name can legitimately appear inside the **protocol ingress boundary**, or inside a **source-qualified enrichment discriminator/evidence field**, without becoming Product API ownership vocabulary.
-
----
-
-# 10. External benchmark lessons — evidence, not authority
-
-The target direction is consistent with useful patterns seen in mature platforms, but no external platform is copied wholesale.
-
-- **Kubernetes/control-plane pattern:** useful for distinguishing desired intent, observed external state and reconciliation; rejected as a reason to turn all MPC concepts into generic declarative resources/controllers.
-- **Crossplane:** useful evidence that a control plane can orchestrate external systems; its provider-resource mirroring is specifically not the MPC ontology because D4 requires consumer-owned semantics.
-- **Stripe:** useful evidence for explicit idempotent HTTP intake and stable machine-readable client contracts; its idempotency model cannot erase MPC's ambiguous external-effect state.
-- **commercetools:** useful evidence for resource versions/optimistic concurrency where stale state matters; not a reason to treat externally authoritative state as MPC-owned CRUD.
-- **Google API design patterns:** useful for resource-oriented APIs plus explicit custom operations when standard CRUD does not express meaning; not authority for MPC operation naming.
-- **Unified API/Common Model products such as Merge:** useful counterexample. Their core product value is cross-provider Common Models; D4 deliberately rejects a universal lowest-common-denominator provider model for MPC.
-
-Fable should independently verify or replace any benchmark claim it relies upon. These references create no requirement.
-
----
-
-# 11. Local maximum vs Global Maximum
-
-### Local maxima rejected
-
-- rename `/ml/*` to `/marketplace/*` while preserving provider resource meaning;
-- keep `/mutations` and add more domain metadata;
-- generate TypeScript from the current OpenAPI without redesigning semantics;
-- add stronger same-commit OpenAPI/SDK/handler parity checks while retaining duplicate authorities;
-- create one generic `CommandResult` or `CapabilityResponse<T>` envelope for every domain;
-- force every query into a universal `Fact<T>` JSON wrapper;
-- hide all provider-specific fields to make providers look uniform;
-- expose provider DTOs under an `extensions` bag and call that provider-agnostic.
-
-### Global Maximum candidate
-
-> **A semantic MPC Product API whose operation model follows D1/D2/D3 meaning, whose integration protocol boundary follows D4, whose wire semantics preserve uncertainty/effect safety, and whose machine-readable contract is singular enough that SDK/runtime drift is mechanically detectable.**
-
-This solution is smaller than a generic platform and more sustainable than cleaning the legacy surface.
-
----
-
-# 12. Essential vs accidental complexity
+# 7. Essential versus accidental complexity
 
 ## Essential complexity preserved
 
-- Organization isolation;
+- Organization isolation and cross-Organization reference safety;
 - Principal attribution and ordinary access;
-- D1 business authority;
+- D1 semantic authority;
+- source-qualified external identity;
 - known/empty/unknown/unavailable/partial distinctions;
+- freshness/provenance/time when material;
 - domain-local consequential Intent identity;
 - business disposition versus Governance authorization;
-- idempotent client intake where duplicates are reachable;
+- fail-closed consequential intake idempotency;
 - precondition/concurrency safety where stale state matters;
-- accepted/rejected/pending/ambiguous effect semantics;
-- external acceptance versus convergence;
-- member-level partial/ambiguous outcomes for real bulk;
-- provider-enriched evidence when materially useful;
-- source/provenance and provider diagnostic containment.
+- accepted/rejected/pending/ambiguous semantics;
+- acceptance/completion/application/convergence separation;
+- member-level partiality for real bulk;
+- provider-enriched evidence where materially useful;
+- provider diagnostic containment.
 
 ## Accidental complexity removed/refused
 
-- generic Mutation owner;
+- generic Mutation/Command owner;
 - provider/business-system paths as Product API ontology;
-- duplicate manually authoritative OpenAPI + SDK contracts;
-- compatibility with unused legacy routes;
-- generic integration/provider/resource graph;
+- duplicate manual OpenAPI + SDK authorities;
+- unused legacy compatibility;
+- generic provider/integration/resource graph;
 - universal command/capability response envelope;
-- universal evidence/Fact JSON model;
-- speculative multi-version API infrastructure;
+- universal `Fact<T>`/Evidence JSON model;
+- speculative multi-version infrastructure;
 - generic bulk framework;
-- GraphQL/gateway/event streaming without a named need.
+- GraphQL/gRPC/gateway/event-streaming without a named need.
 
 ---
 
-# 13. Enforcement candidates
+# 8. Enforcement candidates
 
-D5 decides protected properties; D7/implementation later chooses exact mechanisms. The target must make these properties mechanically falsifiable.
+D5 freezes protected properties; D7/implementation later chooses exact mechanisms.
 
-1. **Operation-owner map:** every Product API operation must declare its accepted semantic owner or accepted non-domain identity/access authority plus Q/C/P interaction class.
-2. **Boundary classification:** every externally reachable route must be classified Product API, provider protocol ingress, or a separately justified technical surface; unclassified routes fail architecture/conformance review.
-3. **Provider-vocabulary fence:** provider-native nouns may not define Product API path/operation ownership unless explicitly classified as source-qualified enrichment/protocol ingress.
-4. **OpenAPI authority:** SDK/client contract is reproducibly derived or mechanically conformance-checked from OpenAPI; no hand-written second wire authority.
-5. **Server conformance:** handler request/response/status/header behavior is validated against the admitted OpenAPI contract.
-6. **Knowledge-state negative fixtures:** unavailable/partial/unknown cannot pass as empty/default known values.
-7. **Outcome negative fixtures:** ambiguous possible acceptance cannot pass as rejected/failed; accepted cannot pass as converged.
-8. **Idempotency negative fixtures:** same retry token + different semantic request must fail; same request must not create another durable Intent/effect.
-9. **Access/authorization negative fixtures:** ordinary Permission may allow invocation while domain/Governance still rejects or pends the action; business rejection cannot be encoded as ordinary 403.
-10. **Tenant negative fixtures:** an authenticated Principal cannot access another Organization merely by changing path scope; final structural isolation proof belongs to D7/D8.
-11. **Provider diagnostic redaction:** raw external PII/secrets/error payload cannot cross Product API accidentally.
-12. **Bulk partiality fixtures:** confirmed + ambiguous members cannot become one safe-to-retry batch failure.
+1. **Operation-owner map:** every Product API operation declares exactly one semantic owner/accepted substrate authority plus Q/C/P class.
+2. **Route classification:** every externally reachable route is Product API, provider ingress or a separately justified technical surface; unclassified routes fail review.
+3. **Provider-vocabulary fence:** provider nouns cannot define Product API ownership/path semantics except qualified enrichment/protocol ingress.
+4. **Source-qualified identity fixture:** identical native IDs under two Installations/SourceInstances remain client-distinguishable.
+5. **OpenAPI authority:** supported client contract reproducibly derives/conforms; no hand-written second authority.
+6. **Server conformance:** request/response/status/header behavior validates against admitted OpenAPI.
+7. **Knowledge/freshness fixtures:** unknown/unavailable/partial cannot pass as known-empty/default; freshness-material output without owner-controlled provenance fails contract review; projection `updated_at` cannot substitute for component/source time.
+8. **Outcome fixtures:** ambiguous cannot pass as rejected/failed; accepted cannot pass as converged.
+9. **Idempotency fixtures:** missing key on consequential intake fails before durable state/effect; same key + different semantic request fails; same key + same request does not create another Intent/effect; any exemption carries explicit owner-anchor proof.
+10. **Access/authorization fixtures:** ordinary Permission may allow invocation while domain/Governance still rejects/pends; business rejection cannot become ordinary 403.
+11. **Tenant path fixture:** changing path Organization cannot grant cross-Organization access.
+12. **Reference-smuggling fixture:** Organization-A request carrying Organization-B secondary reference fails closed before state change/effect.
+13. **Ingress binding fixtures:** missing/ambiguous/contradictory provider marker→Installation/SourceInstance binding fails closed; durable acquisition without explicit Organization fails structural validation.
+14. **Provider diagnostic redaction:** raw PII/secrets/error payload cannot cross Product API accidentally.
+15. **Bulk partiality:** confirmed + ambiguous members cannot become one safe-to-retry batch failure.
 
 ---
 
-# 14. Proof strategy before implementation
-
-B1 can be falsified before product implementation through architecture/contract artifacts and counterexamples.
+# 9. Proof strategy before implementation
 
 ### P1 — Complete operation ownership
 
-For the eventual D5 operation inventory, prove every operation has exactly one:
+Every later D5 operation must classify:
 
 ```text
-Product API operation
-  -> semantic owner / accepted substrate authority
+operation
+  -> semantic owner / accepted substrate
   -> Q | C | P
-  -> ordinary Permission requirement
+  -> Organization scope
+  -> Permission requirement
   -> knowledge/outcome class
-  -> idempotency/precondition requirement if consequential
+  -> source-qualified identity needs
+  -> freshness/provenance needs
+  -> idempotency/precondition requirement
 ```
 
-Any operation that cannot be classified without inventing a new owner is a D1/D2/D3 issue, not an API convenience exception.
+Any operation requiring a new owner returns to the implicated parent stage rather than creating an API exception.
 
 ### P2 — Protocol separation
 
-Take current/provider examples such as marketplace webhook callbacks, provider Item operations and Sankhya-native order/invoice identifiers. Demonstrate that protocol nouns terminate at the D4 boundary and translate into accepted owner semantics rather than becoming Product API authorities.
+Use concrete current/provider examples to prove protocol nouns terminate at D4 and translate into accepted owner semantics.
 
-### P3 — Knowledge counterexamples
+### P3 — Knowledge/freshness counterexamples
 
-At minimum falsify:
+Falsify at least:
 
-- search/source unavailable;
-- incomplete enumeration;
-- known empty;
-- unsupported provider enrichment.
+- unavailable owner/source;
+- completed known-empty versus incomplete enumeration;
+- materially stale but known value;
+- projection whose update time is newer than source observation time;
+- provider enrichment unsupported on another provider.
 
-The schemas must make each materially different result distinguishable.
+### P4 — Effect-safety counterexamples
 
-### P4 — Consequential-effect counterexamples
+Falsify at least:
 
-At minimum falsify:
+- consequential intake without `Idempotency-Key`;
+- same key reused for different semantic request;
+- timeout after possible external dispatch;
+- stale pre-dispatch condition;
+- accepted effect not yet converged;
+- one confirmed + one ambiguous bulk member;
+- ordinary access allowed while business/Governance rejects.
 
-- business rejection versus 403 access denial;
-- stale API client precondition versus provider/business rejection;
-- provider timeout after possible dispatch;
-- accepted submission without convergence;
-- external state diverging after prior accepted intent;
-- retry after ambiguous result;
-- one confirmed + one ambiguous bulk member.
+### P5 — Contract-authority proof
 
-### P5 — Contract authority/drift
+Deliberately introduce OpenAPI↔SDK and OpenAPI↔server drift in a negative fixture. Verification must turn red for the exact protected property. Merely having a generator/checker is not proof.
 
-Implementation-phase proof must demonstrate a deliberate OpenAPI contract change causes derived client/server conformance artifacts to change/fail mechanically. A green gate that never exercises drift detection is no proof.
+### P6 — Tenant/namespace proof
 
-### P6 — Structural inversion
+Falsify:
 
-Re-run D5 design assuming the current OpenAPI, SDK and handlers had the opposite shape or did not exist. B1 laws should remain unchanged except where current evidence reveals a real Product 1.0 consumer requirement.
+- cross-Organization path access;
+- cross-Organization secondary-reference smuggling;
+- two identical native IDs under different Installation/SourceInstance qualifiers collapsing in the SDK;
+- provider ingress persisting durable acquisition state without explicit Organization.
 
----
+### P7 — Structural inversion
 
-# 15. Adversarial challenge package for Fable
-
-Fable should reconstruct repository authority first, treat this file last/non-authoritatively, apply Method v1.0.0, and attack at least these questions:
-
-1. **Product boundary:** Does this candidate preserve the accepted marketplace-commerce product while correctly avoiding Mercado Livre/Sankhya/integration specificity, or does it accidentally require a D0 reopen?
-2. **Global Maximum:** Is semantic REST + explicit owner operations actually the smallest sustainable structure, or is another API model materially superior without adding YAGNI?
-3. **Organization scope:** Is `/organizations/{organization_id}/...` superior to an explicit mandatory organization header? Find concrete correctness/future-cost counterexamples. Token-only inference is allowed only if Fable can reconcile it with D2's explicit-scope rule.
-4. **Q/C/P mapping:** Does any accepted D1 capability fail to fit the proposed API interaction laws without distorting D3 meaning?
-5. **Intent modeling:** Does owner-specific Intent exposure preserve authority, or does the candidate accidentally turn every action into an unnecessary durable resource?
-6. **HTTP outcome split:** Challenge the rule that valid business rejected/pending/ambiguous outcomes are not ordinary HTTP problems. Identify where standard HTTP semantics should still carry precondition/conflict meaning without leaking provider state.
-7. **Knowledge state:** Can the law be enforced without a universal response envelope? Find any operation class where contextual schemas would become structurally inconsistent or ambiguous.
-8. **Idempotency:** Is a request-level `Idempotency-Key` the right seam? Challenge mandatory scope, equivalence definition, conflict behavior and relation to domain-local Intent identity.
-9. **Concurrency:** Is MPC-level ETag/conditional semantics sufficient where stale client state matters while provider versions stay local? Identify any unavoidable provider-version exposure.
-10. **Provider-rich evidence:** Does bounded domain-owned enrichment avoid both lowest-common-denominator flattening and provider DTO mirroring? Attack future second-provider cases.
-11. **Error model:** Is RFC 9457 Problem Details plus owner semantic outcomes sufficient? Identify duplicate/unowned error semantics or missing operational diagnostic needs.
-12. **Contract authority:** Should OpenAPI be the single machine-readable HTTP authority? Attack semantic-authority inversion, generated-client limitations and server conformance gaps. Propose a better authority structure only if it removes more defect classes with less total complexity.
-13. **ADR-016:** Is superseding same-commit manual SDK discipline justified, and what historical invariant—if any—must survive after derivation/conformance exists?
-14. **Surface topology:** Is separating Product API from provider protocol ingress sufficient, or is a third externally reachable surface already evidenced by Product 1.0/runtime constraints?
-15. **Compatibility:** Does hard cutover remain correct for D5, and is any versioning seam worth preparing now without a compatibility consumer?
-16. **Bulk:** Find a real Product 1.0 workflow that already requires bulk at B1 altitude or confirm operation-local admission is enough.
-17. **YAGNI:** Identify any abstraction in this candidate that exists only because other abstractions exist.
-18. **Future retrofit:** Find the hardest plausible second marketplace / second business-system change and test whether this API law set preserves the right seam without prebuilding a generic platform.
-19. **Proof:** For every recommended correction, state how the property could be falsified before/after implementation.
-20. **Reopen discipline:** Distinguish findings that correct D5 from findings that actually require targeted D0–D4 reopen. Reviewer preference does not create a reopen.
-
-Fable should return `APPROVE`, `REVISE` or `REJECT` with material findings only, corrected invariants and reopen triggers. A second review round is justified only if a real material contradiction remains after GPT adjudication.
+Re-run the Method's Structural Inversion Test: if the current OpenAPI/SDK/routes had the opposite shape, these laws must still follow from D0–D4.
 
 ---
 
-# 16. Reopen / stop triggers
+# 10. Independent-review adjudication
 
-B1 or its parent authority must be revisited only on material evidence such as:
+Fable verdict: **REVISE — direction confirmed; five D5-local corrections; zero D0–D4 reopen.**
 
-1. **Product boundary change:** a ratified objective makes marketplace commerce only one vertical of a broader enterprise operations platform → targeted D0, then D1 coherence/reopen before D5 generalizes the API.
-2. **New API audience:** a real external/public partner/client appears with materially different compatibility, security, tenancy or versioning obligations.
-3. **Missing semantic owner:** a required Product 1.0 operation cannot be expressed under accepted D1/D2 authority without distortion → stop and targeted parent-stage reopen.
-4. **D3 mismatch:** a required client interaction cannot preserve accepted Q/C/P/outcome semantics → targeted D3 review rather than hiding the mismatch in HTTP.
-5. **Provider-contract conflict:** a real provider requirement makes semantic/protocol separation impossible for a required operation → targeted D4 review with evidence.
-6. **Contract technology failure:** OpenAPI cannot express a materially required client contract or mechanically derived clients cannot preserve it → revisit wire technology/derivation, not default to duplicate manual authorities.
-7. **Real compatibility obligation:** production consumers become entitled to an existing contract → revisit hard-cutover/versioning posture.
-8. **Repeated provider enrichment pattern:** multiple real providers/consumers demonstrate the same shared semantic enrichment concept → evaluate a smaller shared semantic primitive; do not jump directly to a universal Provider graph.
-9. **Real bulk consumer:** a Product 1.0 workflow proves member-level bulk is necessary → design that operation with explicit partial/ambiguous semantics.
-10. **Organization topology evidence:** path scope creates a concrete material defect and another explicit scoping mechanism satisfies D2 more sustainably → revisit B1-D5.
+GPT adjudication:
+
+| Finding | Verdict | Resolution |
+|---|---|---|
+| **F-D5-1** freshness/provenance omitted from Q law | **AGREE** | B1-D4/D7, essential complexity, enforcement and proof now carry owner-controlled freshness/provenance when material |
+| **F-D5-2** source-qualified external identity missing at wire boundary | **AGREE** | B1-D12 adds qualifier law + negative namespace fixture |
+| **F-D5-3** ingress wording looked like forbidden Organization inference | **AGREE** | B1-D5 now separates fail-closed namespace identification from reading explicit MPC-owned Organization binding |
+| **F-D5-4** idempotency mandatory class left open | **AGREE** | B1-D9 makes key mandatory/fail-closed by default for consequential intake, with explicit per-operation structural-idempotency exemption only |
+| **F-D5-5** tenant tests missed secondary-reference smuggling | **AGREE** | B1-D5 + enforcement/proof add same-Organization resolution for every secondary reference |
+
+Additional review adjudications:
+
+- **Organization path scope:** ACCEPT. Mandatory path scope is the smaller, safer target than a mandatory Organization header; header alternative is rejected for the current product because it preserves an avoidable ambient/cache-key/consistency axis.
+- **REST + owner-specific operations:** ACCEPT. No accepted Product 1.0 capability requires CRUD distortion or a generic command surface.
+- **RFC 9457 problem split:** ACCEPT.
+- **OpenAPI wire authority:** ACCEPT.
+- **ADR-016:** historical after canonical consolidation, preserving only the two active lessons stated in B1-D13.
+- **Hard cutover:** ACCEPT; no compatibility/versioning tax without a consumer.
+- **No second Fable round:** no material contradiction remains after adjudication.
+
+---
+
+# 11. Explicit Unknowns / later D5 work
+
+B1 does not decide:
+
+- exact operation inventory/path nouns;
+- concrete owner-specific request/response schemas;
+- exact Permission mapping;
+- pagination/filter/sort/cursor per real consumer;
+- concrete provider-rich fields;
+- concrete bulk endpoints;
+- concrete concurrency-enabled operations/status mappings;
+- concrete OpenAPI tooling/server generation/conformance stack;
+- concrete technical/admin routes if later justified;
+- total D5 batch count.
+
+The next D5 work, if B1 is ratified, should derive the Product 1.0 operation/resource surface from D0–D4 owners and these laws rather than from legacy routes.
+
+---
+
+# 12. Reopen / stop triggers
+
+Revisit only on material evidence:
+
+1. marketplace commerce becomes only one vertical of a broader enterprise platform → targeted D0 then D1 review before API generalization;
+2. a real external/public client introduces materially different compatibility/security/tenancy obligations;
+3. required Product 1.0 operation cannot fit accepted owner semantics → targeted parent-stage review;
+4. required client interaction cannot preserve D3 Q/C/P/outcome semantics → targeted D3 review;
+5. real provider requirement makes D4 semantic/protocol separation impossible → targeted D4 review;
+6. OpenAPI/derived client/server conformance cannot express a materially required contract → revisit wire technology, not duplicate manual authorities;
+7. production consumers become entitled to an existing contract → revisit compatibility/versioning;
+8. multiple real providers/consumers prove a repeated semantic enrichment deserving a smaller shared primitive;
+9. real workflow proves bulk endpoint necessary → admit operation-local bulk with member-level semantics;
+10. path Organization scope causes a concrete material defect and another explicit mechanism satisfies D2 more sustainably;
+11. a real case proves source qualification cannot be represented without a new identity class → existing D2 identity reopen trigger.
 
 Framework preference, current-code convenience and hypothetical future providers are not reopen evidence.
 
 ---
 
-# 17. Candidate outcome
+# 13. Converged candidate outcome
 
 **Proposed outcome:** `RESTRUCTURE NOW` relative to the current API contract shape.
 
-This does **not** authorize product implementation. It means only:
+If explicitly ratified by the operator, canonical D5-B1 consolidation should establish:
 
-- D5 should design from the accepted semantic target rather than preserve legacy routes/modules;
-- Product API and provider protocol ingress are distinct boundaries;
-- semantic owner/resource/operation laws come before endpoint inventory;
-- unknown/effect/authorization semantics must survive the wire;
-- OpenAPI should become the singular machine-readable Product API wire authority;
-- supported SDK contracts derive mechanically rather than remain a second manually authoritative model;
-- no generic Mutation/Command/Provider platform is introduced;
-- no D0–D4 reopen is currently required by this candidate.
+- semantic/domain-oriented MPC Product API;
+- Product API distinct from provider/business-system protocol ingress;
+- REST/HTTP with owner-specific operations where CRUD would lie;
+- Organization path scope + cross-Organization reference fail-closed rules;
+- honest knowledge + freshness/provenance semantics;
+- accepted/rejected/pending/ambiguous effect semantics;
+- fail-closed idempotent consequential intake;
+- source-qualified external identity + provider-rich/domain-owned enrichment;
+- RFC 9457 for API problems, distinct from valid business outcomes;
+- OpenAPI as singular machine-readable Product API wire authority;
+- derived/conformant SDK/server with demonstrated drift failure;
+- ADR-016 historical after consolidation;
+- hard cutover with no speculative compatibility/versioning;
+- no generic Mutation/Command/Provider/Workflow platform;
+- no D0–D4 reopen.
 
-**This file remains NON-AUTHORITATIVE until independent review, GPT adjudication and explicit operator ratification are completed, after which only canonical D5/router/ADR consolidation may create target authority.**
+**This file remains NON-AUTHORITATIVE until explicit operator ratification and subsequent canonical consolidation. Implementation remains blocked until D9.**
