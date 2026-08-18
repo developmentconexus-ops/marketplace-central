@@ -2,7 +2,7 @@
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
 > **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 OPEN / ACTIVE**  
-> **D5-B2 current state:** **B2-A + Operation Matrix Blocks 1–3 ACCEPTED IN-STAGE; Block 4 Governance + Sales + Materialization = NEXT**  
+> **D5-B2 current state:** **B2-A + Operation Matrix Blocks 1–4 ACCEPTED IN-STAGE; Block 5 Fulfillment + Post-Sale + Work + P compositions = NEXT**  
 > **Decision Reconciliation:** **ACCEPTED / CANONICAL**  
 > **Implementation:** BLOCKED until D9 is accepted  
 > **Last updated:** 2026-08-18
@@ -61,7 +61,8 @@ D5 — API — OPEN / ACTIVE
        ├─ Matrix Block 1 — Identity/Access + Portfolio + Readiness — ACCEPTED IN-STAGE
        ├─ Matrix Block 2 — Offering + Price + Availability — ACCEPTED IN-STAGE
        ├─ Matrix Block 3 — Market Intelligence + Commercial Economics — ACCEPTED IN-STAGE
-       └─ Matrix Block 4 — Governance + Sales + Materialization — NEXT / UNDER DERIVATION
+       ├─ Matrix Block 4 — Governance + Sales + Materialization — ACCEPTED IN-STAGE
+       └─ Matrix Block 5 — Fulfillment + Post-Sale + Work + P compositions — NEXT / UNDER DERIVATION
   ↓
 D6 — Frontend
   ↓
@@ -83,8 +84,7 @@ Product implementation remains blocked until D9 is accepted.
 ### B2-A — Client/Auth
 
 - Product API authentication uses one standards-based OIDC/OAuth boundary.
-- Humans use Authorization Code + PKCE semantics.
-- Confidential machine clients use Client Credentials/service-account semantics.
+- Humans use Authorization Code + PKCE semantics; confidential machine clients use Client Credentials/service-account semantics.
 - MPC remains authority for Principal, Organization Membership, AccessRole/Permission/RoleAssignment and every business decision.
 - Tokens are audience-bound to MPC API; client/request never supplies effective Principal or business approval.
 - No global/static MPC Product API key or duplicate IdP-role business authority.
@@ -102,18 +102,28 @@ Not admitted: Product/PIM CRUD, generic IAM platform, Organization SaaS provisio
 - `ListingIntent` is the single create/edit authoring/tracking identity with draft concurrency and controlled submit.
 - `PriceIntent` is separate from Economics and uses durable intent semantics.
 - Sellable Availability is Availability-owned; no public `SetAvailableQuantity` or baseline public AvailabilityIntent authoring.
-- Inventory Source and Availability policy/configuration remain Availability-owned.
-- Provider may jointly serialize Offering + Availability inputs without ownership merge or cross-owner atomicity.
+- Provider may jointly serialize Offering + Availability inputs without ownership merge/cross-owner atomicity.
 - No generic `LongRunningOperation`, giant Listing CRUD, direct Price set or generic mutation/action surface.
 
 ### Matrix Block 3
 
-- Market Intelligence exposes competitive position/comparable evidence, not generic MarketObservation CRUD or collector commands.
-- `EvaluatePriceScenario` is a stateless, side-effect-free Commercial Economics capability; simulations/recommendations do not gain durable IDs by default.
-- Expected Economics and Sale Economics preserve honest L0/L1/L2 lineage, coverage and reconciliation without one mutable profitability row.
+- Market Intelligence exposes competitive position/comparable evidence, not generic MarketObservation CRUD/collector commands.
+- `EvaluatePriceScenario` is stateless/side-effect-free; simulations/recommendations do not gain durable IDs by default.
+- Expected/Sale Economics preserve honest L0/L1/L2 lineage, coverage and R1/R2 reconciliation without one mutable profitability row.
 - Commercial policy remains Economics-owned; Governance does not acquire business thresholds.
-- Economic Attribution is persistent Economics state where meaning/correlation is exact/partial/ambiguous/unresolved; explicit ambiguous resolution is human baseline.
+- Economic Attribution is persistent Economics state; explicit ambiguous resolution is human baseline.
 - No generic financial ledger, universal Reconciliation resource, public `ReconcileNow`, bank/R3 API or price actuation inside Economics.
+
+### Matrix Block 4
+
+- Governance exposes Authorization Decisions and bounded Delegation/Grant administration; approval never mutates Intent or executes effects.
+- Marketplace Sales is externally originated and read-centric; Product clients do not create/update provider sales.
+- explicit human Selling Entity attribution resolution is admitted only for genuine Sales ambiguity.
+- BusinessOrderIntent is Materialization-owned and normally created from committed Sale meaning, not client commands.
+- InvoicingIntent is Materialization-owned and normally created/advanced from Fulfillment physical-readiness checkpoints, not direct invoice commands.
+- Party Resolution exposes bounded human resolution without Customer/CRM mastery.
+- Destination Realization Q is admitted; write resolution remains conditioned on D8 controlled proof.
+- no direct Sankhya TOP/NUNOTA/order/invoice/retry/workflow API and no blind replay after possible native acceptance.
 
 ## 4. What is prohibited now
 
@@ -123,43 +133,47 @@ While D5-B2 is OPEN / ACTIVE:
 - do not silently alter accepted D0–D4/D4-R1/D5-B1 or ratified B2 in-stage decisions;
 - do not derive operations from legacy routes/current OpenAPI/provider endpoints;
 - do not recreate Product/PIM master, generic Integration/Mutation/Workflow/Rules/AI authority, generic finance ledger or market collector platform;
-- do not merge Offering, Availability, Economics, Governance, Sales, Materialization or Fulfillment because a provider/ERP workflow combines fields or calls;
+- do not merge Offering, Availability, Economics, Governance, Sales, Materialization, Fulfillment, Post-Sale or Work because provider/ERP workflow combines fields or calls;
 - do not create global/shared MPC API keys or treat Keycloak roles/Organizations as MPC business authority;
-- do not expose provider OAuth, source sync, readiness/market refresh, reconcile-now or runtime commands merely for operational convenience;
+- do not expose provider OAuth, source sync, readiness/market refresh, reconcile-now, ERP retry or runtime commands merely for convenience;
+- do not create direct client commands for owner reactions already defined by D3 (for example normal-path BusinessOrderIntent/InvoicingIntent creation);
 - do not weaken Organization scope, source-qualified identity, honest knowledge/freshness, Permission/Governance separation, idempotency, concurrency, ambiguity, recovery, multi-target scope or convergence laws;
 - do not add compatibility/versioning or generic bulk without a real entitled consumer/workflow;
 - do not treat retained legacy ADRs, `AI-DIALOG.md`, chat summaries or Git history as current target authority.
 
 ## 5. Exact next action
 
-**Derive D5-B2 Operation Admission Matrix Block 4 — Controlled Action Governance + Marketplace Sales + Business-System Materialization.**
+**Derive D5-B2 Operation Admission Matrix Block 5 — Fulfillment Lifecycle + Post-Sale Resolution + Operational Work + justified read-only P compositions.**
 
 The block must establish the smallest Product API surface for:
 
-1. **Controlled Action Governance**
-   - Authorization Decision read/create semantics for real approval consumers;
-   - authorization grant/delegation administration only where Product 1.0 actually needs it;
-   - exact intended/authorized scope preservation;
-   - ordinary Permission distinct from domain disposition/Governance;
-   - approval never mutating Intent, executing effects or waiving execution-time revalidation;
-   - no generic approval/workflow/policy engine.
+1. **Fulfillment Lifecycle**
+   - Fulfillment Node read/configuration only where Product clients need it;
+   - physical separation/conference/packing/dispatch checkpoints as owner-specific client capabilities rather than generic workflow status;
+   - provider-requirement closure/readiness under Fulfillment authority, with provider artifacts/evidence remaining D4 source truth;
+   - source-qualified Shipment/delivery observation through relevant terminal outcomes;
+   - physical conference/readiness as the legitimate owner signal feeding Materialization, never a direct invoice command;
+   - no company-wide WMS/TMS, generic shipment mutation or provider protocol mirror.
 
-2. **Marketplace Sales**
-   - source-qualified marketplace Sale listing/get semantics and honest acquisition/freshness;
-   - transaction-specific Selling Entity attribution;
-   - no synthetic MPC sale/order alias merely for normalization;
-   - no downstream Materialization/Fulfillment/Economics/Post-Sale ownership leakage;
-   - provider Order/Pack/Shipment topology remains D4 evidence, not Product ontology.
+2. **Post-Sale Resolution**
+   - scoped Post-Sale Resolution read/create/advance semantics only for real cancellation/return/refund consequence workflows;
+   - 0..N resolutions per Sale and line/quantity scope where material;
+   - provider Claim/Return/refund/reverse-shipment resources remain external/source-qualified evidence, not MPC ontology;
+   - no CRM/SAC/general reverse-logistics platform and no direct provider refund/cancel API by protocol vocabulary;
+   - closure only when applicable consequences are sufficiently evidenced, never from one provider terminal flag alone.
 
-3. **Business-System Materialization**
-   - Business Order Intent + native-order convergence;
-   - Invoicing Intent + authoritative fiscal/document convergence;
-   - decide whether these intents are directly client-created or initiated only by accepted upstream owner conditions/workflows;
-   - bounded Party Resolution and Destination Realization operations where a real human/client decision is required;
-   - no Customer/Address master CRUD;
-   - no direct `/sankhya/orders`, `/sankhya/invoices`, TOP/NUNOTA/status/choreography Product API;
-   - consequential create idempotency and no-blind-retry after possible native acceptance;
-   - explicit ambiguous/duplicate/native-correlation failures and Work rather than hidden retry.
+3. **Operational Work**
+   - Work list/get/assignment/responsibility/lifecycle operations for real operator queues;
+   - Work closure never mutates originating source truth;
+   - resolution evidence returns to source owner for semantic closure when required;
+   - source-domain independent resolution can reconcile Work through its own events;
+   - no generic Task/Case/Workflow engine beyond accepted Work meaning.
+
+4. **Read-only P compositions**
+   - admit only cross-owner read compositions with a real operator/manager consumer, such as operational attention/cockpit summaries;
+   - projection remains read-only and may carry component freshness/partiality;
+   - no P endpoint may become write/concurrency/authorization/retry authority;
+   - D6 screen topology does not become API authority merely because a dashboard needs data.
 
 For every candidate, apply the complete B2 admission tuple: consumer, client class, owner, Q/C/P, Organization, Permission, subject identity, knowledge/outcome, idempotency, concurrency/preconditions, provider enrichment, collection semantics and bulk.
 
@@ -177,9 +191,10 @@ A fresh session must conclude unambiguously:
 - Decision Reconciliation accepted/canonical;
 - D5-B1 accepted/canonical;
 - D5-B2 OPEN / ACTIVE;
-- B2-A and Matrix Blocks 1–3 accepted in-stage;
-- Block 4 Governance + Sales + Materialization is the exact next action;
+- B2-A and Matrix Blocks 1–4 accepted in-stage;
+- Block 5 Fulfillment + Post-Sale + Work + P compositions is the exact next action;
 - Product API auth remains OIDC/OAuth with MPC-owned access/business authority;
+- BusinessOrder/Invoicing normal-path intent creation remains owner-triggered, not client-commanded;
 - no stale pre-R1 B2 candidate is active;
 - implementation remains blocked until D9.
 
