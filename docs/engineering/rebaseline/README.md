@@ -2,7 +2,7 @@
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
 > **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 OPEN / ACTIVE**  
-> **D5-B2 current state:** **Wire W1 + W2-A/B/C/D/E ACCEPTED IN-STAGE; Whole-W2 Fable Rounds 1–2 + GPT final adjudication CONVERGED; operator final ratification of converged W2-local corrections = NEXT**  
+> **D5-B2 current state:** **Operation Matrix + Whole-Matrix RATIFIED; Wire W1 + W2 ACCEPTED / CANONICAL; W3 Collections / Pagination / Filter / Search / Cursor Grammar = NEXT**  
 > **Implementation:** **BLOCKED until D9 is accepted**  
 > **Last updated:** 2026-08-19
 
@@ -25,19 +25,18 @@ A fresh session reads, in order:
 13. `docs/engineering/rebaseline/D5-API.md`
 14. `docs/engineering/rebaseline/D5-B2-PRODUCT-OPERATION-SURFACE.md`
 15. `docs/engineering/rebaseline/D5-B2-OPERATION-ADMISSION-MATRIX.md`
-16. `docs/engineering/rebaseline/D5-B2-WIRE-CONTRACT.md`
-17. `docs/engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md` — W2-A/B
-18. `docs/engineering/rebaseline/D5-B2-W2-C-READINESS-MARKET-ECONOMICS.md` — W2-C
-19. `docs/engineering/rebaseline/D5-B2-W2-D-OPERATIONAL-SCHEMAS.md` — W2-D
-20. `docs/engineering/rebaseline/D5-B2-W2-E-TRANSVERSAL-CONSISTENCY.md` — W2-E
-21. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
-22. code/OpenAPI/schemas/tests/runtime only as current-state evidence when needed
+16. `docs/engineering/rebaseline/D5-B2-WIRE-CONTRACT.md` — canonical W1
+17. `docs/engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md` — canonical consolidated W2
+18. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
+19. code/OpenAPI/schemas/tests/runtime only as current-state evidence when needed
 
 This file alone owns **program status, allowed/blocked work and exact next action**. Detailed semantics remain in the accepted artifacts above.
 
-`D5-B2-W2-WHOLE-COHERENCE-REVIEW-CANDIDATE.md` and `AI-DIALOG.md` are **NON-AUTHORITATIVE review evidence** and are deliberately excluded from the authority path. Fable/GPT findings do not modify W1/W2 until operator final ratification + canonical consolidation.
+The former staged W2-C/D/E files and Whole-W2 review candidate were removed after final ratification; Git history is the archive. `AI-DIALOG.md` is again protocol-only and is not architecture authority.
 
-Older “next” wording in child/review artifacts is a stage snapshot; this router is current status authority.
+Legacy/current code, routes, OpenAPI and SDK remain evidence only until later D-stage target work replaces them.
+
+---
 
 ## 2. Program state
 
@@ -56,21 +55,11 @@ D5 — API                                                  OPEN / ACTIVE
     Operation Admission Matrix                           ACCEPTED / RATIFIED
     Whole-Matrix Global Coherence                        ACCEPTED / RATIFIED
     Wire Contract
-      W1 Resource / Path / HTTP Grammar                  ACCEPTED IN-STAGE
-      W2 Request / Response Schema Grammar               OPEN / ACTIVE
-        W2-A Core Schema Grammar                         ACCEPTED IN-STAGE
-        W2-B ListingIntent / PriceIntent / Availability  ACCEPTED IN-STAGE
-        W2-C Readiness / Market / Economics              ACCEPTED IN-STAGE
-        W2-D Governance / Sales / Materialization /
-             Fulfillment / Post-Sale / Work              ACCEPTED IN-STAGE
-        W2-E Transversal / final consistency             ACCEPTED IN-STAGE
-      Whole-W2 lead Global Coherence                     COMPLETE / RESTRUCTURE W2-LOCAL
-      operator lead-direction ratification               COMPLETE
-      independent Fable Round 1                          COMPLETE / REVISE W2-LOCAL
-      GPT Round-1 adjudication                           COMPLETE
-      focused Fable Round 2                              COMPLETE
-      GPT final adjudication                             COMPLETE / CONVERGED
-      operator final converged ratification              NEXT
+      W1 Resource / Path / HTTP Grammar                  ACCEPTED / CANONICAL
+      W2 Request / Response Schema Grammar               ACCEPTED / CANONICAL
+      W3 Collections / Pagination / Filter / Search /
+         Cursor Grammar                                  NEXT
+      Remaining wire obligations                         BLOCKED BY W3 SEQUENCE
 D6 — Frontend                                             BLOCKED BY D5
 D7 — Runtime / Jobs / Transactions                        BLOCKED
 D8 — Golden Flows                                         BLOCKED
@@ -78,74 +67,136 @@ D9 — Adversarial Architecture Review                      BLOCKED
 Implementation                                            BLOCKED UNTIL D9
 ```
 
-## 3. Converged Whole-W2 correction package — NON-AUTHORITATIVE UNTIL FINAL RATIFICATION
+Whole-W2 lead review, Fable Round 1, GPT adjudication, focused Fable Round 2 and final GPT adjudication converged and were operator-ratified on 2026-08-19. Their active meaning is now incorporated in canonical W1/W2; review dialogue itself is not an authority layer.
 
-The review cycle converged on bounded W1/W2-local corrections only; **no parent-stage reopen is required**.
+---
 
-1. **Historical ListingIntent dispatch basis** — expose append-only attempt/effect history through existing `GetListingIntent`; preserve dispatch-time resolved values/knowledge/provenance, requirement revision, media, authorization/disposition and typed PriceIntent/Availability correlations without `PublicationAttempt` CRUD or cross-owner current authority.
-2. **Missing schema homes** — add bounded `MarketplaceListing`, `FulfillmentNode`, `EconomicPerformanceSummary`; `FulfillmentState` is not a second resource and maps to `FulfillmentExecution`.
-3. **Fulfillment operating target baseline** — one current evidence-backed field only: internal `dispatch_handoff_lead_time_before_provider_deadline`, with inherit/override/effective provenance; provider deadline remains external evidence; no generic SLA/target map.
-4. **Media** — ListingIntent-bound multipart `:create-media`, `200` + ListingIntent-scoped descriptor, same media identity on exact idempotent replay, binary content in semantic fingerprint; no standalone media URI/Asset authority.
-5. **PublicationValue** — add bounded `number_unit = ExactDecimalString + requirement-scoped unit_key` and explicit `not_applicable` only where Readiness says N/A is permitted; no UoM engine/property bag.
-6. **Draft-dependent conditional requirements** — Readiness keeps requirement definition; Offering keeps dispatchability; D4 may technically compose exact current ListingIntent + PriceIntent + Availability inputs for provider conditional validation. Evaluation evidence is revision-anchored and may be unknown/unavailable. Selected User-Product lane concrete validation remains D4/D8 proof.
-7. **Fulfillment identity** — `FulfillmentExecutionId` is the one durable Fulfillment lifecycle identity for checkpoint/history/artifact/Work/Materialization correlation; no parallel FulfillmentIntent/Workflow ID for the same meaning and no speculative split-routing policy.
-8. **`sale_line_key` lifetime** — once minted within a Sale, it never rebinds; reinterpretation may retire + mint new. Transient publication candidate/option keys rely on historical dispatch snapshots instead of eternal resolvability.
-9. **Revision-precondition grammar** — HTTP `If-Match` is used only on standard methods whose request URI is the actual conditionally protected resource. Owner custom methods carry the same opaque validator as typed `etag` request data; referenced resources carry typed adjacent `etag`. No custom conditional header and no implicit alias semantics for `:verb` URIs.
-10. **ProductChannelCorrespondence** — keep Resolve/Clear as Readiness owner capabilities over the keyed Product+Marketplace subject; `GetProductChannelReadiness` exposes a correspondence-scoped `etag` distinct from `requirements_revision`; Resolve/Clear carry that typed `etag`. No synthetic Correspondence/Readiness ID and no forced PUT/DELETE resource fiction.
-11. **Problem/idempotency hardening** — true HTTP conditionals: missing/false → `428/412`; typed revision proof missing/invalid/stale → `422 validation-error` / `409 resource-revision-conflict`; exact prior idempotent intake resolves before stale revision re-evaluation; all material revision proofs participate in semantic fingerprint.
-12. **D4/D8 proof notes only** — selected provider lane must prove authoritative N/A reread semantics and concrete User-Product conditional-requirement validation before D8 claims convergence. These notes do not reopen D4 semantics now.
+## 3. Load-bearing D5-B2 authority
 
-The final GPT adjudication deliberately revised one Fable Round-2 proposal: correspondence does **not** use PUT/DELETE + `If-Match`, because that model cannot honestly protect unresolved/conflicting correspondence revision without either an absent-target gap or a DELETE-that-does-not-delete resource fiction. The already-selected typed `etag` custom-method grammar is smaller and complete.
+### 3.1 Semantic/client authority
 
-## 4. What is prohibited now
+- Product API is semantic-owner driven, not CRUD-, screen- or provider-shaped;
+- humans use OIDC Authorization Code + PKCE; confidential machines use Client Credentials/service-account semantics;
+- MPC owns Principal, Membership, AccessRole/Permission and every business authority;
+- `GET /access-context` is the only platform-scoped self-only Product Q baseline;
+- Organization business API remains `/organizations/{organization_id}/...`;
+- no Product/PIM, generic Integration/Action/Operation/Workflow/Rules/Task/Finance/AI owner;
+- zero-P baseline remains until D6 consumer evidence proves a bounded composition need.
 
-Until operator final ratification:
+### 3.2 Operation authority
 
-- do not modify W1/W2 canonical artifacts to incorporate the converged review package;
-- do not delete the review candidate or reset `AI-DIALOG.md` yet;
-- do not start collection/pagination/Permission/OpenAPI/tooling sub-batches;
-- do not begin D6–D9 or implementation;
-- do not treat Fable/GPT review text as authority before operator ratification;
-- do not reopen D0–D4/D4-R1/D5-B1 merely because the selected provider protocol is complex;
-- do not add generic Product/PIM/Asset/UoM/Rules/SLA/Workflow/Operation/Finance/Task abstractions;
-- do not weaken source qualification, knowledge honesty, owner separation, idempotency, concurrency/preconditions, physical-fact trust or Work source-truth fences.
+- ListingIntent, PriceIntent and Availability remain distinct through initial publication;
+- BusinessOrderIntent/InvoicingIntent remain Materialization owner reactions, not direct Product commands;
+- Governance authorizes but does not execute;
+- Fulfillment physical facts require admitted human/proven physical-system authority and cannot be fabricated by ordinary automation;
+- Post-Sale coordinates scoped consequences and does not gain provider-action vocabulary;
+- Work owns responsibility/lifecycle, never source truth;
+- every admitted consequential C operation has an explicit idempotency/current-state disposition.
+
+### 3.3 Canonical W1
+
+- no `/v1` compatibility axis without a real stable consumer;
+- paths express Organization/canonical identity or source namespace, not D1 package names/workflow order;
+- external Listing/Sale/Shipment keep Installation-qualified native identity; no mirror IDs;
+- standard methods only when honest; owner capabilities use `POST {resource-or-keyed-subject-uri}:verb`;
+- custom-method URI is not an implicit alias of the base resource for HTTP conditionals;
+- one opaque ETag revision authority per protected meaning;
+- true same-resource standard mutation uses `If-Match` (`428` missing / `412` false);
+- current-state-protected custom method carries typed `etag` request data (`422` invalid/missing / `409 resource-revision-conflict` stale);
+- exact revision of another resource carries ETag adjacent to the typed reference;
+- ProductChannelCorrespondence remains keyed Readiness meaning with a correspondence-scoped ETag and Resolve/Clear capabilities; no synthetic Correspondence ID or forced PUT/DELETE;
+- Idempotency-Key remains duplicate-intake safety, independent of revision proof;
+- provider/business-system protocol ingress remains outside Product API roots.
+
+### 3.4 Canonical W2
+
+- opaque IDs/typed source refs; exact decimal Money; explicit temporal meanings;
+- request/read schemas are authority-separated and closed;
+- `null` never carries unknown/unavailable/partial/not-applicable;
+- knowledge uses smallest owner-specific unions, not universal `Fact<T>`;
+- no generic Result/Evidence/ExternalRef/Subject/Scope/Policy/Workflow wrappers;
+- ListingIntent is sparse/declarative create/edit identity; historical dispatch/effect basis is append-only and preserves attempt-time resolved values/provenance without a PublicationAttempt resource;
+- `PublicationValue` includes bounded `number_unit` and explicit requirement-permitted `not_applicable`, without generic UoM engine;
+- MarketplaceListing is source-qualified actual-state evidence; Listing/Price convergence stay in their Intents;
+- PriceIntent remains separate and explicit supersession carries prior PriceIntent revision proof;
+- Availability separates control, desired meaning, provider observation and convergence;
+- Readiness owns requirement definitions/candidates; draft-dependent provider requirement evaluation is D4 technical evidence feeding Offering dispatchability while Price/Availability stay separate;
+- Market coverage remains distinct from evidence sufficiency;
+- Economics is components-first, preserves L0/L1/L2 and R1/R2, and never fabricates profitability from missing evidence;
+- EconomicPerformanceSummary is period/scope keyed with explicit coverage and no generic metrics map;
+- AuthorizationDecision is immutable occurrence; AuthorizationDelegation has one justified stable ID;
+- Sale remains external; `sale_line_key`, once minted, never rebinds;
+- Party/Destination are bounded Materialization meanings, not Customer/Address masters;
+- `FulfillmentExecutionId` is the one durable Fulfillment lifecycle identity; `FulfillmentState` is not another resource;
+- FulfillmentNode is minimal MPC identity distinct from InventorySource/native warehouse;
+- one baseline Fulfillment internal target only: `dispatch_handoff_lead_time_before_provider_deadline`;
+- Post-Sale consequence tracks remain independent; Work generic resolution remains deferred and closure audit passes;
+- media intake is ListingIntent-bound multipart `:create-media`, `200` descriptor, same media identity on exact replay, binary content in idempotency fingerprint;
+- exact idempotent intake resolves before rechecking a revision advanced by the first successful call;
+- canonical Problem Details includes unified `resource-revision-conflict` for stale typed revision proof;
+- D4/D8 still must prove selected-lane N/A reread and User-Product conditional-requirement validation before claiming live convergence.
+
+---
+
+## 4. Prohibited now
+
+While W3 is next:
+
+- do not begin D6–D9 target design or implementation;
+- do not reopen accepted D0→D5-B1/B2/W1/W2 for naming/style or implementation convenience;
+- do not reconstruct deleted staged W2 files or review candidate as parallel authority;
+- do not derive collection contracts from legacy OpenAPI/routes/controllers/frontend tables;
+- do not create generic query/filter DSL, arbitrary sort expressions or GraphQL-like query language;
+- do not make cursor exhaustion imply universal source/provider completeness;
+- do not invent total counts, snapshot isolation or stable ordering stronger than an owner/source can justify;
+- do not add bulk operations by symmetry;
+- do not introduce D7 paging cache/storage/database cursor mechanics during W3;
+- do not choose exact OpenAPI minor/generator purely by recency.
+
+---
 
 ## 5. Exact next action
 
-**Operator reviews and ratifies/revises the complete converged Whole-W2 correction package in §3.**
+**Derive W3 — Collections / Pagination / Filter / Search / Cursor Grammar from the admitted List/Search Q operations.**
 
-If ratified:
+W3 must decide and adversarially stress-test, as one coherent package:
 
-1. revalidate remote HEAD immediately before writes;
-2. consolidate the package into canonical W1/W2 artifacts;
-3. preserve the ratified Operation Admission Matrix semantic inventory/Permissions/client classes/safety tuples unless an exact canonicalization contradiction proves otherwise;
-4. verify the exact post-write diff and resulting remote HEAD;
-5. delete `D5-B2-W2-WHOLE-COHERENCE-REVIEW-CANDIDATE.md`;
-6. reset `AI-DIALOG.md` to protocol-only state; Git history remains review archive;
-7. update this router to the next Wire Contract sub-batch;
-8. implementation remains blocked until D9.
+1. canonical collection response shape without a universal business Result/metadata envelope;
+2. opaque cursor semantics and how a client obtains the next page;
+3. deterministic owner-meaning ordering and necessary tie-breakers without exposing database ordering as API meaning;
+4. cursor continuation versus source/provider coverage/completeness — page exhaustion must never fabricate universal completeness;
+5. page-size/limit defaults and maximums only to the extent a real Product/tooling need requires them;
+6. list filtering as **operation-specific typed filters**, not a generic query DSL;
+7. search semantics separately from list/filter semantics where the admitted operation is genuinely search (`SearchSourceProductsForMarketplace` in particular);
+8. whether any admitted collection genuinely needs caller-selectable sort; reject arbitrary sort by default;
+9. total-count semantics — include only where a real consumer and honest authoritative universe make it reliable; otherwise omit;
+10. cursor invalid/expired/stale behavior and Problem Details without promising one universal snapshot transaction across owners/providers;
+11. deduplication/stability expectations when external source populations change between pages;
+12. source-qualified external collection identities and same-Organization reference safety;
+13. provider-specific paging tokens remaining adapter-local unless an opaque Product cursor legitimately encapsulates them;
+14. negative controls for unbounded page size, offset-by-default, raw provider cursor leakage, generic filter/sort maps and list-by-symmetry operations not admitted in B2.
 
-Canonical consolidation scope includes at least:
+W3 must not choose D7 database/index/cache implementation. It defines Product wire semantics only.
 
-- `D5-B2-WIRE-CONTRACT.md` — W1 precondition/custom-method law;
-- `D5-B2-W2-SCHEMA-GRAMMAR.md` — historical ListingIntent basis, MarketplaceListing, PublicationValue, submit/media-related schema law;
-- `D5-B2-W2-C-READINESS-MARKET-ECONOMICS.md` — EconomicPerformanceSummary, draft-dependent requirement evidence, correspondence-scoped validator/carrier;
-- `D5-B2-W2-D-OPERATIONAL-SCHEMAS.md` — FulfillmentNode, FulfillmentExecution naming/identity, `sale_line_key`, typed-etag operational custom methods;
-- `D5-B2-W2-E-TRANSVERSAL-CONSISTENCY.md` — operating-target field, media transport, two-class revision carrier grammar, response/status/idempotency/Problem Details changes.
+After W3, continue the remaining Wire Contract obligations in router order: exact Permission→operation/client-class mapping, technical non-Product ingress classification, final Problem/media consistency as needed, and the single machine-readable OpenAPI authority/tooling decision. Do not advance them before W3 is coherent.
 
-No Round 3 is required by current evidence.
+Implementation remains blocked until D9.
+
+---
 
 ## 6. Fresh-session success test
 
 A fresh session must conclude:
 
-- D0→D4/D4-R1 + D5-B1 accepted/canonical;
-- D5-B2 Operation Matrix + Whole-Matrix ratified;
-- W1 + W2-A/B/C/D/E remain accepted in-stage authority and are not yet changed by review findings;
-- Whole-W2 lead/Fable/GPT review is non-authoritative evidence but has **converged after focused Round 2 + GPT final adjudication**;
-- no parent-stage reopen is required;
-- **operator final ratification of the converged Whole-W2 correction package is the exact next action**;
-- only after ratification may GPT canonicalize W1/W2, delete/reset review artifacts and advance the router;
+- D0→D4/D4-R1 + D5-B1 are accepted/canonical;
+- D5-B2 Operation Matrix + Whole-Matrix are ratified;
+- `D5-B2-WIRE-CONTRACT.md` is canonical W1 authority;
+- `D5-B2-W2-SCHEMA-GRAMMAR.md` is the **single consolidated canonical W2 authority**;
+- former W2-C/D/E staging artifacts and Whole-W2 review candidate are absent from the active tree and preserved only in Git history;
+- `AI-DIALOG.md` has no active Whole-W2 review cycle;
+- W1 custom-method preconditions use typed request ETag rather than base-resource `If-Match` on a distinct URI;
+- W2 includes the ratified historical publication, missing-schema, provider-requirement, Fulfillment identity/target, key-lifetime, media, idempotency and problem corrections;
+- **W3 Collections / Pagination / Filter / Search / Cursor Grammar is the exact next action**;
 - implementation remains blocked until D9.
 
 If not, the active authority tree is inconsistent.
