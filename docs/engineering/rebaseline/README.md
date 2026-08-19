@@ -2,7 +2,7 @@
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
 > **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 OPEN / ACTIVE**  
-> **D5-B2 current state:** **W1 + W2 + W3 CANONICAL; W4 ACCEPTED IN-STAGE; lead Whole-W4 review COMPLETE / RESTRUCTURE W4-LOCAL; W4-G1/G2 operator-ratified for independent challenge only; Fable Whole-W4 independent review = NEXT**  
+> **D5-B2 current state:** **W1 + W2 + W3 CANONICAL; W4 ACCEPTED IN-STAGE; Whole-W4 independent review + GPT final adjudication CONVERGED / RESTRUCTURE W4-LOCAL; operator final Whole-W4 ratification = NEXT**  
 > **Implementation:** **BLOCKED until D9 is accepted**  
 > **Last updated:** 2026-08-19
 
@@ -34,9 +34,9 @@ A fresh session reads, in order:
 
 This file alone owns **program status, allowed/blocked work and exact next action**. Detailed semantics remain in the accepted artifacts above.
 
-`D5-B2-W4-WHOLE-COHERENCE-REVIEW-CANDIDATE.md` is **NON-AUTHORITATIVE lead review evidence** and is deliberately outside the authority path. The operator ratified W4-G1/G2 on 2026-08-19 **only as the correction direction to be independently challenged**. That ratification does not yet amend accepted W4.
+`D5-B2-W4-WHOLE-COHERENCE-REVIEW-CANDIDATE.md` and `AI-DIALOG.md` are **NON-AUTHORITATIVE review evidence**. The converged Whole-W4 corrections below do not amend D2/W4 until final operator ratification and canonical filing.
 
-`AI-DIALOG.md` is the non-authoritative working review channel. `docs/engineering/rebaseline/cockpit.html` is a non-authoritative visual projection and is synchronized only after canonical status changes.
+`docs/engineering/rebaseline/cockpit.html` remains a non-authoritative visual projection and is synchronized only after canonical status changes.
 
 Legacy/current code, OpenAPI, IdP roles/scopes, middleware, provider roles/scopes and frontend guards remain evidence only, never Product access authority.
 
@@ -63,10 +63,10 @@ D5 — API                                                  OPEN / ACTIVE
       W2 Request / Response Schema Grammar               ACCEPTED / CANONICAL
       W3 Collections / Query / Cursor Grammar            ACCEPTED / CANONICAL
       W4 Permission / Client-Class Enforcement           ACCEPTED IN-STAGE
-        Whole-W4 lead coherence                          COMPLETE / RESTRUCTURE W4-LOCAL
-        W4-G1/G2 lead direction                          RATIFIED FOR INDEPENDENT CHALLENGE
-        Fable Whole-W4 independent review                NEXT
-        lead adjudication / final convergence            BLOCKED BY FABLE REVIEW
+        Whole-W4 lead review                             COMPLETE / RESTRUCTURE W4-LOCAL
+        Fable Whole-W4 independent review                COMPLETE
+        GPT final adjudication                           CONVERGED
+        operator final Whole-W4 ratification             NEXT
       Technical non-Product ingress classification       BLOCKED BY W4
       Final Problem/media consistency                    BLOCKED BY SEQUENCE
       Single OpenAPI wire authority/tooling decision     BLOCKED BY SEQUENCE
@@ -79,96 +79,136 @@ Implementation                                            BLOCKED UNTIL D9
 
 ---
 
-## 3. Accepted W4 authority that remains current during review
+## 3. Accepted W4 authority that remains current until final ratification
 
-- W4 maps **95/95** admitted Product operations; zero operation added/unmapped;
-- baseline has **29 flat exact stored Permissions**; `/access-context` uses authenticated special condition, not a Permission;
+- W4 maps **95/95** admitted Product operations; zero additions/unmapped operations;
+- there are **29 flat exact stored Permissions**; `/access-context` uses an authenticated special condition, not a stored Permission;
 - D2 Principal kinds remain `H human | A automation | S system`;
 - ordinary `both` Q/read → H/A/S; consequential/business C admitted to both → H/A; side-effect-free `EvaluatePriceScenario` → H/A/S;
-- systems do not become business automation; AI/agent/repricer/business automation uses automation Principal semantics;
-- Permission is flat: no manage→read, execute→read, wildcard or prefix implication; AccessRoles may bundle exact Permissions;
-- client-class admission, ordinary Permission, owner business disposition, Governance and physical epistemic authority remain separate;
-- `RecordSeparation` and `RecordPacking` are H-only baseline;
-- `RecordPhysicalConference` and `RecordDispatchHandoff` admit H or explicitly qualified S;
+- `system` never substitutes for business `automation`;
+- Permission is flat/exact: no manage→read, execute→read, prefix or wildcard implication; AccessRoles may bundle exact Permissions;
+- Principal kind, Membership, Permission, client-class admission, owner business disposition, Governance and physical epistemic authority remain separate gates;
+- `RecordSeparation` / `RecordPacking` are H-only; `RecordPhysicalConference` / `RecordDispatchHandoff` are H or explicitly qualified S;
 - physical qualification is not Permission, AccessRole, fourth Principal kind or generic machine-capability graph;
-- IdP roles/scopes/provider roles/frontend guards never grant Product access;
-- no-Membership Organization access is privacy-preserving 404; current Membership but missing Permission/class admission is 403;
-- monotonic AccessRole/AuthorizationDelegation revocation changes target concurrency semantics only, never caller-access requirements.
+- IdP/OAuth/provider roles/scopes/frontend guards never independently grant Product access;
+- no-Membership path Organization is privacy-preserving 404; current Membership with missing Permission/client-class admission is 403;
+- monotonic AccessRole/AuthorizationDelegation revocation changes target-concurrency semantics only, never caller admission.
 
 ---
 
-## 4. Ratified Whole-W4 lead direction — REVIEW INPUT, NOT YET CANONICAL
+## 4. Converged Whole-W4 corrections — REVIEW RESULT, NOT YET CANONICAL
 
-The operator ratified these two W4-local corrections for independent challenge:
+Whole-W4 independent review re-derived all 95 operations and 29 Permissions, confirmed the accepted matrix, and found five additive gaps beyond lead G1/G2. GPT adjudication accepted them with no Round 2.
 
-### W4-G1 — current Principal access eligibility / binding failure grammar
+### W4-C1 — Principal access eligibility anchored in D2
 
-- external credential must resolve uniquely to one accepted MPC Principal;
-- after binding, W4 consumes **current D2 Principal access eligibility** before Organization Membership;
-- missing/invalid/untrusted/wrong-audience or not-uniquely-resolvable credential → `401 authentication-required`;
-- successfully resolved but currently disabled/not access-eligible Principal → `403 access-denied`;
-- access-eligible Principal without current path-Organization Membership → privacy-preserving `404 resource-not-found`;
-- no new Principal lifecycle enum/resource; D2 remains authority.
+Final filing proposes one bounded D2 confirmation:
 
-### W4-G2 — physical qualification ordering / non-self-assertion
+> **Current Principal access eligibility is Principal-scoped revocable D2 identity/access state. Disabling/revoking that eligibility blocks future Product access, including `/access-context`, without deleting Organization Membership/RoleAssignment or rewriting historical actor attribution. Exact lifecycle/representation mechanics remain later realization.**
 
-Refined access sequence:
+This confirms D2 §6.1 Principal lifecycle ownership plus B2-A's already-accepted disablement requirement; it creates no new domain, Permission or IAM framework.
+
+Failure grammar:
+
+- missing/invalid/untrusted/wrong-audience credential → `401 authentication-required`;
+- accepted credential resolving to zero MPC Principals → `401 authentication-required`;
+- duplicate binding / more than one Principal resolution → fail closed as existing W2 `500 internal-error`, never select one;
+- exactly one Principal resolved but currently ineligible → `403 access-denied`;
+- eligible Principal without current path-Organization Membership → privacy-preserving `404 resource-not-found`.
+
+### W4-C2 — current-authority property for every mutable/revocable access gate
+
+Every mutable/revocable access fact is evaluated against its **current authoritative state** at the Product boundary. External credential validity/binding follows the accepted authentication authority. MPC-owned Principal eligibility, Membership, RoleAssignment/Permission, Principal kind and operation-specific physical qualification follow current MPC authority.
+
+Stale token claims, cached snapshots or retired provisioning records never remain access authority after revocation. D7 may cache only while preserving this semantic property.
+
+### W4-C3 — `/access-context` eligibility
+
+`GET /access-context` requires:
+
+```text
+valid accepted authentication
++ exactly one MPC Principal binding
++ current Principal access eligibility
+```
+
+It waives only Organization Membership and Product Permission because it discovers them. An eligible Principal with zero memberships receives a successful empty Organization set; an ineligible Principal receives 403 and no membership/role/permission disclosure.
+
+### W4-C4 — physical qualification ordering / non-self-assertion
+
+For system-admitted physical checkpoints:
 
 ```text
 current Membership
 → allowed Principal kind
 → exact ordinary Permission
-→ if applicable: server-resolved operation-specific physical qualification
+→ current server-resolved operation-specific physical qualification
 → resource/reference privacy
-→ W1/W2/domain/Governance
+→ W1/W2/domain/Governance gates
 ```
 
-- body/token/role/scope cannot self-assert trusted/physical/qualified authority;
-- H retains accountable-human baseline with `fulfillment.execute`;
-- S requires `fulfillment.execute` + server-resolved qualification for PhysicalConference/DispatchHandoff;
-- successful system-established checkpoint preserves actual Principal/source/time provenance under W2;
-- qualification stays Fulfillment-operation-specific and never becomes Permission/Principal kind/generic capability graph.
+A request body, client-declared station/device/evidence source, token claim, IdP/OAuth/provider role/scope or frontend state cannot self-assert trusted/qualified physical authority. Successful system-established checkpoints preserve server-attributed effective Principal/source/time.
 
-The following survived lead attack unchanged: H/A/S on accepted `both` reads; `fulfillment.execute` for artifact reads; 404-vs-403 privacy split; flat Permissions; `EvaluatePriceScenario` under `economics.read`; all currently human-only operation admissions.
+### W4-C5 — mutation-response disclosure is operation-scoped
 
-These statements are not canonical amendments yet. Fable must challenge them and the complete W4 system independently.
+A mutation/capability Permission authorizes the W1/W2 response representation for that **same operation and exact operation subject**. This disclosure does not grant the corresponding Get/List/Search operation, another subject/resource or Permission inheritance.
+
+Do not require a second read Permission merely to receive the operation's normal response, and do not vary normal response shape based on possession of a read Permission.
+
+Flat-Permission negative controls are therefore about **read-operation admission**, e.g. `portfolio.manage` does not grant `portfolio.read` operations and `fulfillment.manage` does not grant `fulfillment.read`/`fulfillment.execute` operations.
+
+### W4-C6 — sensitive/special read cases are explicitly reviewed, no new Permission now
+
+- FulfillmentArtifact List/Get remains `fulfillment.execute`; W4 explicitly resolves the ratified `human/both read` ambiguity to H/A/S for the read operation, without conferring checkpoint authority. A later proven consumer needing artifact read without execute access reopens only this split.
+- `ListAuthorizationDelegations` remains H + `governance.manage`; standing delegation topology is authorization-management-sensitive and no proven read-only auditor consumer requires a split. A real auditor use reopens only this read boundary.
+- `GetBusinessSystemPartyResolution` and `GetDestinationRealization` remain under `materialization.read`; that Permission is explicitly PII-bearing and must be assigned accordingly. A real consumer needing Materialization tracking without party/destination detail reopens the smallest read/Permission boundary.
+
+No speculative `artifact.read`, `delegation.read` or `materialization.pii.read` Permission is introduced. Stored Permission count remains 29.
+
+### Whole-W4 dispositions preserved
+
+- 95/95 operations mapped; zero operations added by symmetry;
+- 29/29 Permissions used; no orphan Permission;
+- three Principal kinds only: H/A/S;
+- flat exact Permissions confirmed as Global Maximum;
+- `EvaluatePriceScenario` remains H/A/S under `economics.read`;
+- physical checkpoint matrix unchanged except current qualification/revocation hardening;
+- `fulfillment.execute` artifact boundary retained;
+- 404/403 Organization privacy split retained;
+- Governance/business/ordinary-access separation retained;
+- monotonic revocations retain full caller admission;
+- Structural Inversion against current IdP/middleware/frontend/provider access shape: PASS;
+- no D0/D1/D3/D4/D4-R1/D5-B1/W1/W2/W3/Operation-Matrix reopen;
+- D2 requires one-line authority confirmation only, not semantic reopen;
+- Round 2 not required.
 
 ---
 
 ## 5. Prohibited now
 
-Until Whole-W4 independent review is adjudicated:
+Until final operator Whole-W4 ratification:
 
-- do not apply W4-G1/G2 silently to accepted W4;
+- do not amend D2 or W4 with the converged package;
 - do not begin technical ingress classification, final OpenAPI/tooling, D6–D9 or implementation;
-- do not treat the Whole-W4 candidate, `AI-DIALOG.md`, cockpit, current code or middleware as authority;
-- do not add Principal kinds, Permission hierarchy/wildcards, IAM/ReBAC DSL or generic system capability graph;
+- do not treat Whole-W4 candidate, `AI-DIALOG.md`, cockpit, current code or middleware as authority;
+- do not add Principal kinds, Permission hierarchies/wildcards, IAM/ReBAC DSL, generic machine-capability graph or speculative sensitive-read Permissions;
 - do not infer Product access from Keycloak/OAuth/provider roles/scopes or frontend visibility;
-- do not give deferred/rejected operations Permission rows by symmetry;
-- do not choose D7 Keycloak/claim/cache/RLS/middleware realization yet.
+- do not choose D7 claim/cache/RLS/middleware/provisioning realization yet.
 
 ---
 
 ## 6. Exact next action
 
-**Run one coherent independent Fable Whole-W4 Permission / Client-Class Coherence Review over accepted W4 + the ratified-for-challenge W4-G1/G2 direction.**
+**Operator performs final Whole-W4 ratification of the converged package in §4, including the one-line D2 Principal-access-eligibility confirmation.**
 
-Fable must reconstruct repository authority independently and challenge the complete access system, not merely confirm the lead findings. At minimum challenge:
+If ratified:
 
-1. exact 95/95 operation coverage and whether any operation has the wrong Permission/client class;
-2. the 29-Permission vocabulary for least privilege, redundancy, overly broad naming and accidental future/wildcard authority;
-3. the W4 refinement of `both`: Q/read → H/A/S, consequential business C → H/A, side-effect-free scenario evaluation → H/A/S;
-4. whether any `system` read access is materially overbroad or any human-only operation blocks a proven present machine consumer;
-5. G1 unique Principal binding + current Principal access eligibility and its 401/403/404 failure grammar;
-6. G2 ordering: Membership → kind → exact Permission → operation-specific physical qualification, and whether qualification can remain server-owned/non-self-assertable without generic machinery;
-7. `fulfillment.execute` reuse for artifact reads + physical operations and whether a real least-privilege split is missing;
-8. privacy behavior for path Organization and secondary references;
-9. current revocation/disablement semantics under token/cache staleness without choosing D7 realization;
-10. separation among AuthN, Principal kind, Membership, Permission, client-class, physical epistemic authority, owner disposition and Governance;
-11. IdP/OAuth/provider roles/scopes/frontend guards as non-authoritative under Structural Inversion;
-12. new findings beyond G1/G2 and the smallest parent reopen only if materially unavoidable.
-
-Reviewer output is evidence only. Lead adjudicates every material finding. Round 2 occurs only if a real material contradiction survives.
+1. add the bounded D2 confirmation;
+2. consolidate all ratified corrections into the single W4 authority;
+3. remove the Whole-W4 review candidate; Git history remains archive;
+4. reset `AI-DIALOG.md` to protocol-only;
+5. update cockpit as non-authoritative projection;
+6. advance router to **technical non-Product ingress classification**.
 
 Implementation remains blocked until D9.
 
@@ -179,12 +219,10 @@ Implementation remains blocked until D9.
 A fresh session must conclude:
 
 - W1/W2/W3 are canonical;
-- W4 accepted authority maps 95/95 operations with 29 flat exact Permissions;
-- Whole-W4 lead review found W4-G1/G2 and `RESTRUCTURE NOW — W4-LOCAL`;
-- W4-G1/G2 were operator-ratified **only as direction for independent challenge**, not canonicalized;
-- Whole-W4 candidate and `AI-DIALOG.md` remain non-authoritative evidence;
-- **one coherent Fable Whole-W4 independent review is the exact next action**;
-- no parent reopen is currently proven;
-- later Wire obligations/D6–D9/implementation remain blocked.
+- W4 remains accepted in-stage and maps 95/95 operations with 29 flat exact Permissions;
+- Whole-W4 lead + independent Fable + GPT adjudication are complete and converged;
+- converged package includes G1/G2 plus F-W4-1…F-W4-5 and a one-line D2 Principal-access-eligibility confirmation;
+- **operator final Whole-W4 ratification is the exact next action**;
+- technical ingress/later Wire obligations/D6–D9/implementation remain blocked.
 
 If not, the active authority tree is inconsistent.
