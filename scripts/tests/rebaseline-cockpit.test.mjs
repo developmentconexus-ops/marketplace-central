@@ -10,8 +10,11 @@ const html = fs.readFileSync(cockpitPath, 'utf8');
 
 const required = [
   'VISUAL PROJECTION — NOT ARCHITECTURE AUTHORITY',
-  '33851b14a2d7423020a214a6bf307f6e442ca769',
-  'W3-C',
+  '8c685eabf9594459ded4206dfa5092348fffee22',
+  'W3',
+  'ACCEPTED / CANONICAL',
+  'W4',
+  'Permission → Operation / Client-Class Enforcement',
   'Implementation blocked until D9',
   'D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9',
   'One business meaning → one authority',
