@@ -2,7 +2,7 @@
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
 > **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 OPEN / ACTIVE**  
-> **D5-B2 current state:** **Operation Matrix + Whole-Matrix RATIFIED; Wire W1 + W2 ACCEPTED / CANONICAL; W3-A Collection + Cursor Core ACCEPTED IN-STAGE; W3-B Per-Operation Filter / Search / Ordering Matrix = NEXT**  
+> **D5-B2 current state:** **Operation Matrix + Whole-Matrix RATIFIED; Wire W1 + W2 ACCEPTED / CANONICAL; W3-A + W3-B ACCEPTED IN-STAGE; W3-C Cursor Validity / Population Change / Deduplication / Limits / Problem Grammar = NEXT**  
 > **Implementation:** **BLOCKED until D9 is accepted**  
 > **Last updated:** 2026-08-19
 
@@ -26,16 +26,16 @@ A fresh session reads, in order:
 14. `docs/engineering/rebaseline/D5-B2-PRODUCT-OPERATION-SURFACE.md`
 15. `docs/engineering/rebaseline/D5-B2-OPERATION-ADMISSION-MATRIX.md`
 16. `docs/engineering/rebaseline/D5-B2-WIRE-CONTRACT.md` — canonical W1
-17. `docs/engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md` — canonical consolidated W2
-18. `docs/engineering/rebaseline/D5-B2-W3-COLLECTION-GRAMMAR.md` — W3-A accepted in-stage; current W3 design home
+17. `docs/engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md` — canonical W2
+18. `docs/engineering/rebaseline/D5-B2-W3-COLLECTION-GRAMMAR.md` — current W3 authority/design home
 19. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
 20. code/OpenAPI/schemas/tests/runtime only as current-state evidence when needed
 
 This file alone owns **program status, allowed/blocked work and exact next action**. Detailed semantics remain in the accepted artifacts above.
 
-The former staged W2-C/D/E files and Whole-W2 review candidate were removed after final ratification; Git history is the archive. `AI-DIALOG.md` is protocol-only and is not architecture authority.
+Former staged W2-C/D/E artifacts and the Whole-W2 review candidate are absent from the active tree; Git history is the archive. `AI-DIALOG.md` is protocol-only and is not architecture authority.
 
-Legacy/current code, routes, OpenAPI and SDK remain evidence only until later D-stage target work replaces them.
+Legacy/current code, routes, OpenAPI, SDK and frontend tables remain evidence only.
 
 ---
 
@@ -61,7 +61,10 @@ D5 — API                                                  OPEN / ACTIVE
       W3 Collections / Pagination / Filter / Search /
          Cursor Grammar                                  OPEN / ACTIVE
         W3-A Collection + Cursor Core                    ACCEPTED IN-STAGE
-        W3-B Per-Operation Filter / Search / Ordering    NEXT
+        W3-B Per-Operation Filter / Search / Ordering    ACCEPTED IN-STAGE
+        W3-C Cursor Validity / Population Change /
+             Deduplication / Limits / Problem Grammar   NEXT
+        Whole-W3 Global Coherence                        AFTER W3-C
       Remaining wire obligations                         BLOCKED BY W3 SEQUENCE
 D6 — Frontend                                             BLOCKED BY D5
 D7 — Runtime / Jobs / Transactions                        BLOCKED
@@ -70,129 +73,96 @@ D9 — Adversarial Architecture Review                      BLOCKED
 Implementation                                            BLOCKED UNTIL D9
 ```
 
-Whole-W2 lead review, Fable Round 1, GPT adjudication, focused Fable Round 2 and final GPT adjudication converged and were operator-ratified on 2026-08-19. Their active meaning is incorporated in canonical W1/W2; review dialogue itself is not an authority layer.
+Whole-W2 independent review is complete and incorporated into canonical W1/W2. W3 is now the only active Wire design surface.
 
 ---
 
-## 3. Load-bearing D5-B2 authority
+## 3. Load-bearing current authority
 
-### 3.1 Semantic/client authority
+### 3.1 W1/W2 laws that W3 may not weaken
 
-- Product API is semantic-owner driven, not CRUD-, screen- or provider-shaped;
-- humans use OIDC Authorization Code + PKCE; confidential machines use Client Credentials/service-account semantics;
-- MPC owns Principal, Membership, AccessRole/Permission and every business authority;
-- `GET /access-context` is the only platform-scoped self-only Product Q baseline;
-- Organization business API remains `/organizations/{organization_id}/...`;
-- no Product/PIM, generic Integration/Action/Operation/Workflow/Rules/Task/Finance/AI owner;
-- zero-P baseline remains until D6 consumer evidence proves a bounded composition need.
+- Product API is semantic-owner driven and Organization-scoped; protocol/provider topology is not Product ontology.
+- external Product/Listing/Sale/Shipment identity remains source-qualified; no mirror IDs or bare native correlation keys.
+- custom owner methods remain explicit capabilities; no generic Action/Command/Workflow surface.
+- one opaque ETag revision authority per protected meaning; true same-resource standard mutation uses `If-Match`; custom/reference revision proofs use typed ETag request data.
+- Idempotency-Key and revision/concurrency solve different failure classes.
+- request/read schemas remain authority-separated and closed; `null` never means unknown/unavailable/partial/not-applicable.
+- no universal Fact/Evidence/Result/Subject/Scope/Policy/Workflow wrappers.
+- ListingIntent / PriceIntent / Availability remain distinct through publication.
+- Market coverage is distinct from evidence sufficiency; Economics never fabricates conclusions from missing evidence.
+- Work never becomes source-truth or generic resolution authority.
+- implementation remains blocked until D9.
 
-### 3.2 Operation authority
-
-- ListingIntent, PriceIntent and Availability remain distinct through initial publication;
-- BusinessOrderIntent/InvoicingIntent remain Materialization owner reactions, not direct Product commands;
-- Governance authorizes but does not execute;
-- Fulfillment physical facts require admitted human/proven physical-system authority and cannot be fabricated by ordinary automation;
-- Post-Sale coordinates scoped consequences and does not gain provider-action vocabulary;
-- Work owns responsibility/lifecycle, never source truth;
-- every admitted consequential C operation has an explicit idempotency/current-state disposition.
-
-### 3.3 Canonical W1
-
-- no `/v1` compatibility axis without a real stable consumer;
-- paths express Organization/canonical identity or source namespace, not D1 package names/workflow order;
-- external Listing/Sale/Shipment keep Installation-qualified native identity; no mirror IDs;
-- standard methods only when honest; owner capabilities use `POST {resource-or-keyed-subject-uri}:verb`;
-- custom-method URI is not an implicit alias of the base resource for HTTP conditionals;
-- one opaque ETag revision authority per protected meaning;
-- true same-resource standard mutation uses `If-Match` (`428` missing / `412` false);
-- current-state-protected custom method carries typed `etag` request data (`422` invalid/missing / `409 resource-revision-conflict` stale);
-- exact revision of another resource carries ETag adjacent to the typed reference;
-- ProductChannelCorrespondence remains keyed Readiness meaning with a correspondence-scoped ETag and Resolve/Clear capabilities; no synthetic Correspondence ID or forced PUT/DELETE;
-- Idempotency-Key remains duplicate-intake safety, independent of revision proof;
-- provider/business-system protocol ingress remains outside Product API roots.
-
-### 3.4 Canonical W2
-
-- opaque IDs/typed source refs; exact decimal Money; explicit temporal meanings;
-- request/read schemas are authority-separated and closed;
-- `null` never carries unknown/unavailable/partial/not-applicable;
-- knowledge uses smallest owner-specific unions, not universal `Fact<T>`;
-- no generic Result/Evidence/ExternalRef/Subject/Scope/Policy/Workflow wrappers;
-- ListingIntent is sparse/declarative create/edit identity; historical dispatch/effect basis is append-only and preserves attempt-time resolved values/provenance without a PublicationAttempt resource;
-- `PublicationValue` includes bounded `number_unit` and explicit requirement-permitted `not_applicable`, without generic UoM engine;
-- MarketplaceListing is source-qualified actual-state evidence; Listing/Price convergence stay in their Intents;
-- PriceIntent remains separate and explicit supersession carries prior PriceIntent revision proof;
-- Availability separates control, desired meaning, provider observation and convergence;
-- Readiness owns requirement definitions/candidates; draft-dependent provider requirement evaluation is D4 technical evidence feeding Offering dispatchability while Price/Availability stay separate;
-- Market coverage remains distinct from evidence sufficiency;
-- Economics is components-first, preserves L0/L1/L2 and R1/R2, and never fabricates profitability from missing evidence;
-- EconomicPerformanceSummary is period/scope keyed with explicit coverage and no generic metrics map;
-- AuthorizationDecision is immutable occurrence; AuthorizationDelegation has one justified stable ID;
-- Sale remains external; `sale_line_key`, once minted, never rebinds;
-- Party/Destination are bounded Materialization meanings, not Customer/Address masters;
-- `FulfillmentExecutionId` is the one durable Fulfillment lifecycle identity; `FulfillmentState` is not another resource;
-- FulfillmentNode is minimal MPC identity distinct from InventorySource/native warehouse;
-- one baseline Fulfillment internal target only: `dispatch_handoff_lead_time_before_provider_deadline`;
-- Post-Sale consequence tracks remain independent; Work generic resolution remains deferred and closure audit passes;
-- media intake is ListingIntent-bound multipart `:create-media`, `200` descriptor, same media identity on exact replay, binary content in idempotency fingerprint;
-- exact idempotent intake resolves before rechecking a revision advanced by the first successful call;
-- canonical Problem Details includes unified `resource-revision-conflict` for stale typed revision proof;
-- D4/D8 still must prove selected-lane N/A reread and User-Product conditional-requirement validation before claiming live convergence.
-
-### 3.5 Accepted W3-A
+### 3.2 Accepted W3-A — Collection + Cursor Core
 
 - every admitted List/Search operation is pagination-capable through shared `limit?` + opaque `cursor?` mechanics;
-- collection responses are operation/owner-specific and may expose optional `next_cursor`; no universal `Page<T>`, `PagedResult<T>`, `data/metadata` or generic Result wrapper;
-- pagination is forward-only; no baseline page number/offset/skip/previous cursor;
-- `limit` is a requested maximum, not guaranteed returned cardinality;
-- fewer than `limit` items, including zero, does not prove exhaustion; `next_cursor` is the continuation authority;
-- absence of `next_cursor` means no later page in that traversal only; it never proves source/provider/market/all-time knowledge completeness;
-- cursor is opaque, bound to Organization + operation + semantic query, never authorization and never a raw provider/database paging token;
-- material query changes invalidate continuation; `limit` may change between pages;
-- no universal `total_count` baseline;
-- no caller-selectable arbitrary sort baseline;
-- no universal snapshot-isolation promise across pages;
-- malformed/invalid/expired/query-mismatched cursor fails explicitly rather than silently restarting or returning an empty first page;
-- provider pagination remains D4-local mechanism; D7 chooses cursor persistence/signing/index/cache implementation.
+- responses are operation/owner-specific with semantic collection field + optional `next_cursor`; no universal Page/PagedResult/data/metadata wrapper;
+- forward-only pagination; no baseline page number, offset, skip, before or previous cursor;
+- `limit` is a requested maximum, not promised cardinality;
+- fewer than `limit` items, including zero, does not prove exhaustion;
+- only `next_cursor` indicates another traversal page;
+- cursor is opaque, query/operation/Organization-bound, never authorization and never raw provider/database continuation state;
+- material query changes invalidate continuation; `limit` may change;
+- cursor exhaustion never proves source/provider/market/all-time completeness;
+- no universal total count, caller sort or snapshot-isolation promise;
+- invalid/expired/query-mismatched cursor fails explicitly;
+- D4 owns provider paging protocol; D7 owns cursor persistence/signing/index/cache realization.
+
+### 3.3 Accepted W3-B — Filter / Search / Ordering Matrix
+
+- typed operation-specific query parameters only; no generic filter/query expression language;
+- different admitted filter fields combine by AND; one value per field baseline; no OR/NOT/IN/functions/traversal DSL;
+- identity point lookups stay Get operations; correlation filters exist only for real bounded navigation populations;
+- `SearchSourceProductsForMarketplace` remains the only baseline Search and requires Marketplace Installation + SourceInstance + non-empty query;
+- source Product search supports bounded exact identifier matching plus lexical name matching; no fuzzy/vector/AI search baseline and no public relevance score;
+- caller-selectable sort baseline count = **0**;
+- each collection has one owner-defined deterministic default order plus stable tie-breaker where required;
+- external identity filters remain source-qualified and same-Organization references fail closed;
+- collection-level coverage is exposed only for source-backed populations whose enumeration may be incomplete: source Product search, Marketplace Listings, Comparable Offers, Marketplace Sales, Shipments and Sale Economics where underlying coverage is not complete;
+- no filter may expose provider status, Sankhya native columns/TOP/NUNOTA/CODEMP, provider JSON paths or frontend-table fields by convenience.
+
+The accepted operation-specific matrix is authoritative in `D5-B2-W3-COLLECTION-GRAMMAR.md`, including bounded filters/order for ListingIntents, PriceIntents, Availability, Market, Economics, Governance, Sales, Materialization, Fulfillment, Post-Sale and Work.
 
 ---
 
 ## 4. Prohibited now
 
-While W3-B is next:
+While W3-C is next:
 
 - do not begin D6–D9 target design or implementation;
-- do not reopen accepted D0→D5-B1/B2/W1/W2/W3-A for naming/style or implementation convenience;
-- do not reconstruct deleted staged W2 files or review candidate as parallel authority;
-- do not derive collection contracts from legacy OpenAPI/routes/controllers/frontend tables;
-- do not create generic query/filter DSL, arbitrary sort expressions or GraphQL-like query language;
-- do not make cursor exhaustion imply universal source/provider completeness;
-- do not invent total counts, snapshot isolation or stable ordering stronger than an owner/source can justify;
+- do not reopen accepted D0→D5-B1/B2/W1/W2/W3-A/B for naming/style or implementation convenience;
+- do not derive collection behavior from legacy routes/OpenAPI/controllers/frontend tables;
+- do not introduce generic query/filter DSL, arbitrary caller sort, generic priority/tag/search fields or provider-native query vocabulary;
+- do not make cursor exhaustion imply knowledge/source completeness;
+- do not invent universal total counts, snapshot isolation or stable-traversal guarantees stronger than owner/source evidence;
 - do not add bulk operations by symmetry;
-- do not introduce D7 paging cache/storage/database cursor mechanics during W3;
-- do not choose exact OpenAPI minor/generator purely by recency.
+- do not choose D7 cursor storage/signing/database mechanism during W3;
+- do not choose OpenAPI minor/generator before W3 coherence.
 
 ---
 
 ## 5. Exact next action
 
-**Derive W3-B — Per-Operation Filter / Search / Ordering Matrix from every admitted List/Search Q.**
+**Derive W3-C — Cursor Validity / Population Change / Deduplication / Limits / Problem Grammar.**
 
-W3-B must decide and adversarially stress-test:
+W3-C must decide and adversarially stress-test:
 
-1. whether each collection requires filtering at all;
-2. the smallest operation-specific typed filter fields, rejecting generic filter maps/expressions;
-3. true search semantics separately from ordinary list/filter semantics, especially `SearchSourceProductsForMarketplace`;
-4. one deterministic owner-meaning default order per collection plus required stable tie-breaker(s), without exposing database ordering as API meaning;
-5. whether any collection genuinely requires caller-selectable sorting; reject by default;
-6. same-Organization/source-qualified identity constraints in query selection;
-7. owner-specific coverage/provenance exposure where material;
-8. whether small product-defined enumerations/definition lists should simply return all values while retaining the common pagination-capable contract;
-9. negative controls against provider-native/database-field filters, frontend-table-shaped queries, fuzzy search where not semantically defined, and sort/filter parameters admitted only for symmetry.
+1. malformed cursor versus valid-but-query-mismatched versus expired/invalidated continuation;
+2. exact Problem Details/status grammar for those failure classes;
+3. whether Product cursor has a stable public lifetime promise or only implementation-bounded validity;
+4. insert/update/delete behavior between page requests without claiming universal snapshot isolation;
+5. duplicate/omission guarantees a Product client may rely on, per collection class;
+6. source-backed/provider traversal behavior when the provider population or paging token changes/expires mid-traversal;
+7. whether any collection needs a bounded traversal/snapshot identifier beyond the cursor; reject by default;
+8. default `limit`, accepted range and maximum — shared where honest, operation-specific only when a real scale/PII/payload constraint requires it;
+9. whether very small definition/configuration collections should ignore caller `limit` by returning all values or still obey the requested maximum consistently;
+10. restart/recovery semantics after stale/expired cursor: explicit new traversal, never silent first-page fallback;
+11. deduplication/stability for tie-breakers that are not Product identities (e.g. ComparableOffer evidence continuation);
+12. final W3 negative controls and reopen triggers.
 
-After W3-B, close cursor invalid/expired/stale plus population-change/deduplication/stability semantics as required by the per-operation matrix before W3 can be accepted as a whole.
+After W3-C, run a **Whole-W3 Global Coherence Review** before accepting W3 as a whole. Do not begin remaining Wire Contract obligations before W3 coherence.
 
-After W3 as a whole, continue remaining Wire Contract obligations in router order: exact Permission→operation/client-class mapping, technical non-Product ingress classification, final Problem/media consistency as needed, and the single machine-readable OpenAPI authority/tooling decision. Do not advance them before W3 is coherent.
+After accepted W3, continue router-ordered Wire obligations: exact Permission→operation/client-class mapping; technical non-Product ingress classification; final Problem/media consistency as needed; and the single machine-readable OpenAPI authority/tooling decision.
 
 Implementation remains blocked until D9.
 
@@ -204,15 +174,11 @@ A fresh session must conclude:
 
 - D0→D4/D4-R1 + D5-B1 are accepted/canonical;
 - D5-B2 Operation Matrix + Whole-Matrix are ratified;
-- `D5-B2-WIRE-CONTRACT.md` is canonical W1 authority;
-- `D5-B2-W2-SCHEMA-GRAMMAR.md` is the single consolidated canonical W2 authority;
-- `D5-B2-W3-COLLECTION-GRAMMAR.md` is the current W3 design home with W3-A accepted in-stage;
-- former W2-C/D/E staging artifacts and Whole-W2 review candidate are absent from the active tree and preserved only in Git history;
-- `AI-DIALOG.md` has no active Whole-W2 review cycle;
-- W1 custom-method preconditions use typed request ETag rather than base-resource `If-Match` on a distinct URI;
-- W2 includes the ratified historical publication, missing-schema, provider-requirement, Fulfillment identity/target, key-lifetime, media, idempotency and problem corrections;
-- W3-A establishes named owner collections + forward opaque cursor semantics without total/count/snapshot/completeness fiction;
-- **W3-B Per-Operation Filter / Search / Ordering Matrix is the exact next action**;
+- W1 and W2 are canonical;
+- `D5-B2-W3-COLLECTION-GRAMMAR.md` is the active W3 authority/design home with **W3-A + W3-B accepted in-stage**;
+- W3-A defines owner-named forward opaque cursor traversal without total/count/snapshot/completeness fiction;
+- W3-B defines the bounded per-operation typed filter/search/order matrix with zero caller-selectable sort baseline;
+- **W3-C Cursor Validity / Population Change / Deduplication / Limits / Problem Grammar is the exact next action**;
 - implementation remains blocked until D9.
 
 If not, the active authority tree is inconsistent.
