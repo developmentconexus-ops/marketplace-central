@@ -2,7 +2,7 @@
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
 > **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 OPEN / ACTIVE**  
-> **D5-B2 current state:** **Operation Matrix + Whole-Matrix RATIFIED; Wire W1 + W2 + W3 + W4 CANONICAL; Technical Ingress A External Acquisition ACCEPTED IN-STAGE; OAuth / Authorization Ceremony lane = NEXT**  
+> **D5-B2 current state:** **Operation Matrix + Whole-Matrix RATIFIED; Wire W1 + W2 + W3 + W4 CANONICAL; Technical Ingress A+B ACCEPTED IN-STAGE; Whole-Ingress adversarial coherence = NEXT**  
 > **Implementation:** **BLOCKED until D9 is accepted**  
 > **Last updated:** 2026-08-19
 
@@ -29,17 +29,15 @@ A fresh session reads, in order:
 17. `docs/engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md` — canonical W2
 18. `docs/engineering/rebaseline/D5-B2-W3-COLLECTION-GRAMMAR.md` — canonical W3
 19. `docs/engineering/rebaseline/D5-B2-W4-PERMISSION-CLIENT-CLASS-ENFORCEMENT.md` — canonical W4
-20. `docs/engineering/rebaseline/D5-B2-TECHNICAL-INGRESS.md` — accepted technical-ingress design home; Ingress-A accepted in-stage, OAuth lane next
+20. `docs/engineering/rebaseline/D5-B2-TECHNICAL-INGRESS.md` — accepted Technical Ingress A+B design home
 21. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
 22. code/OpenAPI/schemas/tests/runtime only as evidence when needed
 
-This file alone owns **program status, allowed/blocked work and exact next action**. Detailed semantics remain in the accepted artifacts above.
+This file alone owns **program status, allowed/blocked work and exact next action**. Detailed semantics remain in accepted artifacts.
 
-Former Whole-W2/W3/W4 review candidates/staging are absent from the active authority tree; Git history is the archive. `AI-DIALOG.md` is protocol-only and is not architecture authority.
+Technical Ingress remains **accepted in-stage**, not canonical, until Whole-Ingress coherence and final operator ratification. `AI-DIALOG.md` is protocol-only unless a review cycle is explicitly opened. Cockpit remains non-authoritative and is synchronized only after canonical status changes.
 
-`docs/engineering/rebaseline/cockpit.html` is a **non-authoritative visual projection** and is synchronized only after canonical status changes.
-
-Legacy/current code, OpenAPI, IdP roles/scopes, middleware, provider routes/topics and frontend guards remain evidence only.
+Legacy/current code, provider routes/topics, OAuth handler shape, middleware, Product OpenAPI and frontend behavior remain evidence only.
 
 ---
 
@@ -66,9 +64,9 @@ D5 — API                                                  OPEN / ACTIVE
       W4 Permission / Client-Class Enforcement           ACCEPTED / CANONICAL
       Technical non-Product ingress                      OPEN / ACTIVE
         A External Acquisition Ingress                   ACCEPTED IN-STAGE / OPERATOR-RATIFIED
-        B OAuth / Authorization Ceremony                 NEXT
-        Whole-Ingress coherence                          BLOCKED BY B
-      Final Problem/media consistency                    BLOCKED BY SEQUENCE
+        B OAuth / Authorization Ceremony                 ACCEPTED IN-STAGE / OPERATOR-RATIFIED
+        Whole-Ingress adversarial coherence              NEXT
+      Final Problem/media consistency                    BLOCKED BY INGRESS
       Single OpenAPI wire authority/tooling decision     BLOCKED BY SEQUENCE
 D6 — Frontend                                             BLOCKED BY D5
 D7 — Runtime / Jobs / Transactions                        BLOCKED
@@ -77,31 +75,11 @@ D9 — Adversarial Architecture Review                      BLOCKED
 Implementation                                            BLOCKED UNTIL D9
 ```
 
-Whole-W2, Whole-W3 and Whole-W4 adversarial review cycles are complete, operator-ratified and incorporated into canonical authority.
-
 ---
 
-## 3. Load-bearing current authority
+## 3. Load-bearing Technical Ingress authority
 
-### 3.1 D2 / W4 access
-
-- D2 owns current Principal access eligibility as Principal-scoped revocable identity/access state.
-- Principal kinds remain exactly `human | automation | system`.
-- W4 maps **95/95** admitted Product operations with **29 flat exact Permissions**.
-- Product AuthN, Principal eligibility, Membership, Permission, Principal kind, physical qualification, owner business disposition and Governance are separate gates.
-- IdP/OAuth/provider roles/scopes never independently grant Product access.
-
-### 3.2 Canonical Product wire
-
-- W1 owns Product resource/path/HTTP grammar; Product business paths use `/organizations/{organization_id}/...`, with `/access-context` as the bounded self-only platform Q.
-- W2 owns request/response schema grammar and the single Product Problem Details catalog.
-- W3 owns all 26 admitted List/Search collection/query/cursor semantics.
-- W4 owns Permission→operation/client-class enforcement.
-- Provider/business-system protocol ingress remains outside Product API roots and Product SDK/OpenAPI business operations.
-
-### 3.3 Technical Ingress-A — accepted in-stage
-
-Ingress-A establishes the MPC-native external acquisition seam:
+### 3.1 Lane A — External Acquisition
 
 ```text
 provider-specific inbound transport adapter
@@ -119,17 +97,17 @@ D1 owner commits meaning
 
 Binding laws:
 
-- provider signal/notification is not automatically provider truth or a D3 domain event;
-- Organization derives only from an exact current MPC MarketplaceInstallation/SourceInstance binding;
-- positive provider acknowledgement means recoverable technical custody/quarantine only, never business acceptance/convergence;
-- push, missed-feed/recovery, polling/reconciliation and cold-start discovery converge on the same typed acquisition family;
-- provider delivery dedup/coalescing never replaces owner semantic idempotency;
-- arbitrary provider `resource` URLs are never fetched directly; adapter uses closed provider grammar and sanctioned D4 reads;
-- bounded technical quarantine may hold unattributable signals but cannot dispatch D1 owner work before exact correlation;
-- raw provider DTO/PII retention is minimized;
-- no generic `Webhook`, `ExternalEvent`, `Integration`, `ProviderResource` or subscription business authority is introduced.
+- provider signal is neither provider current truth nor a D3 domain event;
+- exact current MarketplaceInstallation/SourceInstance binding determines Organization;
+- positive provider acknowledgement means recoverable technical custody/quarantine only;
+- push, recovery, polling, reconciliation and cold-start discovery converge on the same typed acquisition path;
+- delivery dedup/coalescing never replaces owner semantic idempotency;
+- arbitrary provider resource URLs are never fetched directly;
+- bounded unbound quarantine cannot dispatch D1 owner state;
+- provider PII/raw payload retention is minimized;
+- no generic Webhook/ExternalEvent/Integration/ProviderResource authority.
 
-Accepted native acquisition families:
+Accepted acquisition families:
 
 ```text
 AcquireMarketplaceListing
@@ -141,7 +119,7 @@ AcquireMarketplacePostSaleClaim
 AcquireMarketplaceCompetitivePosition
 ```
 
-Current Mercado Livre admission baseline:
+Current Mercado Livre admission:
 
 ```text
 ADMIT:
@@ -175,53 +153,88 @@ REJECT BASELINE:
   unknown/unclassified topic
 ```
 
-OAuth/authorization callbacks are deliberately excluded from the acquisition inbox and remain the next technical-ingress lane.
+### 3.2 Lane B — OAuth / Authorization Ceremony
+
+```text
+Product-authorized human begin
+        ↓
+one current server-bound Authorization Attempt
+        ↓
+provider Authorization Code + state + selected PKCE protection
+        ↓
+callback-time current MPC authority revalidation
+        ↓
+server-to-server token exchange
+        ↓
+provider-authoritative seller/account proof
+        ↓
+initial bind or same-seller reauthorization only
+        ↓
+generation-safe complete credential activation
+```
+
+Binding laws:
+
+- begin requires current authenticated human + Principal eligibility + Membership + `portfolio.manage` + target Installation;
+- OAuth callback does not create Organization or MarketplaceInstallation;
+- state is opaque/high-entropy/single-use/finite-lived correlation, never durable authorization;
+- one current unfinished attempt per Installation/provider application; a newer begin supersedes the old attempt;
+- callback revalidates initiator authority and Installation eligibility regardless of current browser session;
+- provider seller identity is authoritative external namespace evidence, never MPC Principal/Organization identity;
+- same-seller reauthorization may replace credentials; different-seller result fails closed;
+- credential activation is complete-generation only; stale refresh/older attempt cannot overwrite a newer generation;
+- Product Problem Details does not absorb provider OAuth protocol errors;
+- refresh is outbound D4/D7 credential lifecycle, not ingress or Product operation.
 
 ---
 
 ## 4. Prohibited now
 
-While OAuth / Authorization Ceremony is next:
+Until Whole-Ingress coherence converges:
 
-- do not begin Whole-Ingress review, final Problem/media consistency, OpenAPI/tooling closure, D6–D9 or implementation;
-- do not reopen D0→W4 or Ingress-A for naming/style/current-code convenience;
-- do not create generic Integration/Ingress/Webhook/Event business authority or public generic provider resource/event model;
-- do not add provider topics by availability/symmetry; Ingress-A admission matrix remains closed-world;
-- do not let provider credentials/signatures authenticate Product Principals or Product bearer tokens authenticate provider callbacks;
-- do not let OAuth callback enter the External Acquisition Signal inbox merely for uniformity;
-- do not choose D7 queue/database/broker/worker/quarantine/secret/retry/deployment realization;
-- do not include provider technical routes in the Product SDK/OpenAPI business operation surface;
-- do not choose exact OpenAPI minor/generator or numeric pagination defaults yet.
+- do not canonicalize Technical Ingress A/B silently;
+- do not begin final Problem/media consistency, OpenAPI/tooling, D6–D9 or implementation;
+- do not create generic Integration/Ingress/Webhook/ExternalEvent/OAuth workflow authority;
+- do not add provider topics by availability/symmetry;
+- do not let provider protocol credentials authenticate Product Principals or Product tokens authenticate callbacks;
+- do not route OAuth into the acquisition inbox;
+- do not choose D7 queue/database/broker/quarantine/secret/lock/refresh realization;
+- do not include provider technical routes in the Product SDK/OpenAPI business surface;
+- do not reopen D0→W4 for naming/current-code convenience.
 
 ---
 
 ## 5. Exact next action
 
-**Derive Technical Ingress-B — OAuth / Authorization Ceremony lane from D2/D4/D5/W4 without turning provider authorization protocol into a Product business operation or acquisition event.**
+**Run one Whole-Ingress adversarial coherence review over Technical Ingress A+B as one external trust-boundary system.**
 
-The OAuth lane must decide proportionately:
+Challenge at minimum:
 
-1. which Product-authorized human action may initiate authorization/re-authorization for an existing MarketplaceInstallation and what current W4 access is revalidated;
-2. the boundary between the Product-triggered **begin ceremony** and provider-facing **callback**;
-3. server-issued opaque `state` / correlation semantics, replay/expiry/single-use requirements and what authority it may carry;
-4. whether Organization/MarketplaceInstallation/initiating Principal/post-callback destination are bound server-side rather than trusted from callback query data;
-5. callback verification and code exchange semantics under provider protocol authority, never Product bearer authority;
-6. authoritative provider seller/account identity proof after token exchange;
-7. same-seller reauthorization versus different-seller mismatch/rebinding rules under canonical D4 Installation identity;
-8. revalidation at callback time of current Principal access eligibility, current Organization Membership and `portfolio.manage` so a stale initiation cannot become eternal authority;
-9. credential/token secrecy and what may be persisted/audited without exposing secrets;
-10. callback replay, stale/expired state, provider denial/error, token exchange failure and ambiguous partial-completion semantics;
-11. callback acknowledgement/redirect result semantics without leaking provider protocol vocabulary into Product API authority;
-12. route/host boundary and CSRF/open-redirect/tenant-confusion negative controls without choosing D7 framework/middleware implementation.
+1. whether native acquisition ingress is needed as a real MPC seam or is accidental framework machinery;
+2. whether seven typed acquisition families are the smallest honest vocabulary and no provider topic leaks into D1 ontology;
+3. whether push/poll/recovery convergence preserves D3 occurrence/recovery semantics;
+4. whether positive acknowledgement after recoverable custody is both necessary and sufficient without prematurely choosing D7 storage;
+5. quarantine correctness, especially no-Organization attribution and eventual correlation/recovery;
+6. provider namespace → Installation/SourceInstance → Organization correlation and all ambiguity/mismatch cases;
+7. whether acquisition coalescing can accidentally lose material Payment/Post-Sale occurrences;
+8. Product API/OpenAPI/W4 separation from provider technical routes;
+9. OAuth begin authority, state semantics, one-current-attempt rule and callback-time revocation/current-authority revalidation;
+10. provider seller/account proof and initial-bind versus same-seller reauthorization;
+11. credential-generation concurrency, especially stale refresh versus newer authorization;
+12. replay, partial exchange, provider denial and safe post-callback navigation;
+13. whether OAuth and Acquisition lanes share only mechanism or accidentally create a generic ingress authority;
+14. Structural Inversion against current webhook/controller/OAuth implementation;
+15. whether any finding truly requires D2/D3/D4/W1–W4 reopen rather than a Technical-Ingress-local correction.
 
-OAuth begin/callback must remain distinct from External Acquisition Ingress-A while sharing the same non-Product protocol boundary.
+Because this package crosses external trust boundaries, independent Fable review is expected after lead adjudication if the lead review leaves no prerequisite split.
 
-After OAuth lane convergence:
+After Whole-Ingress convergence + final operator ratification:
 
-1. run one Whole-Ingress adversarial coherence review across Acquisition + OAuth lanes;
-2. obtain final operator ratification and consolidate Technical Ingress as canonical;
-3. continue final Problem/media consistency;
-4. then decide one machine-readable Product OpenAPI authority/tooling/minor version.
+1. make `D5-B2-TECHNICAL-INGRESS.md` canonical;
+2. archive/remove any review candidate and reset review channel;
+3. update cockpit as non-authoritative projection;
+4. advance to final Problem/media consistency;
+5. then close one Product OpenAPI authority/tooling/minor-version decision.
 
 Implementation remains blocked until D9.
 
@@ -233,10 +246,10 @@ A fresh session must conclude:
 
 - W1/W2/W3/W4 are canonical;
 - `D5-B2-TECHNICAL-INGRESS.md` is the single Technical Ingress design home;
-- Ingress-A External Acquisition is accepted in-stage/operator-ratified;
-- its seven native acquisition families and Mercado Livre ADMIT/DEFER/REJECT matrix are current;
-- OAuth callbacks are not acquisition signals and have not yet been accepted;
-- **OAuth / Authorization Ceremony lane is the exact next action**;
-- Whole-Ingress/final Problem-media/OpenAPI/D6–D9/implementation remain blocked by sequence.
+- Acquisition-A and OAuth-B are both accepted in-stage/operator-ratified;
+- the acquisition matrix remains closed-world with seven typed families;
+- OAuth is a separate lane with current-authority revalidation and generation-safe credentials;
+- **Whole-Ingress adversarial coherence is the exact next action**;
+- final Problem/media/OpenAPI/D6–D9/implementation remain blocked.
 
 If not, the active authority tree is inconsistent.
