@@ -8,7 +8,8 @@
 > **Schema/collection authorities:** canonical W2 + W3  
 > **Parent authorities:** accepted D0→D4 + D4-R1 + D5-B1 + Decision Reconciliation Baseline + ratified D5-B2 Whole-Matrix + canonical W1/W2/W3  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
-> **Whole-W4 final ratification incorporated:** 2026-08-19
+> **Whole-W4 final ratification incorporated:** 2026-08-19  
+> **Final Problem/media consistency cross-reference incorporated:** 2026-08-19
 
 ## 1. Purpose and authority
 
@@ -645,15 +646,17 @@ D2                                                bounded authority confirmation
 W4                                                ACCEPTED / CANONICAL
 ```
 
-Whole-W4 is closed. The next Wire obligation is **technical non-Product ingress classification**, as routed by the rebaseline router.
+Whole-W4 is closed. Current status and exact next action are owned only by the rebaseline router.
 
 Do not begin final OpenAPI/tooling, D6–D9 or implementation out of sequence. Implementation remains blocked until D9.
 
 ---
 
-## 15. Canonical Technical Ingress current-access cross-reference
+## 15. Canonical non-Product current-access cross-references
 
-This section supersedes only the historical sequencing sentence in §14. It adds no Product operation, Permission, Principal kind or client-class rule.
+This section records how non-Product technical surfaces reuse current Product access authority. It adds no Product operation, Permission, Principal kind or client-class rule.
+
+### 15.1 Technical OAuth / authorization ceremony
 
 `D5-B2-TECHNICAL-INGRESS.md` is canonical for the non-Product OAuth/authorization ceremony. Its explicit technical **begin** performs a W4-equivalent current-access evaluation using:
 
@@ -671,6 +674,23 @@ The evaluation reuses existing current authority but is **not** one of the 95 Pr
 
 The provider callback is not authorized by a Product browser session, Product bearer token or provider operator identity. It must revalidate the initiating Principal's current eligibility, Membership, `portfolio.manage` and exact Installation before activation. Selling-account proof, administrator requirement, same-seller compatibility, state/PKCE and credential-generation semantics remain D4/Technical Ingress authority, not W4 Product Permission vocabulary.
 
-W4 remains **ACCEPTED / CANONICAL**, with **95 / 95** Product operations and **29 / 29** ordinary Permissions unchanged. The current exact next action is owned only by the router and is **final Problem/media consistency**.
+### 15.2 Authored-media byte delivery
+
+Canonical W2 §3.9.8 classifies authored-media byte delivery as a separately justified technical presentation surface. Its access evaluation reuses:
+
+```text
+valid Product AuthN
++ exactly one MPC Principal binding
++ current Principal access eligibility
++ current Organization Membership
++ offering.read
++ the exact ListingIntent / authored-media relationship in that Organization
+```
+
+A caller that cannot currently obtain the corresponding presentation descriptor through `GetListingIntent` cannot obtain the bytes. Allowed client classes therefore follow the existing `GetListingIntent` row (H / A / S); no narrower or wider class is invented here.
+
+This creates **no 96th Product operation, no 30th Permission and no new Principal kind**, does not enter the Product OpenAPI/SDK and introduces no durable anonymous or freely forwardable locator. Technical delivery failures stay technical-surface failures and never expand the W2 Product Problem catalog. Exact route and D7 delivery topology remain later realization.
+
+W4 remains **ACCEPTED / CANONICAL**, with **95 / 95** Product operations and **29 / 29** ordinary Permissions unchanged. Current status and exact next action are owned only by the rebaseline router.
 
 Implementation remains blocked until D9.

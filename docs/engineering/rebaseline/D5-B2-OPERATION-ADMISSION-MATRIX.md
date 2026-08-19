@@ -1,6 +1,6 @@
 # D5-B2 — Operation Admission Matrix
 
-> **Status:** OPEN / ACTIVE — B2-A + Blocks 1–5 + Whole-Matrix Global Coherence **ACCEPTED IN-STAGE / OPERATOR-RATIFIED**; Wire Contract next  
+> **Status:** B2-A + Blocks 1–5 + Whole-Matrix Global Coherence **ACCEPTED IN-STAGE / OPERATOR-RATIFIED**; W1 + W2 + W3 + W4 + Technical Ingress + Final Problem/media consistency **ACCEPTED / CANONICAL**  
 > **Parent B2:** `D5-B2-PRODUCT-OPERATION-SURFACE.md`  
 > **Parent authorities:** accepted D0→D4 + D4-R1 + D5-B1 + Decision Reconciliation Baseline + B2-A  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
@@ -691,25 +691,25 @@ D5-B2 Whole-Matrix Global Coherence          ACCEPTED / RATIFIED
 
 ---
 
-# 9. Exact next B2 work — Wire Contract / Resource-Path-Schema Grammar
+# 9. Wire Contract obligations and their canonical homes
 
-The semantic operation inventory is now stable enough to crystallize wire shape. Next work must derive the concrete contract from this matrix, not from legacy OpenAPI/routes/controllers.
+The semantic operation inventory crystallized into wire shape derived from this matrix, not from legacy OpenAPI/routes/controllers. Each obligation now has exactly one canonical home:
 
-The next sub-batch must decide:
-
-1. resource/path hierarchy, keeping Organization-owned business operations under `/organizations/{organization_id}/...` and giving `GetCurrentAccessContext` only the bounded self-only platform discovery shape accepted above;
-2. standard HTTP resource methods versus owner-specific methods where CRUD would lie;
-3. exact request/response schema families and source-qualified identity representation;
-4. read knowledge semantics (`known`, known-empty, unknown, unavailable, partial, freshness/provenance where material) without a universal Fact wrapper by habit;
-5. consequential owner outcomes (`accepted`, `rejected`, `pending`, `ambiguous` and later applied/converged distinctions where applicable);
-6. RFC 9457 Problem Details for API/transport/access/precondition/idempotency/server problems without turning valid business rejection into HTTP access failure;
-7. exact `Idempotency-Key` placement/validation and the opaque MPC concurrency/precondition mechanism for every §7 row;
-8. pagination/filter/search/cursor grammar only for admitted collection consumers;
-9. exact Permission→wire-operation mapping and client-class restrictions;
-10. media wire seam without choosing D7 blob/storage/CDN realization;
-11. technical provider OAuth/webhook/external-connector ingress classification outside the Product API, as required by D5-B1/D4;
-12. the Work closure-path audit required by §6.6 before Wire Contract closure;
-13. OpenAPI operation naming/spelling and the path toward one machine-readable Product API wire authority.
+| # | Obligation | Canonical home | Disposition |
+|---|---|---|---|
+| 1 | resource/path hierarchy under `/organizations/{organization_id}/...` and bounded self-only access-context discovery | W1 | canonical |
+| 2 | standard HTTP resource methods versus owner-specific methods where CRUD would lie | W1 | canonical |
+| 3 | request/response schema families and source-qualified identity representation | W2 | canonical |
+| 4 | honest known / known-empty / unknown / unavailable / partial / freshness / provenance representation | W2 | canonical |
+| 5 | consequential owner outcomes and later applied/converged distinctions | W2 | canonical |
+| 6 | RFC 9457 Problem Details without turning valid business outcomes into access errors | W2 §§2.15, 19 | canonical |
+| 7 | exact `Idempotency-Key` placement/validation and the opaque concurrency/precondition mechanism | W2 §§17–18 | canonical |
+| 8 | pagination / filter / search / cursor grammar for admitted collections | W3 | canonical |
+| 9 | exact Permission → wire-operation mapping and client-class restrictions | W4 | canonical |
+| 10 | listing-media wire seam without D7 blob/storage/CDN realization | W2 §3.9 | canonical |
+| 11 | provider OAuth / notification / external-connector ingress classification outside the Product API | `D5-B2-TECHNICAL-INGRESS.md` | canonical |
+| 12 | Work closure-path audit required before Wire Contract closure | W2 §12.6 | canonical |
+| 13 | OpenAPI operation naming/spelling and one machine-readable Product API wire authority | not yet filed | open |
 
 Do not introduce D6 screen/BFF topology, D7 queues/workers/storage/transactions/Keycloak deployment, D8 effect proofs or implementation.
 
@@ -717,9 +717,9 @@ Implementation remains blocked until D9.
 
 ---
 
-# 10. Canonical Technical Ingress routing correction
+# 10. Canonical non-Product routing dispositions
 
-This section supersedes only the historical sequencing in §9 and sharpens the Portfolio/D4 routing statement in §2.2. It changes **no admission row, client class, Q/C/P class, Permission, idempotency or concurrency disposition**.
+This section records the canonical non-Product routing dispositions that sharpen the Portfolio/D4 statement in §2.2. It changes **no admission row, client class, Q/C/P class, Permission, idempotency or concurrency disposition**.
 
 Canonical disposition:
 
@@ -729,8 +729,9 @@ Canonical disposition:
 - callback/provider identity never substitutes for Product Principal authority;
 - deactivated same-seller technical reauthorization may restore evidence-read credentials only; it is not the deferred Product reactivation operation and grants no business participation or provider write;
 - provider notifications/acquisition families never become Product Sync/Refresh/Webhook operations;
-- no technical ingress appears in Product OpenAPI/SDK.
+- no technical ingress appears in Product OpenAPI/SDK;
+- authored-media byte delivery is a separately justified technical presentation surface under canonical W2 §3.9.8 — neither a Product operation nor a technical ingress lane, adding no admission row, no Permission and no Product OpenAPI/SDK member.
 
-The Product inventory remains **95 admitted operations**, and the W4 ordinary vocabulary remains **29 Permissions**. The current exact next action is owned only by the router and is **final Problem/media consistency**.
+The Product inventory remains **95 admitted operations**, and the W4 ordinary vocabulary remains **29 Permissions**. Current status and exact next action are owned only by the rebaseline router.
 
 Implementation remains blocked until D9.

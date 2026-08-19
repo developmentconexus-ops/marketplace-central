@@ -10,15 +10,15 @@
 </head>
 <body><div class="shell"><aside class="side">
 <div class="brand">MPC REBASELINE</div><small>Architecture cockpit · visual projection</small>
-<nav><a href="#status">Executive status</a><a href="#journey">D0 → D9</a><a href="#ingress">Technical Ingress</a><a href="#current">Current work</a><a href="#invariants">Invariants</a><a href="#distance">To implementation</a><a href="#authority">Authority navigator</a><a href="#handoff">New-session handoff</a></nav>
+<nav><a href="#status">Executive status</a><a href="#journey">D0 → D9</a><a href="#ingress">Technical Ingress</a><a href="#media">Problem &amp; media</a><a href="#current">Current work</a><a href="#invariants">Invariants</a><a href="#distance">To implementation</a><a href="#authority">Authority navigator</a><a href="#handoff">New-session handoff</a></nav>
 <button id="theme">Light / Dark</button>
 </aside><main class="main">
 <div class="warning"><strong>VISUAL PROJECTION — NOT ARCHITECTURE AUTHORITY</strong><br>Use somente para orientação. Antes de qualquer conclusão ou write, revalide branch/remote HEAD e leia <a href="https://github.com/developmentconexus-ops/marketplace-central/blob/docs/global-methodology-alignment/docs/engineering/rebaseline/README.md">docs/engineering/rebaseline/README.md</a>, única authority de status, allowed work e exact next action.</div>
 
 <section id="status" class="hero"><div>
-<div class="eyebrow">Marketplace Central · Architecture Rebaseline</div><h1>Marketplace Operations Control Plane</h1><p class="muted">Projeção do estado canônico depois da ratificação final e filing do Whole Technical Ingress.</p>
+<div class="eyebrow">Marketplace Central · Architecture Rebaseline</div><h1>Marketplace Operations Control Plane</h1><p class="muted">Projeção do estado canônico depois da ratificação final e filing do pacote Final Problem / Media Consistency.</p>
 <div class="meta"><div class="metric"><span>Repo</span><b>developmentconexus-ops/marketplace-central</b></div><div class="metric"><span>Branch</span><b>docs/global-methodology-alignment</b></div><div class="metric"><span>Canonical surface</span><b>95 Product operations · 29 Permissions</b></div><div class="metric"><span>Snapshot</span><b>2026-08-19 · America/Sao_Paulo</b></div></div>
-</div><div><span class="tag active">CURRENT</span><h2>D5 · API</h2><p>W1, W2, W3, W4 e Technical Ingress — <b>ACCEPTED / CANONICAL</b></p><span class="tag active">NEXT</span><h3>Final Problem/media consistency</h3><p class="muted">Fechar apenas inconsistências D5-B2-locais entre Product Problem Details, authored media e a separação Product API ↔ provider protocol.</p><div class="lock">🔒 Implementation blocked until D9</div></div></section>
+</div><div><span class="tag active">CURRENT</span><h2>D5 · API</h2><p>W1, W2, W3, W4, Technical Ingress e Final Problem/media — <b>ACCEPTED / CANONICAL</b></p><span class="tag active">NEXT</span><h3>Single OpenAPI wire authority / tooling</h3><p class="muted">Derivar uma única autoridade de wire legível por máquina a partir de W1–W4, sem escolher framework, runtime ou deployment.</p><div class="lock">🔒 Implementation blocked until D9</div></div></section>
 
 <div class="toolbar"><input id="search" placeholder="Buscar decisão, estágio ou obrigação…"><button class="on" data-filter="all">Todos</button><button data-filter="accepted">Accepted</button><button data-filter="active">Active</button><button data-filter="deferred">Deferred</button><button data-filter="blocked">Blocked</button></div>
 
@@ -36,8 +36,8 @@
     ├── Technical non-Product ingress           ✓ CANONICAL
     │   ├── Acquisition A                       ✓ CANONICAL
     │   └── OAuth / Authorization B             ✓ CANONICAL
-    ├── Final Problem/media consistency         ● NEXT
-    └── Single OpenAPI authority/tooling        ○ BLOCKED BY SEQUENCE
+    ├── Final Problem/media consistency         ✓ CANONICAL
+    └── Single OpenAPI authority/tooling        ● NEXT
 
 Then → D5 close → D6 → D7 → D8 → D9 → IMPLEMENTATION UNLOCKED</div></section>
 
@@ -51,15 +51,25 @@ Then → D5 close → D6 → D7 → D8 → D9 → IMPLEMENTATION UNLOCKED</div><
 <div class="card" data-status="accepted"><h3>Product/protocol separation</h3><p>Provider callback, notification, OAuth and internal acquisition are outside Product roots, Product OpenAPI and SDK. Exact technical host/prefix is deferred, but collision with <code>/access-context</code> or Organization roots is forbidden.</p></div>
 </div></section>
 
+<section id="media"><div class="head"><h2>Problem Details &amp; authored media</h2><p>Canonical em W2; cross-references limitados em W1/W4/Technical Ingress.</p></div>
+<div class="grid three">
+<div class="card" data-status="accepted"><span class="tag ok">CANONICAL</span><h3>Problem grammar</h3><ul><li><code>type</code> é o único discriminador global; sem <code>code</code> paralelo.</li><li>Falha sem semântica própria → <code>about:blank</code> + status padrão.</li><li><code>about:blank</code> não dispensa header: <code>405 + Allow</code>.</li><li>Nova família limitada <code>409 resource-state-conflict</code>.</li><li>Namespaces Product e protocolo técnico permanecem disjuntos.</li></ul></div>
+<div class="card" data-status="accepted"><span class="tag ok">CANONICAL</span><h3>CreateListingIntentMedia</h3><ul><li>400 malformed · 415 representação/formato · 413 tamanho · 422 contrato · 409 revisão/estado · 500 interno.</li><li><code>400 idempotency-key-required</code>; <code>422 idempotency-key-reused</code> e <code>409 idempotency-request-in-progress</code> preservados.</li><li>Guardas de tamanho/media type antes do buffering completo, sem revelar tenant ou recurso.</li><li>Sucesso avança e devolve o validator do ListingIntent pai como typed result.</li><li>Retry idêntico resolve o intake anterior antes de reavaliar revisão.</li></ul></div>
+<div class="card" data-status="accepted"><span class="tag ok">CANONICAL</span><h3>Identidade e entrega</h3><ul><li><code>listing_intent_media_id</code> imutável e preso a um ListingIntent.</li><li>Descriptor estável ≠ presentation descriptor volátil; access reference nunca entra em histórico, fingerprint, logs ou Problem Details.</li><li>Entrega de bytes = superfície técnica de apresentação com Organization atual + <code>offering.read</code>; não é operação Product nem ingress A/B.</li><li>Sem locator anônimo durável como baseline.</li></ul></div>
+<div class="card" data-status="deferred"><h3>Residual honesto</h3><p>Retenção/erasure permanece <b>Unknown</b>, deferida a D2 (data ownership) e D7 (realização). Não existe <code>DeleteMedia</code>, nem lifetime universal inventado. Deselecionar não é apagar.</p></div>
+<div class="card reject" data-status="accepted"><h3>Não admitido</h3><p>96ª operação Product, 30ª Permission, novo Principal kind, media GET/Update/Delete standalone, biblioteca genérica de mídia, ou tipo de Problem para blob/scanner/CDN/provider.</p></div>
+<div class="card" data-status="accepted"><h3>Preservado</h3><p>95 operações Product · 29 Permissions · Technical Ingress A/B semanticamente inalterado · W3 collection/cursor inalterado · nenhum reopen de D0→D5-B1.</p></div>
+</div></section>
+
 <section id="current"><div class="head"><h2>Current decision workbench</h2><p>Exact next action comes only from the router.</p></div>
-<div class="card current" data-status="active"><span class="tag active">NEXT</span><h3>Final Problem/media consistency</h3><div class="grid two"><div><h4>Must reconcile</h4><ul><li>W2 Product Problem Details versus provider/OAuth protocol-local failures.</li><li>ListingIntent-scoped authored-media request/representation semantics.</li><li>W1/W2/W3/W4/Technical Ingress terminology and cross-references.</li><li>Absence of provider callbacks/webhooks/OAuth from Product OpenAPI/SDK.</li><li>Any duplicate meaning, second authority or contradictory wire claim.</li></ul></div><div><h4>Must not choose yet</h4><ul><li>OpenAPI/tool-generator version.</li><li>Blob/CDN/storage/resizing implementation.</li><li>Queue, database, worker or transaction topology.</li><li>Secret store, lock/CAS or refresh mechanism.</li><li>D6 UI/BFF or D7–D9 implementation.</li></ul></div></div></div></section>
+<div class="card current" data-status="active"><span class="tag active">NEXT</span><h3>Single OpenAPI wire authority / tooling</h3><div class="grid two"><div><h4>Must decide</h4><ul><li>A única autoridade de wire legível por máquina e onde ela vive.</li><li>OpenAPI minor justificado por W1–W4 e compatibilidade real de generator, nunca por recência.</li><li>Naming/spelling de operação e <code>operationId</code> coerentes com W1.</li><li>Host/namespace do Problem <code>type</code>, mantendo Product e protocolo técnico disjuntos.</li><li>Expressão do multipart e do typed ETag sem inventar semântica nova.</li><li>Exclusões deliberadas: ingress A/B e entrega técnica de mídia.</li><li>SDK gerado da mesma autoridade, sem segunda representação à mão.</li><li>Negative controls que impeçam drift do documento contra W1–W4.</li></ul></div><div><h4>Must not choose yet</h4><ul><li>Server framework, runtime ou deployment.</li><li>Blob/CDN/storage/resizing implementation.</li><li>Queue, database, worker ou transaction topology.</li><li>Secret store, lock/CAS ou refresh mechanism.</li><li>D6 UI/BFF ou D7–D9 implementation.</li></ul></div></div></div></section>
 
 <section id="invariants"><div class="head"><h2>Non-negotiable invariants</h2><p>Fail these and the architecture drifts.</p></div><div class="grid three"><div class="card inv"><h3>One meaning → one authority</h3></div><div class="card inv"><h3>Mechanism ≠ authority</h3></div><div class="card inv"><h3>Provider signal ≠ event/truth</h3></div><div class="card inv"><h3>Unknown ≠ zero/complete</h3></div><div class="card inv"><h3>Permission ≠ Governance</h3></div><div class="card inv"><h3>ACK ≠ business success</h3></div><div class="card inv"><h3>Delivery dedup ≠ business idempotency</h3></div><div class="card inv"><h3>Product Principal ≠ provider credential</h3></div><div class="card inv"><h3>Prepare the seam, not the whole future capability</h3></div></div></section>
 
 <section id="distance"><div class="head"><h2>Distance to implementation</h2><p>No fake percentage.</p></div><div class="tree">[D5 API]          IN PROGRESS
   W1 ✓ W2 ✓ W3 ✓ W4 ✓ Technical Ingress ✓
-  final Problem/media consistency ●
-  OpenAPI authority/tooling ○
+  final Problem/media consistency ✓
+  OpenAPI authority/tooling ●
         ↓
 [D6 Frontend]     BLOCKED
         ↓
@@ -78,7 +88,7 @@ IMPLEMENTATION    🔒</div>
 <i>3</i><div><b>root-cause-global-maximum-method.md</b><small>Decision method.</small></div>
 <i>4</i><div><b>ARCHITECTURE.md + reconciliation + ADR registry</b><small>Stable constraints and current decision routing.</small></div>
 <i>5</i><div><b>D0 → D4 + D4-R1 + D5-B1</b><small>Accepted semantic authority path.</small></div>
-<i>6</i><div><b>Operation Matrix + W1 + W2 + W3 + W4</b><small>Product operation and wire authorities.</small></div>
+<i>6</i><div><b>Operation Matrix + W1 + W2 + W3 + W4</b><small>Product operation and wire authorities. W2 owns Problem Details and authored media.</small></div>
 <i>7</i><div><b>D5-B2-TECHNICAL-INGRESS.md</b><small>Canonical provider ingress / authorization trust boundary.</small></div>
 <i>8</i><div><b>EVIDENCE-REGISTER.md</b><small>Supporting evidence; code/runtime only when needed.</small></div>
 </div></section>
@@ -93,11 +103,11 @@ Este texto é bootstrap only. Revalide remote HEAD e leia AGENTS.md → router �
 
 ESTADO DO SNAPSHOT
 D0–D4 = accepted; D5 = open/active.
-W1, W2, W3, W4 e Technical Ingress = ACCEPTED / CANONICAL.
-Whole-Ingress final operator ratification = COMPLETE / FILED.
+W1, W2, W3, W4, Technical Ingress e Final Problem/media consistency = ACCEPTED / CANONICAL.
+Final Problem/media operator ratification = COMPLETE / FILED.
 Review candidate = removed from active tree; Git history is archive.
-AI-DIALOG.md = protocol-only.
-Product surface = 95 operations / 29 Permissions.
+AI-DIALOG.md = protocol-only, sem ciclo ativo.
+Product surface = 95 operations / 29 Permissions; nenhum Principal kind novo.
 Implementation = BLOCKED until D9.
 
 TECHNICAL INGRESS LOAD-BEARING
@@ -110,8 +120,17 @@ TECHNICAL INGRESS LOAD-BEARING
 - Current ML lane uses selling-account administrator proof, state + transaction-bound anti-injection/PKCE, generation-safe activation and serialized single-use refresh.
 - Provider protocol remains outside Product OpenAPI/SDK.
 
+PROBLEM/MEDIA LOAD-BEARING
+- type é o único discriminador; status-only failure usa about:blank sem dispensar header (405 + Allow).
+- Família limitada 409 resource-state-conflict; 400 idempotency-key-required declarado; 422 idempotency-key-reused e 409 idempotency-request-in-progress preservados.
+- Guardas de tamanho/media type podem preceder AuthN, sem buffering completo e sem revelar tenant/recurso.
+- Criação de mídia avança e devolve o validator do ListingIntent pai como typed result; retry idêntico resolve o intake anterior.
+- Identidade de authored media é imútavel e ListingIntent-scoped; descriptor estável ≠ presentation descriptor volátil.
+- Entrega de bytes = superfície técnica de apresentação com Organization atual + offering.read; não é operação Product, não é ingress A/B, não entra em OpenAPI/SDK, sem locator anônimo durável.
+- Retenção/erasure = Unknown, deferida a D2/D7; sem DeleteMedia.
+
 EXACT NEXT ACTION AT THIS SNAPSHOT
-Final Problem/media consistency. Do not begin OpenAPI tooling, D6–D9 or implementation out of sequence.
+Single OpenAPI wire authority / tooling decision. Do not begin D6–D9 or implementation out of sequence.
 </pre></div></section>
 
 <div class="foot">Generated from repository authority · Snapshot date 2026-08-19 · This file is orientation only; it is never authority.</div>

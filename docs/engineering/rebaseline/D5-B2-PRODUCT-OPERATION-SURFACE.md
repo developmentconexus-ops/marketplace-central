@@ -1,6 +1,6 @@
 # D5-B2 — Product Operation / Resource Surface
 
-> **Status:** OPEN / ACTIVE — B2-A + Operation Admission Matrix + Whole-Matrix Global Coherence **ACCEPTED IN-STAGE / OPERATOR-RATIFIED**; Wire Contract next  
+> **Status:** B2-A + Operation Admission Matrix + Whole-Matrix Global Coherence **ACCEPTED IN-STAGE / OPERATOR-RATIFIED**; W1 + W2 + W3 + W4 + Technical Ingress + Final Problem/media consistency **ACCEPTED / CANONICAL**  
 > **Program:** Architecture Rebaseline / Technical System Design  
 > **Parent authorities:** accepted D0→D4 + D4-R1 + D5-B1 + `DECISION-RECONCILIATION-BASELINE.md`  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
@@ -13,7 +13,7 @@ D5-B2 derives the smallest coherent **Product 1.0 operation/resource surface and
 
 B2 is not a legacy-route cleanup exercise. It does not begin from retired candidates, current OpenAPI, controller/package layout, provider endpoint inventory or frontend screen list.
 
-The operation-admission phase is now ratified in `D5-B2-OPERATION-ADMISSION-MATRIX.md`. B2 next crystallizes that accepted meaning into resource/path/schema/HTTP/OpenAPI shape without moving business authority.
+The operation-admission phase is ratified in `D5-B2-OPERATION-ADMISSION-MATRIX.md`, and its wire crystallization is canonical in W1/W2/W3/W4 and `D5-B2-TECHNICAL-INGRESS.md`, without moving business authority.
 
 B2 determines:
 
@@ -314,27 +314,27 @@ Still not admitted by default:
 
 ---
 
-# 5. Exact next B2 work — Wire Contract / Resource-Path-Schema Grammar
+# 5. Wire Contract obligations and their canonical homes
 
-Derive concrete wire shape **only** from the ratified matrix.
+Wire shape was derived **only** from the ratified matrix. Each obligation now has exactly one canonical home:
 
-The next sub-batch must determine:
+| # | Obligation | Canonical home | Disposition |
+|---|---|---|---|
+| 1 | resource/path hierarchy under `/organizations/{organization_id}/...` and bounded self-only access-context discovery | W1 | canonical |
+| 2 | standard HTTP resource methods versus owner-specific methods where CRUD would lie | W1 | canonical |
+| 3 | request/response schema families and source-qualified identity representation | W2 | canonical |
+| 4 | honest known / known-empty / unknown / unavailable / partial / freshness / provenance representation | W2 | canonical |
+| 5 | consequential owner outcomes and later applied/converged distinctions | W2 | canonical |
+| 6 | RFC 9457 Problem Details without turning valid business outcomes into access errors | W2 §§2.15, 19 | canonical |
+| 7 | exact `Idempotency-Key` placement/validation and the opaque concurrency/precondition mechanism | W2 §§17–18 | canonical |
+| 8 | pagination / filter / search / cursor grammar for admitted collections | W3 | canonical |
+| 9 | exact Permission → wire-operation mapping and client-class restrictions | W4 | canonical |
+| 10 | listing-media wire seam without D7 blob/storage/CDN realization | W2 §3.9 | canonical |
+| 11 | provider OAuth / notification / external-connector ingress classification outside the Product API | `D5-B2-TECHNICAL-INGRESS.md` | canonical |
+| 12 | Work closure-path audit required before Wire Contract closure | W2 §12.6 | canonical |
+| 13 | OpenAPI operation naming/spelling and one machine-readable Product API wire authority | not yet filed | open |
 
-1. resource/path hierarchy, keeping Organization-owned business operations under `/organizations/{organization_id}/...` and giving current access context only its bounded self-only platform discovery shape;
-2. standard HTTP methods versus owner-specific methods where CRUD would lie;
-3. exact request/response schema families and source-qualified identities;
-4. honest known/empty/unknown/unavailable/partial/freshness/provenance representation where material;
-5. owner outcomes such as accepted/rejected/pending/ambiguous and later applied/converged distinctions;
-6. RFC 9457 Problem Details for API/transport/access/precondition/idempotency/server problems without turning valid business outcomes into access errors;
-7. exact `Idempotency-Key` placement/validation and opaque MPC concurrency/precondition mechanism for every admitted C;
-8. pagination/filter/search/cursor grammar only for admitted real collections;
-9. exact Permission→wire-operation mapping and client-class restrictions;
-10. listing-media wire seam without D7 storage/blob/CDN design;
-11. provider OAuth/webhook/future external-connector ingress classification outside Product API;
-12. the Work closure-path audit required by the matrix before Wire Contract closure;
-13. OpenAPI operation naming/spelling and the route to one machine-readable Product API wire authority.
-
-Do not introduce D6 screen/BFF topology, D7 queues/workers/storage/transactions/Keycloak deployment, D8 live-effect proofs or implementation.
+Do not introduce D6 screen/BFF topology, D7 queues/workers/storage/transactions/Keycloak deployment, D8 live-effect proofs or implementation. Current status and exact next action are owned only by the rebaseline router.
 
 ---
 

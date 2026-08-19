@@ -5,7 +5,8 @@
 > **Operation inventory:** `D5-B2-OPERATION-ADMISSION-MATRIX.md`  
 > **Parent authorities:** accepted D0→D4 + D4-R1 + D5-B1 + Decision Reconciliation Baseline + ratified D5-B2 Whole-Matrix  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
-> **Whole-W2 final ratification incorporated:** 2026-08-19
+> **Whole-W2 final ratification incorporated:** 2026-08-19  
+> **Final Problem/media consistency cross-reference incorporated:** 2026-08-19
 
 ## 1. Purpose
 
@@ -333,17 +334,17 @@ Later OpenAPI/contract proof must falsify at least:
 
 No D0→D5-B1 parent reopen is required.
 
-Wire Contract remains open. **W2 is now consolidated separately as canonical schema authority; W3 collection/pagination/filter/search/cursor grammar is the next Wire sub-batch.**
+W1 is canonical and closed. W2, W3 and W4 are separately consolidated canonical schema, collection and enforcement authorities, and `D5-B2-TECHNICAL-INGRESS.md` is the canonical technical non-Product ingress authority. Current status and exact next action are owned only by the rebaseline router.
 
 Implementation remains blocked until D9.
 
 ---
 
-## 20. Canonical Technical Ingress routing correction
+## 20. Canonical non-Product route routing
 
-This section supersedes only the historical sequencing sentence at the end of §19 and sharpens the routing statement in §16. It changes **no Product resource, path, HTTP method, operation or schema semantics**.
+This section is the canonical routing statement for externally reachable routes that are not Product API operations, and it sharpens the routing statement in §16. It changes **no Product resource, path, HTTP method, operation or schema semantics**.
 
-Canonical routing is now:
+Canonical routing is:
 
 - D4 owns provider protocol/authentication/source semantics;
 - `D5-B2-TECHNICAL-INGRESS.md` owns their D5-B2 technical wire/trust-boundary crystallization;
@@ -352,6 +353,15 @@ Canonical routing is now:
 - any technical route must remain unambiguously outside and must not collide with `/access-context` or `/organizations/{organization_id}/...`;
 - no generic Product `/providers`, `/integrations`, `/webhooks`, `/oauth` or `/external-events` root is admitted.
 
-W1 remains **ACCEPTED / CANONICAL**. The Product inventory remains **95 operations / 29 Permissions**. The current exact next action is owned only by the router and is **final Problem/media consistency**.
+Authored-media byte delivery is a distinct non-Product case:
+
+- it is a **separately justified technical presentation surface**, not a Product operation and not a Technical Ingress lane A or B;
+- it is excluded from the Product OpenAPI and SDK;
+- it reuses current Product AuthN, unique Principal binding, Principal access eligibility, Organization Membership and `offering.read` for the exact ListingIntent/media relationship, per canonical W2 §3.9.8;
+- no durable anonymous or freely forwardable locator is baseline;
+- its failures are technical-surface failures and never expand the Product Problem catalog;
+- exact route spelling, proxy/storage/CDN topology and streaming/transformation mechanics remain D7, and must not collide with `/access-context` or `/organizations/{organization_id}/...`.
+
+W1 remains **ACCEPTED / CANONICAL**. The Product inventory remains **95 operations / 29 Permissions**. Current status and exact next action are owned only by the rebaseline router.
 
 Implementation remains blocked until D9.

@@ -8,7 +8,8 @@
 > **Opened:** 2026-08-19  
 > **Ingress-A accepted:** 2026-08-19  
 > **Ingress-B accepted:** 2026-08-19  
-> **Whole-Ingress final ratification incorporated:** 2026-08-19
+> **Whole-Ingress final ratification incorporated:** 2026-08-19  
+> **Authored-media delivery boundary cross-reference incorporated:** 2026-08-19
 
 ## 1. Purpose, authority and stage boundary
 
@@ -497,6 +498,17 @@ Exact provider-facing host/prefix/method/redirect spelling remains `DEFER SAFELY
 
 Do not create generic Product `/providers`, `/integrations`, `/webhooks`, `/oauth` or `/external-events` roots.
 
+### 12.1 Authored-media byte delivery is not ingress
+
+Authored-media byte delivery is a **separately justified technical presentation surface** owned by canonical W2 §3.9.8. It is:
+
+- not Lane A external acquisition ingress;
+- not Lane B authorization ceremony;
+- not a Product operation, and not part of the Product OpenAPI/SDK;
+- authorized by current Product AuthN + unique Principal binding + Principal access eligibility + Organization Membership + `offering.read` for the exact ListingIntent/media relationship — never by provider credentials, callback origin or a durable anonymous locator.
+
+Its failures are technical-surface failures and never enter the W2 Product Problem catalog. This artifact does not own that surface; it is named here only so no future reader files a presentation surface into an ingress lane.
+
 ---
 
 # Lane B — OAuth / Authorization Ceremony
@@ -905,6 +917,6 @@ Technical Ingress                                      ACCEPTED / CANONICAL
 
 The Whole-Ingress review candidate is not an active authority and is removed from the active tree; Git history remains the archive.
 
-**Exact next work is owned only by the router:** final Problem/media consistency.
+**Current status and exact next work are owned only by the router.**
 
 Implementation remains blocked until D9.
