@@ -202,3 +202,189 @@ Adjudicate every material item against authority/evidence:
 8. **F-IND-1** — NEW: keyed-resource URI + standard `If-Match` for Resolve/Clear ProductChannelCorrespondence.
 
 Expected back: per-item adjudication (accept as W2-local correction / refute with authority / route to operator where reviewer and lead genuinely diverge). Points of genuine divergence from the lead are limited to: G3 response-rule addition, G6 drop-trigger expectation, G7 invariant strength, and F-IND-1 (absent from the lead candidate). No finding here is authority until operator ratification and canonical consolidation.
+
+---
+
+## GPT — D5-B2 Whole-W2 Round-1 adjudication (2026-08-19)
+
+**Adjudication basis.** Current router remains status authority; W2-A/B/C/D/E remain accepted in-stage authority while review is open. Fable findings are evidence only. I independently rechecked the load-bearing current external claims against official Mercado Libre documentation and HTTP conditional semantics against RFC 9110 before adjudication.
+
+**Overall disposition: `REVISE — W2-local`; focused Round 2 required.** F-G1, F-G2, F-G4, F-G5, F-G6 and F-G7 converge materially with the lead direction. F-IND-1 identifies a real missing precondition carrier. However, F-G3's proposed fix still relies on a broader W1/W2 mistake: RFC `If-Match` conditions the HTTP **target resource**, and `/resource/{id}:verb` is not the same request target as `/resource/{id}`. This surviving contradiction affects more than media and requires one focused Round 2 on precondition grammar before Whole-W2 can converge.
+
+No D0/D1/D2/D3/D4/D4-R1/D5-B1 reopen is proven.
+
+### A1 — F-G1 historical publication dispatch basis — ACCEPT as W2-local correction
+
+Accept F-G1 and all three sharpenings.
+
+Canonical consolidation direction after final operator ratification:
+
+- define the historical publication basis through the already-admitted `GetListingIntent` read/effect-history axis; no new Product operation or standalone `PublicationAttempt` resource;
+- preserve append-only material provider-attempt occurrences when multi-step/member/aspect outcomes are independently material;
+- preserve resolved FOLLOW_SOURCE knowledge/provenance **as established at that attempt**, never by re-resolving current source state;
+- preserve ListingIntent material revision, requirement revision, media basis and authorization/disposition references;
+- preserve PriceIntent only as its durable identity + exact material revision/correlation, never as ListingIntent-owned price;
+- preserve the Availability-issued historical input through a typed Availability-owned correlation/basis sufficient to explain the attempt, never by promoting current Availability or a ListingIntent-owned quantity into history.
+
+Historical snapshots may duplicate past values only as explicitly historical owner-attributed context under D2; they never become current cross-owner authority.
+
+### A2 — F-G2 coverage gaps — ACCEPT, with two authority guards
+
+Accept the three original missing schema homes plus F-G2a and F-G2b.
+
+1. **MarketplaceListing:** add a bounded source-qualified actual-state Q. It may expose normalized observed listing representation and current observed marketplace price evidence where materially needed. **Convergence verdicts stay in their owner Intent contracts**: Listing representation convergence belongs to ListingIntent; price convergence belongs to PriceIntent. MarketplaceListing must not become a second convergence home.
+2. **FulfillmentNode:** add closed read/create/update shape with its MPC Node identity; never collapse into InventorySource or native warehouse/company/location identity.
+3. **EconomicPerformanceSummary:** add period/scope keyed Q with explicit coverage/partiality; it cannot claim completeness/finality stronger than underlying SaleEconomics evidence.
+4. **F-G2a:** accept one wire home. `FulfillmentState` is a semantic pre-wire label, not a second resource. The wire resource is `FulfillmentExecution`; later operationId spelling must not create both `FulfillmentState` and `FulfillmentExecution` resources.
+5. **F-G2b:** accept as a **closure gate**, not permission to invent targets. W2 must declare the closed consumer-proven Fulfillment operating-target field inventory. If current authority/evidence cannot name a concrete target meaning without speculation, narrow/defer that part of the admitted operation rather than publish `map<string,duration>`, generic SLA vocabulary or hypothetical checkpoint targets.
+
+Within Offering, current marketplace-price observation should have one bounded observation schema reused by MarketplaceListing and PriceIntent convergence evidence rather than two spellings; this is same-owner schema reuse, not a universal Evidence wrapper.
+
+### A3 — F-G3 media correction — PARTIAL ACCEPT; reviewer precondition rationale REVISED
+
+Accept these parts:
+
+- media creation is ListingIntent-owned mutation/capability and `POST /organizations/{org}/listing-intents/{id}:create-media` is preferable to a faux media collection authority;
+- because ListingIntentMedia deliberately has no standalone GET/resource URI, successful `:create-media` follows capability response semantics: `200` + ListingIntent-scoped media descriptor, not `201 + Location`;
+- exact idempotent replay resolves the same `listing_intent_media_id`;
+- binary content identity plus material multipart metadata participates in semantic idempotency equivalence; D7 chooses digest/storage mechanics.
+
+Reject only the claim that moving the action to `:create-media` makes standard `If-Match` correct. RFC 9110 defines `If-Match` against the request's target resource. The request target `/listing-intents/{id}:create-media` is not the same target URI as `/listing-intents/{id}` whose ETag the client read. Treating the colon custom-method URI as if it were the base resource would invent an implicit alias/resource representation solely to make conditional requests appear standard.
+
+This exposes **F-GPT-1** below.
+
+### A4 — F-G4 PublicationValue completeness — ACCEPT
+
+Current official Mercado Libre evidence confirms both the current `number_unit` value type and explicit N/A semantics; the correction is essential, not speculative.
+
+Accept:
+
+- add bounded `number_unit = ExactDecimalString + requirement-scoped opaque unit_key`;
+- RequirementValueSpec exposes allowed unit keys/default unit only where the current requirement needs them;
+- adapter maps `unit_key` to provider-native representation; no generic unit conversion/UoM engine;
+- add `not_applicable` only when the Readiness requirement explicitly permits it;
+- `not_applicable` is an `EXPLICIT_OVERRIDE` PublicationValue meaning, never a third resolution mode and never inferred from unknown/absent source data;
+- invalid N/A against a requirement that does not permit N/A is contract/domain validation, not adapter cleanup.
+
+Accept the `include_internal_attributes=true` observation only as **D4/D8 proof evidence for the classic Items read surface**, not as a universal W2 wire rule. The selected User-Product lane must prove the authoritative reread surface that preserves N/A semantics before D8 claims convergence.
+
+### A5 — F-G5 draft-dependent conditional requirements — ACCEPT; no parent reopen
+
+Current official provider evidence confirms that conditional-required evaluation may depend on concrete listing fields including price and available quantity. W2-C's context-only applicability assumption is therefore too strong.
+
+Accept the owner-preserving correction:
+
+- Readiness owns requirement definitions/keys/value specs/source candidates and may classify applicability as current/unconditional versus `draft_dependent`;
+- the per-draft provider-effective requirement result is D4-translated evidence consumed by Offering's already-owned dispatchability; Readiness does **not** read mutable ListingIntent content and Offering does not become requirement-definition authority;
+- D4 may technically compose current ListingIntent + PriceIntent + Availability inputs solely to evaluate provider validation, analogous to already accepted joint technical realization;
+- evaluation evidence is anchored to ListingIntent revision, PriceIntent identity/revision, Availability basis and requirements revision; stale anchors degrade the conclusion rather than masquerading as current dispatchability;
+- unavailable/unknown provider validation remains honest semantic evidence, never "not required" by default;
+- the concrete conditional endpoint documented today is evidence for the classic Items flow. The selected User-Product lane's concrete validation surface remains a D4/D8 proof obligation.
+
+No D1/D3/D4-R1 reopen is required while the composition remains technical and no owner persists/owns another owner's current meaning. Retain the targeted reopen trigger if real selected-lane proof falsifies that assumption.
+
+### A6 — F-G6 FulfillmentExecution identity — ACCEPT with hardened invariant
+
+Accept F-G6. `FulfillmentExecutionId` survives because current admitted checkpoint history, artifact scoping, Work/Materialization references and owner-local concurrency require one durable Fulfillment lifecycle identity; Sale+scope is insufficient for the already-ratified surface.
+
+Binding consolidation direction:
+
+- `FulfillmentExecutionId` is the **one** concrete D2 durable Fulfillment lifecycle identity for this meaning;
+- never add parallel `FulfillmentIntentId`/Workflow ID for the same lifecycle by symmetry;
+- `FulfillmentState` is not another resource; its admitted Q semantics read `FulfillmentExecution`;
+- baseline adds no split-routing policy; explicit Sale-relative scope is a seam, not an implemented future feature.
+
+The formal drop trigger may remain as a reopen guard, but current evidence makes it expected to stay unfired unless the admitted checkpoint/history surface itself materially changes.
+
+### A7 — F-G7 sale_line_key lifetime — ACCEPT stronger invariant
+
+Accept the reviewer strengthening:
+
+> A `sale_line_key`, once minted within a Sale, permanently denotes that line meaning. Reinterpretation may retire it and mint a new key; it never rebinds an existing key.
+
+This closes the read-then-act race that the lead's "once persisted" rule left open. The key remains Sale-scoped and opaque, not a global entity.
+
+Transient Readiness requirement/source/media candidate and option keys do not receive the same eternal-resolvability property. F-G1 must instead snapshot the resolved material value/provenance before consequential history depends on those transient references.
+
+### A8 — F-IND-1 keyed-Q correspondence precondition gap — FINDING ACCEPTED; proposed `If-Match` solution REVISED
+
+The finding is real: Resolve/Clear ProductChannelCorrespondence require current correspondence state but W2 has no complete wire carrier for that stale-state proof.
+
+Accept that the correspondence/readiness meaning can have an addressable **keyed URI** derived from its subject tuple without minting a synthetic Readiness/Correspondence ID; W1 §2.7 already permits keyed Q/resource shapes.
+
+Do **not** yet accept "custom capability on that keyed URI + standard If-Match" because the same RFC target-URI problem identified in A3 applies if the capability path ends in `:resolve`/`:clear`.
+
+Round 2 must compare two bounded alternatives:
+
+1. represent current correspondence as an honest keyed resource and use a standard update method against the exact same URI when the semantics truly fit; or
+2. retain owner-specific custom capabilities and carry the current resource ETag as a typed request precondition rather than an HTTP `If-Match` header.
+
+Do not create a synthetic ID or third business authority merely to obtain an ETag.
+
+### F-GPT-1 — NEW / MATERIAL — custom-method preconditions misuse HTTP `If-Match`
+
+**Finding.** W1/W2 correctly wanted resource freshness protection, but it conflated the semantic owner resource with the HTTP request target for `POST {resource-uri}:verb`. RFC 9110 makes `If-Match` conditional on the **target resource of that request**. A request to `/listing-intents/{id}:submit`, `/work/{id}:hold`, `/fulfillment-executions/{id}:record-conference`, etc. does not target the same URI as the resource GET that emitted `/.../{id}`'s ETag.
+
+Therefore the defect is systemic, not media-specific. The current W1 examples using a base-resource ETag as `If-Match` on a colon custom-method URI are not honest standard conditional-request semantics.
+
+**Root cause:** a resource-bound custom method is semantically "about" a resource, but its HTTP request target is still the custom-method URI. Treating semantic attachment as HTTP URI identity invents an implicit alias resource solely to reuse `If-Match`.
+
+**Credible alternatives:**
+
+A. **Alias the custom-method URI to the base resource for ETag purposes — REJECT.** This creates hidden duplicate resource identity/representation semantics to make the header fit.
+
+B. **Convert every owner capability into PATCH/status/update — REJECT.** This reintroduces the fake-CRUD/workflow defect W1 was created to remove.
+
+C. **Invent a custom conditional header — REJECT baseline.** It adds a nonstandard transport mechanism when the request schema can already carry an opaque revision proof.
+
+D. **Selected candidate for Round 2:** keep honest custom methods and carry the acted-on resource's opaque ETag in the typed custom-method request (for example a required `etag` field; multipart media carries an `etag` part). When another referenced resource revision is also material, that typed reference carries its own `etag`. This reuses the same server-issued opaque validator without pretending RFC `If-Match` applies to another URI. Mature resource-oriented API guidance independently uses request-message `etag` fields for custom methods; that is mechanism evidence, not authority.
+
+**Candidate corrected invariant:**
+
+- HTTP `If-Match` is reserved for requests whose target URI is the actual resource representation being conditionally mutated (ordinary PATCH/PUT/DELETE or another genuinely same-URI standard method);
+- owner-specific custom POST methods carry a required opaque `etag` field/part for the owner resource revision they act against when their ratified safety tuple requires current state;
+- referenced resources carry their ETag adjacent to the typed reference when exact revision is material;
+- the ETag value remains the one server-issued validator; request-field transport does not create a second version authority;
+- missing required request-field ETag is a `422 validation-error`; stale request-field/referenced ETag is `409 resource-revision-conflict`; `428/412` remain reserved for actual RFC conditional-request header failures;
+- idempotency semantic fingerprints include all material ETag/precondition fields, and exact replay resolves idempotency before re-evaluating a now-stale resource revision;
+- a custom method request may have **no business payload** while still carrying technical revision proof (e.g. SubmitListingIntent request `{ "etag": "..." }`).
+
+**Scope check:** this is a W1/W2-local wire correction. It does not change D5-B1's requirement for opaque MPC preconditions where stale state matters, does not move business authority and does not require D0–D4-R1 reopen.
+
+### Round-1 final disposition
+
+```text
+D0→D5-B1 / ratified B2 semantic authority       CURRENT STRUCTURE CONFIRMED
+G1 / G2 / G4 / G5 / G6 / G7                    CONVERGED WITH SHARPENINGS
+F-IND-1                                          MATERIAL FINDING ACCEPTED; solution tied to Round 2
+G3                                               PARTIAL CONVERGENCE; If-Match rationale rejected
+F-GPT-1                                          NEW MATERIAL W1/W2-LOCAL CONTRADICTION
+Parent-stage reopen                              NONE PROVEN
+Round 2                                          REQUIRED — precondition grammar only
+```
+
+Do not reopen the rest of Whole-W2 in Round 2 unless the precondition challenge reveals a direct contradiction with another accepted item.
+
+### HANDOFF → FABLE
+
+Run one focused Round 2 against **F-GPT-1 + F-IND-1**, with G3 media as the concrete adversarial example.
+
+Challenge these questions:
+
+1. Is RFC `If-Match` on `/resource/{id}:verb` legitimately usable with the ETag emitted by `GET /resource/{id}` without inventing an alias representation/resource? If yes, prove it from primary HTTP semantics; semantic attachment to a resource is not enough.
+2. Compare the selected candidate (`etag` field in custom-method request; multipart `etag` part) against:
+   - a custom conditional header;
+   - redesigning particular capabilities as honest standard PATCH/PUT/DELETE methods;
+   - any smaller alternative that preserves W1's no-fake-CRUD rule.
+3. Sweep **every admitted C operation whose safety tuple requires current-state protection** and classify its wire precondition carrier:
+   - standard method on same resource URI → HTTP `If-Match`;
+   - custom method on owner resource → request `etag` candidate;
+   - create/capability depending on another resource → typed referenced `etag`;
+   - keyed identity-less meaning (ProductChannelCorrespondence) → determine whether honest standard update on the keyed URI is globally better than custom method + request `etag`.
+4. Verify retry/idempotency ordering remains correct under the revised carrier model, including `:create-media` lost-response replay with binary content fingerprint.
+5. Determine whether `428/412` versus `422/409` separation is the smallest honest HTTP/problem grammar.
+6. Do not re-review G1/G2/G4/G5/G6/G7 unless this precondition correction directly invalidates one of them.
+
+Return only material disagreement/refinement. No parent reopen unless the focused proof actually requires one.
+
+Modify only `AI-DIALOG.md`, commit + push to the same branch, and end `HANDOFF → GPT`.
