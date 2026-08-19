@@ -2,7 +2,7 @@
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
 > **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 OPEN / ACTIVE**  
-> **D5-B2 current state:** **W1 + W2 + W3 + W4 CANONICAL; Technical Ingress A+B ACCEPTED IN-STAGE; Whole-Ingress lead review COMPLETE / RESTRUCTURE INGRESS-LOCAL; IG-G1…G6 operator-ratified for independent challenge only; Fable Whole-Ingress independent review = NEXT**  
+> **D5-B2 current state:** **W1 + W2 + W3 + W4 CANONICAL; Technical Ingress A+B ACCEPTED IN-STAGE; Whole-Ingress Fable review COMPLETE; GPT adjudication CONVERGED / RESTRUCTURE TECHNICAL-INGRESS-LOCAL; operator final Whole-Ingress ratification = NEXT**  
 > **Implementation:** **BLOCKED until D9 is accepted**  
 > **Last updated:** 2026-08-19
 
@@ -35,9 +35,9 @@ A fresh session reads, in order:
 
 This file alone owns **program status, allowed/blocked work and exact next action**. Detailed semantics remain in accepted artifacts.
 
-`D5-B2-TECHNICAL-INGRESS-WHOLE-COHERENCE-REVIEW-CANDIDATE.md` is **NON-AUTHORITATIVE lead review evidence** and is deliberately outside the authority path. The operator ratified IG-G1…G6 on 2026-08-19 **only as correction direction for independent challenge**. That ratification does not yet amend accepted Technical Ingress A+B.
+`D5-B2-TECHNICAL-INGRESS-WHOLE-COHERENCE-REVIEW-CANDIDATE.md` and `AI-DIALOG.md` are **NON-AUTHORITATIVE review evidence**. The converged corrections below do not amend Technical Ingress or canonical parents until final operator ratification and filing.
 
-`AI-DIALOG.md` is the non-authoritative working review channel. Cockpit remains non-authoritative and is synchronized only after canonical status changes.
+Cockpit remains non-authoritative and is synchronized only after canonical status changes.
 
 ---
 
@@ -64,10 +64,10 @@ D5 — API                                                  OPEN / ACTIVE
       Technical non-Product ingress                      OPEN / ACTIVE
         A External Acquisition Ingress                   ACCEPTED IN-STAGE / OPERATOR-RATIFIED
         B OAuth / Authorization Ceremony                 ACCEPTED IN-STAGE / OPERATOR-RATIFIED
-        Whole-Ingress lead coherence                     COMPLETE / RESTRUCTURE INGRESS-LOCAL
-        IG-G1…G6 lead direction                          RATIFIED FOR INDEPENDENT CHALLENGE
-        Fable Whole-Ingress independent review           NEXT
-        GPT adjudication / final convergence             BLOCKED BY FABLE REVIEW
+        Whole-Ingress lead review                        COMPLETE / RESTRUCTURE INGRESS-LOCAL
+        Fable Whole-Ingress independent review           COMPLETE
+        GPT final adjudication                           CONVERGED
+        operator final Whole-Ingress ratification        NEXT
       Final Problem/media consistency                    BLOCKED BY INGRESS
       Single OpenAPI wire authority/tooling decision     BLOCKED BY SEQUENCE
 D6 — Frontend                                             BLOCKED BY D5
@@ -77,107 +77,170 @@ D9 — Adversarial Architecture Review                      BLOCKED
 Implementation                                            BLOCKED UNTIL D9
 ```
 
-## 3. Accepted Technical Ingress authority that remains current during review
+---
+
+## 3. Accepted Technical Ingress authority that remains current until final ratification
 
 ### Acquisition-A
 
 - provider-specific inbound transport adapter → MPC-native recoverable acquisition ingress → closed typed acquisition request → authoritative D4 reread → consumer-owned translation → owner commit;
-- seven accepted acquisition families: Listing, Price, Sale, Shipment, Payment, Post-Sale Claim, Competitive Position;
-- exact namespace binding determines Organization; provider payload never does;
-- positive acknowledgement means technical custody/quarantine only;
-- delivery dedup/coalescing never replaces owner semantic idempotency;
+- seven accepted marketplace acquisition families: Listing, Price, Sale, Shipment, Payment, Post-Sale Claim, Competitive Position;
+- provider signal is neither D3 domain event nor current provider truth;
+- exact MarketplaceInstallation namespace binding determines Organization; provider payload never does;
+- positive acknowledgement means technical custody/quarantine only under the current accepted text;
+- delivery dedup/coalescing never replaces owner semantic correctness;
 - no generic Webhook/ExternalEvent/Integration authority.
 
 ### OAuth-B
 
-- begin requires current authenticated human + Principal eligibility + Membership + `portfolio.manage` + target Installation;
+- technical begin uses current authenticated human + Principal eligibility + Membership + `portfolio.manage` + exact Installation;
 - one current server-bound Authorization Attempt per Installation/provider app;
-- opaque/single-use/finite-lived state; current Mercado Livre lane uses Authorization Code + PKCE where supported;
+- opaque/single-use/finite-lived state; current ML lane selected Authorization Code + PKCE where supported;
 - callback revalidates current initiator authority and Installation eligibility;
-- provider seller/account identity is proven authoritatively;
 - initial bind or same-seller reauthorization only; different seller fails closed;
-- complete credential generation activation; stale refresh/older attempt cannot overwrite newer generation;
-- OAuth remains outside acquisition inbox and Product OpenAPI/SDK business operation surface.
+- complete credential generation activation; stale generation cannot overwrite newer generation;
+- OAuth stays outside acquisition inbox and Product OpenAPI/SDK business operation surface.
 
-## 4. Ratified Whole-Ingress lead direction — REVIEW INPUT, NOT YET CANONICAL
+---
 
-The operator ratified these six Technical-Ingress-local corrections for independent challenge:
+## 4. Converged Whole-Ingress corrections — REVIEW RESULT, NOT YET CANONICAL
 
-### IG-G1 — signal disposition / quarantine scope
+Independent review materially strengthened the package. GPT adjudication accepted the load-bearing findings; Round 2 is **NOT REQUIRED**. No D0→W4/D3/D4 semantic reopen is required.
+
+### TI-C1 — deactivation preserves evidence-recovery capability
+
+MarketplaceInstallation deactivation removes business participation authority but does not erase retained seller/account namespace attribution or historical-evidence recovery capability.
+
+A deactivated Installation with an unambiguous retained seller binding may undergo **same-seller technical reauthorization for evidence-recovery only**, under current human/access checks. This is not business reactivation, creates no Product operation and authorizes no publication/write effect. Attributed acquisition blocked on credentials must remain detectable/recoverable rather than silently pending forever.
+
+### TI-C2 — quarantine is much narrower
 
 ```text
-unverified/malformed
-→ protocol reject; no MPC custody
+A. malformed / provider-protocol verification failed
+   → reject; no custody
 
-verified but non-admitted topic/resource
-→ terminal technical non-processing; provider ack may be positive as protocol requires; no quarantine/future-work obligation
+B. protocol-admissible but non-admitted topic/resource,
+   or admitted-looking signal with no plausible pending legitimate bind
+   → explicit terminal technical non-processing
 
-admitted + exact namespace binding
-→ recoverable attributed custody
+C. admitted + exact retained/current namespace binding
+   → recoverable Organization-attributed custody
+   → may remain auth-blocked until credentials are restored
 
-admitted + missing/ambiguous/contradictory binding
-→ bounded technical quarantine
+D. admitted + unresolved binding
+   → bounded platform quarantine ONLY when a legitimate binding is
+      plausibly pending for a known current Installation/provider app
 ```
 
-### IG-G2 — namespace attribution is independent from active posture and credential usability
+Multiple contradictory bindings, arbitrary unknown seller identities and unsupported future topics never become indefinite quarantine backlog. Quarantine capacity must be bounded; overflow is counted/observable and refused/fails honestly, never silently discarded.
 
-A retained unambiguous Installation↔seller/account namespace binding may attribute late historical Payment/Post-Sale/Shipment signals after business deactivation or while credentials are auth-invalid. Auth-blocked attributed acquisition remains Organization-scoped recoverable work, not unbound quarantine. Deactivation does not erase historical namespace correlation.
+For the current Mercado Livre HTTP notification lane, current official provider evidence establishes a real protocol-origin verification basis (HTTPS plus provider-documented notification-source validation). Concrete provider IPs remain adapter-local/revalidated facts rather than MPC constants.
 
-### IG-G3 — path convergence does not invent discovery/recovery capability
+### TI-C3 — transaction-bound OAuth anti-injection / CSRF protection
 
-When D4 admits multiple discovery mechanisms for one acquisition family, they converge on the same typed path. The shared path never promises polling/enumeration/recovery/completeness for a family whose provider contract does not establish it.
+Initial seller binding may not rely on `state` secrecy alone.
 
-### IG-G4 — successful OAuth activation awakens technical recovery
+Every provider authorization lane requires one transaction-bound anti-CSRF / authorization-code-injection control tied to the initiating transaction/user-agent.
 
-Successful initial/same-seller credential activation may awaken Installation-scoped capability revalidation, bounded bootstrap and pending attributed acquisition/reconciliation blocked on auth. This is technical recovery, not Product `Sync`/`Refresh`, D3 domain event or owner-state proof.
+For the current Mercado Livre lane, PKCE is selected and may be load-bearing for that proof when enabled/supported; `state` remains opaque/single-use/finite-lived MPC correlation. For a provider without usable PKCE, `state` must be securely bound to the initiating user-agent session or equivalent explicit human confirmation must occur before initial bind activation.
 
-### IG-G5 — durable non-secret authorization/binding lineage
+### TI-C4 — marketplace-only Product 1.0 acquisition seam
 
-Preserve the smallest durable trust-boundary provenance needed to explain Installation/provider app/initiating Principal/proven seller, initial-bind vs same-seller reauthorization/supersession/failure, generation correlation and material timestamps. Never preserve authorization code, client secret, access token, refresh token or PKCE verifier in that lineage.
+Remove the unused `SourceInstance` branch from native External Acquisition Ingress. Product 1.0 ingress is MarketplaceInstallation-scoped. Sankhya remains on accepted embedded/outbound acquisition paths; a future business-system callback must be admitted explicitly with its own families.
 
-### IG-G6 — Product-authenticated technical OAuth begin is not a 96th Product operation
+### TI-C5 — routing ownership cleanup
 
-OAuth begin consumes current D2/W4 access facts (`H`, Principal eligibility, explicit Organization Membership, `portfolio.manage`, exact Installation) as a technical initiation gate but remains outside the 95 Product operations/Product OpenAPI. Callback/acquisition routes use provider protocol trust. Technical routes are collision-separated from Product roots; exact technical prefix/host is deferred to final ingress wire closure.
+D4 remains authority for provider protocol/auth/source semantics. Technical Ingress is the D5-B2 wire/trust-boundary crystallization of that D4 protocol surface. At final filing, W1/Operation Matrix routing text is corrected to cross-reference Technical Ingress without changing any Product operation decision.
 
-These statements are not canonical amendments yet.
+W4 receives only a non-normative cross-reference that technical OAuth begin performs a **W4-equivalent current-access evaluation** using `portfolio.manage`; this does not create a 96th Product operation or extend the Permission vocabulary.
+
+### TI-C6 — acquisition-family criterion
+
+A native acquisition family exists because a **distinct authoritative read/coverage contract is required to establish a distinct consumer-owned claim**, never because the provider exposes a topic of the same name.
+
+One topic may awaken several families; one provider read may satisfy several families if authority/coverage is sufficient. Another provider is never forced to imitate Mercado Livre's topic/read decomposition.
+
+### TI-C7 — coverage/recovery is explicit per family
+
+Shared push/poll/recovery path never invents provider discovery/recovery/completeness. Each admitted family must carry its own accepted source/recovery/completeness statement.
+
+First explicit residual: `AcquireMarketplaceSale` / `orders_v2` has **no proven cancellation-inclusive recovery universe**; seller Order enumeration cannot currently prove it. This remains a D8 proof obligation, not implied completeness.
+
+### TI-C8 — three positive acknowledgement bases
+
+Positive provider acknowledgement is allowed only after one explicit technical decision:
+
+1. recoverable attributed custody;
+2. bounded quarantine disposition;
+3. explicit terminal non-admission/non-processing disposition where provider protocol should be acknowledged.
+
+None means business success or convergence; silent discard is never a fourth basis.
+
+### TI-C9 — quarantine is pre-attribution platform state
+
+Quarantine is platform-scoped pre-attribution protocol state and is explicitly outside D3's Organization-scoped durable communication/recovery class. Once exact Installation attribution exists, the signal leaves quarantine and becomes Organization-scoped recoverable acquisition.
+
+### TI-C10 — Claim action recoverability remains Unknown
+
+`post_purchase:claims_actions` remains admitted as a trigger into Claim acquisition, but whether every materially relevant Claim-action occurrence can be reconstructed from authoritative current Claim evidence remains **Unknown** and a D4/D8 proof obligation.
+
+### TI-C11 — Mercado Livre refresh is consuming
+
+Current official Mercado Livre evidence establishes that only the latest refresh token is accepted and each refresh token is single-use. Therefore refresh of one active credential generation must be serialized/single-consumer by correctness; a stale refresh result cannot overwrite a newer OAuth/refresh generation. D7 chooses the locking/CAS mechanism.
+
+### TI-C12 — selling-account binding subject
+
+The Installation binding subject is the provider **selling-account namespace**, not an arbitrary authorizing operator identity. Current Mercado Livre authorization guidance requires an administrator and rejects operator/collaborator grants, so collaborator authorization is outside the current lane. A future delegated-operator provider requires explicit seller-account identity proof in D4.
+
+### TI-C13 — non-secret lineage is historical explanation only
+
+Authorization/binding lineage may preserve the smallest non-secret provenance necessary for security/history, but the current Installation/D4 binding state remains the sole current namespace authority. Historical lineage never becomes a second current binding source. Authorization code, client secret, access token, refresh token and PKCE verifier never enter that lineage.
+
+### Whole-Ingress dispositions preserved
+
+- native MPC acquisition seam = KEEP;
+- seven current marketplace acquisition families = KEEP;
+- no generic Integration/Webhook/ExternalEvent/OAuth authority;
+- OAuth callback remains separate from acquisition inbox;
+- current-authority revalidation, attempt supersession/replay protection and complete credential-generation activation remain;
+- successful authorization may wake bounded technical recovery, never Product Sync/Refresh or D3 business event;
+- exact technical route prefix/host remains `DEFER SAFELY`, but collision with Product roots is forbidden;
+- Structural Inversion = PASS;
+- no parent semantic reopen.
+
+---
 
 ## 5. Prohibited now
 
-Until independent Whole-Ingress review is adjudicated:
+Until final operator Whole-Ingress ratification:
 
-- do not silently apply IG-G1…G6 to accepted A+B;
+- do not amend Technical Ingress, W1, Operation Matrix or W4 with the converged package;
 - do not begin final Problem/media consistency, Product OpenAPI/tooling, D6–D9 or implementation;
 - do not create generic Integration/Ingress/Webhook/ExternalEvent/OAuth authority;
-- do not treat Installation deactivation/auth failure as loss of historical namespace attribution;
-- do not quarantine unsupported topics as future-feature backlog;
-- do not invent generic scan/recovery capability;
-- do not add OAuth begin as a Product operation merely to reuse W4 middleware;
-- do not select D7 queue/storage/credential/audit implementation.
+- do not reactivate marketplace business participation merely to restore evidence-read credentials;
+- do not use quarantine as an attacker-controlled or feature-backlog sink;
+- do not fabricate SourceInstance/business-system ingress capability;
+- do not claim cancellation-inclusive Sales recovery or Claim-action occurrence completeness before D8 proof;
+- do not choose D7 queue/storage/credential/refresh serialization mechanism yet.
+
+---
 
 ## 6. Exact next action
 
-**Run one coherent independent Fable Whole-Ingress review over accepted Technical Ingress A+B plus the operator-ratified-for-challenge IG-G1…G6 direction.**
+**Operator performs final Whole-Ingress ratification of the converged package in §4.**
 
-The reviewer must reconstruct authority independently and challenge the complete external trust-boundary system, including at minimum:
+If ratified:
 
-1. provider signal verification, closed admission and quarantine boundary;
-2. historical namespace attribution versus Installation active/auth posture;
-3. seven typed acquisition families and Mercado Livre ADMIT/DEFER/REJECT matrix;
-4. recoverable custody/ack semantics without choosing D7 mechanism;
-5. push/poll/recovery path convergence without fabricated coverage;
-6. OAuth begin trust: H + current W4 facts without becoming Product operation;
-7. state/PKCE/single-use/supersession/callback replay;
-8. callback-time current-authority revalidation;
-9. initial bind versus same-seller reauthorization and different-seller mismatch;
-10. credential-generation concurrency/stale-refresh protection;
-11. non-secret durable binding lineage and secret minimization;
-12. OAuth-success technical recovery wake-up without Sync/domain-event authority;
-13. Product OpenAPI/SDK separation and technical route collision separation;
-14. new findings beyond IG-G1…G6 and smallest parent reopen only if materially unavoidable.
-
-Reviewer output is evidence only. GPT adjudicates every material finding. Round 2 occurs only if a real material contradiction survives.
+1. consolidate TI-C1…C13 into the single `D5-B2-TECHNICAL-INGRESS.md` authority;
+2. apply bounded W1 / Operation Matrix / W4 routing and cross-reference corrections without semantic parent reopen;
+3. remove Whole-Ingress review candidate; Git history remains archive;
+4. reset `AI-DIALOG.md` to protocol-only;
+5. synchronize cockpit as non-authoritative projection;
+6. advance router to **final Problem/media consistency**.
 
 Implementation remains blocked until D9.
+
+---
 
 ## 7. Fresh-session success test
 
@@ -185,11 +248,10 @@ A fresh session must conclude:
 
 - W1/W2/W3/W4 are canonical;
 - Technical Ingress A+B are accepted in-stage/operator-ratified;
-- Whole-Ingress lead review found IG-G1…G6 and `RESTRUCTURE INGRESS-LOCAL`;
-- IG-G1…G6 were operator-ratified **only as direction for independent challenge**;
-- review candidate and `AI-DIALOG.md` remain non-authoritative evidence;
-- **one coherent Fable Whole-Ingress independent review is the exact next action**;
-- no parent reopen is currently proven;
+- Whole-Ingress lead + Fable independent review are complete;
+- GPT adjudication converged with TI-C1…C13 and no Round 2;
+- no D0→W4/D3/D4 semantic reopen is required;
+- **operator final Whole-Ingress ratification is the exact next action**;
 - final Problem/media/OpenAPI/D6–D9/implementation remain blocked.
 
 If not, the active authority tree is inconsistent.
