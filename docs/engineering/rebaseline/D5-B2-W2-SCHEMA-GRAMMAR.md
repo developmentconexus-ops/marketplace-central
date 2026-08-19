@@ -1,11 +1,12 @@
 # D5-B2 — W2 Request / Response Schema Grammar
 
-> **Status:** OPEN / ACTIVE — W2-A Core Schema Grammar ACCEPTED IN-STAGE; W2-B ListingIntent + PriceIntent + Availability schemas next  
+> **Status:** OPEN / ACTIVE — W2-A Core Schema Grammar + W2-B ListingIntent/PriceIntent/Availability **ACCEPTED IN-STAGE**; W2-C Readiness + Market Intelligence + Economics next  
 > **Parent Wire Contract:** `D5-B2-WIRE-CONTRACT.md`  
 > **Operation inventory:** `D5-B2-OPERATION-ADMISSION-MATRIX.md`  
 > **Parent authorities:** accepted D0→D4 + D4-R1 + D5-B1 + ratified D5-B2 Whole-Matrix + Wire W1  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
-> **W2-A accepted:** 2026-08-18
+> **W2-A accepted:** 2026-08-18  
+> **W2-B accepted:** 2026-08-18
 
 ## 1. Purpose
 
@@ -45,13 +46,7 @@ Do not expose implementation-derived regex/version/timestamp meaning in the ID c
 
 Provider/business-system native keys serialize as opaque strings even when a current provider happens to use numeric identifiers.
 
-Examples include:
-
-- `native_listing_key`;
-- `native_sale_key`;
-- `native_shipment_key`;
-- `native_product_key`;
-- native business-document keys when materially exposed.
+Examples include `native_listing_key`, `native_sale_key`, `native_shipment_key`, `native_product_key` and native business-document keys when materially exposed.
 
 The Product API does not invite arithmetic over identifiers, narrow them to JavaScript-safe integers or assume a provider can never evolve an identifier to alphanumeric form.
 
@@ -140,7 +135,7 @@ The exact JSON Schema/OpenAPI keywords used for closure depend on the later sele
 
 ## 2.9 `null` is not a knowledge-state transport
 
-`null` never means "unknown", "unavailable", "partial", "not applicable" or "not observed" by convention.
+`null` never means unknown, unavailable, partial, not applicable or not observed by convention.
 
 A nullable value is admitted only when semantic null itself is an accepted value for that specific field. Omission and null are not silently overloaded to carry multiple knowledge meanings.
 
@@ -148,18 +143,9 @@ A nullable value is admitted only when semantic null itself is an accepted value
 
 No universal Product API `Fact<T>` envelope is admitted.
 
-Where knowledge state is material, use the smallest owner/field-specific discriminated union needed by that meaning. Potential states are drawn only from those materially applicable, such as:
+Where knowledge state is material, use the smallest owner/field-specific discriminated union needed by that meaning. Potential states are drawn only from those materially applicable, such as known value, known empty/absent, unknown/insufficiently known, unavailable, partial/incomplete coverage and not-applicable/unsupported where semantically distinct.
 
-- known value;
-- known empty/absent;
-- unknown / insufficiently known;
-- unavailable;
-- partial/incomplete coverage;
-- not applicable / unsupported where semantically distinct.
-
-Different meanings need not expose identical state sets.
-
-A known zero/false/empty value remains distinguishable from unknown/absent when material.
+Different meanings need not expose identical state sets. A known zero/false/empty value remains distinguishable from unknown/absent when material.
 
 ## 2.11 Union validation grammar
 
@@ -204,7 +190,7 @@ Valid domain `pending`, `rejected`, `ambiguous`, approval-required or unsupporte
 
 They are not automatically HTTP 4xx/5xx and do not become `403` merely because the caller dislikes the outcome.
 
-`202 Accepted` is not a baseline synonym for "external effect has not converged". Owner-local durable Intents already provide the tracking identity. Use `202` only if a later concrete HTTP interaction genuinely has HTTP-level deferred processing that cannot be represented better by the current owner resource/result.
+`202 Accepted` is not a baseline synonym for external effect not converged. Owner-local durable Intents already provide tracking identity. Use `202` only if a later concrete HTTP interaction genuinely has HTTP-level deferred processing that cannot be represented better by the current owner resource/result.
 
 ## 2.15 Typed PATCH/update bodies
 
@@ -240,18 +226,11 @@ Raw provider DTOs, arbitrary provider error text and free-form provider-field ma
 
 ## 2.18 Server-authority field fence
 
-Client request schemas never contain effective-authority claims such as:
+Client request schemas never contain effective-authority claims such as effective Principal/`created_by`/`approved_by` as caller identity, effective Organization duplicating path scope, `authorized=true`, `approved=true`, `converged=true` or provider-success assertions, or server-owned history/convergence/evidence fields.
 
-- effective Principal / `created_by` / `approved_by` as the caller identity;
-- effective Organization duplicating the path scope;
-- `authorized=true`, `approved=true`, `converged=true` or provider-success assertions;
-- server-owned history/convergence/evidence fields.
+A Principal/Organization ID may appear only when it is the legitimate business/admin subject of that operation, e.g. assigning an AccessRole to another Principal, never as the effective actor/scope authority.
 
-A Principal/Organization ID may appear only when it is the legitimate business/admin **subject** of that operation, e.g. assigning an AccessRole to another Principal, never as the effective actor/scope authority.
-
----
-
-# 3. W2-A proof / negative controls
+## 2.19 W2-A proof / negative controls
 
 Later executable contract proof must be able to falsify at least:
 
@@ -271,13 +250,9 @@ Later executable contract proof must be able to falsify at least:
 14. arbitrary provider enrichment/property bag escaping its bounded owner-local variant;
 15. request attempting to author effective Principal, Organization scope, authorization or convergence state.
 
----
-
-# 4. W2-A method outcome
+## 2.20 W2-A outcome
 
 **Parent architecture/W1:** `CURRENT STRUCTURE CONFIRMED`.
-
-**W2-A result:**
 
 > **Use strong reusable scalar and union mechanics with owner-specific semantic schemas. Preserve exact decimals, source qualification, knowledge state, provenance and server authority without exporting a universal Fact/Evidence/Result/Operation/resource wrapper ontology.**
 
@@ -285,27 +260,454 @@ No parent-stage reopen is required.
 
 ---
 
-# 5. Exact next W2 work
+# 3. W2-B — ListingIntent + PriceIntent + Availability — ACCEPTED IN-STAGE
 
-**W2-B — ListingIntent + PriceIntent + Availability concrete schema grammar.**
+## 3.1 Governing invariant
 
-W2-B must stress-test W2-A against the hardest Product authoring/control shapes and decide proportionately:
+> **Dynamic marketplace publication is represented through Readiness-qualified requirements resolved by Offering-owned ListingIntent, while PriceIntent and Availability remain independent owner meanings before and after listing creation. Clients author each owner meaning through its own contract; D4/D7 may correlate and physically serialize them together without merging wire authority.**
 
-1. `CreateListingIntentRequest`, `UpdateListingIntentRequest` and `ListingIntent`;
-2. create-versus-edit target semantics without separate architectures;
-3. `FOLLOW_SOURCE | EXPLICIT_OVERRIDE` field/value unions and source-candidate reference grammar;
-4. requirement/category/product-type resolution references without provider DTO/property-bag leakage;
-5. listing-context authored-media intake/reference/selection/order/role without ProductAsset/media-master authority;
-6. PriceIntent correlation from ListingIntent without embedding price value;
-7. `PriceIntent` target union: existing source-qualified Listing vs pre-creation ListingIntent context;
-8. exact Money target and explicit supersession lineage while mutable PriceDraft stays rejected;
-9. `SubmitListingIntent` dispatchability/current resource representation and fail-closed required PriceIntent/Availability correlations for active creation;
-10. Sellable Availability read shape, including desired owner value, provider actual evidence, knowledge/freshness and convergence without making provider quantity the owner value;
-11. Inventory Source/allocation policy request/update shapes where needed to prove the grammar;
-12. negative controls proving ListingIntent cannot accept price/availability/provider payload fields or fake source authority.
+This section stress-tests W2-A against authoring/control semantics. It does not create a PIM, provider field bag, mutable PriceDraft or public AvailabilityIntent authoring API.
 
-W2-B does not choose D7 media/blob/upload transport mechanics. Binary/content acquisition mechanics remain D7; Product semantics own only listing-context authored-media identity/reference/selection.
+## 3.2 ListingIntent is one create/edit authoring identity
 
-After W2-B, continue W2 through the remaining admitted owner/schema families necessary for global schema coherence. **Only after W2 as a coherent package converges, run one independent Fable review following the canonical Standard Fable review workflow.**
+`ListingIntent` remains one MPC-owned identity with a target union:
+
+```text
+new_listing
+  → Marketplace Installation target, no provider Listing yet
+
+existing_listing
+  → source-qualified Listing target
+```
+
+Creation and editing do not gain separate aggregate/resource types.
+
+Conceptual create input:
+
+```json
+{
+  "source_product": {
+    "source_instance_id": "...",
+    "native_product_key": "42664"
+  },
+  "target": {
+    "kind": "new_listing",
+    "marketplace_installation_id": "..."
+  },
+  "desired": {
+    "lifecycle": "active",
+    "publication_context": {
+      "native_category_key": "...",
+      "native_product_type_key": "..."
+    },
+    "requirements_revision": "opaque-revision",
+    "requirement_resolutions": []
+  }
+}
+```
+
+The draft may be created before all publication requirements are resolved. A contract-valid but incomplete draft is an MPC business draft with explicit blockers, not an API-schema error.
+
+For edit, `target.kind = existing_listing` carries a source-qualified Listing reference. The same ListingIntent lifecycle is used.
+
+## 3.3 Sparse declarative desired meaning; no provider mirror
+
+A ListingIntent stores/serializes only Offering meaning that the intent seeks to establish/maintain. It does not copy the provider Listing wholesale merely to construct a full desired-state mirror.
+
+For an edit intent, an unmentioned provider/listing aspect is outside that intent's desired change scope; a mentioned aspect carries explicit declarative desired meaning.
+
+No procedural mini-DSL such as add/remove/replace provider field is admitted.
+
+## 3.4 Desired lifecycle is state, not provider command vocabulary
+
+Where the selected Listing lifecycle supports it, desired lifecycle is declarative owner state such as `active`, `paused` or `closed`, not separate provider-shaped `pause`, `reactivate`, `close` request types.
+
+The selected initial publication lane remains active creation. A hypothetical paused/zero-quantity creation path is not admitted without D4/D8 proof.
+
+## 3.5 Requirements and publication context
+
+Dynamic provider/category/product-type publication shape enters through Readiness-owned requirement meaning, not a generic ProductAttribute/provider property bag.
+
+A ListingIntent may preserve proportionately:
+
+- publication context needed for desired representation, such as provider-qualified category/product-type selection;
+- an opaque `requirements_revision` identifying the requirement meaning the draft was resolved against;
+- one resolution per material `requirement_key`.
+
+`requirement_key` is Readiness-owned within the relevant Product + marketplace/publication context. It is not required to equal a raw provider attribute ID, database column or JSON pointer.
+
+The provider/native requirement identifiers may appear only as bounded source-qualified evidence/enrichment where needed for explanation/correctness.
+
+`requirements_revision` is distinct from the ListingIntent `ETag`: requirement evidence may change without a concurrent write to the draft. Such drift changes dispatchability/business state, not HTTP representation concurrency.
+
+## 3.6 Requirement resolution union
+
+Each requirement resolution has exactly one of two baseline meanings:
+
+```text
+FOLLOW_SOURCE(source_candidate_key)
+EXPLICIT_OVERRIDE(PublicationValue)
+```
+
+Conceptually:
+
+```json
+{
+  "requirement_key": "title",
+  "resolution": {
+    "kind": "follow_source",
+    "source_candidate_key": "..."
+  }
+}
+```
+
+or:
+
+```json
+{
+  "requirement_key": "title",
+  "resolution": {
+    "kind": "explicit_override",
+    "value": {
+      "kind": "text",
+      "value": "Torneira Monocomando"
+    }
+  }
+}
+```
+
+No `fallback`, `derived`, expression, transformation, mapping or last-write-wins mode is admitted.
+
+`source_candidate_key` is opaque and context-bound to Readiness meaning. It is not a new canonical entity identity and never exposes a business-system column as the Product API's source vocabulary.
+
+At freeze/dispatch points, FOLLOW_SOURCE is re-resolved against current Readiness/source evidence; missing/unknown remains missing/unknown rather than falling back to an override.
+
+## 3.7 Bounded PublicationValue
+
+W2-B admits a small closed value union sufficient for the accepted authoring seam rather than `any`/arbitrary JSON or a speculative universal attribute system.
+
+Baseline kinds:
+
+- `text`;
+- `exact_decimal`;
+- `boolean`;
+- `option`;
+- `text_list`;
+- `option_list`.
+
+The applicable Readiness requirement determines which kind/cardinality/options are valid.
+
+An option uses an opaque requirement-scoped `option_key`; it does not make raw provider option codes the Product API's canonical ontology.
+
+Nested arbitrary objects/maps/expressions are not baseline. A future provider requirement that cannot be represented without material information loss is a concrete W2/D4-R1 reopen trigger for the smallest additional value form, not permission for a generic property bag now.
+
+## 3.8 Typed ListingIntent update
+
+`UpdateListingIntentRequest` is a typed PATCH body. Omitted top-level properties remain unchanged.
+
+When the `desired` section is present, it represents the complete desired section for that draft revision rather than procedural incremental mutations. Arrays such as requirement resolutions or media selection are complete intended semantic values when present.
+
+No JSON Patch/merge-patch null semantics, add/remove commands or duplicate ordering axes are introduced.
+
+Current-state protection remains `If-Match` from W1.
+
+## 3.9 Media reference/selection grammar
+
+Listing media selection is a closed union of legitimate origins:
+
+```text
+source_media(source_media_candidate_key)
+authored_media(listing_intent_media_id)
+```
+
+Example:
+
+```json
+[
+  {
+    "kind": "authored_media",
+    "listing_intent_media_id": "...",
+    "role": "primary"
+  },
+  {
+    "kind": "source_media",
+    "source_media_candidate_key": "...",
+    "role": "gallery"
+  }
+]
+```
+
+Array order is publication order; there is no second numeric `position` authority.
+
+`CreateListingIntentMedia` mints only a ListingIntent-scoped authored-media identity required for selection/history. It does not create ProductAsset/Asset/media-library authority.
+
+Arbitrary external URLs are not trusted authored media. Source media remains a Readiness/D4 acquisition/evidence path. Exact binary upload/storage/hash/resizing/CDN/content-delivery mechanics remain D7.
+
+`GetListingIntent` carries the media references/descriptors needed to explain/select the draft; no standalone Product media GET is admitted by symmetry.
+
+## 3.10 ListingIntent response separates semantic axes
+
+A ListingIntent response does not collapse all progress into one `status`.
+
+It preserves proportionately distinct axes such as:
+
+- canonical identity and create/edit target;
+- source Product reference;
+- desired Offering meaning;
+- current resolved requirement values/provenance;
+- authored-media descriptors/selection;
+- Intent lifecycle (`draft | submitted | discarded` proportionately);
+- draft dispatchability/blockers;
+- current required execution-input readiness/correlation references;
+- external-effect evidence/state where material;
+- Listing representation convergence;
+- actor/time attribution.
+
+The exact field names/variant inventories are finalized with the remaining W2 owner schemas, but these meanings may not be collapsed into one provider/workflow state.
+
+## 3.11 FOLLOW_SOURCE read-back and override provenance
+
+For a FOLLOW_SOURCE resolution, the response may expose the current resolved value using a ListingIntent-specific knowledge union, for example known value, unknown or unavailable, with material source observation/provenance time.
+
+An EXPLICIT_OVERRIDE response preserves server-attributed author Principal and authored time. Client requests do not author those fields.
+
+The wire does not export a universal `Fact<PublicationValue>` type to achieve this.
+
+## 3.12 PriceIntent target duality
+
+`PriceIntent` remains one MPC-owned identity with two target variants:
+
+```text
+existing_listing
+  → source-qualified Listing
+
+pre_creation_listing_intent
+  → ListingIntentId
+```
+
+Conceptually:
+
+```json
+{
+  "target": {
+    "kind": "pre_creation_listing_intent",
+    "listing_intent_id": "..."
+  },
+  "desired_price": {
+    "amount": "189.90",
+    "currency": "BRL"
+  }
+}
+```
+
+or:
+
+```json
+{
+  "target": {
+    "kind": "existing_listing",
+    "listing": {
+      "marketplace_installation_id": "...",
+      "native_listing_key": "MLB123"
+    }
+  },
+  "desired_price": {
+    "amount": "199.90",
+    "currency": "BRL"
+  }
+}
+```
+
+Price is never ListingIntent content. The same PriceIntent architecture applies from initial publication onward.
+
+## 3.13 Explicit PriceIntent supersession
+
+A changed pending/pre-dispatch price is represented by a newer PriceIntent with explicit lineage, not by mutating a PriceDraft or taking latest timestamp wins.
+
+Conceptually:
+
+```json
+{
+  "target": { "kind": "pre_creation_listing_intent", "listing_intent_id": "..." },
+  "desired_price": { "amount": "179.90", "currency": "BRL" },
+  "supersedes_price_intent_id": "..."
+}
+```
+
+The first PriceIntent has no supersedes reference. If a current standing PriceIntent exists for the same semantic target, a new conflicting PriceIntent cannot silently replace it without valid explicit supersession semantics.
+
+Automation recurrence cannot silently supersede standing human-authored price intent. Attribution/history remains server-owned.
+
+Withdrawal/cancellation remains deferred; supersession does not accidentally create a general PriceIntent mutation lifecycle.
+
+## 3.14 Correlation is server-established, not client orchestration
+
+A client does **not** PATCH `price_intent_id` or `availability_intent_id` into ListingIntent after creating them.
+
+For pre-creation price, the correlation is already carried by `PriceIntent.target = pre_creation_listing_intent`.
+
+Availability obtains the target through the accepted Offering→Availability semantic edge. The server identifies/revalidates the current owner-issued inputs required for dispatch and preserves the material correlation in historical effect/freeze context.
+
+`GetListingIntent` may expose a typed current correlated PriceIntent reference for explanation; the price value remains PriceIntent-owned.
+
+This removes unnecessary client orchestration/race windows without merging owner semantics.
+
+## 3.15 SubmitListingIntent request body is empty of business meaning
+
+The submit capability means submit the current ListingIntent revision:
+
+```http
+POST /organizations/{organization_id}/listing-intents/{listing_intent_id}:submit
+If-Match: "opaque-validator"
+```
+
+No request body may carry price, quantity, approval, provider payload, `execute=true` or client-selected effective authority.
+
+The owner freezes/accepts the current intent revision and revalidates current dependencies through accepted semantic boundaries.
+
+Submission can be accepted while later external dispatch is pending/blocked on current required PriceIntent, Availability, authorization or other prerequisites. Submission is never eternal authorization; dispatch-time validity is revalidated.
+
+## 3.16 SellableAvailability target and semantic axes
+
+Sellable Availability can be queried for a target before or after provider listing creation without creating two APIs:
+
+```text
+pre_creation_listing_intent → ListingIntentId
+existing_listing            → source-qualified Listing
+```
+
+This target duality is Availability's reference to the Offering target, not Availability ownership of ListingIntent/Listing lifecycle.
+
+The read shape separates at least four different questions:
+
+1. **control/effective capability** — does MPC currently control this availability target (`mpc_managed`, `external_required`, `unsupported`, or another accepted owner state)?
+2. **desired owner meaning** — what Sellable Availability does Availability currently own/derive for the target?
+3. **provider observation** — what quantity/state is currently observed at the marketplace, with honest source knowledge/freshness?
+4. **convergence** — do current desired and observed meanings sufficiently converge?
+
+These are not one `available` field or one workflow status.
+
+## 3.17 Desired and provider quantity knowledge
+
+Desired availability may be:
+
+```json
+{
+  "state": "known",
+  "quantity": "8",
+  "evaluated_at": "...",
+  "basis": {
+    "inventory_source_ids": ["..."],
+    "policy_revision": "..."
+  }
+}
+```
+
+Known zero is a legitimate known quantity and remains distinct from unknown/unavailable.
+
+Provider observation is a separate owner-consumed source-qualified knowledge shape, for example:
+
+```json
+{
+  "state": "known",
+  "quantity": "8",
+  "observed_at": "..."
+}
+```
+
+or honest unknown/unavailable/partial/not-applicable variants when materially reachable.
+
+Provider observed quantity never becomes the Availability-owned desired value by serialization convenience.
+
+## 3.18 Availability convergence
+
+Convergence is represented separately, with the smallest owner-specific state set needed to distinguish meanings such as `pending`, `converged`, `divergent`, `unknown` or `not_applicable` where material.
+
+Example invariant:
+
+```text
+desired = known
+provider observation = unavailable
+→ convergence may be unknown
+```
+
+Unavailability of provider observation never erases the known Availability-owned desired value.
+
+When provider topology creates shared/blast-radius effects, provider-enriched convergence/effect evidence may preserve the actual affected source-qualified Listing refs when correctness requires it. This does not introduce provider User Product/Pack graph authority into Product API ontology.
+
+## 3.19 Inventory Source minimal schema seam
+
+W2-B freezes only enough Inventory Source shape to preserve D2/D1 identity without importing Sankhya/WMS ontology:
+
+```json
+{
+  "display_name": "CD Uberlandia",
+  "source_inventory_scopes": [
+    {
+      "source_instance_id": "...",
+      "native_inventory_scope_key": "..."
+    }
+  ]
+}
+```
+
+An Inventory Source may map to one or several external inventory scopes when accepted business meaning requires composition.
+
+Native `CODEMP`, `CODLOC`, warehouse IDs or equivalent remain D4/provider/source references, not MPC Inventory Source identity.
+
+Exact allocation-policy default/inheritance/override schema is intentionally left for the policy/configuration W2 section so the same pattern can be challenged with Commercial Economics and Fulfillment configuration rather than duplicated here.
+
+## 3.20 W2-B negative controls
+
+Later contract proof must make at least these invalid/unreachable:
+
+1. ListingIntent request containing price or available quantity;
+2. ListingIntent request containing raw provider payload/property bag;
+3. FOLLOW_SOURCE carrying a hidden manual fallback;
+4. EXPLICIT_OVERRIDE client-authored actor/provenance fields;
+5. duplicate material `requirement_key` resolutions in one desired section where only one resolution is legal;
+6. arbitrary external URL treated as trusted authored media;
+7. source-media/provider-media topology becoming ProductAsset/media-master authority;
+8. media array order conflicting with a second `position` field;
+9. PriceIntent desired price sent as JSON number;
+10. PriceIntent target missing its required qualified Listing/ListingIntent reference or matching multiple union variants;
+11. a new PriceIntent silently replacing a current standing PriceIntent without explicit supersession semantics;
+12. client PATCHing PriceIntent/Availability correlation fields into ListingIntent;
+13. submit request carrying price/quantity/approval/provider-action payload;
+14. provider observed availability silently becoming desired owner availability;
+15. known zero availability collapsing to unknown/empty;
+16. provider observation unavailable causing desired value to disappear;
+17. raw source inventory codes becoming Inventory Source canonical identity.
+
+## 3.21 W2-B outcome
+
+**Parent architecture / W1 / W2-A:** `CURRENT STRUCTURE CONFIRMED`.
+
+> **Use Readiness-qualified requirement resolutions as the dynamic listing-authoring seam; keep ListingIntent sparse/declarative rather than provider-mirror state; keep PriceIntent and Availability independently targetable before/after listing creation; and derive required cross-intent correlations server-side instead of making clients orchestrate owner state.**
+
+No parent-stage reopen is required.
+
+---
+
+# 4. Exact next W2 work
+
+**W2-C — Product & Channel Readiness + Market Intelligence + Commercial Economics schema grammar.**
+
+W2-C must stress-test the W2-A knowledge/provenance/value grammar against source evidence, dynamic requirement sets, market comparability and economic lineage. It must decide proportionately:
+
+1. source Product search/reference result shapes without Product mirror identity;
+2. `ProductChannelReadiness` keyed-Q shape, readiness conclusion and blockers without one mutable readiness row/ID;
+3. `PublicationRequirements`/requirement/candidate/option schemas used by W2-B, including requirement revision and source/media candidate references;
+4. competitive-position and comparable-offer schemas with source-qualified provider-rich evidence, explicit evidence sufficiency/coverage/freshness and no universal MarketObservation resource;
+5. current Expected Economics schema with component-level knowledge/provenance and no plausible complete profitability when tax/fee/shipping/cost evidence is incomplete;
+6. `EvaluatePriceScenario` request/result: caller supplies legitimate scenario variables only, never authoritative evidence overrides;
+7. `SaleEconomics` L0/L1/L2 + R1/R2 schema grammar preserving historical rungs/occurrences rather than a mutable profitability blob;
+8. Economic Attribution exact/partial/ambiguous/unresolved subject/reference grammar without universal entity graph;
+9. bounded Commercial Policy schema only as needed to validate W2-A policy update semantics; generic Rules DSL remains rejected;
+10. negative controls proving source/provider evidence cannot be client-fabricated as known authoritative economics or competitive truth.
+
+W2-C does not yet choose collection pagination/filter grammar or full policy default/inheritance/override schema if a later cross-owner configuration section can adjudicate that pattern more coherently.
+
+After W2-C, continue the remaining W2 owner/schema families necessary for global coherence. **Run one Fable review only after W2 as a coherent package converges**, following the canonical Standard Fable review workflow.
 
 Implementation remains blocked until D9.
