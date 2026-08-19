@@ -2,7 +2,7 @@
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
 > **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 OPEN / ACTIVE**  
-> **D5-B2 current state:** **Operation Matrix + Whole-Matrix RATIFIED; Wire W1 + W2 ACCEPTED / CANONICAL; W3 Collections / Pagination / Filter / Search / Cursor Grammar = NEXT**  
+> **D5-B2 current state:** **Operation Matrix + Whole-Matrix RATIFIED; Wire W1 + W2 ACCEPTED / CANONICAL; W3-A Collection + Cursor Core ACCEPTED IN-STAGE; W3-B Per-Operation Filter / Search / Ordering Matrix = NEXT**  
 > **Implementation:** **BLOCKED until D9 is accepted**  
 > **Last updated:** 2026-08-19
 
@@ -27,12 +27,13 @@ A fresh session reads, in order:
 15. `docs/engineering/rebaseline/D5-B2-OPERATION-ADMISSION-MATRIX.md`
 16. `docs/engineering/rebaseline/D5-B2-WIRE-CONTRACT.md` — canonical W1
 17. `docs/engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md` — canonical consolidated W2
-18. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
-19. code/OpenAPI/schemas/tests/runtime only as current-state evidence when needed
+18. `docs/engineering/rebaseline/D5-B2-W3-COLLECTION-GRAMMAR.md` — W3-A accepted in-stage; current W3 design home
+19. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
+20. code/OpenAPI/schemas/tests/runtime only as current-state evidence when needed
 
 This file alone owns **program status, allowed/blocked work and exact next action**. Detailed semantics remain in the accepted artifacts above.
 
-The former staged W2-C/D/E files and Whole-W2 review candidate were removed after final ratification; Git history is the archive. `AI-DIALOG.md` is again protocol-only and is not architecture authority.
+The former staged W2-C/D/E files and Whole-W2 review candidate were removed after final ratification; Git history is the archive. `AI-DIALOG.md` is protocol-only and is not architecture authority.
 
 Legacy/current code, routes, OpenAPI and SDK remain evidence only until later D-stage target work replaces them.
 
@@ -58,7 +59,9 @@ D5 — API                                                  OPEN / ACTIVE
       W1 Resource / Path / HTTP Grammar                  ACCEPTED / CANONICAL
       W2 Request / Response Schema Grammar               ACCEPTED / CANONICAL
       W3 Collections / Pagination / Filter / Search /
-         Cursor Grammar                                  NEXT
+         Cursor Grammar                                  OPEN / ACTIVE
+        W3-A Collection + Cursor Core                    ACCEPTED IN-STAGE
+        W3-B Per-Operation Filter / Search / Ordering    NEXT
       Remaining wire obligations                         BLOCKED BY W3 SEQUENCE
 D6 — Frontend                                             BLOCKED BY D5
 D7 — Runtime / Jobs / Transactions                        BLOCKED
@@ -67,7 +70,7 @@ D9 — Adversarial Architecture Review                      BLOCKED
 Implementation                                            BLOCKED UNTIL D9
 ```
 
-Whole-W2 lead review, Fable Round 1, GPT adjudication, focused Fable Round 2 and final GPT adjudication converged and were operator-ratified on 2026-08-19. Their active meaning is now incorporated in canonical W1/W2; review dialogue itself is not an authority layer.
+Whole-W2 lead review, Fable Round 1, GPT adjudication, focused Fable Round 2 and final GPT adjudication converged and were operator-ratified on 2026-08-19. Their active meaning is incorporated in canonical W1/W2; review dialogue itself is not an authority layer.
 
 ---
 
@@ -136,14 +139,30 @@ Whole-W2 lead review, Fable Round 1, GPT adjudication, focused Fable Round 2 and
 - canonical Problem Details includes unified `resource-revision-conflict` for stale typed revision proof;
 - D4/D8 still must prove selected-lane N/A reread and User-Product conditional-requirement validation before claiming live convergence.
 
+### 3.5 Accepted W3-A
+
+- every admitted List/Search operation is pagination-capable through shared `limit?` + opaque `cursor?` mechanics;
+- collection responses are operation/owner-specific and may expose optional `next_cursor`; no universal `Page<T>`, `PagedResult<T>`, `data/metadata` or generic Result wrapper;
+- pagination is forward-only; no baseline page number/offset/skip/previous cursor;
+- `limit` is a requested maximum, not guaranteed returned cardinality;
+- fewer than `limit` items, including zero, does not prove exhaustion; `next_cursor` is the continuation authority;
+- absence of `next_cursor` means no later page in that traversal only; it never proves source/provider/market/all-time knowledge completeness;
+- cursor is opaque, bound to Organization + operation + semantic query, never authorization and never a raw provider/database paging token;
+- material query changes invalidate continuation; `limit` may change between pages;
+- no universal `total_count` baseline;
+- no caller-selectable arbitrary sort baseline;
+- no universal snapshot-isolation promise across pages;
+- malformed/invalid/expired/query-mismatched cursor fails explicitly rather than silently restarting or returning an empty first page;
+- provider pagination remains D4-local mechanism; D7 chooses cursor persistence/signing/index/cache implementation.
+
 ---
 
 ## 4. Prohibited now
 
-While W3 is next:
+While W3-B is next:
 
 - do not begin D6–D9 target design or implementation;
-- do not reopen accepted D0→D5-B1/B2/W1/W2 for naming/style or implementation convenience;
+- do not reopen accepted D0→D5-B1/B2/W1/W2/W3-A for naming/style or implementation convenience;
 - do not reconstruct deleted staged W2 files or review candidate as parallel authority;
 - do not derive collection contracts from legacy OpenAPI/routes/controllers/frontend tables;
 - do not create generic query/filter DSL, arbitrary sort expressions or GraphQL-like query language;
@@ -157,28 +176,23 @@ While W3 is next:
 
 ## 5. Exact next action
 
-**Derive W3 — Collections / Pagination / Filter / Search / Cursor Grammar from the admitted List/Search Q operations.**
+**Derive W3-B — Per-Operation Filter / Search / Ordering Matrix from every admitted List/Search Q.**
 
-W3 must decide and adversarially stress-test, as one coherent package:
+W3-B must decide and adversarially stress-test:
 
-1. canonical collection response shape without a universal business Result/metadata envelope;
-2. opaque cursor semantics and how a client obtains the next page;
-3. deterministic owner-meaning ordering and necessary tie-breakers without exposing database ordering as API meaning;
-4. cursor continuation versus source/provider coverage/completeness — page exhaustion must never fabricate universal completeness;
-5. page-size/limit defaults and maximums only to the extent a real Product/tooling need requires them;
-6. list filtering as **operation-specific typed filters**, not a generic query DSL;
-7. search semantics separately from list/filter semantics where the admitted operation is genuinely search (`SearchSourceProductsForMarketplace` in particular);
-8. whether any admitted collection genuinely needs caller-selectable sort; reject arbitrary sort by default;
-9. total-count semantics — include only where a real consumer and honest authoritative universe make it reliable; otherwise omit;
-10. cursor invalid/expired/stale behavior and Problem Details without promising one universal snapshot transaction across owners/providers;
-11. deduplication/stability expectations when external source populations change between pages;
-12. source-qualified external collection identities and same-Organization reference safety;
-13. provider-specific paging tokens remaining adapter-local unless an opaque Product cursor legitimately encapsulates them;
-14. negative controls for unbounded page size, offset-by-default, raw provider cursor leakage, generic filter/sort maps and list-by-symmetry operations not admitted in B2.
+1. whether each collection requires filtering at all;
+2. the smallest operation-specific typed filter fields, rejecting generic filter maps/expressions;
+3. true search semantics separately from ordinary list/filter semantics, especially `SearchSourceProductsForMarketplace`;
+4. one deterministic owner-meaning default order per collection plus required stable tie-breaker(s), without exposing database ordering as API meaning;
+5. whether any collection genuinely requires caller-selectable sorting; reject by default;
+6. same-Organization/source-qualified identity constraints in query selection;
+7. owner-specific coverage/provenance exposure where material;
+8. whether small product-defined enumerations/definition lists should simply return all values while retaining the common pagination-capable contract;
+9. negative controls against provider-native/database-field filters, frontend-table-shaped queries, fuzzy search where not semantically defined, and sort/filter parameters admitted only for symmetry.
 
-W3 must not choose D7 database/index/cache implementation. It defines Product wire semantics only.
+After W3-B, close cursor invalid/expired/stale plus population-change/deduplication/stability semantics as required by the per-operation matrix before W3 can be accepted as a whole.
 
-After W3, continue the remaining Wire Contract obligations in router order: exact Permission→operation/client-class mapping, technical non-Product ingress classification, final Problem/media consistency as needed, and the single machine-readable OpenAPI authority/tooling decision. Do not advance them before W3 is coherent.
+After W3 as a whole, continue remaining Wire Contract obligations in router order: exact Permission→operation/client-class mapping, technical non-Product ingress classification, final Problem/media consistency as needed, and the single machine-readable OpenAPI authority/tooling decision. Do not advance them before W3 is coherent.
 
 Implementation remains blocked until D9.
 
@@ -191,12 +205,14 @@ A fresh session must conclude:
 - D0→D4/D4-R1 + D5-B1 are accepted/canonical;
 - D5-B2 Operation Matrix + Whole-Matrix are ratified;
 - `D5-B2-WIRE-CONTRACT.md` is canonical W1 authority;
-- `D5-B2-W2-SCHEMA-GRAMMAR.md` is the **single consolidated canonical W2 authority**;
+- `D5-B2-W2-SCHEMA-GRAMMAR.md` is the single consolidated canonical W2 authority;
+- `D5-B2-W3-COLLECTION-GRAMMAR.md` is the current W3 design home with W3-A accepted in-stage;
 - former W2-C/D/E staging artifacts and Whole-W2 review candidate are absent from the active tree and preserved only in Git history;
 - `AI-DIALOG.md` has no active Whole-W2 review cycle;
 - W1 custom-method preconditions use typed request ETag rather than base-resource `If-Match` on a distinct URI;
 - W2 includes the ratified historical publication, missing-schema, provider-requirement, Fulfillment identity/target, key-lifetime, media, idempotency and problem corrections;
-- **W3 Collections / Pagination / Filter / Search / Cursor Grammar is the exact next action**;
+- W3-A establishes named owner collections + forward opaque cursor semantics without total/count/snapshot/completeness fiction;
+- **W3-B Per-Operation Filter / Search / Ordering Matrix is the exact next action**;
 - implementation remains blocked until D9.
 
 If not, the active authority tree is inconsistent.
