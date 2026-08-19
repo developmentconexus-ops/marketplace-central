@@ -97,111 +97,213 @@ Authority was reconstructed independently in the required order: `AGENTS.md` →
 Independent verification performed before the G attacks:
 
 - **26/26 admitted List/Search Q operations** re-derived from the ratified Operation Admission Matrix and matched one-to-one against W3-B §3.5–§3.15; zero missing, zero list-by-symmetry additions;
-- ordering uniqueness/stability swept for all 26 (detail under G3);
+- ordering uniqueness/stability swept for all 26;
 - population definedness swept for all 26 (one failure — F-W3-1 below);
 - filter-consumer sweep: no fake filter found; every admitted filter maps to a named Product question or accepted navigation edge;
-- source qualification: every external-identity filter/order key remains Installation/SourceInstance-qualified (W3-B §3.16 holds under the G3 corrections);
-- no generic Page/metadata/query/sort/projection/snapshot/traversal framework emerges from the combined package; shared layer remains continuation mechanics only (Mechanism ≠ Authority).
+- source qualification: every external-identity filter/order key remains Installation/SourceInstance-qualified;
+- no generic Page/metadata/query/sort/projection/snapshot/traversal framework emerges from the combined package; shared layer remains continuation mechanics only.
 
 ### G1 — continuation query carrier — **APPROVE**
 
-- **Evidence:** W3-A §2.6 "the client may repeat the query fields" directly contradicts W3-B §3.3/§3.8 required subject fields. If continuation may omit required selectors, the opaque cursor becomes the only carrier of business selection — hidden query authority — and W3-A §2.5 (every continuation authorized normally) becomes unverifiable without decoding the cursor into a semantic carrier.
-- **Root cause:** continuation state and semantic query identity insufficiently separated (lead diagnosis confirmed).
-- **Alternatives tested:** (1) cursor reconstructs query, fields optional — rejected: hidden authority, authorization/audit lose the request's semantic scope; (2) hybrid both-allowed — rejected: precedence ambiguity, more states, mismatch still must fail; (3) split carrier (required fields repeated, optional filters cursor-carried) — rejected: two query authorities, worst of both; (4) **repeat explicit query + continuation-only cursor — confirmed Global Maximum.** The cursor may internally hold a query fingerprint for equality verification (already allowed by W3-A §2.4); the fingerprint verifies, never replaces, the explicit query.
-- **Complexity/YAGNI:** repeating fields the client already possesses is zero marginal client complexity; server equality check is essential fail-closed verification, not accidental machinery.
-- **Consolidation obligation (material):** W3-A §2.6 normative sentence must be **rewritten**, not merely supplemented — "may repeat" → "must repeat (required subject/search fields; same effective optional narrowing; only `limit` may vary)". Leaving both sentences active would preserve the contradiction inside canonical text.
-- **Precedence note:** a continuation request missing a required subject field is ordinary contract `validation-error` before any cursor evaluation; `invalid-cursor` applies to a well-formed request whose repeated query mismatches the cursor binding. Consolidation should state this ordering once.
-- **Parent reopen:** none.
+W3-A's “may repeat” query wording conflicts with W3-B required semantic selectors. The confirmed Global Maximum is explicit semantic query on every continuation request + continuation-only cursor. Required subject/search fields and the same effective optional filters are repeated; only `limit` may vary. Missing required semantic fields is ordinary contract validation before cursor evaluation; a well-formed repeated query that mismatches the cursor binding is `invalid-cursor`. No parent reopen.
 
-### G2 — enumerable keyed-Q populations — **APPROVE with one clarification**
+### G2 — enumerable keyed-Q populations — **APPROVE with clarification**
 
-- **Evidence:** MPC has no Product master/list universe (D0/D2/D4-R1); the point-Q subject unions (`existing_listing | source_product_marketplace_context`) are deliberately wider than any honest enumerable population. Existing-Listing-only enumeration is the only universe MPC actually knows without resurrecting a Product list surface.
-- **Consumer check:** no real pre-listing enumeration consumer is suppressed. The pre-listing path (Search → selected ref → point Get/EvaluatePriceScenario) covers the accepted Product 1.0 use; draft-side navigation exists via `ListListingIntents` → point Get per draft. Alternative populations tested: all-source-products (rejected — Product master), cached/materialized-only (rejected — persistence state as semantics; the same rejection the lead recorded), corresponded-products-only (rejected now — no accepted consumer; noted as the natural smallest future extension if a real pre-listing portfolio consumer ever emerges, i.e. the reopen would bound the universe by established ProductChannelCorrespondence, never by "all products").
-- **Clarification required (material, small):** after G2 these two collections' subject universe derives from **externally acquired Listing knowledge**. Consolidated W3 must state explicitly that the enumerable universe is "currently known existing Listing subjects" and that universe completeness is bounded by the Listing acquisition coverage already owned by `ListMarketplaceListings`/W3-B §3.17 — **without** adding a new collection-level coverage field to these two lists (YAGNI; W3-A §2.7 already blocks completeness over-claims). Silence would invite reading traversal exhaustion as portfolio completeness.
-- **Parent reopen:** none.
+`ListCompetitivePositions` and `ListExpectedEconomics` must enumerate currently known existing Listing subjects only. Pre-listing source-product marketplace contexts remain Search → selected ref → point Get/evaluation. The enumerable universe is derived from externally acquired Listing knowledge and its completeness is bounded by Listing acquisition coverage; no new collection-level coverage field is added. No parent reopen.
 
 ### G3 — ordering/tie-breakers — **APPROVE with one spelling decision for the lead**
 
-Full 26-collection sweep result: with the lead's five corrections applied, every collection has a unique, stable, source-qualified, non-fabricated total order. Immutable create/occurrence time + ID/ref patterns verified unique; opaque-ID orderings are deterministic total orders without encoding promises (W2 §2.1 keeps encodings non-contractual); no mutable `updated_at` ordering anywhere; no business priority fabricated.
+With the lead corrections applied, the 26-collection sweep has unique/stable/non-fabricated total ordering. `ListSellableAvailability` fixed target-kind + target identity and `ListShipments` source-qualified native key survive. `ListEconomicAttributions` must pick one explicit order; reviewer recommends `economic_attribution_id ASC` alone rather than subject grouping + ID. No parent reopen.
 
-- `ListSellableAvailability` fixed target-kind order + target identity: **PASS** — closed two-kind enum order is deterministic grouping, not priority. Examined edge: a target re-keying from `pre_creation_listing_intent` to `existing_listing` mid-traversal makes the same underlying availability meaning appear as two distinct member identities; this is honest population mutation under W3-C §5, not an at-most-once violation. No correction needed.
-- `ListShipments` Installation-qualified native key ASC: **PASS** — identity ordering, not provider incidental order; correctly refuses the unproven cross-provider temporal meaning.
-- `ListEconomicAttributions` — **lead must pick one explicit spelling.** "Stable `economic_attribution_id ASC` as final ordering key" is ambiguous between (a) full order = `economic_attribution_id ASC` alone and (b) subject tuple → ID. Recommendation: **(a) ID alone** — the subject tuple is non-unique (the lead's own evidence), subject grouping has no named consumer, and `attribution_state?` filtering already serves the reconciliation workflow. Either choice is deterministic; the consolidated text must name exactly one.
-- **Parent reopen:** none.
+### G4 — ComparableOffer evaluation basis — **APPROVE**
 
-### G4 — ComparableOffer evaluation basis — **APPROVE (essential correctness, not accidental snapshot)**
+One `ListComparableOffers` cursor chain must remain on one Market owner evaluation/acquisition basis because mutable price ordering + potentially identity-less evidence makes per-page fresh re-query an invalid continuation. The basis remains owner-local/provenance-bound, retained only as needed by D7; no public Snapshot/Traversal resource and no fabricated ComparableOffer ID. If the basis cannot resume, `cursor-expired`. No parent reopen.
 
-- **Necessity proof:** ordered by mutable `delivered_price` over identity-less evidence, per-page re-query makes honest continuation impossible — members cross the boundary in both directions and deduplication has no key. The alternatives are exhaustively: (a) one frozen evaluation/acquisition basis per cursor chain; (b) no continuation at all (single bounded page); (c) expire on any change. (b) fails a real consumer when the bounded provider population exceeds one page (D4-B2: catalog offer paging is a real bounded population) and breaks limit/cursor uniformity for one collection; (c) requires the same basis machinery just to *detect* change, with worse outcomes. (a) is the smallest honest structure.
-- **Accidental-complexity check:** the basis is not new machinery — Market Intelligence acquisition already produces one evaluation result with required provenance (W2 §6 evaluation/provenance); G4 only retains that existing result long enough to serve continuation, with D7 owning retention and honest `cursor-expired` on retirement. No public Snapshot/Traversal resource, no fabricated ComparableOffer identity, no universal snapshot promise — all fences confirmed present in the lead text.
-- **Fence for consolidation:** the lead's G4 "evaluation basis" and G5 "traversal basis" wording must remain **owner-local descriptions**, never a named shared `EvaluationBasis`/`TraversalBasis` concept in consolidated W3 — that would be the seed of exactly the generic snapshot framework W3 rejects.
-- **Parent reopen:** none.
+### G5 — SearchSourceProductsForMarketplace — **APPROVE with strengthening**
 
-### G5 — SearchSourceProductsForMarketplace — **APPROVE, with one strengthening**
-
-- **Over-specification confirmed:** W3-B §3.3 freezes "case-insensitive lexical token match" that no D4 evidence supports. The sanctioned Sankhya read fence (D4 §5.2: `loadRecords` criteria only over root-entity fields with ordinary comparison/logical operators and bound parameters; **no Oracle functions/expressions**) makes provider-side case-folding (`UPPER()`), tokenization semantics and collation behavior all unproven. Honoring the frozen wording could force MPC-side filtering over broad enumeration — a de facto Product search mirror/index created silently to satisfy a sentence. The lead's correction (bounded matching over legitimate evidence supported by the sanctioned source contract; deterministic per traversal; no universal tokenizer/case/stemming/fuzzy/vector promise; STOP/re-adjudicate if a materially required search cannot be met without a new Product-search data authority) is the correct shape and the correct STOP delimitation.
-- **Under-specification check:** the corrected Search remains useful and honest for the real Readiness consumer: exact native key / exact legitimate identifier precedence **is provable inside the D4 fence** (bound-parameter equality on root-entity fields), stable SourceProductRef tie-break plus W3-C §9 at-most-once keep traversal deterministic, and ranking quality is deliberately not a contract. Not under-specified.
-- **Strengthening (small, material):** the not-frozen set must explicitly include **diacritics/accent-folding and locale/collation behavior**, not only "case algorithm". Source Product names are pt-BR; an accent-folding promise is the identical defect class as the case-folding promise and would be silently reintroduced by any implementer reading "case-insensitive" as the only fence. One phrase in consolidated W3 closes it.
-- **Parent reopen trigger:** confirmed as the lead states it — only if a real SourceInstance cannot support the admitted Search through sanctioned reads/projections. Current evidence does not fire it.
+The former case-insensitive lexical-token promise was stronger than D4 sanctioned-source evidence. Search remains required/source-qualified/useful, exact native/legitimate identifier matches rank ahead when established, and textual matching/ranking is deterministic for one traversal basis without promising universal tokenizer, stemming, fuzzy/vector/AI search or case behavior. The fence must also explicitly refuse unproven diacritics/accent-folding and locale/collation behavior. If a real SourceInstance cannot satisfy materially required Search through sanctioned reads/projections without a new Product-search data authority, STOP/re-adjudicate; current evidence does not fire that trigger.
 
 ### G6 — cursor Problem Details — **APPROVE**
 
-- **Distinction usefulness:** confirmed by recovery-class analysis. `invalid-cursor` → the request itself is wrong (client defect/tamper/query mismatch): blind restart would mask a client bug class. `cursor-expired` → the request was legitimate, continuation is honestly lost: discard and restart. One merged type would force clients to either parse `detail` or treat every cursor failure as restart, hiding the defect class. Two types is the minimum that preserves the distinction; a third "temporarily unavailable continuation" class is correctly refused because W3-C §10 already routes transient provider outage to availability/service semantics, not cursor lifecycle.
-- **Status correctness:** 400 for both is the honest choice. 410 misdescribes (the collection target exists; the cursor is not a resource — W3-C §3.2 already rejects it); 409 misdescribes (population evolution is not resource conflict); overloading 422 would collide with the W1/W2 typed-validator grammar (`422 validation-error` for missing/invalid typed etag). Deliberate note for consolidation: cursor problems stay 400 even though adjacent parameter-validity failures use `validation-error` — state that once so implementers do not "normalize" it later.
-- **One catalog:** amending canonical W2 §19 with both types at final ratification is the only structure compatible with the one-catalog law; W3 retains the when-they-apply semantics. No provider taxonomy. Confirmed.
-- **Non-material observation:** naming is internally inconsistent (`invalid-cursor` adjective-first vs `cursor-expired` noun-first). Cosmetic; consolidation may normalize (e.g. `cursor-invalid`/`cursor-expired`) at zero semantic cost, or keep as-is.
-- **Parent reopen:** none — W2 catalog amendment remains a D5 wire-consistency correction.
+`invalid-cursor` and `cursor-expired` are the minimum useful recovery distinction and both remain HTTP 400. Canonical W2 Problem Details catalog must carry both; W3 owns when they apply. Transient provider outage remains availability/service semantics, not cursor lifecycle. No third cursor taxonomy. Naming inconsistency is cosmetic only.
 
-### F-W3-1 — NEW MATERIAL FINDING — `ListSellableAvailability` population is undefined — **REVISE**
+### F-W3-1 — NEW MATERIAL FINDING — `ListSellableAvailability` population undefined — **REVISE**
 
-- **Evidence:** W2 §4 defines SellableAvailability as a keyed meaning over the target union (`pre_creation_listing_intent | existing_listing`); W3-B §3.7 defines only filters and (via G3) ordering; nothing in W2/W3-A/B/C or the candidate defines **which targets constitute the enumerable population**. The lead's own G2 root cause — "point-addressable keyed Q subject space was mistaken for an enumerable collection population" — applies verbatim to this third keyed-subject List, and the candidate fixed only its ordering.
-- **Failure scenario:** without definition, the cheapest implementation enumerates "targets with availability rows/configuration" — persistence state becoming Product collection semantics (the exact alternative the lead rejected in G2), and targets with **unknown** availability silently vanish from the portfolio view, which is dishonest by omission precisely where unknown is most actionable.
-- **Corrected invariant/direction:** the population is the **currently known Offering target universe** — non-discarded pre-creation ListingIntent targets plus currently known existing Listing subjects — each member carrying its honest availability knowledge state (known/unknown/unavailable per W2 §4), never "rows that happen to be configured/materialized". Universe completeness for the existing-Listing part is bounded by Listing acquisition coverage exactly as in the G2 clarification; no new coverage field (YAGNI). Exact lifecycle bound for the intent side (draft-and-submitted vs submitted-only) is the lead's adjudication; direction: any non-discarded intent whose target can carry availability meaning under D4-R1.
-- **Root cause:** same class as G2 — subject-space/population conflation; W3-local.
-- **Global vs local maximum:** defining the population from owner-known target universes is the same Global Maximum shape as G2; enumerating persistence state is the local maximum.
-- **Parent reopen:** none.
+W2 defines SellableAvailability over `pre_creation_listing_intent | existing_listing`, but W3 never defined which targets form the enumerable population. Persistence-row enumeration would make implementation state the API semantics and could silently omit unknown Availability. Reviewer direction: population = currently known Offering target universe — non-discarded pre-creation ListingIntent targets plus currently known existing Listing subjects — with honest Availability knowledge state, never “rows that happen to exist”. Existing-Listing universe completeness remains bounded by Listing acquisition coverage with no new coverage field. Exact ListingIntent lifecycle bound requires lead adjudication. No parent reopen.
 
-### F-W3-2 — NEW FINDING — list-item projection subset law is implicit — **REVISE (small)**
+### F-W3-2 — NEW MATERIAL FINDING — list-item projection subset law implicit — **REVISE (small)**
 
-- **Evidence:** W3-C §2 bounds the projection by purpose ("identify / scan / select / navigate / material owner state") and negative control §14.11 blocks history duplication, but nothing states that list-item fields must be a **same-name/same-meaning subset of the point representation's owner meaning**. A list-only *derived* scan field (e.g. a computed dispatchability digest that exists nowhere in `GetListingIntent`) would satisfy the current wording while creating a second read conclusion — the precise mechanism by which frontend-table pressure historically becomes API authority.
-- **Corrected invariant:** a list-item field is a projection of a field/meaning present in the point representation, with identical name and semantics; a collection introduces no list-only derived conclusion. One sentence in consolidated W3 closes the seam; no schema machinery.
-- **YAGNI check:** this removes a foreseeable defect class at zero capability cost; it does not forbid naturally small resources reusing their point representation.
-- **Parent reopen:** none.
+W3-C bounds list-item projections by purpose but does not explicitly prevent list-only derived business conclusions. Reviewer direction: list items must project point representation owner meaning rather than create a second read conclusion. No generic schema machinery required. No parent reopen.
 
-### Strong challenges that survived (recorded, no correction)
+### Strong challenges that survived
 
-- **At-most-once stable identity — KEEP unchanged.** Cost swept per collection class: immutable-time/ID-ordered MPC collections realize it free via keyset continuation; ID/key-ordered admin and source-backed lists likewise; `ListComparableOffers` is solved by the G4 basis; `SearchSourceProductsForMarketplace` is the only genuinely stateful case and its seen-set/traversal state is bounded by traversal length with W3-C §8/§10 honest expiry as the escape valve. No collection shows disproportionate hidden D7 cost; narrowing the guarantee by collection class would trade a uniform client-visible property for saved cost that does not exist. Candidate §9 disposition confirmed, including the D7-may-not-silently-weaken fence.
-- **Coverage vs exhaustion vs dedup vs enumeration:** the four cannot imply each other anywhere in the combined package (W3-A §2.7 + W3-B §3.17 + W3-C §6/§14.16), with the G2/F-W3-1 universe clarifications closing the last implicit channel (subject-universe completeness).
-- **Structural Inversion:** assuming opposite legacy OpenAPI (offset/page), frontend tables (mutable `updated_at` sort), database order and provider paging — every W3 conclusion still stands, because each derives from D1 owner meaning, D2/D4 source qualification, D3/D5-B1 knowledge honesty or a real consumer question; none derives from current shape. Offset pagination would additionally fabricate a stable-index promise mutable populations cannot honor, independently re-justifying forward-only cursors.
-- **Combined-package framework pressure:** shared layer stays mechanics (limit/cursor/next_cursor, AND composition, two problem types); meanings stay owner-specific; with the G4/G5 owner-local-basis fence above, no generic traversal/snapshot/search framework emerges.
+- at-most-once stable identity — KEEP unchanged;
+- coverage, exhaustion, deduplication and enumeration remain independent;
+- Structural Inversion against opposite legacy OpenAPI/frontend/database/provider paging — PASS;
+- combined-package framework pressure — PASS; shared layer remains mechanics only;
+- exact numeric limit default/max deferral — KEEP / DEFER SAFELY;
+- bounded ListItem projection — KEEP with stronger fence.
 
-### Consolidation obligations register (for the final canonical W3)
+### Consolidation obligations register
 
-1. rewrite W3-A §2.6 ("may repeat" → "must repeat"; only `limit` varies) — G1;
-2. state validation-before-cursor precedence once — G1;
-3. define CompetitivePosition/ExpectedEconomics universes as currently-known-Listing-derived, completeness bounded by Listing acquisition coverage, no new coverage field — G2;
-4. pick and spell one `ListEconomicAttributions` total order (recommend `economic_attribution_id ASC` alone) — G3;
-5. keep evaluation/traversal "basis" wording owner-local; never name a shared concept — G4/G5;
-6. extend the not-frozen Search set to diacritics/locale/collation — G5;
-7. amend canonical W2 §19 with the two cursor problem types; optionally normalize naming; record the deliberate-400 note — G6;
-8. define `ListSellableAvailability` population (owner-known target universe, honest knowledge states) — F-W3-1;
-9. add the list-item subset law sentence — F-W3-2.
+1. rewrite W3-A continuation wording from optional repetition to mandatory semantic-query repetition; only `limit` varies;
+2. state validation-before-cursor precedence;
+3. define CompetitivePosition/ExpectedEconomics universes as currently-known-Listing-derived and Listing-coverage-bounded, with no new coverage field;
+4. choose one `ListEconomicAttributions` total order;
+5. keep Market/Search evaluation/traversal basis wording owner-local, never a shared generic concept;
+6. extend Search's not-frozen set to diacritics/locale/collation;
+7. amend W2 Problem Details catalog with the two cursor problem types and keep the deliberate-400 note;
+8. define `ListSellableAvailability` population;
+9. add the list-item semantic-subset fence.
 
-### Reopen classification (independent)
+### Reopen classification
 
-- D0…D4/D4-R1/D5-B1/W1: **NO REOPEN** — concur with lead;
-- W2: **catalog amendment only** at final ratification — concur;
-- W3-A/B/C: **targeted W3-local corrections** = G1…G6 as ratified-for-challenge **plus F-W3-1 and F-W3-2**;
-- G5 STOP trigger retained exactly as delimited; not currently fired.
+- D0…D4/D4-R1/D5-B1/W1: **NO REOPEN**;
+- W2: **catalog amendment only** at final ratification;
+- W3-A/B/C: targeted W3-local corrections = G1…G6 + F-W3-1 + F-W3-2;
+- G5 STOP trigger retained but not currently fired.
 
 **`HANDOFF → GPT`**
 
-Lead adjudication required on exactly:
+Lead adjudication required on F-W3-1, F-W3-2, G3 spelling, G2 clarification, G5 strengthening and G6 cosmetics. G1, G4 and the at-most-once/limit-deferral dispositions need no Round 2.
 
-1. **F-W3-1** — accept/revise the `ListSellableAvailability` population definition (owner-known target universe; decide the exact pre-creation ListingIntent lifecycle bound);
-2. **F-W3-2** — accept/reject the explicit list-item subset law;
-3. **G3 spelling** — choose the single `ListEconomicAttributions` total order (recommendation: `economic_attribution_id ASC` alone);
-4. **G2 clarification** — ratify the universe-honesty wording (acquisition-coverage-bounded, no new coverage field);
-5. **G5 strengthening** — ratify diacritics/locale/collation in the not-frozen set;
-6. **G6 cosmetics** — keep or normalize the two problem-type names at consolidation (non-material).
+## GPT — Whole-W3 final adjudication (2026-08-19)
 
-G1, G4 and the at-most-once/limit-deferral/projection dispositions need no round 2 — no material contradiction with the lead survives on them. If items 1–5 are accepted as stated, the Whole-W3 package is coherent for final convergence and operator ratification.
+**Verdict:** `CONVERGED — RESTRUCTURE W3-LOCAL`; **Round 2 NOT REQUIRED**. Fable independently confirmed the lead Global Maximum and found two additive W3-local gaps. No material contradiction survives. D0→D5-B1/W1 remain confirmed; W2 requires only the already-bounded cursor Problem Details catalog amendment at canonical consolidation.
+
+### A1 — G1 query carrier — ACCEPT
+
+Canonical consolidation direction:
+
+- a cursor carries continuation state only, never the semantic query;
+- every continuation request repeats every operation-required semantic subject/search field and the same effective optional narrowing semantics;
+- only `limit` may vary;
+- cursor may carry a fingerprint only to verify equality, never to replace explicit request meaning;
+- missing/invalid required query fields fail as ordinary `422 validation-error` before cursor evaluation;
+- a well-formed request whose repeated semantic query conflicts with the cursor binding fails `400 invalid-cursor`.
+
+This removes the hidden-query-authority defect without adding a second carrier.
+
+### A2 — G2 keyed-Q enumerable populations — ACCEPT + CLARIFY
+
+`ListCompetitivePositions` and `ListExpectedEconomics` enumerate **currently known existing marketplace Listing subjects only**. Their point-Q subject unions remain broader and continue to support pre-listing source-product marketplace contexts through Search → selected SourceProductRef → point Get/evaluation.
+
+The List population is derived from externally acquired Listing knowledge. Its completeness relative to the provider universe is bounded by Listing acquisition coverage already owned/exposed by the Listing collection. Do **not** add another collection-level coverage field merely for these derived-owner collections; traversal exhaustion remains only traversal exhaustion.
+
+A future real pre-listing portfolio consumer may reopen only the smallest enumerable universe, e.g. a proven correspondence-bounded population; it never authorizes “all source Products” by convenience.
+
+### A3 — G3 ordering/tie-breakers — ACCEPT; SPELLING CLOSED
+
+Use the lead-corrected explicit total orders. For `ListEconomicAttributions`, choose exactly:
+
+```text
+economic_attribution_id ASC
+```
+
+and nothing before it.
+
+Subject grouping has no named Product consumer and is not unique; adding it would create ordering semantics with no benefit. Opaque IDs/native keys are deterministic tie-breakers/order keys only and make no encoding/business-priority promise.
+
+### A4 — G4 ComparableOffer basis — ACCEPT
+
+One `ListComparableOffers` cursor chain stays bound to one Market Intelligence owner-local evaluation/acquisition basis. This is essential correctness for mutable price ordering over potentially identity-less evidence, not a universal snapshot abstraction.
+
+- the basis remains owner-local/provenance context, never a shared `EvaluationBasis`, `TraversalBasis`, Snapshot or resource type;
+- D7 may retain the existing evaluation result only long enough to resume the chain;
+- provider-native member identity is used only where real;
+- otherwise the acquisition-local discriminator remains technical;
+- inability to resume the same basis → `400 cursor-expired`;
+- a request without cursor begins a fresh current evaluation/traversal.
+
+### A5 — G5 Source Product search — ACCEPT + STRENGTHEN
+
+`SearchSourceProductsForMarketplace` keeps a required non-empty opaque user query + explicit SourceInstance/Marketplace context and returns only source-qualified evidence.
+
+- exact native Product key / exact legitimate identifier matches receive precedence when the sanctioned source contract establishes them;
+- textual matching/ranking must be deterministic enough for one traversal, but W3 freezes **no universal tokenizer, case-folding, diacritics/accent-folding, stemming, fuzzy/edit-distance, locale/collation, vector/embedding/AI search algorithm**;
+- provider query syntax never crosses the Product API;
+- no public relevance score;
+- if a real SourceInstance cannot satisfy the materially required Search through sanctioned reads/projections without a new MPC Product-search mirror/index/data authority, STOP and re-adjudicate rather than silently creating it.
+
+Current evidence does not fire that STOP trigger.
+
+### A6 — G6 cursor Problem Details — ACCEPT; NAMES KEPT
+
+Keep the already accepted names:
+
+```text
+invalid-cursor
+cursor-expired
+```
+
+No cosmetic rename: it provides no semantic value and would create review churn before the single canonical filing.
+
+Both remain HTTP 400, deliberately distinct from adjacent `422 validation-error`. Final consolidation amends canonical W2 §19 so there is one Product Problem Details catalog. W3 owns the collection-specific applicability semantics. No `cursor-stale`, `cursor-gone`, `cursor-conflict` or provider cursor taxonomy.
+
+### A7 — F-W3-1 SellableAvailability enumerable population — ACCEPT WITH PRECISE BOUND
+
+The current `ListSellableAvailability` population is the **currently known Offering target universe for which SellableAvailability is a current meaning**, not persistence rows/configured records.
+
+It contains:
+
+1. **pre-creation members:** ListingIntents whose authoring target is `new_listing`, whose Intent lifecycle is `draft` or `submitted`, and for which no provider Listing has yet been established as the current external Listing target;
+2. **post-creation/current external members:** currently known existing marketplace Listing subjects.
+
+Binding consequences:
+
+- `discarded` ListingIntents are excluded from current Availability population;
+- an incomplete `draft` is still included because Availability may honestly be `unknown`/`unavailable`; omission cannot fabricate readiness by hiding the unknown target;
+- a `submitted` intent remains included while still genuinely pre-creation because dispatch may be pending on Availability and other prerequisites;
+- once the provider Listing is established, the current Availability member is addressed by `existing_listing`; the pre-creation member leaves the current population rather than remaining a second current authority;
+- existing-Listing universe completeness is bounded by Listing acquisition coverage; no new collection-level coverage field is created;
+- re-key/population movement across requests is ordinary W3-C mutable-population behavior and does not create a universal snapshot promise.
+
+This is a W3-local population definition; Availability still does not own ListingIntent lifecycle.
+
+### A8 — F-W3-2 list-item projection law — ACCEPT IN SUBSTANCE / REVISE WORDING
+
+The reviewer correctly identified the second-read-authority defect class, but a literal global “same-name/same-nesting subset” rule is unnecessarily rigid because source/Organization qualifiers may already be unambiguous from collection/path scope and not every collection member has an admitted point Get.
+
+Canonical law:
+
+> **Where a collection member has an admitted point resource/Q, its ListItem is a semantic subset of that same owner meaning: it may omit detail but may not introduce a list-only derived business conclusion. When a field is reused, its schema/name/meaning remain the same except for qualifiers already made unambiguous by the operation/path scope.**
+
+For collection-only owner values without a point Get (e.g. bounded evidence/definition values), the list item remains the owner-native W2 value schema and likewise cannot invent a second business conclusion.
+
+No `fields`, `select`, `expand`, generic Summary/View or projection DSL is introduced. A real future list-only conclusion requires explicit owner-schema adjudication, not frontend-table convenience.
+
+### A9 — independent-review sharpenings — ACCEPT
+
+Also carry into consolidation:
+
+- G4/G5 “basis” wording stays owner-local and never becomes a shared named abstraction;
+- at-most-once stable MPC/source-qualified identity remains unchanged per traversal;
+- coverage, traversal exhaustion, deduplication and source-universe completeness remain independent claims;
+- exact numeric `limit` default/max remains `DEFER SAFELY` to final OpenAPI contract after concrete list-item payload shapes are known, under finite positive/no-silent-clamp fences;
+- 26/26 admitted List/Search operations remain covered with zero list-by-symmetry additions.
+
+### Final reopen classification
+
+```text
+D0 / D1 / D2 / D3 / D4 / D4-R1 / D5-B1 / W1   NO REOPEN
+W2                                                  CANONICAL ARTIFACT AMENDMENT ONLY: cursor problems
+W3-A/B/C                                             TARGETED W3-LOCAL CONSOLIDATION
+Round 2                                             NOT REQUIRED
+```
+
+### Final consolidation register after operator ratification
+
+1. rewrite W3-A continuation query-carrier wording and validation precedence;
+2. define CompetitivePosition/ExpectedEconomics List populations and coverage-bound honesty;
+3. crystallize all corrected total orders, including `economic_attribution_id ASC`;
+4. preserve ComparableOffer owner-local resumable evaluation basis;
+5. replace over-specified Source Product lexical contract with sanctioned-source-capability-backed Search fences including case/diacritics/locale/collation;
+6. amend canonical W2 Problem Details catalog with `invalid-cursor` + `cursor-expired` and deliberate HTTP-400 semantics;
+7. define the precise SellableAvailability current population from pre-creation `new_listing` draft/submitted targets + currently known existing Listings;
+8. add the semantic-subset ListItem law;
+9. preserve at-most-once/coverage/limit/YAGNI fences;
+10. consolidate W3-A/B/C into one canonical W3 artifact, then remove W3-C staging and Whole-W3 candidate; reset this review channel to protocol-only after canonical filing; update cockpit as non-authoritative projection.
+
+**`HANDOFF → OPERATOR`**
+
+Final operator ratification of the converged Whole-W3 package is required before any canonical W2/W3 amendments or progression to later Wire obligations.
