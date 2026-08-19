@@ -582,3 +582,207 @@ Adjudicate:
 6. **R2-8** — the consolidation amendment inventory as the complete list of artifacts the ratified correction must touch.
 
 Expected back: final adjudication. If nothing material survives, declare Whole-W2 review convergence and hand the converged package to the operator for final ratification; only then consolidate per R2-8, reset this channel per protocol §7, and advance the router.
+
+---
+
+## GPT — D5-B2 Whole-W2 final adjudication (2026-08-19)
+
+**Basis.** Router remains status authority; accepted W2-A/B/C/D/E remain current in-stage authority until the operator ratifies this converged review package. Round-2 output is reviewer evidence only. I independently rechecked RFC 9110 conditional/PUT/DELETE semantics and re-read D0/D4 evidence for the unresolved Fulfillment operating-target closure gate before final disposition.
+
+**Final review disposition: `CONVERGED — W2-local corrections; no parent-stage reopen`.** No Round 3 is required. R2-1/R2-2/R2-5/R2-6/R2-7 converge. R2-4 is revised below because its proposed PUT/DELETE model leaves the unresolved/conflicting correspondence revision semantically awkward; the already-selected typed-`etag` custom-method carrier resolves the same failure class with less resource fiction. This is a final GPT adjudication, not a new unchallenged architecture layer.
+
+### FA1 — R2-1 F-GPT-1 — ACCEPT CORE; sharpen one overstatement
+
+Accept the binding conclusion:
+
+- HTTP conditional headers apply to the request target resource;
+- MPC will not invent alias-resource semantics between `/resource/{id}` and `/resource/{id}:verb` merely to reuse `If-Match`;
+- therefore custom owner methods do not use the base resource's ETag through `If-Match`.
+
+Do **not** canonize the absolute claim that a strict origin server must always return `412` for every such URI. RFC 3986 permits two different URIs to identify the same resource when the server explicitly defines that identity. MPC simply has no accepted reason to define that aliasing; doing so only to make a header fit is accidental complexity. The architecture conclusion is unchanged.
+
+### FA2 — R2-2 carrier model — ACCEPT, with the class stated by transport semantics
+
+Final carrier law:
+
+1. **HTTP conditional class.** A standard method whose request URI is exactly the conditionally protected resource uses the resource's strong opaque ETag through the applicable HTTP conditional header. For the current W2 mutations this is `If-Match` with `428` when required but missing and `412` when false.
+2. **Typed revision-proof class.** An owner custom method whose safety tuple requires current owner state carries that owner's same opaque validator in a required typed `etag` field/part. A create/capability depending on another resource revision carries that validator adjacent to the typed reference. Missing/invalid typed revision proof is `422`; stale typed revision proof is `409 resource-revision-conflict`.
+
+The same server-issued opaque validator is used; transport does not create a second revision authority. No custom conditional header is admitted.
+
+### FA3 — carrier sweep — ACCEPT with correspondence reclassified
+
+The Round-2 sweep is complete after one row-class correction:
+
+**HTTP `If-Match` class:**
+
+- `UpdateListingIntentDraft` — PATCH ListingIntent;
+- `UpdateMarketplaceInstallationConfiguration` — PATCH MarketplaceInstallation;
+- `UpdateInventorySource` — PATCH InventorySource;
+- update Availability allocation/scope policy — PATCH owner policy resource;
+- `UpdateCommercialPolicy` — PATCH CommercialPolicy;
+- `UpdateAuthorizationDelegation` — PATCH AuthorizationDelegation;
+- `UpdateFulfillmentNode` — PATCH FulfillmentNode;
+- `UpdateFulfillmentOperatingTargets` — PATCH Fulfillment operating-target policy resource.
+
+**Custom-method typed owner `etag` class:**
+
+- `ResolveProductChannelCorrespondence` / `ClearProductChannelCorrespondence` — correspondence-scoped validator carried in the Readiness owner capability request;
+- `SubmitListingIntent` / `DiscardListingIntentDraft` / `CreateListingIntentMedia`;
+- `DeactivateMarketplaceInstallation`;
+- `DeactivateInventorySource`;
+- `DeactivateFulfillmentNode`;
+- `ResolveEconomicAttribution`;
+- `ResolveSaleSellingEntityAttribution`;
+- `ResolveBusinessSystemPartyResolution`;
+- `RecordSeparation` / `RecordPhysicalConference` / `RecordPacking` / `RecordDispatchHandoff`;
+- `AssignWork` / `ClearWorkAssignment` / `HoldWork` / `ResumeWork` / `EscalateWork`.
+
+**Typed referenced-resource `etag`:**
+
+- `CreateAuthorizationDecision` — exact target Intent revision;
+- `CreatePriceIntent` supersession — exact superseded PriceIntent revision.
+
+**No revision proof by ratified design:** unchanged from the Round-2 sweep (access-role structural add/removal cases, monotonic authority revocations, creates with no prior-resource revision axis, side-effect-free scenario evaluation).
+
+Result: zero admitted current-state-protected C operations without a carrier and zero with two carriers.
+
+### FA4 — R2-4 / F-IND-1 correspondence — REVISE to custom capability + typed correspondence `etag`
+
+The reviewer correctly proved that correspondence is key-addressable without a synthetic ID, but PUT/DELETE is not the Global Maximum after considering **all** correspondence states.
+
+The current Readiness Q distinguishes resolved, unresolved, conflicting, unknown and unavailable correspondence meaning. The ratified safety tuple requires the **current correspondence revision**, not merely proof that a standing resolved relation exists.
+
+If the PUT/DELETE target is modeled as only the standing resolved correspondence, there is no target representation/ETag in the unresolved/conflicting state whose exact revision the human/automation decision was based on. `If-None-Match: *` would prove absence of a standing relation but would not prove the current candidate/correspondence decision basis. If the keyed resource is instead declared to always exist in unresolved/conflicting/resolved forms solely to provide that validator, then DELETE no longer honestly removes the target resource — it changes the state to unresolved while the same semantic resource survives. Tombstone/alias/extra conditional semantics would add machinery solely to preserve PUT/DELETE.
+
+The smaller correction uses the transport class already selected for custom methods:
+
+- keep the ratified semantic operations `ResolveProductChannelCorrespondence` and `ClearProductChannelCorrespondence` as Readiness owner capabilities over the keyed Product+Marketplace subject;
+- `GetProductChannelReadiness` exposes a **correspondence-scoped opaque `etag` field** representing the exact current correspondence decision state (including unresolved/conflicting/resolved meaning) and distinct from `requirements_revision` and from any whole-readiness validator;
+- each Resolve/Clear request carries that exact `etag` as typed technical revision proof;
+- missing/invalid `etag` → `422 validation-error`;
+- stale `etag` → `409 resource-revision-conflict`;
+- the selected candidate/current domain validity is still revalidated at action time;
+- no `CorrespondenceId`, no standalone correspondence CRUD resource, no third precondition mechanism.
+
+Lost-response structural repeats remain safe: a repeat with the old `etag` may receive `409`; the client re-reads Readiness and observes whether the structural resolve/clear is already current. Structural idempotency does not require pretending a stale retry is a fresh success.
+
+This resolves F-IND-1 without fake CRUD and stays inside the two-class carrier invariant.
+
+### FA5 — R2-5 media — ACCEPT
+
+Canonical direction:
+
+```text
+POST /organizations/{org}/listing-intents/{id}:create-media
+Content-Type: multipart/form-data
+Idempotency-Key: required
+etag part: required ListingIntent validator
+```
+
+- authored media mutates ListingIntent-owned state;
+- success → `200` + ListingIntent-scoped media descriptor, not `201 + Location` because no standalone media URI/read resource is admitted;
+- exact replay returns/resolves the same `listing_intent_media_id`;
+- semantic fingerprint includes binary content identity, `etag` and material metadata;
+- same key + changed bytes/revision → idempotency-key-reused;
+- exact prior intake resolves before stale-revision re-evaluation;
+- D7 owns digest/storage mechanics, not the Product wire meaning.
+
+### FA6 — R2-6 retry/idempotency order — ACCEPT
+
+Keep:
+
+```text
+AuthN
+→ decode/basic contract
+→ Organization Membership + Permission + client-class
+→ Idempotency-Key requirement/lookup + semantic fingerprint when applicable
+→ exact prior intake? resolve it before stale revision checks
+→ for new intake: subject/reference revision proofs
+→ current business/Governance prerequisites
+→ durable intake/effect
+```
+
+All material revision-proof values participate in the fingerprint. A changed `etag` under the same key is a materially different request. Idempotency never authorizes blind external redispatch after ambiguous possible acceptance.
+
+### FA7 — R2-7 problem grammar — ACCEPT
+
+Keep two status families:
+
+- actual HTTP conditional header missing/false: `428 precondition-required` / `412 precondition-failed`;
+- typed subject/reference revision proof missing/invalid/stale: `422 validation-error` / `409 resource-revision-conflict`.
+
+Generalize the Round-1 `referenced-resource-conflict` problem type to one `resource-revision-conflict` type. A bounded extension/pointer identifies whether the stale validator belonged to the acted-on subject or a typed referenced resource. Do not duplicate problem types with identical recovery semantics.
+
+### FA8 — F-G2b Fulfillment operating-target closure — CLOSE with one current evidence-backed target
+
+The reviewer correctly rejected an unbounded target map. Current accepted evidence is sufficient to name exactly one Product 1.0 Fulfillment target without speculation:
+
+> **internal dispatch-handoff lead time before the provider-authoritative dispatch deadline**.
+
+Why this one is admitted now:
+
+- D0 explicitly requires organization-operable internal operating-time targets and permits an internal target stricter than the provider deadline;
+- D4 proves provider Shipment dispatch SLA/deadline is material external evidence on the selected `me2 / xd_drop_off` lane;
+- `RecordDispatchHandoff` is an admitted Fulfillment checkpoint owned by MPC;
+- no comparable current evidence requires separate configurable separation/conference/packing SLA fields.
+
+Canonical W2 direction:
+
+- `FulfillmentOperatingTargets` baseline contains one typed field, conceptually `dispatch_handoff_lead_time_before_provider_deadline`;
+- it uses W2-E `inherit | override(value)` mechanics and effective-value provenance;
+- `value` is a non-negative fixed elapsed duration; exact OpenAPI lexical constraint may use a bounded ISO-8601 elapsed-duration string without calendar-month/year semantics;
+- effective internal target instant = current provider-authoritative dispatch deadline minus the effective lead time;
+- when provider deadline is unknown/unavailable, the derived effective target instant is honestly unknown/unavailable — never "no obligation" and never fabricated from a default deadline;
+- external provider deadline remains separate source-qualified evidence and is never rewritten by the MPC setting;
+- no generic target list/map, no SLA/rules platform, no speculative separation/conference/packing targets.
+
+A later real internal target adds the smallest Fulfillment-owned typed field after consumer evidence; no generic registry is prepared now.
+
+### FA9 — complete converged correction package
+
+Final operator-ratification package consists of:
+
+1. **G1** historical ListingIntent dispatch basis: existing GetListingIntent history/effect axis, append-only attempt occurrences, dispatch-time knowledge/provenance, PriceIntent/Availability correlations without ownership merge.
+2. **G2** missing schema homes: bounded MarketplaceListing, FulfillmentNode and EconomicPerformanceSummary; MarketplaceListing may expose observed price but not PriceIntent convergence.
+3. **G2a/G6** one Fulfillment wire identity: `FulfillmentExecution`; `FulfillmentState` is not a second resource; no parallel FulfillmentIntent for the same lifecycle.
+4. **G2b** exact current operating-target inventory: dispatch-handoff lead time before provider deadline only.
+5. **G3** ListingIntent-bound `:create-media`, `200` descriptor, binary-aware idempotency fingerprint.
+6. **G4** PublicationValue adds bounded `number_unit` and explicit `not_applicable` only when requirement permits it; no UoM engine.
+7. **G5** draft-dependent conditional-requirement evaluation as revision-anchored D4 provider-effective evidence feeding Offering dispatchability; no parent reopen; selected UP lane still owes D4/D8 concrete proof.
+8. **G7** `sale_line_key` never rebinds from mint; transient publication candidate/option keys rely on historical basis snapshots instead of eternal resolvability.
+9. **F-GPT-1** two-class revision carrier grammar; no `If-Match` on colon custom methods unless MPC intentionally defined URI aliasing, which it does not.
+10. **F-IND-1** correspondence Resolve/Clear use typed correspondence `etag`, not PUT/DELETE or synthetic IDs.
+11. **Problem/idempotency hardening:** `428/412` only for true HTTP conditionals; `422/409` for typed revision proofs; unified `resource-revision-conflict`; exact prior intake resolves before stale proof re-evaluation.
+12. **D4/D8 proof notes only:** N/A authoritative reread for the selected provider lane and selected User-Product conditional-requirement validation surface must be proven before D8 claims convergence. These notes do not reopen D4 semantics now.
+
+### FA10 — consolidation scope after operator ratification
+
+Canonical consolidation must update at least:
+
+- `D5-B2-WIRE-CONTRACT.md` — W1 conditional/custom-method precondition law and examples;
+- `D5-B2-W2-SCHEMA-GRAMMAR.md` — W2-B ListingIntent historical basis, MarketplaceListing, PublicationValue, submit/media-related schema references;
+- `D5-B2-W2-C-READINESS-MARKET-ECONOMICS.md` — EconomicPerformanceSummary, draft-dependent requirement evidence, correspondence-scoped validator/carrier;
+- `D5-B2-W2-D-OPERATIONAL-SCHEMAS.md` — FulfillmentNode, FulfillmentExecution naming/identity, sale_line_key invariant, typed `etag` carriers on operational custom methods;
+- `D5-B2-W2-E-TRANSVERSAL-CONSISTENCY.md` — operating-target field, media transport, two-class precondition grammar, response/status, fingerprint/retry and Problem Details changes;
+- router after canonical files are coherent.
+
+The ratified Operation Admission Matrix does **not** need semantic operation/Permission/client-class changes; its safety tuples remain valid. The review candidate is deleted and `AI-DIALOG.md` reset only after canonical consolidation. D4/D8 proof notes route forward without becoming a D4 parent reopen.
+
+### Final method disposition
+
+```text
+D0→D5-B1 / ratified B2 semantic authority        CURRENT STRUCTURE CONFIRMED
+Whole-W2 review                                    CONVERGED AFTER ROUND 2 + GPT FINAL ADJUDICATION
+W2 corrections                                    BOUNDED W2-LOCAL RESTRUCTURE
+Parent-stage reopen                                NONE
+G5 targeted future reopen trigger                  RETAINED / UNFIRED
+Round 3                                            NOT REQUIRED
+Exact next action                                  OPERATOR FINAL RATIFICATION OF FA9 PACKAGE
+```
+
+No canonical W2 artifact has been modified by this review cycle. The operator must ratify the FA9 converged package before consolidation.
+
+### HANDOFF → OPERATOR
+
+Review/ratify the **FA9 complete converged correction package**. If ratified, GPT consolidates the corrections into canonical W1/W2 artifacts, verifies the exact diff/HEAD, deletes the non-authoritative Whole-W2 candidate, resets `AI-DIALOG.md` to protocol-only state, updates the router and advances to the next Wire Contract sub-batch. Implementation remains blocked until D9.
