@@ -2,7 +2,7 @@
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
 > **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 OPEN / ACTIVE**  
-> **D5-B2 current state:** **Operation Matrix + Whole-Matrix RATIFIED; Wire W1 + W2 + W3 CANONICAL; W4 Permission → Operation / Client-Class Enforcement ACCEPTED IN-STAGE; Whole-W4 adversarial coherence = NEXT**  
+> **D5-B2 current state:** **W1 + W2 + W3 CANONICAL; W4 ACCEPTED IN-STAGE; lead Whole-W4 review COMPLETE / RESTRUCTURE W4-LOCAL; operator ratification of W4-G1/G2 = NEXT**  
 > **Implementation:** **BLOCKED until D9 is accepted**  
 > **Last updated:** 2026-08-19
 
@@ -28,17 +28,17 @@ A fresh session reads, in order:
 16. `docs/engineering/rebaseline/D5-B2-WIRE-CONTRACT.md` — canonical W1
 17. `docs/engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md` — canonical W2
 18. `docs/engineering/rebaseline/D5-B2-W3-COLLECTION-GRAMMAR.md` — canonical W3
-19. `docs/engineering/rebaseline/D5-B2-W4-PERMISSION-CLIENT-CLASS-ENFORCEMENT.md` — accepted W4 design home
+19. `docs/engineering/rebaseline/D5-B2-W4-PERMISSION-CLIENT-CLASS-ENFORCEMENT.md` — accepted W4 authority/design home
 20. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
-21. code/OpenAPI/schemas/tests/runtime only as current-state evidence when needed
+21. code/OpenAPI/schemas/tests/runtime only as evidence when needed
 
 This file alone owns **program status, allowed/blocked work and exact next action**. Detailed semantics remain in the accepted artifacts above.
 
-`AI-DIALOG.md` is protocol-only with no active review cycle. Former W2/W3 staging/review artifacts are absent from the active tree; Git history is the archive.
+`D5-B2-W4-WHOLE-COHERENCE-REVIEW-CANDIDATE.md` is **NON-AUTHORITATIVE lead review evidence** and is deliberately outside the authority path. W4-G1/G2 do not modify W4 or parent authority until operator ratification and later canonical filing.
 
-`docs/engineering/rebaseline/cockpit.html` is a **non-authoritative visual projection**. It never participates in the authority path and is synchronized only after canonical status changes.
+`AI-DIALOG.md` is protocol-only with no active review cycle. `docs/engineering/rebaseline/cockpit.html` is a non-authoritative visual projection and is synchronized only after canonical status changes.
 
-Legacy/current code, routes, OpenAPI, SDK, IdP roles/scopes, middleware and frontend route/button visibility remain evidence only, never target access authority.
+Legacy/current code, OpenAPI, IdP roles/scopes, middleware, provider roles/scopes and frontend guards remain evidence only, never Product access authority.
 
 ---
 
@@ -61,11 +61,10 @@ D5 — API                                                  OPEN / ACTIVE
     Wire Contract
       W1 Resource / Path / HTTP Grammar                  ACCEPTED / CANONICAL
       W2 Request / Response Schema Grammar               ACCEPTED / CANONICAL
-      W3 Collections / Pagination / Filter / Search /
-         Cursor Grammar                                  ACCEPTED / CANONICAL
-      W4 Permission → Operation / Client-Class
-         Enforcement                                     ACCEPTED IN-STAGE
-        Whole-W4 adversarial coherence                   NEXT
+      W3 Collections / Query / Cursor Grammar            ACCEPTED / CANONICAL
+      W4 Permission / Client-Class Enforcement           ACCEPTED IN-STAGE
+        Whole-W4 lead coherence                          COMPLETE / RESTRUCTURE W4-LOCAL
+        W4-G1/G2 operator direction                      NEXT
       Technical non-Product ingress classification       BLOCKED BY W4
       Final Problem/media consistency                    BLOCKED BY SEQUENCE
       Single OpenAPI wire authority/tooling decision     BLOCKED BY SEQUENCE
@@ -76,113 +75,104 @@ D9 — Adversarial Architecture Review                      BLOCKED
 Implementation                                            BLOCKED UNTIL D9
 ```
 
-Whole-W2 and Whole-W3 adversarial review cycles are complete and incorporated into canonical Wire artifacts. W4 is the only active Wire design surface.
+---
+
+## 3. Accepted W4 authority that remains current during review
+
+- W4 maps **95/95** admitted Product operations; zero operation added/unmapped;
+- baseline has **29 flat exact stored Permissions**; `/access-context` uses authenticated special condition, not a Permission;
+- D2 Principal kinds remain `H human | A automation | S system`;
+- ordinary `both` Q/read → H/A/S; consequential/business C admitted to both → H/A; side-effect-free `EvaluatePriceScenario` → H/A/S;
+- systems do not become business automation; AI/agent/repricer/business automation uses automation Principal semantics;
+- Permission is flat: no manage→read, execute→read, wildcard or prefix implication; AccessRoles may bundle exact Permissions;
+- client-class admission, ordinary Permission, owner business disposition, Governance and physical epistemic authority remain separate;
+- `RecordSeparation` and `RecordPacking` are H-only baseline;
+- `RecordPhysicalConference` and `RecordDispatchHandoff` admit H or explicitly qualified S;
+- physical qualification is not Permission, AccessRole, fourth Principal kind or generic machine-capability graph;
+- IdP roles/scopes/provider roles/frontend guards never grant Product access;
+- no-Membership Organization access is privacy-preserving 404; current Membership but missing Permission/class admission is 403;
+- monotonic AccessRole/AuthorizationDelegation revocation changes target concurrency semantics only, never caller-access requirements.
 
 ---
 
-## 3. Load-bearing authority W4 may not weaken
+## 4. Lead Whole-W4 findings — NON-AUTHORITATIVE UNTIL OPERATOR DECISION
 
-### 3.1 Identity / ordinary access
+Lead review re-derived all 95 operations/29 Permissions and found **two W4-local gaps; no parent-stage reopen**:
 
-- external OIDC/OAuth authenticates; MPC owns Principal, Membership, RoleAssignment, AccessRole and Permission;
-- D2 Principal kinds remain `human | automation | system`; no fourth `physical_system`/agent/service-account kind;
-- AccessRole is a product-defined bundle; Permission is the stable ordinary-access capability consumed by backend/business entry checks;
-- ordinary Permission does **not** prove business disposition, automation eligibility, Governance authorization, execution validity or epistemic ability;
-- Organization-owned non-human actions remain explicitly Organization-scoped;
-- `GET /access-context` is the one platform-scoped self-only Product discovery Q.
+### W4-G1 — current Principal eligibility / binding failure grammar — REVISE
 
-### 3.2 W1/W2/W3
+- after external AuthN, credential must resolve uniquely to one MPC Principal;
+- then W4 must explicitly consume **current D2 Principal access eligibility** before Membership;
+- missing/invalid/untrusted/wrong-audience or not-uniquely-resolvable credential → `401 authentication-required`;
+- resolved but currently disabled/not access-eligible Principal → `403 access-denied`;
+- eligible Principal with no current path-Organization Membership → privacy-preserving `404 resource-not-found`;
+- no new Principal lifecycle enum/resource is introduced; D2 remains owner.
 
-- Organization is explicit path scope and never self-authorization;
-- one Product Problem Details catalog exists in W2;
-- business rejection/approval-required/unknown/external-required remain Product semantics rather than generic access failure;
-- source-qualified identities and same-Organization privacy remain fail-closed;
-- W3 collection/query semantics are independent from access enforcement;
-- implementation/provider/DB/Keycloak mechanisms do not become Product authority.
+### W4-G2 — physical qualification ordering / non-self-assertion — REVISE
 
-### 3.3 Accepted W4 core
+Refine the access sequence:
 
-- exactly **95/95** admitted Product operations have one W4 access/client-class row; no new Product operation was added;
-- exactly **29 stored ordinary Permissions** remain in the baseline; `authenticated` for `/access-context` is a special operation condition, not a Permission;
-- Permissions are **flat and exact**: no `*.manage ⇒ *.read`, no `*.execute ⇒ *.read`, no wildcard/prefix implication;
-- AccessRoles may bundle exact Permissions but do not change Permission semantics;
-- B2 coarse `both` is crystallized: ordinary Q/read → `H|A|S`; side-effect-free `EvaluatePriceScenario` → `H|A|S`; consequential/business-authoring C admitted to both → `H|A` unless explicitly narrower/different;
-- `system` is not business automation by default; AI/agent/repricer/business automation uses `automation` Principal semantics;
-- client-class admission is separate from Permission and from Governance/business disposition;
-- Governance never widens a human-only Product operation to automation/system;
-- `fulfillment.execute` does not itself prove physical fact authority;
-- `RecordSeparation` + `RecordPacking` are human-only baseline;
-- `RecordPhysicalConference` + `RecordDispatchHandoff` allow human OR an explicitly qualified `system` Principal/source;
-- the physical-system qualification is operation/Fulfillment-specific, not a Permission, Principal kind or generic machine-capability graph;
-- IdP roles/scopes/provider roles/frontend guards never independently grant Product access;
-- current Membership/RoleAssignment/Permission state governs future access; revocation must not be defeated by stale token-carried Product role authority;
-- no-Membership Organization access fails closed without proving another Organization exists;
-- missing Permission or disallowed Principal kind/required physical qualification is ordinary access denial, not owner business rejection;
-- fail-safe monotonic target revocation semantics remain separate from caller admission.
+```text
+current Membership
+→ allowed Principal kind
+→ exact ordinary Permission
+→ if applicable: server-resolved operation-specific physical qualification
+→ resource/reference privacy
+→ W1/W2/domain/Governance
+```
+
+- client body/token/role/scope cannot self-assert trusted/physical/qualified authority;
+- H retains the accepted accountable-human physical baseline with `fulfillment.execute`;
+- S requires `fulfillment.execute` + server-resolved qualification for PhysicalConference/DispatchHandoff;
+- successful system-established checkpoint preserves actual Principal/source/time provenance under W2;
+- qualification remains Fulfillment-operation-specific and does not become Permission/Principal kind/generic capability graph.
+
+The following survived lead attack unchanged: H/A/S on accepted `both` reads; `fulfillment.execute` for artifact reads; 404-vs-403 privacy split; flat Permissions; `EvaluatePriceScenario` under `economics.read`; all currently human-only operation admissions.
 
 ---
 
-## 4. Prohibited now
+## 5. Prohibited now
 
-While Whole-W4 coherence is next:
+Until operator ratifies/revises W4-G1/G2:
 
-- do not begin technical ingress classification, final OpenAPI/tooling closure, D6–D9 target design or implementation;
-- do not reopen accepted D0→D5-B1/B2/W1/W2/W3 for naming/style or implementation convenience;
-- do not implement Keycloak realm/client/role mapping, token claims, middleware, RLS/ACL, cache or persistence mechanics;
-- do not derive Product Permission from IdP roles/scopes, provider roles/scopes, frontend guards or current middleware;
-- do not add Permission hierarchy/wildcards/prefix matching or generic IAM/ReBAC/policy DSL;
-- do not make `system` a generic business-automation escape hatch;
-- do not create `physical_system` as a fourth Principal kind or generic `system_capabilities[]` merely to satisfy checkpoints;
-- do not collapse ordinary access, Governance, business disposition and physical epistemic qualification;
-- do not add Permission mappings for deferred/rejected operations by symmetry;
-- do not choose exact OpenAPI minor/generator or W3 numeric limit defaults yet.
+- do not silently apply G1/G2 to accepted W4;
+- do not begin technical ingress classification, final OpenAPI/tooling, D6–D9 or implementation;
+- do not treat the Whole-W4 candidate/cockpit/current code/middleware as authority;
+- do not add Principal kinds, Permission hierarchy/wildcards, IAM/ReBAC DSL or generic system capability graph;
+- do not infer Product access from Keycloak/OAuth/provider roles/scopes or frontend visibility;
+- do not give deferred/rejected operations Permission rows by symmetry;
+- do not choose D7 Keycloak/claim/cache/RLS/middleware realization yet.
 
 ---
 
-## 5. Exact next action
+## 6. Exact next action
 
-**Run the Whole-W4 adversarial coherence sweep over all 95 admitted Product operations, all 29 ordinary Permissions and every allowed Principal/client-class rule.**
+**Operator reviews and ratifies/revises W4-G1 and W4-G2 as the lead Whole-W4 correction direction.**
 
-The review must challenge at least:
+If ratified, determine whether proportional independent Fable challenge adds material value before final W4 canonical consolidation. W4 is a high-impact access/security contract, so independent challenge is expected unless evidence makes it redundant. Reviewer output remains evidence only.
 
-1. operation coverage is exactly 95/95 with zero duplicates/unmapped/new operations;
-2. every operation has exactly one ordinary Permission/special access condition and one allowed Principal set;
-3. no coarse `both` ambiguity remains after H/A/S crystallization;
-4. every human-only operation has a real reason and does not block a currently accepted machine consumer;
-5. every H/A operation genuinely represents business automation rather than a system fact/source;
-6. generic `system` cannot accidentally author Listing/Price/Work/Post-Sale business state;
-7. the two qualified-system physical checkpoints have enough epistemic fencing without a generic capability framework;
-8. Separation/Packing human-only versus PhysicalConference/DispatchHandoff qualified-system split remains coherent;
-9. `fulfillment.execute` for artifact reads remains proportionate to PII/operational sensitivity;
-10. Permission vocabulary/splits preserve least privilege without hidden implication — especially `listing.manage != price.manage`, Fulfillment read/execute/manage and Economics/Governance splits;
-11. broad-looking names such as `sales.manage` / `post_sale.manage` do not create wildcard authority or require premature rename;
-12. `access-context`, no-Membership privacy, secondary-reference privacy and current revocation behavior are coherent;
-13. auth/client-class/access failure remains distinct from domain business outcomes and Governance;
-14. side-effect-free `EvaluatePriceScenario` under `economics.read` is honest and does not need a fake execute Permission;
-15. monotonic AccessRole/AuthorizationDelegation revocations retain caller-access enforcement while avoiding stale-target authority survival;
-16. Structural Inversion against current Keycloak roles/scopes, middleware and frontend visibility still passes;
-17. no D0→W3 parent reopen is actually required.
+After final Whole-W4 convergence + operator final ratification:
 
-If no material contradiction survives, present Whole-W4 to the operator for final ratification before making W4 canonical and moving to technical non-Product ingress classification.
-
-If a material contradiction survives, return only the smallest implicated W4 row/Permission/client-class or parent operation admission to the Decision Loop. Do not proceed by convenience.
+1. consolidate ratified corrections into the single W4 authority;
+2. remove Whole-W4 review candidate; Git history remains archive;
+3. reset any review channel used;
+4. update cockpit as non-authoritative projection;
+5. advance to technical non-Product ingress classification.
 
 Implementation remains blocked until D9.
 
 ---
 
-## 6. Fresh-session success test
+## 7. Fresh-session success test
 
 A fresh session must conclude:
 
-- D0→D4/D4-R1 + D5-B1 are accepted/canonical;
-- D5-B2 Operation Matrix + Whole-Matrix are ratified;
-- W1, W2 and W3 are canonical;
-- `D5-B2-W4-PERMISSION-CLIENT-CLASS-ENFORCEMENT.md` is the accepted W4 design home;
-- W4 maps **95/95** admitted Product operations using **29 flat exact Permissions** plus the special authenticated `/access-context` condition;
-- H/A/S, business automation and physical-system epistemic qualification remain distinct;
-- **Whole-W4 adversarial coherence is the exact next action**;
-- technical ingress/OpenAPI/D6–D9 remain blocked by sequence;
-- implementation remains blocked until D9.
+- W1/W2/W3 are canonical;
+- W4 accepted authority maps 95/95 operations with 29 flat exact Permissions;
+- Whole-W4 lead review found only W4-G1/G2 and `RESTRUCTURE NOW — W4-LOCAL`;
+- Whole-W4 candidate is non-authoritative evidence;
+- **operator ratification/revision of W4-G1/G2 is the exact next action**;
+- no parent reopen is currently proven;
+- later Wire obligations/D6–D9/implementation remain blocked.
 
 If not, the active authority tree is inconsistent.
