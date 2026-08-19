@@ -2,7 +2,7 @@
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
 > **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 OPEN / ACTIVE**  
-> **D5-B2 current state:** **B2-A + Operation Admission Matrix + Whole-Matrix Global Coherence ACCEPTED IN-STAGE / OPERATOR-RATIFIED; Wire Contract = NEXT**  
+> **D5-B2 current state:** **B2-A + Operation Admission Matrix + Whole-Matrix ACCEPTED / RATIFIED; Wire W1 Resource/Path/HTTP Grammar ACCEPTED IN-STAGE; W2 Schema Grammar = NEXT**  
 > **Decision Reconciliation:** **ACCEPTED / CANONICAL**  
 > **Implementation:** BLOCKED until D9 is accepted  
 > **Last updated:** 2026-08-18
@@ -26,14 +26,15 @@ A fresh session reads, in order:
 13. `docs/engineering/rebaseline/D5-API.md`
 14. `docs/engineering/rebaseline/D5-B2-PRODUCT-OPERATION-SURFACE.md`
 15. `docs/engineering/rebaseline/D5-B2-OPERATION-ADMISSION-MATRIX.md`
-16. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
-17. code, OpenAPI, schemas, tests and runtime only as current-state evidence when needed
+16. `docs/engineering/rebaseline/D5-B2-WIRE-CONTRACT.md`
+17. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
+18. code, OpenAPI, schemas, tests and runtime only as current-state evidence when needed
 
 This file alone owns **where the program is and what happens next**. `ARCHITECTURE.md` owns stable cross-stage constraints; the Decision Reconciliation Baseline routes current decision generations; the ADR registry owns ADR status; accepted D-stage/B2 artifacts own detailed semantics in their scope.
 
-`D5-API.md` remains D5-B1 authority. Its old next-action wording is a pre-B2-opening snapshot. Never reconstruct target authority from memory, chat, Git history, retired ADRs, `AI-DIALOG.md`, deleted review candidates or current code/OpenAPI shape.
+`D5-API.md` remains D5-B1 authority. Never reconstruct target authority from memory, chat, Git history, retired ADRs, `AI-DIALOG.md`, deleted review candidates or current code/OpenAPI shape.
 
-`AI-DIALOG.md` is a reusable non-authoritative review channel and currently contains no active review cycle. The completed Whole-Matrix Fable/GPT dialogue and deleted review candidate are archived in Git history only.
+`AI-DIALOG.md` is a reusable non-authoritative review channel and currently contains no active review cycle. Completed review dialogue is Git-history evidence only.
 
 ## 2. Program state
 
@@ -58,14 +59,11 @@ D5 — API — OPEN / ACTIVE
   ├─ B1 Semantic API Model & Contract Laws — ACCEPTED / CANONICAL
   └─ B2 Product Operation / Resource Surface — OPEN / ACTIVE
        ├─ B2-A Client & Authentication Admission Model — ACCEPTED IN-STAGE
-       ├─ Operation Admission Matrix Blocks 1–5 — ACCEPTED IN-STAGE
-       ├─ Whole-Matrix Global Coherence — ACCEPTED / OPERATOR-RATIFIED
-       │    ├─ independent Fable Rounds 1–2 — COMPLETED
-       │    ├─ GPT adjudication — COMPLETED
-       │    ├─ B2-local corrections — CONSOLIDATED
-       │    ├─ review candidate — DELETED / GIT HISTORY ONLY
-       │    └─ AI-DIALOG — RESET / NO ACTIVE REVIEW
-       └─ Wire Contract / Resource-Path-Schema Grammar — NEXT
+       ├─ Operation Admission Matrix Blocks 1–5 — ACCEPTED / RATIFIED
+       ├─ Whole-Matrix Global Coherence — ACCEPTED / RATIFIED
+       └─ Wire Contract / Resource-Path-Schema Grammar — OPEN / ACTIVE
+            ├─ W1 Resource / Path / HTTP Grammar — ACCEPTED IN-STAGE
+            └─ W2 Request/Response Schema + Knowledge/Outcome Grammar — NEXT
   ↓
 D6 — Frontend
   ↓
@@ -87,39 +85,34 @@ Product implementation remains blocked until D9 is accepted.
 ### B2-A — Client/Auth
 
 - Product API authentication uses one standards-based OIDC/OAuth boundary.
-- Humans use Authorization Code + PKCE semantics; confidential machine clients use Client Credentials/service-account semantics.
+- Humans use Authorization Code + PKCE; confidential machine clients use Client Credentials/service-account semantics.
 - MPC remains authority for Principal, Organization Membership, AccessRole/Permission/RoleAssignment and all business decisions.
 - Tokens are audience-bound to MPC API; no global/static MPC Product API key or IdP-role business authority.
 - Keycloak remains first implementation/proof candidate; D7 owns concrete provider/deployment/realm/secrets/token-lifetime realization.
-- `GetCurrentAccessContext` is a bounded platform-scoped **self-only** discovery Q; Organization-owned business operations remain Organization-path-scoped.
+- `GetCurrentAccessContext` is platform-scoped **self-only** discovery; Organization-owned business operations remain Organization-path-scoped.
 
-### Operation Admission Matrix — ratified
+### Operation Admission Matrix / Whole-Matrix — ratified
 
-The Product API is semantic-owner driven, not CRUD-complete, screen-shaped or provider-shaped.
+Load-bearing conclusions:
 
-Load-bearing accepted conclusions:
-
+- Product API is semantic-owner driven, not CRUD-complete, screen-shaped or provider-shaped;
 - no Product/PIM, generic Integration, Mutation/Action/Operation, Workflow, Rule, Finance, Task/Case or AI-specific business authority;
-- Listing actual state is Offering Q; `ListingIntent` is the single create/edit authoring identity;
-- listing-context authored-media intake exists without a reusable Product/media master;
-- price is **always** a distinct `PriceIntent`, including initial publication; pre-creation PriceIntent targets the ListingIntent context and may be physically serialized with Listing + Availability inputs by D4/D7 without ownership merge;
+- `ListingIntent` is the create/edit listing authoring identity; listing-context authored media exists without Product/media mastery;
+- price is **always** a distinct `PriceIntent`, including initial publication; pre-creation PriceIntent targets ListingIntent context;
 - Sellable Availability remains Availability-owned; no public stock-set or baseline public AvailabilityIntent authoring;
-- Market Intelligence owns competitive interpretation; Commercial Economics owns stateless scenario analysis plus durable material L0/L1/L2 lineage; Economics never actuates price;
-- Governance owns authorization decisions/delegations only; business thresholds stay with their owners and approval never executes an effect;
-- Sales is externally originated/read-centric; Product clients do not create provider sales;
-- BusinessOrderIntent and InvoicingIntent are Materialization owner reactions, not direct client commands;
-- Party Resolution is a bounded human Materialization resolution; Destination write remains conditioned on D8 proof;
-- Fulfillment exposes explicit physical checkpoints, provider-readiness meaning, Fulfillment Nodes and internal operating targets without becoming WMS/TMS or a status workflow;
-- generic automation cannot establish physical facts solely from Permission; a machine physical fact requires an explicitly proven system Principal/source;
+- Market Intelligence owns competitive interpretation; Economics owns analysis/L0/L1/L2 and never actuates price;
+- Governance owns authorization only; approval never executes;
+- Sales is externally originated/read-centric;
+- BusinessOrderIntent/InvoicingIntent are Materialization owner reactions, not direct client commands;
+- Fulfillment exposes physical checkpoints/nodes/provider-readiness/internal targets without WMS/TMS/workflow ownership;
+- generic automation cannot fabricate physical facts from Permission alone;
 - Shipment remains source-qualified external observation;
-- Post-Sale uses canonical scoped Resolution without copying provider Claim/Return/refund action vocabulary;
-- Work owns responsibility/assignment/escalation but not source truth; generic `SubmitWorkResolution` is deferred;
-- **zero-P baseline**: cross-owner Sale operational projection is deferred until D6 proves repeated composition need;
-- no Product 1.0 bulk operation is admitted merely for symmetry.
+- Post-Sale uses scoped canonical Resolution without provider action vocabulary becoming Product API;
+- Work owns responsibility/lifecycle, not source truth; generic `SubmitWorkResolution` remains deferred;
+- zero-P baseline until D6 proves repeated cross-owner composition need;
+- no Product 1.0 bulk merely for symmetry.
 
-### Consequential safety / concurrency
-
-Every admitted C operation now declares a complete safety tuple in `D5-B2-OPERATION-ADMISSION-MATRIX.md`:
+Every admitted C operation has an explicit safety tuple:
 
 ```text
 consequence class
@@ -127,107 +120,114 @@ idempotency disposition
 concurrency / precondition disposition
 ```
 
-Ratified hardenings include:
+No silent safety cell is allowed.
 
-- no silent safety cell;
-- Party Resolution always uses client idempotency plus current candidate-set/resolution precondition;
-- access-role and Authorization Delegation revocation is fail-safe/monotonic and not blocked merely by stale snapshots; later re-grant is explicit;
-- business-resource deactivation remains current-state protected because stale deactivation can itself be unsafe;
-- physical Fulfillment checkpoints are duplicate-sensitive and current-state protected;
-- `EvaluatePriceScenario` is explicitly non-consequential/side-effect-free and therefore has no idempotency/concurrency machinery by ritual.
+### W1 — Resource / Path / HTTP Grammar — accepted in-stage
 
-### Whole-Matrix outcome
+W1 establishes:
 
-```text
-Parent D0→D4/D4-R1/D5-B1       CURRENT STRUCTURE CONFIRMED
-D5-B2 operation inventory       B2-local RESTRUCTURE corrections APPLIED
-Whole-Matrix Global Coherence   ACCEPTED / RATIFIED
-Parent-stage reopen             NONE
-```
+- Product paths are relative to the OpenAPI server URL; no `/v1` baseline without an entitled compatibility consumer;
+- Organization-owned Product API stays under `/organizations/{organization_id}/...`;
+- `GET /access-context` is the only baseline platform-scoped self-only Product Q;
+- MPC-owned canonical resources use opaque MPC IDs under Organization scope;
+- externally authoritative resources retain explicit Marketplace Installation / SourceInstance qualification and do not receive synthetic mirror IDs for URI aesthetics;
+- URI nesting means identity/lifecycle containment or source namespace qualification, never process order;
+- D1 domain names and provider names are not Product API root topology;
+- standard HTTP methods are used when resource semantics are honest;
+- owner-specific non-CRUD capabilities use `POST {resource-uri}:verb`;
+- writable `status` never substitutes for submit/resolve/physical-evidence/workflow capabilities;
+- strong opaque MPC `ETag` + `If-Match` is the concurrency grammar where required;
+- missing required precondition → `428 Precondition Required`; stale precondition → `412 Precondition Failed`, both as RFC 9457 Problem Details;
+- `Idempotency-Key` remains independent from concurrency validators;
+- exact OpenAPI minor version remains deferred until schemas/tooling needs are known.
+
+W1 outcome: **CURRENT PARENT STRUCTURE CONFIRMED; identity-oriented resource paths + honest HTTP semantics selected.**
 
 ## 4. What is prohibited now
 
-While **D5-B2 Wire Contract is NEXT / NOT YET ACCEPTED**:
+While **W2 is NEXT / NOT YET ACCEPTED**:
 
 - do not begin D6–D9 target design or implementation;
-- do not alter accepted D0–D4/D4-R1/D5-B1 or ratified B2 operation meaning by wire convenience;
-- do not derive paths/schemas from legacy routes/current OpenAPI/provider endpoints;
-- do not recreate Product/PIM, generic Integration/Mutation/Action/Operation/Workflow/Rules/AI authority, generic finance ledger, Task/Case engine or market collector platform;
-- do not put initial price inside ListingIntent or collapse `listing.manage` with `price.manage` because a provider create payload is combined;
-- do not move Availability/Fulfillment meaning into Offering because a provider request combines fields;
-- do not expose direct Sankhya TOP/NUNOTA/order/invoice/retry choreography;
-- do not expose provider OAuth/webhook protocol as Product business operations;
-- do not create direct client commands for owner reactions already defined by D3;
-- do not allow a generic machine token to fabricate physical facts;
-- do not re-admit generic Work resolution without the concrete closure-path trigger;
-- do not invent a P/BFF surface before D6 consumer evidence;
-- do not weaken Organization scope, source-qualified identity, honest knowledge/freshness, Permission/Governance separation, idempotency, concurrency, ambiguity, recovery, multi-target scope or convergence laws;
-- do not add compatibility/versioning, generic bulk or public event stream without a real entitled consumer;
-- do not treat Git-history review artifacts or `AI-DIALOG.md` as current target authority.
+- do not alter accepted D0–D4/D4-R1/D5-B1 or ratified B2/W1 meaning by schema convenience;
+- do not derive schemas from current OpenAPI/provider DTOs/database rows/frontend forms;
+- do not recreate Product/PIM, generic Integration/Mutation/Action/Operation/Workflow/Rules/AI authority, finance ledger, Task/Case engine or market collector platform;
+- do not put price or Availability meaning inside ListingIntent because provider create payloads combine them;
+- do not introduce universal `Fact<T>`, Evidence, Result, Operation, Resource or provider property-bag wrappers merely for schema uniformity;
+- do not collapse unknown/unavailable/partial into `null`, zero, false, empty collections or HTTP success;
+- do not expose bare external IDs, raw provider payloads or provider errors as Product API truth;
+- do not turn semantic business rejection/pending/ambiguity into ordinary access/transport errors;
+- do not re-admit generic Work resolution or cross-owner P without their ratified triggers;
+- do not select D7 blob/generator/router/server technology from schema design convenience;
+- do not add versioning/bulk/event stream without a real consumer.
 
 ## 5. Exact next action
 
-**Open D5-B2 Wire Contract / Resource-Path-Schema Grammar from the ratified Operation Admission Matrix.**
+**Derive D5-B2 Wire Contract W2 — Request / Response Schema Grammar + Knowledge / Outcome Semantics.**
 
-The sub-batch must establish, before any implementation:
+W2 must establish, before collection/tooling work:
 
-1. **Resource/path hierarchy**
-   - Organization-owned Product operations remain under `/organizations/{organization_id}/...`;
-   - `GetCurrentAccessContext` gets only the bounded platform-scoped self-only discovery shape;
-   - source-qualified external identities remain explicit and no synthetic alias is introduced merely for prettier URLs.
+1. **Identity/reference schemas**
+   - opaque MPC IDs;
+   - Marketplace Installation-qualified external references;
+   - SourceInstance-qualified business-system references;
+   - same-Organization secondary-reference rejection;
+   - no fake canonical ID for external/keyed meanings.
 
-2. **HTTP semantic grammar**
-   - use ordinary resource methods for real resource state when honest;
-   - use owner-specific methods when CRUD/PATCH-status would lie;
-   - do not create generic Action/Command/Operation endpoints.
+2. **Exact values**
+   - Money wire representation and other exact D2 values needed by admitted operations;
+   - no floating-point money convenience.
 
-3. **Request / response families**
-   - exact schema shapes for admitted operations;
-   - ListingIntent authoring + media correlation;
-   - PriceIntent target duality (`existing Listing | pre-creation ListingIntent context`) without embedding price in ListingIntent;
-   - owner-local Intent/tracking outcomes without generic long-running Operation identity.
+3. **Listing authoring schemas**
+   - ListingIntent draft/create/update;
+   - `FOLLOW_SOURCE | EXPLICIT_OVERRIDE` discriminated meaning;
+   - listing-context media reference/intake;
+   - PriceIntent correlation without embedding price in ListingIntent.
 
-4. **Knowledge / outcome semantics**
-   - known / known-empty / unknown / unavailable / partial and freshness/provenance where material;
-   - accepted / rejected / pending / ambiguous separated from applied/converged where applicable;
-   - no plausible defaults from missing evidence.
+4. **PriceIntent schema**
+   - target union `existing source-qualified Listing | pre-creation ListingIntent context`;
+   - exact Money target;
+   - explicit supersession lineage; no mutable PriceDraft baseline.
 
-5. **Problems and access**
-   - RFC 9457 Problem Details for malformed/schema/AuthN/ordinary access/idempotency/precondition/unsupported/server problems;
-   - valid business rejection/approval-required/pending remains semantic result, not fake 403.
+5. **Knowledge / freshness / provenance**
+   - known / known-empty / unknown / unavailable / partial where material;
+   - freshness orthogonal to knowledge;
+   - owner/source provenance sufficient for the consumer;
+   - no universal `Fact<T>` or Evidence business wrapper.
 
-6. **Safety on the wire**
-   - exact `Idempotency-Key` placement, same-key/same-request behavior and mismatched-request failure;
-   - exact opaque MPC precondition/concurrency mechanism for every matrix safety row;
-   - authority revocation remains fail-safe/monotonic;
-   - no blind retry of ambiguous external acceptance.
+6. **Capability outcomes / Intent tracking**
+   - accepted / rejected / pending / ambiguous;
+   - applied/completed/converged distinctions where material;
+   - owner-local resource/Intent state rather than generic `Operation` envelope.
 
-7. **Collections**
-   - pagination/filter/search/cursor only for admitted real collection consumers;
-   - no bulk until a real member-level workflow proves it.
+7. **Update body grammar**
+   - choose typed PATCH/update request shapes versus JSON Patch/Merge Patch based on real null/array/knowledge semantics;
+   - no generic mutation DSL.
 
-8. **Permissions / client classes**
-   - exact Permission→wire-operation mapping;
-   - human vs machine/system restrictions, including physical-fact establishment.
+8. **Problems**
+   - RFC 9457 base shape;
+   - smallest stable MPC machine codes/extensions;
+   - ordinary API problem vs valid domain outcome separation.
 
-9. **Media seam**
-   - wire contract for listing-context media intake/reference without choosing D7 blob/storage/hash/CDN mechanics;
-   - arbitrary client external URL is not trusted authored media.
+9. **Provider-enriched evidence**
+   - bounded discriminated enrichment only for named consumer/correctness need;
+   - unsupported/not-applicable honest on providers without the feature;
+   - no raw provider DTO passthrough or universal provider field bag.
 
-10. **Technical non-Product ingress**
-    - provider OAuth start/callback, webhooks and future real external connector ingress remain explicitly separate from Product API and provider vocabulary stays boundary-local.
+10. **Schema enforcement / negative controls**
+    - invalid union;
+    - bare external identity;
+    - cross-Organization reference;
+    - money precision/format loss;
+    - knowledge collapse;
+    - client-authored Principal/authority fields;
+    - ListingIntent containing price/availability;
+    - provider payload/property-bag leakage.
 
-11. **Work closure-path audit**
-    - for every Product 1.0 Work-producing condition class, prove source-owner automatic closure/reconciliation or an admitted owner-specific human capability;
-    - only a proven human-evidence gap can re-admit a bounded Work→source evidence-submission operation.
+After W2, remaining Wire Contract work still includes collections/pagination/filter/search, complete Permission→operation mapping, exact per-operation safety/header/status table, technical non-Product ingress classification and OpenAPI/tooling spelling.
 
-12. **Machine-readable authority**
-    - define OpenAPI operation naming/spelling and the path to one machine-readable Product API wire authority;
-    - no legacy compatibility surface without a real entitled consumer.
+Do not choose D6 UI topology, D7 runtime/blob/transaction/Keycloak deployment, D8 live-effect proof or implementation.
 
-Do not choose D6 UI/BFF composition, D7 transactions/queues/workers/blob storage/Keycloak deployment, D8 controlled-effect proofs or implementation.
-
-If a wire shape cannot preserve the ratified owner/safety/identity/knowledge semantics without distortion, stop and reopen only the implicated B2/parent decision rather than weakening the contract.
+If a schema cannot preserve ratified identity/owner/safety/knowledge semantics without distortion, reopen only the implicated decision rather than weakening the wire.
 
 Implementation remains blocked until D9.
 
@@ -239,14 +239,11 @@ A fresh session must conclude unambiguously:
 - Decision Reconciliation accepted/canonical;
 - D5-B1 accepted/canonical;
 - D5-B2 OPEN / ACTIVE;
-- B2-A accepted in-stage;
-- Operation Admission Matrix Blocks 1–5 + Whole-Matrix Global Coherence are operator-ratified and consolidated;
-- review candidate is absent from the active tree and historical review dialogue is Git history only;
-- every admitted C has explicit consequence/idempotency/precondition disposition;
-- current access discovery is self-only platform-scoped, while Organization business calls remain Organization-scoped;
-- initial publication price remains PriceIntent, never ListingIntent content;
-- generic Work resolution and cross-owner P remain deferred;
-- **Wire Contract / Resource-Path-Schema Grammar is the exact next action**;
+- B2-A + Operation Matrix + Whole-Matrix are accepted/ratified;
+- `D5-B2-WIRE-CONTRACT.md` is active authority for Wire Contract decisions;
+- W1 Resource/Path/HTTP Grammar is accepted in-stage;
+- Organization path scope, `/access-context`, source-qualified external identity, `:verb`, ETag/If-Match, 428/412 and no `/v1` baseline are current W1 decisions;
+- **W2 Request/Response Schema Grammar + Knowledge/Outcome Semantics is the exact next action**;
 - implementation remains blocked until D9.
 
 If not, the active authority tree is inconsistent.
