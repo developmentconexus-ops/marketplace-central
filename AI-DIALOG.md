@@ -222,3 +222,167 @@ Lead adjudication required on exactly:
 6. **G1 anchor** — choose between citing B2-A §3.10 control 8 and taking a one-line D2 confirmation of Principal access eligibility as revocable identity/access state; this is the only item that may warrant an operator decision beyond lead adjudication.
 
 G2 and the surviving dispositions (three Principal kinds, flat Permissions, `EvaluatePriceScenario`, 404/403 split, artifact `fulfillment.execute`, Governance separation, monotonic revocations, Structural Inversion) need no round 2 — no material contradiction with the lead survives on them. If items 1–5 are accepted as stated and item 6 is decided either way, the Whole-W4 package is coherent for final convergence and operator ratification.
+
+## GPT — Whole-W4 final adjudication (2026-08-19)
+
+**Adjudication verdict:** `CONVERGED / RESTRUCTURE W4-LOCAL`. The independent review materially improved W4 but introduced no surviving contradiction requiring Round 2. G1/G2 and F-W4-1…F-W4-5 are accepted with the refinements below. No D0/D1/D3/D4/D4-R1/D5-B1/W1/W2/W3/Operation-Matrix semantic reopen is required.
+
+### A1 — W4-G1 Principal binding + current access eligibility — ACCEPT; choose D2 confirmation anchor
+
+The split is binding:
+
+```text
+external credential acceptance
+→ resolve Principal binding
+→ current Principal access eligibility
+→ Organization-scoped access gates
+```
+
+The durable authority home is confirmed in D2, not invented inside W4. Final filing should add one bounded D2 statement under the identity/access substrate:
+
+> **Current Principal access eligibility is Principal-scoped revocable D2 identity/access state. Disabling/revoking that eligibility blocks future Product access, including `/access-context`, without deleting Organization Membership/RoleAssignment or rewriting historical actor attribution. Exact lifecycle/representation mechanics remain later realization.**
+
+This is a confirmation of D2 §6.1's existing ownership of Principal lifecycle plus B2-A §3.10 control 8's already-accepted disablement obligation. It does not add a new D1 domain, Permission, AccessRole, IdP authority or generic lifecycle framework.
+
+Failure grammar after final filing:
+
+- missing/invalid/untrusted/wrong-audience credential → `401 authentication-required`;
+- valid credential with **no** accepted MPC Principal binding → `401 authentication-required`;
+- one Principal resolved but current Principal access eligibility denies Product access → `403 access-denied`;
+- eligible Principal with no current path-Organization Membership → privacy-preserving `404 resource-not-found`;
+- duplicate binding / more than one Principal resolution is adjudicated separately in A6 as server integrity failure.
+
+### A2 — W4-G2 physical qualification ordering / non-self-assertion — ACCEPT + strengthen
+
+For Organization-scoped checkpoint calls, the access portion is:
+
+```text
+current Membership
+→ allowed Principal kind
+→ exact ordinary Permission
+→ if required, current server-resolved operation-specific physical qualification
+→ same-Organization/resource resolution
+→ W1/W2/domain/Governance gates
+```
+
+Physical qualification remains Fulfillment-specific epistemic authority, not ordinary Permission, AccessRole, fourth Principal kind or generic machine-capability graph.
+
+For system-established PhysicalConference/DispatchHandoff:
+
+- `Principal.kind = system` is necessary but insufficient;
+- `fulfillment.execute` is necessary but insufficient;
+- the current qualification for that **exact checkpoint** is server-resolved;
+- request body, IdP/OAuth/provider role/scope, arbitrary token claim, client-declared station/device/evidence source or frontend state cannot self-assert trusted/qualified authority;
+- W2 server attribution of effective Principal/source/time remains binding.
+
+Unqualified `S` fails ordinary access as `403 access-denied`; `A` remains ineligible for all four physical checkpoint establishment operations in the Product 1.0 baseline.
+
+### A3 — F-W4-1 mutation-response disclosure — ACCEPT with operation-scoped wording
+
+There is no W2 contradiction once Permission is defined as permission to invoke an operation, rather than a promise of zero information disclosure outside read operations.
+
+Canonical W4 direction:
+
+> **A mutation/capability Permission authorizes the response representation that W1/W2 define for that same operation and exact operation subject. That response disclosure does not grant the corresponding `Get`/`List`/`Search` operation, does not authorize another subject/resource and creates no Permission inheritance.**
+
+Do not require an additional read Permission to receive the mutation's normal W2 response; do not vary 200/204 response shape based on read-Permission possession.
+
+Negative controls are respelled to be falsifiable:
+
+- `portfolio.manage` does not grant `portfolio.read` **operations**;
+- `fulfillment.manage` does not grant `fulfillment.read` or `fulfillment.execute` **operations**;
+- analogous operation-boundary separation applies throughout the matrix.
+
+This leaves canonical W2 unchanged.
+
+### A4 — F-W4-2 current-authority property — ACCEPT with authority-precise wording
+
+The reviewer found the correct generalization, but the final wording should distinguish external AuthN authority from MPC state rather than saying every gate is literally "current MPC state".
+
+Canonical invariant:
+
+> **Every mutable/revocable access fact is evaluated against its current authoritative state at the Product boundary. External credential validity/binding follows the accepted authentication authority; MPC-owned Principal eligibility, Membership, RoleAssignment/Permission, Principal kind and operation-specific physical qualification follow current MPC authority. A stale token claim, cached snapshot or retired provisioning record never remains access authority after revocation. D7 may cache only while preserving this revocation property.**
+
+In particular, withdrawing a physical-system qualification prevents future PhysicalConference/DispatchHandoff establishment even if an older token/cache/provisioning snapshot still exists.
+
+### A5 — F-W4-3 `/access-context` bootstrap — ACCEPT
+
+The specific endpoint rule must be rewritten with G1 rather than left as an exception that bypasses eligibility:
+
+```text
+GET /access-context requires:
+  valid accepted authentication
+  + exactly one MPC Principal binding
+  + current Principal access eligibility
+```
+
+It waives only Organization Membership and Product Permission because it discovers them. An eligible Principal with zero Memberships still receives a successful empty Organization set. A Principal whose Product access eligibility is disabled receives `403 access-denied` and no membership/role/permission disclosure.
+
+### A6 — F-W4-4 duplicate binding failure honesty — ACCEPT
+
+D2's one-external-binding→at-most-one-Principal invariant makes duplicate resolution a server-side identity-integrity failure, not bad client credentials.
+
+Final grammar:
+
+- zero Principal resolutions from an otherwise accepted credential → `401 authentication-required`;
+- exactly one → proceed to current Principal eligibility;
+- more than one → fail closed as existing W2 `500 internal-error`, never select one binding and never expose the conflicting identities/details.
+
+No new problem type is created.
+
+### A7 — F-W4-5 sensitive-read reviewability — ACCEPT; no new Permission now
+
+Final W4 should record all current elevated/special read cases in one least-privilege section so silence cannot be mistaken for lack of review:
+
+1. **FulfillmentArtifacts** — `List/GetFulfillmentArtifacts` require `fulfillment.execute`, not `fulfillment.read`, because the artifact surface may contain operational/PII-sensitive labels/handoff material. The ratified matrix's ambiguous `human/both read` label is explicitly resolved by W4 to `H/A/S` as a read-class refinement; this grants no physical checkpoint authority. A later consumer needing artifact visibility without execute access is the reopen trigger for the smallest split.
+2. **AuthorizationDelegations** — `ListAuthorizationDelegations` remains `governance.manage` + H. Standing delegation topology is authorization-management-sensitive and no proven read-only auditor consumer currently justifies a separate Permission. A real auditor consumer needing delegation visibility without mutation authority reopens only this read boundary.
+3. **Materialization PII-bearing reads** — `GetBusinessSystemPartyResolution` and `GetDestinationRealization` remain under `materialization.read`; that Permission is therefore explicitly PII-bearing and must be assigned accordingly. No proven consumer currently requires intent tracking while excluding party/destination detail. A real least-privilege consumer proving that split reopens the smallest Materialization read surface/Permission; do not pre-create `materialization.pii.read` or equivalent.
+
+No new Permission is added now. The vocabulary remains 29 stored ordinary Permissions.
+
+### A8 — Whole-W4 dispositions that survive unchanged
+
+- admitted operations: **95/95 mapped**; zero additions by symmetry;
+- stored Permissions: **29/29 used**; no orphan Permission;
+- Principal kinds: **human | automation | system** only;
+- ordinary `both` Q/read → H/A/S;
+- consequential business-authoring/coordination C admitted to `both` → H/A;
+- `EvaluatePriceScenario` → H/A/S with `economics.read`;
+- `RecordSeparation` / `RecordPacking` → H only;
+- `RecordPhysicalConference` / `RecordDispatchHandoff` → H or currently qualified S;
+- `fulfillment.execute` for FulfillmentArtifact reads remains proportionate;
+- Permissions remain flat/exact: no manage→read, execute→read, prefix/wildcard implication;
+- `listing.manage != price.manage` and the Fulfillment/Economics/Governance splits remain binding;
+- no-Membership Organization privacy → 404; current Membership but missing Permission/client-class/qualification → 403;
+- Governance cannot widen client class, Permission or physical authority;
+- valid business `approval-required`, rejection/prohibition, unknown/unavailable or external-required remains post-access Product semantics;
+- monotonic AccessRole/AuthorizationDelegation revocation changes target concurrency semantics only, never caller admission;
+- IdP roles/scopes, provider roles/scopes, frontend visibility and current middleware remain non-authoritative;
+- Structural Inversion: PASS.
+
+### Final reopen classification
+
+```text
+D0 / D1 / D3 / D4 / D4-R1 / D5-B1 / W1 / W2 / W3   NO REOPEN
+Operation Admission Matrix                              NO REOPEN
+D2                                                      ONE-LINE AUTHORITY CONFIRMATION; NO SEMANTIC REOPEN
+W4                                                      TARGETED LOCAL CONSOLIDATION
+Round 2                                                 NOT REQUIRED
+```
+
+### Final consolidation register after operator ratification
+
+1. add the one-line D2 Principal-access-eligibility confirmation;
+2. rewrite W4 enforcement sequence with unique binding + current Principal eligibility;
+3. rewrite `/access-context` to require current Principal eligibility while waiving only Membership/Permission;
+4. distinguish zero binding (`401`) from duplicate binding (`500 internal-error`);
+5. adopt Permission-before-current-physical-qualification ordering and close client-declared evidence-source assertion;
+6. make current authoritative state/revocation correctness a property of every mutable/revocable access gate;
+7. add the operation-subject mutation-response disclosure law and respell flat-Permission negative controls as read-operation controls;
+8. record the three sensitive/special read cases and explicit artifact client-class refinement without creating a new Permission;
+9. preserve the 95-operation/29-Permission matrix and all surviving W4 fences;
+10. mark W4 accepted/canonical, remove Whole-W4 review candidate, reset this review channel, update the non-authoritative cockpit, then advance to technical non-Product ingress classification.
+
+**`HANDOFF → OPERATOR`**
+
+Final operator ratification of the converged Whole-W4 package, including the one-line D2 confirmation, is required before canonical D2/W4 amendments or progression to technical non-Product ingress classification.
