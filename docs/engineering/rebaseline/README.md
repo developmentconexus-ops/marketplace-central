@@ -2,7 +2,7 @@
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
 > **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 OPEN / ACTIVE**  
-> **D5-B2 current state:** **W1 + W2 CANONICAL; W3-A/B/C ACCEPTED IN-STAGE; Whole-W3 lead review COMPLETE / RESTRUCTURE W3-LOCAL; W3-G1…G6 operator-ratified for independent challenge only; Fable Whole-W3 independent review = NEXT**  
+> **D5-B2 current state:** **W1 + W2 CANONICAL; W3-A/B/C ACCEPTED IN-STAGE; Whole-W3 independent review + GPT final adjudication CONVERGED / RESTRUCTURE W3-LOCAL; operator final Whole-W3 ratification = NEXT**  
 > **Implementation:** **BLOCKED until D9 is accepted**  
 > **Last updated:** 2026-08-19
 
@@ -34,11 +34,11 @@ A fresh session reads, in order:
 
 This file alone owns **program status, allowed/blocked work and exact next action**. Detailed semantics remain in the accepted artifacts above.
 
-`D5-B2-W3-WHOLE-COHERENCE-REVIEW-CANDIDATE.md` is **NON-AUTHORITATIVE lead review evidence** and is deliberately excluded from the authority path. The operator ratified W3-G1…G6 on 2026-08-19 **only as the correction direction to be independently challenged**. That ratification does not yet amend W3-A/B/C or canonical W2. Any stale wording inside the candidate such as “operator decision requested” is a non-authoritative snapshot; this router owns current status.
+`D5-B2-W3-WHOLE-COHERENCE-REVIEW-CANDIDATE.md` and `AI-DIALOG.md` are **NON-AUTHORITATIVE review evidence**, deliberately outside the authority path. The converged Whole-W3 corrections do not amend W2/W3 until final operator ratification and canonical filing.
 
-W3-C remains a bounded staging artifact. After Whole-W3 independent review, lead adjudication, final convergence and operator final ratification, W3-A/B/C must be consolidated into one canonical W3 authority and staging/review artifacts removed; Git history remains the archive.
+`D5-B2-W3-C-CURSOR-SAFETY.md` remains a bounded staging artifact. After final operator ratification, W3-A/B/C + converged corrections must be consolidated into one canonical W3 authority; W3-C staging and Whole-W3 candidate are removed, and Git history remains the archive.
 
-`docs/engineering/rebaseline/cockpit.html` is a non-authoritative visual projection only and never participates in the authority path.
+`docs/engineering/rebaseline/cockpit.html` is a non-authoritative visual projection only. It is updated after canonical filing, never used as status authority.
 
 Legacy/current code, routes, OpenAPI, SDK and frontend tables remain evidence only.
 
@@ -66,13 +66,13 @@ D5 — API                                                  OPEN / ACTIVE
       W3 Collections / Pagination / Filter / Search /
          Cursor Grammar                                  OPEN / ACTIVE
         W3-A Collection + Cursor Core                    ACCEPTED IN-STAGE
-        W3-B Per-Operation Filter / Search / Ordering    ACCEPTED IN-STAGE
+        W3-B Filter / Search / Ordering                  ACCEPTED IN-STAGE
         W3-C Cursor Safety / Population / Limits         ACCEPTED IN-STAGE
-        Whole-W3 lead Global Coherence                   COMPLETE / RESTRUCTURE W3-LOCAL
-        W3-G1…G6 lead direction                          RATIFIED FOR INDEPENDENT CHALLENGE
-        Fable Whole-W3 independent review                NEXT
-        lead adjudication / final convergence            BLOCKED BY FABLE REVIEW
-      Remaining wire obligations                         BLOCKED BY W3 SEQUENCE
+        Whole-W3 lead review                             COMPLETE / RESTRUCTURE W3-LOCAL
+        Fable Whole-W3 independent review                COMPLETE
+        GPT final adjudication                           CONVERGED
+        operator final Whole-W3 ratification             NEXT
+      Remaining wire obligations                         BLOCKED BY W3
 D6 — Frontend                                             BLOCKED BY D5
 D7 — Runtime / Jobs / Transactions                        BLOCKED
 D8 — Golden Flows                                         BLOCKED
@@ -80,114 +80,86 @@ D9 — Adversarial Architecture Review                      BLOCKED
 Implementation                                            BLOCKED UNTIL D9
 ```
 
-Whole-W2 independent review is complete and incorporated into canonical W1/W2. W3 is the only active Wire design surface.
-
 ---
 
 ## 3. Load-bearing current authority
 
-### 3.1 W1/W2 laws that W3 may not weaken
+### 3.1 W1/W2 laws W3 may not weaken
 
-- Product API is semantic-owner driven and Organization-scoped; protocol/provider topology is not Product ontology.
-- External Product/Listing/Sale/Shipment identity remains source-qualified; no mirror IDs or bare native correlation keys.
-- Custom owner methods remain explicit capabilities; no generic Action/Command/Workflow surface.
-- One opaque ETag revision authority per protected meaning; true same-resource standard mutation uses `If-Match`; custom/reference revision proofs use typed ETag request data.
-- Idempotency-Key and revision/concurrency solve different failure classes.
-- Request/read schemas remain authority-separated and closed; `null` never means unknown/unavailable/partial/not-applicable.
-- No universal Fact/Evidence/Result/Subject/Scope/Policy/Workflow wrappers.
-- ListingIntent / PriceIntent / Availability remain distinct through publication.
-- Market coverage is distinct from evidence sufficiency; Economics never fabricates conclusions from missing evidence.
-- Work never becomes source truth or generic resolution authority.
+- semantic-owner Product API under explicit Organization scope;
+- source-qualified external Product/Listing/Sale/Shipment identity; no mirror IDs/bare native correlation keys;
+- owner capabilities remain explicit; no generic Action/Command/Workflow owner;
+- one opaque revision authority; true same-resource HTTP conditional vs typed custom/reference ETag carriers remain distinct;
+- request/read authority separation, closed schemas and honest unknown/unavailable/partial semantics;
+- no universal Fact/Evidence/Result/Subject/Scope/Policy/Workflow wrappers;
+- ListingIntent / PriceIntent / Availability remain distinct;
+- Market coverage != evidence sufficiency; Economics never fabricates from missing evidence;
+- Work never becomes source truth;
+- implementation remains blocked until D9.
 
-### 3.2 Accepted W3-A
+### 3.2 Accepted W3-A/B/C baseline that survived Whole-W3
 
-- owner-specific collection responses + optional `next_cursor`; no universal Page/PagedResult/data/metadata wrapper;
-- forward-only `limit?` + opaque `cursor?`; no page/offset/skip/previous cursor baseline;
-- fewer than `limit` items does not prove exhaustion; only `next_cursor` indicates another page;
-- cursor is opaque, semantic-query/operation/Organization-bound, not authorization and not raw provider/database state;
+- owner-named collection responses; no generic Page/PagedResult/data/metadata wrapper;
+- forward-only `limit?` + opaque `cursor?`; no offset/page/previous cursor baseline;
 - cursor exhaustion never proves source/provider/market/all-time completeness;
-- no universal total count, caller sort or snapshot-isolation promise;
-- provider paging remains D4-local; cursor persistence/signing/index/cache remains D7.
-
-### 3.3 Accepted W3-B
-
-- typed operation-specific query parameters only; no generic query/filter expression language;
-- admitted fields combine by AND; no OR/NOT/IN/functions/traversal DSL baseline;
-- `SearchSourceProductsForMarketplace` is the only baseline Search;
-- caller-selectable sort baseline count = 0;
-- each collection has one owner-defined default order/tie-breaker contract;
-- source-qualified identity and same-Organization safety remain explicit;
-- collection coverage is owner-specific only where external enumeration can be incomplete.
-
-The detailed accepted matrix remains in `D5-B2-W3-COLLECTION-GRAMMAR.md` until a final Whole-W3 correction is ratified and canonically consolidated.
-
-### 3.4 Accepted W3-C
-
-- owner-specific bounded list-item projection may be smaller than point Get; no generic `fields/select/expand` DSL;
-- `400 invalid-cursor` and `400 cursor-expired`; no silent restart;
-- cursor is ephemeral continuation, not durable bookmark; no public TTL baseline;
-- stable MPC/source-qualified identity appears at most once per Product traversal;
-- mutable population may affect not-yet-traversed members without implying snapshot/completeness;
-- updates do not turn pagination into a change feed;
-- non-identifiable evidence receives no fake ID merely for deduplication;
-- provider continuation may be reconstructed only with identical Product continuation semantics, otherwise expire explicitly;
-- transient provider outage is not cursor expiration by itself;
-- no public snapshot/traversal/search-session resource;
-- positive finite `limit`, server returns <= limit, zero/negative/above-max validation error, no silent clamp;
-- exact numeric default/max remains `DEFER SAFELY` to final OpenAPI closure under fixed finite/no-clamp fences.
+- no universal total count, caller-selectable sort or snapshot resource/promise;
+- typed operation-specific filters only; no OData/SQL/GraphQL-like query language;
+- SearchSourceProductsForMarketplace remains the only baseline Search;
+- source qualification and same-Organization safety remain explicit;
+- stable MPC/source-qualified member identity appears at most once per traversal;
+- mutable population may affect not-yet-traversed members; pagination is not a change feed;
+- bounded owner-specific ListItem projections are allowed, with no generic projection DSL;
+- `invalid-cursor` and `cursor-expired` remain the two collection cursor problems, both HTTP 400;
+- cursor is ephemeral continuation, not a durable bookmark; no public TTL baseline;
+- positive finite `limit`, no silent clamp; exact default/max remains DEFER SAFELY to final OpenAPI contract after concrete ListItem payloads exist;
+- D4 owns provider paging/source coverage; D7 owns cursor persistence/signing/index/cache realization.
 
 ---
 
-## 4. Ratified Whole-W3 lead direction — REVIEW INPUT, NOT YET CANONICAL
+## 4. Converged Whole-W3 corrections — AWAITING FINAL OPERATOR RATIFICATION
 
-The operator ratified the following six lead corrections for independent challenge:
+Independent Fable review confirmed G1…G6 and added F-W3-1/F-W3-2. GPT final adjudication converged them as follows:
 
-1. **W3-G1 — continuation query carrier:** cursor carries continuation only; every continuation request repeats required semantic subject/search fields and the same effective optional filters; only `limit` may vary.
-2. **W3-G2 — keyed-Q list populations:** `ListCompetitivePositions` and `ListExpectedEconomics` enumerate existing marketplace Listing subjects only; pre-listing source-product contexts remain explicit point Get/evaluation paths, never an implicit Product universe.
-3. **W3-G3 — deterministic ordering:** close vague tuple placeholders; Availability uses fixed target-kind+identity order, Competitive/Expected use Listing ref after G2, EconomicAttribution uses its stable resource ID as final ordering key, Shipment uses source-qualified native key.
-4. **W3-G4 — ComparableOffer evaluation basis:** one cursor chain remains on one Market evaluation/acquisition basis; if that basis cannot resume, `cursor-expired`; no fake ComparableOffer ID/public snapshot resource.
-5. **W3-G5 — Source Product search:** keep required source-qualified opaque query and exact identifier precedence where supported, but do not freeze an unproven universal tokenizer/case algorithm or silently create an MPC Product mirror/index to satisfy it.
-6. **W3-G6 — one Problem Details catalog:** final consolidation amends canonical W2 problem catalog with `invalid-cursor` and `cursor-expired`; no second W3-only error taxonomy.
+1. **Continuation query carrier:** cursor carries continuation only. Every continuation request repeats required semantic subject/search fields and the same effective optional filters; only `limit` may vary. Missing required fields → ordinary `422 validation-error`; a well-formed repeated query that mismatches cursor binding → `400 invalid-cursor`.
+2. **CompetitivePosition / ExpectedEconomics populations:** Lists enumerate currently known existing marketplace Listing subjects only. Pre-listing contexts remain explicit Search → selected SourceProductRef → point Get/evaluation. Provider-universe completeness is bounded by Listing acquisition coverage; no duplicate coverage field is added.
+3. **Deterministic ordering:** close all placeholder tuples. `ListEconomicAttributions` total order is exactly `economic_attribution_id ASC`. Availability, Competitive/Expected and Shipment use the explicit stable target/ref/key orders recorded by the converged package.
+4. **ComparableOffer continuity:** one cursor chain stays on one Market Intelligence owner-local evaluation/acquisition basis. No shared EvaluationBasis/TraversalBasis type, no public Snapshot/Traversal resource, no fabricated ComparableOffer ID. Same basis unavailable → `cursor-expired`.
+5. **Source Product Search:** required non-empty opaque query + explicit SourceInstance/Marketplace context; exact native/legitimate identifiers get precedence where sanctioned evidence establishes them. No universal tokenizer, case-folding, diacritics/accent-folding, stemming, fuzzy/edit-distance, locale/collation, vector/embedding/AI algorithm or public relevance score. If materially required Search cannot be satisfied through sanctioned reads/projections without a new Product-search data authority, STOP/re-adjudicate rather than silently create a Product mirror/index.
+6. **One Problem Details catalog:** final W2 catalog gains `invalid-cursor` + `cursor-expired`; W3 owns applicability. Keep these names; no extra cursor taxonomy.
+7. **SellableAvailability population:** current population = `new_listing` ListingIntents still genuinely pre-creation in Intent lifecycle `draft | submitted` plus currently known existing Listing subjects. `discarded` is excluded. Once a provider Listing is established, current Availability is addressed by `existing_listing`; unknown/unavailable Availability remains visible rather than disappearing because no persistence row exists. Existing-Listing completeness remains Listing-acquisition-bounded, with no new coverage field.
+8. **ListItem semantic-subset law:** where a member has a point resource/Q, ListItem may omit detail but cannot introduce a list-only derived business conclusion. Reused fields preserve the same schema/name/meaning except qualifiers already made unambiguous by operation/path scope. Collection-only owner values remain their owner-native W2 schemas. No `fields/select/expand`, generic Summary/View or projection DSL.
+9. **Surviving fences:** at-most-once stable identity, coverage/exhaustion/dedup independence, owner-local basis wording, 26/26 admitted collection coverage, zero list-by-symmetry, zero caller-sort baseline and bounded numeric-limit deferral remain intact.
 
-The following survived lead adversarial attack: 26/26 admitted List/Search coverage, no new list-by-symmetry, no generic Page/filter/sort/snapshot/total framework, at-most-once stable member identity, bounded list-item projection, and safely deferred exact numeric limit values.
-
-These statements are **not canonical amendments yet**. Fable must challenge them and the Whole-W3 package independently.
+No D0→D5-B1/W1 parent reopen is required. W2 requires only the bounded cursor-problem catalog amendment during final canonical consolidation.
 
 ---
 
 ## 5. Prohibited now
 
-Until Whole-W3 independent review is adjudicated:
+Until final operator Whole-W3 ratification:
 
-- do not apply W3-G1…G6 silently to W3-A/B/C or canonical W2;
-- do not begin remaining Wire Contract obligations, D6–D9 target design or implementation;
-- do not treat the Whole-W3 candidate, `AI-DIALOG.md`, Fable output or cockpit as authority;
-- do not create generic query/filter/sort/projection DSL, universal snapshot/traversal resources, total counts or fabricated evidence identities;
-- do not use current code/OpenAPI/frontend/provider paging shape to overrule accepted W3 authority;
-- do not choose exact OpenAPI minor/generator or numeric limit defaults yet.
+- do not modify canonical W2 or accepted W3-A/B/C from the converged review package;
+- do not begin later Wire obligations, D6–D9 target design or implementation;
+- do not treat review candidate, AI-DIALOG or cockpit as authority;
+- do not add generic query/filter/sort/projection/snapshot/traversal frameworks, total counts or fabricated evidence identities;
+- do not choose exact OpenAPI minor/generator or numeric `limit` defaults yet;
+- do not create a Round 2 absent a newly demonstrated material contradiction.
 
 ---
 
 ## 6. Exact next action
 
-**Run one coherent independent Fable Whole-W3 Global Coherence Review over W3-A + W3-B + W3-C + the ratified-for-challenge W3-G1…G6 direction.**
+**Operator final-ratifies or revises the complete converged Whole-W3 package above.**
 
-Fable must reconstruct repository authority independently and challenge the whole collection/query system, not merely confirm the lead findings. At minimum challenge:
+If ratified:
 
-1. whether continuation query parameters must always be repeated or whether a smaller honest carrier model exists;
-2. whether existing-Listing-only populations for CompetitivePosition/ExpectedEconomics are the smallest honest enumerable universes without suppressing a real Product 1.0 consumer;
-3. whether every default ordering/tie-breaker is unique, stable and semantically harmless;
-4. whether ComparableOffer really needs one resumable evaluation/acquisition basis or whether that creates accidental snapshot machinery;
-5. whether SearchSourceProducts is now under- or over-specified relative to D4 sanctioned source capability;
-6. whether `invalid-cursor` / `cursor-expired` are the smallest useful Product problem distinction and how one canonical W2 catalog should carry them;
-7. whether at-most-once stable identity creates disproportionate hidden D7 state/seen-set requirements for any concrete collection;
-8. whether list-item projections preserve one owner meaning rather than creating second read authority;
-9. whether any admitted List/Search operation still has an undefined population, ambiguous source qualification, missing stable ordering, false coverage claim or hidden Product/PIM universe;
-10. whether the combined package introduces a generic query/search/pagination/snapshot framework despite local fences;
-11. whether any material contradiction actually requires targeted D0→W2 reopen;
-12. strongest Structural Inversion against legacy/current OpenAPI, provider paging and frontend-table shapes.
-
-Fable review is evidence only. Lead adjudicates every material finding. Round 2 occurs only if a real material contradiction survives.
+1. revalidate branch HEAD;
+2. amend canonical W2 Problem Details catalog with `invalid-cursor` + `cursor-expired`;
+3. consolidate W3-A/B/C + converged corrections into one canonical `D5-B2-W3-COLLECTION-GRAMMAR.md`;
+4. remove `D5-B2-W3-C-CURSOR-SAFETY.md` and `D5-B2-W3-WHOLE-COHERENCE-REVIEW-CANDIDATE.md`; Git history remains archive;
+5. reset `AI-DIALOG.md` to protocol-only after canonical filing;
+6. update the non-authoritative cockpit projection;
+7. update this router to W3 ACCEPTED/CANONICAL and advance to the next router-ordered Wire Contract obligation.
 
 Implementation remains blocked until D9.
 
@@ -199,11 +171,11 @@ A fresh session must conclude:
 
 - D0→D4/D4-R1 + D5-B1 are accepted/canonical;
 - D5-B2 Operation Matrix + Whole-Matrix are ratified;
-- W1 and W2 are canonical;
-- W3-A/B/C remain accepted in-stage current authority;
-- the Whole-W3 candidate is non-authoritative review evidence;
-- W3-G1…G6 were operator-ratified **only as direction for independent challenge**, not canonicalized;
-- **one coherent Fable Whole-W3 independent review is the exact next action**;
-- remaining Wire obligations, D6–D9 and implementation remain blocked.
+- W1/W2 are canonical;
+- W3-A/B/C remain current accepted in-stage authority until final ratification/canonical filing;
+- Whole-W3 lead + independent Fable + GPT final adjudication converged with G1…G6 + F-W3-1/F-W3-2 and no Round 2;
+- **operator final Whole-W3 ratification is the exact next action**;
+- no parent-stage reopen is currently required;
+- later Wire obligations, D6–D9 and implementation remain blocked.
 
 If not, the active authority tree is inconsistent.
