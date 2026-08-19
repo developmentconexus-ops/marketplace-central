@@ -714,3 +714,23 @@ The next sub-batch must decide:
 Do not introduce D6 screen/BFF topology, D7 queues/workers/storage/transactions/Keycloak deployment, D8 effect proofs or implementation.
 
 Implementation remains blocked until D9.
+
+---
+
+# 10. Canonical Technical Ingress routing correction
+
+This section supersedes only the historical sequencing in §9 and sharpens the Portfolio/D4 routing statement in §2.2. It changes **no admission row, client class, Q/C/P class, Permission, idempotency or concurrency disposition**.
+
+Canonical disposition:
+
+- provider OAuth begin/callback/refresh remains outside the Product API;
+- `D5-B2-TECHNICAL-INGRESS.md` is the canonical D5-B2 wire/trust-boundary home for the technical ceremony and external acquisition ingress;
+- the technical OAuth **begin** evaluates current Product-authenticated human + unique Principal binding + Principal eligibility + Organization Membership + `portfolio.manage` + exact MarketplaceInstallation, but this does not create a 96th Product operation;
+- callback/provider identity never substitutes for Product Principal authority;
+- deactivated same-seller technical reauthorization may restore evidence-read credentials only; it is not the deferred Product reactivation operation and grants no business participation or provider write;
+- provider notifications/acquisition families never become Product Sync/Refresh/Webhook operations;
+- no technical ingress appears in Product OpenAPI/SDK.
+
+The Product inventory remains **95 admitted operations**, and the W4 ordinary vocabulary remains **29 Permissions**. The current exact next action is owned only by the router and is **final Problem/media consistency**.
+
+Implementation remains blocked until D9.

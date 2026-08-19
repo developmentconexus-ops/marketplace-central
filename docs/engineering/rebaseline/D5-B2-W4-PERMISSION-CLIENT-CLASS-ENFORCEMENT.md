@@ -513,7 +513,7 @@ W2 Problem Details remains the one Product problem catalog.
 
 - missing/invalid/untrusted/wrong-audience credential → `401 authentication-required`;
 - accepted credential resolving to **zero** MPC Principals → `401 authentication-required`;
-- accepted credential resolving to **more than one** MPC Principal → fail closed as existing W2 `500 internal-error`; never select one and never expose conflicting identity details;
+- accepted credential resolving to **more than one** MPC Principals → fail closed as existing W2 `500 internal-error`; never select one and never expose conflicting identity details;
 - exactly one Principal resolved but current Principal access eligibility denies Product access → `403 access-denied`;
 - current access-eligible Principal has no Membership in the path Organization → privacy-preserving `404 resource-not-found` so the API does not confirm another Organization's existence;
 - current Membership exists but exact Permission is absent → `403 access-denied`;
@@ -648,3 +648,29 @@ W4                                                ACCEPTED / CANONICAL
 Whole-W4 is closed. The next Wire obligation is **technical non-Product ingress classification**, as routed by the rebaseline router.
 
 Do not begin final OpenAPI/tooling, D6–D9 or implementation out of sequence. Implementation remains blocked until D9.
+
+---
+
+## 15. Canonical Technical Ingress current-access cross-reference
+
+This section supersedes only the historical sequencing sentence in §14. It adds no Product operation, Permission, Principal kind or client-class rule.
+
+`D5-B2-TECHNICAL-INGRESS.md` is canonical for the non-Product OAuth/authorization ceremony. Its explicit technical **begin** performs a W4-equivalent current-access evaluation using:
+
+```text
+valid Product AuthN
++ exactly one MPC Principal binding
++ Principal.kind = human
++ current Principal access eligibility
++ current Organization Membership
++ portfolio.manage
++ exact MarketplaceInstallation in that Organization
+```
+
+The evaluation reuses existing current authority but is **not** one of the 95 Product operations, does not enter the Product OpenAPI/SDK and does not create a 30th Permission. Mutation-response disclosure rules do not apply to the technical ceremony.
+
+The provider callback is not authorized by a Product browser session, Product bearer token or provider operator identity. It must revalidate the initiating Principal's current eligibility, Membership, `portfolio.manage` and exact Installation before activation. Selling-account proof, administrator requirement, same-seller compatibility, state/PKCE and credential-generation semantics remain D4/Technical Ingress authority, not W4 Product Permission vocabulary.
+
+W4 remains **ACCEPTED / CANONICAL**, with **95 / 95** Product operations and **29 / 29** ordinary Permissions unchanged. The current exact next action is owned only by the router and is **final Problem/media consistency**.
+
+Implementation remains blocked until D9.

@@ -336,3 +336,22 @@ No D0→D5-B1 parent reopen is required.
 Wire Contract remains open. **W2 is now consolidated separately as canonical schema authority; W3 collection/pagination/filter/search/cursor grammar is the next Wire sub-batch.**
 
 Implementation remains blocked until D9.
+
+---
+
+## 20. Canonical Technical Ingress routing correction
+
+This section supersedes only the historical sequencing sentence at the end of §19 and sharpens the routing statement in §16. It changes **no Product resource, path, HTTP method, operation or schema semantics**.
+
+Canonical routing is now:
+
+- D4 owns provider protocol/authentication/source semantics;
+- `D5-B2-TECHNICAL-INGRESS.md` owns their D5-B2 technical wire/trust-boundary crystallization;
+- provider OAuth begin/callback, notifications and acquisition custody are not Product operations and are excluded from the Product OpenAPI and SDK;
+- exact technical host/prefix/method remains deferred to its proper realization stage;
+- any technical route must remain unambiguously outside and must not collide with `/access-context` or `/organizations/{organization_id}/...`;
+- no generic Product `/providers`, `/integrations`, `/webhooks`, `/oauth` or `/external-events` root is admitted.
+
+W1 remains **ACCEPTED / CANONICAL**. The Product inventory remains **95 operations / 29 Permissions**. The current exact next action is owned only by the router and is **final Problem/media consistency**.
+
+Implementation remains blocked until D9.
