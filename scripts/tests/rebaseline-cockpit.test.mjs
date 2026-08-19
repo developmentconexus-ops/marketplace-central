@@ -10,11 +10,13 @@ const html = fs.readFileSync(cockpitPath, 'utf8');
 
 const required = [
   'VISUAL PROJECTION — NOT ARCHITECTURE AUTHORITY',
-  '8c685eabf9594459ded4206dfa5092348fffee22',
-  'W3',
+  'ca6cb9549e168500061fa6cb6a310d8a4a38fee8',
+  'W1', 'W2', 'W3', 'W4',
   'ACCEPTED / CANONICAL',
-  'W4',
-  'Permission → Operation / Client-Class Enforcement',
+  'Technical non-Product ingress classification',
+  'Principal access eligibility',
+  '95 / 95',
+  '29',
   'Implementation blocked until D9',
   'D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9',
   'One business meaning → one authority',
@@ -22,21 +24,13 @@ const required = [
   'Unknown ≠ zero',
   'Copy New Session Prompt',
   'docs/engineering/rebaseline/README.md',
-  'D5-B2-W3-COLLECTION-GRAMMAR.md',
+  'D5-B2-W4-PERMISSION-CLIENT-CLASS-ENFORCEMENT.md',
   'Marketplace Operations Control Plane',
-  'ListingIntent',
-  'PriceIntent',
-  'Availability',
-  'BusinessOrderIntent',
-  'FulfillmentExecution',
-  'PostSaleResolution',
-  'Operational Work',
+  'ListingIntent', 'PriceIntent', 'Availability',
+  'BusinessOrderIntent', 'FulfillmentExecution', 'PostSaleResolution', 'Operational Work',
 ];
 
-for (const token of required) {
-  assert.ok(html.includes(token), `cockpit.html missing required token: ${token}`);
-}
-
+for (const token of required) assert.ok(html.includes(token), `cockpit.html missing required token: ${token}`);
 assert.match(html, /id="copy-handoff"/);
 assert.match(html, /navigator\.clipboard\.writeText/);
 assert.match(html, /data-status="accepted"/);
@@ -45,5 +39,4 @@ assert.match(html, /data-status="blocked"/);
 assert.match(html, /data-status="deferred"/);
 assert.match(html, /<svg[\s>]/);
 assert.match(html, /@media\s*\(/);
-
 console.log('rebaseline cockpit contract: PASS');
