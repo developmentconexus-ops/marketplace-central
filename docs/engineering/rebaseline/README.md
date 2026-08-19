@@ -2,7 +2,7 @@
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
 > **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 OPEN / ACTIVE**  
-> **D5-B2 current state:** **Operation Matrix + Whole-Matrix RATIFIED; Wire W1 + W2 ACCEPTED / CANONICAL; W3-A + W3-B ACCEPTED IN-STAGE; W3-C Cursor Validity / Population Change / Deduplication / Limits / Problem Grammar = NEXT**  
+> **D5-B2 current state:** **Operation Matrix + Whole-Matrix RATIFIED; Wire W1 + W2 ACCEPTED / CANONICAL; W3-A/B/C ACCEPTED IN-STAGE; Whole-W3 Global Coherence Review = NEXT**  
 > **Implementation:** **BLOCKED until D9 is accepted**  
 > **Last updated:** 2026-08-19
 
@@ -27,13 +27,16 @@ A fresh session reads, in order:
 15. `docs/engineering/rebaseline/D5-B2-OPERATION-ADMISSION-MATRIX.md`
 16. `docs/engineering/rebaseline/D5-B2-WIRE-CONTRACT.md` — canonical W1
 17. `docs/engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md` — canonical W2
-18. `docs/engineering/rebaseline/D5-B2-W3-COLLECTION-GRAMMAR.md` — current W3 authority/design home
-19. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
-20. code/OpenAPI/schemas/tests/runtime only as current-state evidence when needed
+18. `docs/engineering/rebaseline/D5-B2-W3-COLLECTION-GRAMMAR.md` — W3-A/B accepted in-stage
+19. `docs/engineering/rebaseline/D5-B2-W3-C-CURSOR-SAFETY.md` — W3-C accepted in-stage
+20. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
+21. code/OpenAPI/schemas/tests/runtime only as current-state evidence when needed
 
 This file alone owns **program status, allowed/blocked work and exact next action**. Detailed semantics remain in the accepted artifacts above.
 
-Former staged W2-C/D/E artifacts and the Whole-W2 review candidate are absent from the active tree; Git history is the archive. `AI-DIALOG.md` is protocol-only and is not architecture authority.
+W3-C is intentionally a bounded staging artifact while Whole-W3 is reviewed. If Whole-W3 converges and is operator-ratified, W3-A/B/C must be consolidated into one canonical W3 authority and the staging file removed; Git history is the archive.
+
+`docs/engineering/rebaseline/cockpit.html` is a non-authoritative visual projection only. It never participates in this authority path.
 
 Legacy/current code, routes, OpenAPI, SDK and frontend tables remain evidence only.
 
@@ -62,9 +65,8 @@ D5 — API                                                  OPEN / ACTIVE
          Cursor Grammar                                  OPEN / ACTIVE
         W3-A Collection + Cursor Core                    ACCEPTED IN-STAGE
         W3-B Per-Operation Filter / Search / Ordering    ACCEPTED IN-STAGE
-        W3-C Cursor Validity / Population Change /
-             Deduplication / Limits / Problem Grammar   NEXT
-        Whole-W3 Global Coherence                        AFTER W3-C
+        W3-C Cursor Safety / Population / Limits         ACCEPTED IN-STAGE
+        Whole-W3 Global Coherence                        NEXT
       Remaining wire obligations                         BLOCKED BY W3 SEQUENCE
 D6 — Frontend                                             BLOCKED BY D5
 D7 — Runtime / Jobs / Transactions                        BLOCKED
@@ -121,48 +123,66 @@ Whole-W2 independent review is complete and incorporated into canonical W1/W2. W
 - collection-level coverage is exposed only for source-backed populations whose enumeration may be incomplete: source Product search, Marketplace Listings, Comparable Offers, Marketplace Sales, Shipments and Sale Economics where underlying coverage is not complete;
 - no filter may expose provider status, Sankhya native columns/TOP/NUNOTA/CODEMP, provider JSON paths or frontend-table fields by convenience.
 
-The accepted operation-specific matrix is authoritative in `D5-B2-W3-COLLECTION-GRAMMAR.md`, including bounded filters/order for ListingIntents, PriceIntents, Availability, Market, Economics, Governance, Sales, Materialization, Fulfillment, Post-Sale and Work.
+The accepted operation-specific matrix is authoritative in `D5-B2-W3-COLLECTION-GRAMMAR.md`.
+
+### 3.4 Accepted W3-C — Cursor Safety / Population / Limits
+
+- List operations may use bounded owner-specific list-item projections instead of full point-Get representations when full history/evidence would be excessive; no generic `fields/select/expand` projection DSL;
+- `400 invalid-cursor` covers malformed/tampered/unknown/operation/Organization/query-mismatched cursors after normal access/privacy checks;
+- `400 cursor-expired` covers legitimately issued continuation that can no longer be resumed honestly;
+- cursor is an ephemeral continuation, not a durable bookmark; no public minimum TTL baseline;
+- no silent cursor restart or best-effort nearby continuation;
+- stable MPC/source-qualified member identity appears at most once per Product traversal;
+- at-most-once member identity does not imply snapshot or completeness;
+- inserts/deletes/filter changes between pages may affect not-yet-traversed population; a fresh current universe requires a new traversal;
+- updates do not turn pagination into a change feed;
+- ComparableOffer/non-identifiable evidence receives no fabricated canonical ID merely for deduplication;
+- provider continuation expiry is reconstructed transparently only when identical Product continuation semantics can be proven; otherwise `cursor-expired`;
+- transient provider outage is not cursor expiration by itself;
+- no public traversal/snapshot/search-session resource baseline;
+- `limit` must be a positive finite requested maximum and the server never returns more than it; zero/negative/above-max is validation error, with no silent clamp;
+- exact numeric default/max is `DEFER SAFELY` to final OpenAPI closure after concrete list-item payloads are known, under already-fixed finite/no-silent-clamp fences.
 
 ---
 
 ## 4. Prohibited now
 
-While W3-C is next:
+While Whole-W3 Global Coherence is next:
 
-- do not begin D6–D9 target design or implementation;
-- do not reopen accepted D0→D5-B1/B2/W1/W2/W3-A/B for naming/style or implementation convenience;
+- do not begin remaining Wire Contract obligations, D6–D9 target design or implementation;
+- do not reopen accepted D0→D5-B1/B2/W1/W2/W3-A/B/C for naming/style or implementation convenience;
 - do not derive collection behavior from legacy routes/OpenAPI/controllers/frontend tables;
-- do not introduce generic query/filter DSL, arbitrary caller sort, generic priority/tag/search fields or provider-native query vocabulary;
-- do not make cursor exhaustion imply knowledge/source completeness;
-- do not invent universal total counts, snapshot isolation or stable-traversal guarantees stronger than owner/source evidence;
-- do not add bulk operations by symmetry;
-- do not choose D7 cursor storage/signing/database mechanism during W3;
-- do not choose OpenAPI minor/generator before W3 coherence.
+- do not introduce generic query/filter/sort/projection DSL, arbitrary caller sort, generic priority/tags/search fields or provider-native query vocabulary;
+- do not make cursor exhaustion, at-most-once identity or traversal completion imply source/population completeness;
+- do not invent universal total counts, snapshot isolation or durable traversal resources;
+- do not fabricate identity for evidence values solely to stabilize pagination;
+- do not select D7 cursor storage/signing/database mechanism during W3 review;
+- do not choose exact OpenAPI minor/generator or numeric limit defaults before Whole-W3 coherence.
 
 ---
 
 ## 5. Exact next action
 
-**Derive W3-C — Cursor Validity / Population Change / Deduplication / Limits / Problem Grammar.**
+**Run the Whole-W3 Global Coherence Review over W3-A + W3-B + W3-C as one collection/query system.**
 
-W3-C must decide and adversarially stress-test:
+The review must adversarially stress-test at least:
 
-1. malformed cursor versus valid-but-query-mismatched versus expired/invalidated continuation;
-2. exact Problem Details/status grammar for those failure classes;
-3. whether Product cursor has a stable public lifetime promise or only implementation-bounded validity;
-4. insert/update/delete behavior between page requests without claiming universal snapshot isolation;
-5. duplicate/omission guarantees a Product client may rely on, per collection class;
-6. source-backed/provider traversal behavior when the provider population or paging token changes/expires mid-traversal;
-7. whether any collection needs a bounded traversal/snapshot identifier beyond the cursor; reject by default;
-8. default `limit`, accepted range and maximum — shared where honest, operation-specific only when a real scale/PII/payload constraint requires it;
-9. whether very small definition/configuration collections should ignore caller `limit` by returning all values or still obey the requested maximum consistently;
-10. restart/recovery semantics after stale/expired cursor: explicit new traversal, never silent first-page fallback;
-11. deduplication/stability for tie-breakers that are not Product identities (e.g. ComparableOffer evidence continuation);
-12. final W3 negative controls and reopen triggers.
+1. every admitted List/Search operation has one honest collection home and no list-by-symmetry operation slipped in;
+2. collection response/list-item projections do not create second read/business authority or generic projection language;
+3. cursor semantic-query binding is coherent with every W3-B filter/search field and `limit` exception;
+4. ordering + tie-breaker can support the at-most-once guarantee without forcing fake Product identity;
+5. mutable populations do not accidentally imply snapshot, no-omission or completeness guarantees;
+6. source/provider coverage remains independent from traversal exhaustion/deduplication;
+7. provider paging/continuation failure stays D4/D7 mechanism while Product cursor semantics remain stable;
+8. `invalid-cursor` / `cursor-expired` are sufficient and do not collide with access/validation/service/business problems;
+9. exact numeric limit deferral is bounded enough that later OpenAPI work cannot silently redesign collection semantics;
+10. no generic filter/sort/search/projection/traversal/snapshot framework emerges from the combined package;
+11. Structural Inversion against legacy OpenAPI/frontend/database/provider paging still passes;
+12. no D0→W2 parent reopen is actually required.
 
-After W3-C, run a **Whole-W3 Global Coherence Review** before accepting W3 as a whole. Do not begin remaining Wire Contract obligations before W3 coherence.
+If no material contradiction survives, present the complete Whole-W3 package to the operator for final ratification before consolidating W3 into one canonical artifact.
 
-After accepted W3, continue router-ordered Wire obligations: exact Permission→operation/client-class mapping; technical non-Product ingress classification; final Problem/media consistency as needed; and the single machine-readable OpenAPI authority/tooling decision.
+If a material contradiction survives, return only the smallest implicated W3-local or parent scope to the Decision Loop; do not proceed to later Wire obligations.
 
 Implementation remains blocked until D9.
 
@@ -175,10 +195,12 @@ A fresh session must conclude:
 - D0→D4/D4-R1 + D5-B1 are accepted/canonical;
 - D5-B2 Operation Matrix + Whole-Matrix are ratified;
 - W1 and W2 are canonical;
-- `D5-B2-W3-COLLECTION-GRAMMAR.md` is the active W3 authority/design home with **W3-A + W3-B accepted in-stage**;
+- W3-A/B are accepted in-stage in `D5-B2-W3-COLLECTION-GRAMMAR.md`;
+- W3-C is accepted in-stage in `D5-B2-W3-C-CURSOR-SAFETY.md`;
 - W3-A defines owner-named forward opaque cursor traversal without total/count/snapshot/completeness fiction;
 - W3-B defines the bounded per-operation typed filter/search/order matrix with zero caller-selectable sort baseline;
-- **W3-C Cursor Validity / Population Change / Deduplication / Limits / Problem Grammar is the exact next action**;
+- W3-C defines list-item projection, cursor failure/lifetime/population/deduplication/limit semantics without durable traversal resource or fake identity;
+- **Whole-W3 Global Coherence Review is the exact next action**;
 - implementation remains blocked until D9.
 
 If not, the active authority tree is inconsistent.
