@@ -2,7 +2,7 @@
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
 > **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 OPEN / ACTIVE**  
-> **D5-B2 current state:** **Operation Matrix + Whole-Matrix RATIFIED; Wire W1 + W2-A/B/C ACCEPTED IN-STAGE; W2-D operational lifecycle schemas = NEXT**  
+> **D5-B2 current state:** **Operation Matrix + Whole-Matrix RATIFIED; Wire W1 + W2-A/B/C/D ACCEPTED IN-STAGE; W2-E transversal/final schema consistency = NEXT**  
 > **Implementation:** **BLOCKED until D9 is accepted**  
 > **Last updated:** 2026-08-18
 
@@ -28,12 +28,13 @@ A fresh session reads, in order:
 16. `docs/engineering/rebaseline/D5-B2-WIRE-CONTRACT.md`
 17. `docs/engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md`
 18. `docs/engineering/rebaseline/D5-B2-W2-C-READINESS-MARKET-ECONOMICS.md`
-19. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
-20. code/OpenAPI/schemas/tests/runtime only as current-state evidence when needed
+19. `docs/engineering/rebaseline/D5-B2-W2-D-OPERATIONAL-SCHEMAS.md`
+20. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
+21. code/OpenAPI/schemas/tests/runtime only as current-state evidence when needed
 
 This file alone owns **program status, allowed/blocked work and exact next action**. Detailed semantics remain in the accepted artifacts above. `AI-DIALOG.md`, Git history, deleted review candidates, legacy routes/OpenAPI and current code are never target/status authority by inheritance.
 
-`D5-B2-W2-SCHEMA-GRAMMAR.md` owns W2-A/B. `D5-B2-W2-C-READINESS-MARKET-ECONOMICS.md` owns W2-C only. Its parent file's older “W2-C next” wording is a pre-split snapshot; this router is current status authority.
+`D5-B2-W2-SCHEMA-GRAMMAR.md` owns W2-A/B. `D5-B2-W2-C-READINESS-MARKET-ECONOMICS.md` owns W2-C only. `D5-B2-W2-D-OPERATIONAL-SCHEMAS.md` owns W2-D only. Older “next” wording in child artifacts is a stage snapshot; this router is current status authority.
 
 ## 2. Program state
 
@@ -58,8 +59,10 @@ D5 — API                                                  OPEN / ACTIVE
         W2-B ListingIntent / PriceIntent / Availability  ACCEPTED IN-STAGE
         W2-C Readiness / Market / Economics              ACCEPTED IN-STAGE
         W2-D Governance / Sales / Materialization /
-             Fulfillment / Post-Sale / Work              NEXT
-      Fable coherent W2 review                           AFTER W2 CONVERGES
+             Fulfillment / Post-Sale / Work              ACCEPTED IN-STAGE
+        W2-E Transversal / final consistency             NEXT
+      Whole-W2 coherence pass                            AFTER W2-E
+      Fable coherent W2 review                           AFTER WHOLE-W2 PASS
 D6 — Frontend                                             BLOCKED BY D5
 D7 — Runtime / Jobs / Transactions                        BLOCKED
 D8 — Golden Flows                                         BLOCKED
@@ -99,75 +102,66 @@ Implementation                                            BLOCKED UNTIL D9
 - strong opaque MPC `ETag` + `If-Match`; missing required precondition = 428, stale = 412;
 - `Idempotency-Key` is separate from concurrency.
 
-### W2-A — core schema laws
+### W2-A/B/C
 
 - exact money/decision decimals use decimal strings; `Money = ExactDecimalString + currency`;
 - external refs are typed/source-qualified; no universal `ExternalRef`/entity graph;
 - request objects are closed and separate from server-owned response/history schemas;
-- `null` never carries unknown/unavailable/partial;
-- knowledge uses smallest owner-specific exclusive unions, not universal `Fact<T>`;
-- no generic Result/Operation/Evidence/property-bag wrappers;
-- typed PATCH, omitted=unchanged; no generic JSON Patch/Merge Patch baseline;
-- RFC 9457 `type` is primary API problem identifier;
-- provider enrichment is bounded/owner-local, never raw DTO passthrough.
+- knowledge is owner-specific and explicit; `null`/zero/empty never carry uncertainty by convention;
+- no generic Result/Operation/Evidence/property-bag/rules DSL;
+- ListingIntent is sparse/declarative and resolves Readiness requirements through `FOLLOW_SOURCE | EXPLICIT_OVERRIDE` only;
+- PriceIntent always owns price and Availability owns sellable quantity; server establishes/revalidates correlations;
+- Readiness returns bounded source/requirement candidates without Product mirror authority;
+- Market Intelligence keeps coverage distinct from evidence sufficiency and never claims universal market completeness;
+- Economics is components-first, preserves L0/L1/L2/R1/R2 and never fabricates profitability from missing evidence;
+- Economic Attribution remains a bounded Economics-local polymorphic subject, not universal entity graph.
 
-### W2-B — authoring / price / availability
+### W2-D — operational schemas
 
-- one sparse/declarative ListingIntent covers create/edit via target union;
-- dynamic publication uses Readiness requirement keys/revisions/candidates and only `FOLLOW_SOURCE | EXPLICIT_OVERRIDE`;
-- bounded PublicationValue; no arbitrary JSON/provider field bag;
-- listing media = source candidate or ListingIntent-scoped authored media; no ProductAsset/media master;
-- PriceIntent always owns price, including pre-creation price; supersession is explicit;
-- client does not PATCH PriceIntent/Availability correlation into ListingIntent;
-- `SubmitListingIntent` has no business payload and revalidates current dependencies;
-- SellableAvailability separates control, desired value, provider observation and convergence;
-- known zero is known zero; provider unavailability never erases known desired state.
-
-### W2-C — readiness / market / economics
-
-- source Product search is source-qualified evidence, not an MPC Product resource;
-- ProductChannelReadiness and CompetitivePosition are contextual keyed Qs with no synthetic canonical IDs;
-- PublicationRequirements returns effective Readiness-owned requirements/candidates/options, not provider rules DSL;
-- market coverage and evidence sufficiency are separate; provider enumeration never means universal market completeness;
-- ComparableOffer values gain no fake identity; provider-rich competitive evidence remains bounded and source-qualified;
-- ExpectedEconomics is components-first and only exposes a known conclusion when required cost/tax/fee/shipping evidence is sufficiently known;
-- EvaluatePriceScenario accepts hypothetical variables, never authoritative evidence overrides;
-- SaleEconomics preserves L0/L1/L2 and R1/R2; realized economics is occurrence-based and honest about partial coverage;
-- Economic Attribution remains exact/partial/ambiguous/unresolved under an Economics-local bounded subject union; no universal entity/reconciliation graph;
-- Commercial Policy stays typed Economics configuration; no generic rules DSL.
+- AuthorizationDecision is immutable occurrence; its target is a closed union and exact reviewed target revision is preserved;
+- AuthorizationDelegation now has a justified stable opaque wire ID for update/revoke, without becoming generic Grant/IAM engine;
+- Sale and Shipment remain source-qualified external identities; `sale_line_key` is only a Sale-scoped selector/correlation key;
+- BusinessOrderIntent/InvoicingIntent remain owner-triggered read/tracking resources; native business/fiscal results remain SourceInstance-qualified;
+- PartyResolution/DestinationRealization are BusinessOrderIntent-contained singleton meanings; Party resolve never accepts arbitrary Customer master fields;
+- `FulfillmentExecution` is the justified Fulfillment-owned durable identity for admitted physical checkpoint addressing; no new domain/WMS/workflow authority;
+- physical checkpoint occurrence is distinct from physical-readiness conclusion; client cannot author effective actor/trusted-evidence claims;
+- PostSaleResolution has explicit sale/line/quantity scope and multiple simultaneous consequence tracks; no direct close/provider-action vocabulary;
+- Work origin is a Work-local closed union, responsibility role is not AccessRole, and assignment/hold/resume/escalation never become source truth;
+- Work closure-path audit passes for currently proven Product 1.0 condition classes; generic `SubmitWorkResolution` remains deferred;
+- W2-D identified the need for a typed **referenced-resource precondition** when a POST/create/capability depends on the exact revision of a different MPC resource.
 
 ## 4. Prohibited now
 
-While W2 is open:
+While W2 remains open:
 
 - do not begin D6–D9 target design or implementation;
-- do not weaken accepted D0→D5-B1/B2/W1/W2-A/B/C for schema convenience;
+- do not weaken accepted D0→D5-B1/B2/W1/W2-A/B/C/D for schema convenience;
 - do not derive schemas from legacy OpenAPI, provider DTOs, database rows or frontend forms;
 - do not introduce Product mirror/PIM, generic Result/Fact/Evidence/Operation/ExternalRef/property-bag/rules/workflow abstractions;
 - do not collapse unknown/unavailable/partial/not-applicable into null/zero/false/empty;
 - do not expose bare native IDs, raw provider payloads/errors or client-authored effective authority fields;
-- do not fabricate market completeness or profitability from incomplete evidence;
+- do not expose TOP/NUNOTA/CODPARC/provider status as canonical Product semantics;
+- do not allow generic automation to fabricate physical facts;
+- do not create direct Post-Sale/Work close or generic Work resolution;
 - do not choose D7 server/generator/blob/persistence/queue/transaction/Keycloak realization;
-- **do not run Fable yet**: W2 receives one coherent independent review after its internal sections converge unless a material contradiction requires a focused round.
+- **do not run Fable yet**: W2 receives one coherent review after W2-E + Whole-W2 coherence pass unless a material contradiction forces a focused round.
 
 ## 5. Exact next action
 
-**Derive W2-D — Governance + Marketplace Sales + Business-System Materialization + Fulfillment + Post-Sale + Operational Work schema grammar.**
+**Derive W2-E — transversal/final W2 schema consistency.**
 
-W2-D must challenge consequential operational lifecycles and decide proportionately:
+W2-E must decide once, across the W2 package:
 
-1. Authorization Decision + Delegation schemas without `approved=true`, rules-engine or execution authority;
-2. Marketplace Sale read/attribution-resolution schema without client-created Sale/provider Order mirror;
-3. BusinessOrderIntent/InvoicingIntent tracking schemas whose creation remains owner-triggered;
-4. Party Resolution candidates/resolution state + Destination Realization without Customer/Address master authority;
-5. Fulfillment state/checkpoint/Node/Artifact/Shipment schemas without generic workflow/WMS/TMS/provider DTO mirror;
-6. physical-evidence establishment schema/client constraints that cannot be forged by ordinary automation;
-7. Post-Sale Resolution scoped consequences without one cancellation/return/refund status or provider action vocabulary;
-8. Work responsibility/assignment/hold/escalation without becoming source truth or Task/Case platform;
-9. owner-specific pending/ambiguous/effect/convergence semantics without generic Operation result;
-10. negative controls proving client/provider/workflow payloads cannot bypass owner/Governance/source truth.
+1. **policy/config grammar** — deterministic default/inherited/effective + explicit override for Availability allocation, Commercial Economics policy and Fulfillment operating targets, while meaning remains owner-local and no generic Rules/SLA platform appears;
+2. **capability/business outcome grammar** — owner-local pending/rejected/ambiguous/external-effect/convergence semantics without a universal Result/Operation state;
+3. **referenced-resource precondition** — exact wire representation for create/capability operations whose correctness depends on a different MPC resource revision;
+4. **safety-axis coherence** — relationship among `ETag`/`If-Match`, `Idempotency-Key`, referenced-resource validators and semantic/provider prerequisites;
+5. **Problem Details** — exact RFC 9457 problem types/extensions required by the admitted Product contract, without duplicate global error taxonomy;
+6. **response/status/body grammar** — creation/read/PATCH/`:verb` success behavior, valid business outcomes versus transport/access/conditional failures and no ritual `202`;
+7. **request closure/authority fence** — final cross-owner negative controls against undeclared/provider/effective-authority fields;
+8. **Whole-W2 pre-review audit** — duplicates, missing schema path, inconsistent state names, hidden universal wrappers, operations that still cannot be expressed faithfully.
 
-After W2-D, complete the remaining cross-owner W2 configuration/problem/outcome consistency work. When W2 converges, prepare one non-authoritative W2 review package and run Fable through the canonical Standard Fable workflow before operator ratification/consolidation.
+After W2-E converges, run a Whole-W2 coherence pass. If no material contradiction survives, prepare one disposable non-authoritative W2 review candidate and run Fable through the canonical Standard Fable workflow. Reviewer output remains evidence; operator ratifies before canonical W2 consolidation/next wire sub-batch.
 
 Implementation remains blocked until D9.
 
@@ -177,10 +171,12 @@ A fresh session must conclude:
 
 - D0→D4/D4-R1 and D5-B1 accepted/canonical;
 - D5-B2 Operation Matrix + Whole-Matrix ratified;
-- W1 and W2-A/B/C accepted in-stage;
-- W2-C is owned by its dedicated subartifact and does not overlap W2-A/B authority;
-- **W2-D operational lifecycle schema grammar is exact next action**;
-- Fable waits until W2 coherently converges;
+- W1 and W2-A/B/C/D accepted in-stage;
+- W2-C/D are owned by their dedicated subartifacts and do not create parallel global status authority;
+- W2-D crystallized AuthorizationDelegationId and FulfillmentExecutionId only because real wire consumers now require stable identity;
+- Work closure-path audit currently passes and generic Work resolution remains deferred;
+- **W2-E transversal/final consistency is exact next action**;
+- Whole-W2 coherence then one Fable review, not before;
 - implementation remains blocked until D9.
 
 If not, the active authority tree is inconsistent.
