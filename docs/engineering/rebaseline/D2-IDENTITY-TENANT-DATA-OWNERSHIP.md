@@ -5,7 +5,8 @@
 > **Parent authorities:** `D0-PRODUCT-SYSTEM-DEFINITION.md`, `D1-DOMAINS-BOUNDARIES.md`  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
 > **Opened:** 2026-08-16  
-> **Accepted:** 2026-08-16
+> **Accepted:** 2026-08-16  
+> **Whole-W4 Principal-access-eligibility confirmation incorporated:** 2026-08-19
 
 ## 1. Purpose and boundary
 
@@ -255,11 +256,13 @@ Grant is distinct from ordinary product access permission, business disposition,
 The non-domain D2 identity/access substrate owns the canonical state/lifecycle for:
 
 - Organization identity registry (without introducing SaaS tenant provisioning as a Product 1.0 requirement);
-- Principal;
+- Principal, including **current Principal access eligibility** as Principal-scoped revocable identity/access state;
 - external OIDC identity bindings;
 - Organization Membership;
 - product-defined ordinary-access `AccessRole` / Permission definitions;
 - RoleAssignment.
+
+**Principal access eligibility confirmation.** Disabling/revoking a Principal's current Product-access eligibility blocks future Product access, including platform-scoped `/access-context`, without deleting Organization Membership/RoleAssignment or rewriting historical actor attribution. Exact lifecycle representation, storage, token/cache propagation and revocation mechanism remain later D7 realization; this confirmation creates no new Permission, AccessRole, domain or generic IAM lifecycle framework.
 
 It does **not** own Marketplace Installation/Selling Entity/Inventory Source/Fulfillment Node business lifecycles, action disposition, consequential authorization grants/decisions or marketplace business policy.
 
@@ -293,6 +296,7 @@ Principal
 ```
 
 - Membership and RoleAssignment are explicit durable/revocable MPC state.
+- Current Principal access eligibility is separately Principal-scoped; it is a global Product-access gate and does not replace Organization-specific Membership/RoleAssignment.
 - Revocation changes future access but does not rewrite historical actor attribution.
 - AccessRoles are product-defined bundles; Permissions are stable ordinary-access capabilities.
 - Organization-specific mutable ordinary-access state is Membership/RoleAssignment, not a custom role designer.
@@ -307,6 +311,7 @@ The identity/access substrate is an important **non-domain D2 authority**, not a
 
 It may answer identity/membership/role-holding questions such as:
 
+- is Principal P currently eligible for Product access?;
 - is Principal P a member of Organization O?;
 - does Principal P hold AccessRole R?;
 - which ordinary product Permissions follow from an assignment?
@@ -561,7 +566,7 @@ A valid target realization must be able to falsify/prove at least these cases:
 3. Changing email/username or IdP does not change Principal identity; one `(issuer,subject)` cannot map to two Principals.
 4. Human and system/automation actions remain distinguishable; a machine action cannot be historically attributed as though the human executed it directly.
 5. Authenticated Principal without MPC Membership/Permission is denied ordinary access.
-6. Revoking Membership/RoleAssignment/Grant changes future authority without rewriting prior Work/Authorization history.
+6. Revoking Principal access eligibility, Membership, RoleAssignment or Grant changes future authority without rewriting prior Work/Authorization history.
 7. Consumer persistence of producer refs/snapshots/projections cannot become current write authority.
 8. Unknown source fact cannot silently become confident zero/default.
 9. Monetary/rate/material-quantity canonical state cannot lose correctness through binary floating-point convenience.
@@ -572,6 +577,7 @@ A valid target realization must be able to falsify/prove at least these cases:
 14. Recurring automation cannot silently reverse a standing human decision in the same scope.
 15. Starting from an empty clean target database is sufficient; required external facts/configuration can be reacquired/recreated without legacy-table dependency.
 16. Removing an old ADR cannot remove the only active copy of a still-required invariant.
+17. Disabling Principal access eligibility blocks `/access-context` and Organization-scoped Product calls even while historical Membership/RoleAssignment remains preserved.
 
 ---
 
@@ -608,6 +614,7 @@ The review checked the complete B1+B2 target against D0/D1/stable architecture a
 1. **Material intent identity completeness.** D1 already assigns listing/price/availability/materialization intent meaning to action-owning domains. D2 now states that a durable material intent participating in authorization/external effect/convergence/history has stable domain-local identity (§5.0), preventing Governance/D3 from referencing an unnamed generic action.
 2. **Identity/access ownership completeness.** The non-domain D2 substrate now explicitly owns Organization registry, Principal/bindings, Membership, ordinary AccessRole/Permission definitions and RoleAssignment (§6.1), while business identities stay with their D1 authorities.
 3. **Role/authority vocabulary fence.** Ordinary `AccessRole`/Permission is separated from Operational Work responsibility role and from consequential authorization Grant/Decision (§5.6, §6.4), preventing one IAM concept from silently becoming work-routing or business-approval authority.
+4. **Principal access-eligibility confirmation.** Whole-W4 review confirmed that current Principal access eligibility is revocable D2 identity/access state required to stop future Product access independently from Organization Membership while preserving historical attribution (§6.1–6.4).
 
 These corrections make already-accepted authority explicit; they do not add a business domain or new product capability.
 
@@ -640,8 +647,11 @@ No current business meaning has two write authorities and no material D2 identit
 **PASS.**
 
 ```text
+Principal access eligibility
+  → global Product-access gate
+
 Principal + Membership + AccessRole/Permission
-  → ordinary access capability
+  → ordinary Organization-scoped access capability
 
 action-owning domain
   → business disposition / automation eligibility
@@ -711,6 +721,7 @@ The retained abstractions all have a concrete current consumer or protect an acc
 - Same provider resource ID in two Organizations does not cross isolation.
 - Keycloak/email changes do not rewrite Principal/history.
 - Machine automation cannot impersonate a human actor.
+- Disabled Principal cannot use `/access-context` as a bootstrap disclosure bypass.
 - AccessRole permitting an approval screen does not itself authorize the approval.
 - Price/availability/listing intent referenced by Governance has a domain-owned stable identity, not a generic Mutation row.
 - Closing Work does not close the source condition by itself.
@@ -726,7 +737,7 @@ The retained abstractions all have a concrete current consumer or protect an acc
 
 ## 17. D2 closure
 
-D2 is **CLOSED / ACCEPTED AS A WHOLE** by explicit operator ratification on 2026-08-16.
+D2 is **CLOSED / ACCEPTED AS A WHOLE** by explicit operator ratification on 2026-08-16, with the bounded Whole-W4 identity/access authority confirmation incorporated on 2026-08-19.
 
 B1+B2 are consolidated above, independently challenged, and passed the final Global Coherence + YAGNI / Overengineering / Future-Cost review. Reopen only the specific D2 decision implicated by new material evidence under §15; do not re-run the stage for preference or hypothetical future scope.
 
