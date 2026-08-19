@@ -2,9 +2,9 @@
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
 > **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 OPEN / ACTIVE**  
-> **D5-B2 current state:** **Wire W1 + W2-A/B/C/D/E ACCEPTED IN-STAGE; Whole-W2 lead review = RESTRUCTURE NOW / W2-local; operator ratified G1–G7 review direction; independent Fable Whole-W2 review = NEXT**  
+> **D5-B2 current state:** **Wire W1 + W2-A/B/C/D/E ACCEPTED IN-STAGE; Whole-W2 Fable Round 1 + GPT adjudication COMPLETE; focused Fable Round 2 on precondition grammar = NEXT**  
 > **Implementation:** **BLOCKED until D9 is accepted**  
-> **Last updated:** 2026-08-18
+> **Last updated:** 2026-08-19
 
 ## 1. Authority path
 
@@ -33,11 +33,11 @@ A fresh session reads, in order:
 21. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
 22. code/OpenAPI/schemas/tests/runtime only as current-state evidence when needed
 
-This file alone owns **program status, allowed/blocked work and exact next action**. Detailed semantics remain in the accepted artifacts above.
+This file alone owns **program status, allowed/blocked work and exact next action**. Detailed semantics remain in accepted artifacts above.
 
-`docs/engineering/rebaseline/D5-B2-W2-WHOLE-COHERENCE-REVIEW-CANDIDATE.md` and `AI-DIALOG.md` are **NON-AUTHORITATIVE review input** and deliberately excluded from the authority path. The operator ratified G1–G7 only as the lead direction to be independently challenged; that ratification does not modify W2-A/B/C/D/E by implication.
+`D5-B2-W2-WHOLE-COHERENCE-REVIEW-CANDIDATE.md` and `AI-DIALOG.md` remain **NON-AUTHORITATIVE review evidence** and are excluded from the authority path. Fable/GPT findings do not modify W2-A/B/C/D/E until final convergence + operator ratification + canonical consolidation.
 
-Older “next” wording in child artifacts or the review candidate is a stage snapshot; this router is current status authority.
+Older “next” wording in child artifacts/review files is a stage snapshot; this router is current status authority.
 
 ## 2. Program state
 
@@ -64,11 +64,13 @@ D5 — API                                                  OPEN / ACTIVE
         W2-D Governance / Sales / Materialization /
              Fulfillment / Post-Sale / Work              ACCEPTED IN-STAGE
         W2-E Transversal / final consistency             ACCEPTED IN-STAGE
-      Whole-W2 lead Global Coherence                     RESTRUCTURE NOW / COMPLETE
+      Whole-W2 lead Global Coherence                     COMPLETE / RESTRUCTURE W2-LOCAL
       operator lead-direction ratification               COMPLETE
-      independent Fable Whole-W2 review                  NEXT
-      GPT adjudication                                   AFTER FABLE
-      operator final converged ratification               AFTER ADJUDICATION
+      independent Fable Round 1                          COMPLETE / REVISE W2-LOCAL
+      GPT Round-1 adjudication                           COMPLETE
+      focused Fable Round 2 — precondition grammar      NEXT
+      GPT final adjudication                             AFTER ROUND 2
+      operator final converged ratification              AFTER ADJUDICATION
 D6 — Frontend                                             BLOCKED BY D5
 D7 — Runtime / Jobs / Transactions                        BLOCKED
 D8 — Golden Flows                                         BLOCKED
@@ -76,89 +78,99 @@ D9 — Adversarial Architecture Review                      BLOCKED
 Implementation                                            BLOCKED UNTIL D9
 ```
 
-## 3. Accepted W2 baseline still in force
+## 3. Whole-W2 Round-1 adjudication
 
-While independent review is open, W2-A/B/C/D/E remain the accepted in-stage authority. Review findings are evidence only.
+### Converged W2-local correction direction
 
-Load-bearing baseline:
+The following materially converged between lead review, independent Fable challenge and GPT adjudication:
 
-- Organization-scoped semantic Product API; opaque MPC IDs and explicit external source qualification;
-- no Product/PIM, generic Integration/Action/Operation/Workflow/Rules/Task/Finance/AI authority;
-- exact decimal Money; explicit knowledge/freshness/coverage; no universal Fact/Evidence/Result/ExternalRef/property bags;
-- ListingIntent, PriceIntent and Availability remain distinct through initial publication;
-- Readiness owns requirements/source candidates, Offering owns draft dispatchability, D4 owns provider protocol;
-- Market coverage != evidence sufficiency; Economics never fabricates profitability from missing evidence;
-- Governance authorizes but never executes; Sales remains external; BusinessOrder/Invoicing are owner reactions;
-- physical Fulfillment checkpoints remain owner facts; Post-Sale consequence tracks remain distinct; Work never owns source truth;
-- direct concurrency uses strong `ETag` + `If-Match`; referenced-resource revision uses a distinct referenced precondition; idempotency is duplicate-intake safety, not retry permission;
-- Problem Details remains separate from valid business outcomes;
-- implementation remains blocked until D9.
+1. **historical publication basis** — `GetListingIntent` must expose append-only historical dispatch/effect basis sufficient to explain exact attempt-time resolved Offering values/provenance, requirement revision, media, authorization/disposition and typed PriceIntent/Availability correlations without creating a `PublicationAttempt` Product resource or cross-owner current authority;
+2. **missing schema homes** — add bounded `MarketplaceListing`, `FulfillmentNode` and `EconomicPerformanceSummary`; `FulfillmentState` is not a second resource and maps to the single `FulfillmentExecution` wire home;
+3. **Fulfillment operating targets** — W2 must name a closed consumer-proven field inventory; if no concrete target meaning can be named from current authority/evidence, narrow/defer rather than expose a generic target/SLA map;
+4. **media capability** — authored media is ListingIntent-owned capability; use a ListingIntent-bound multipart custom method, `200` + media descriptor, same media identity on exact idempotent replay, binary content included in semantic idempotency equivalence; exact precondition transport remains Round-2 scope;
+5. **PublicationValue** — add bounded `number_unit = ExactDecimalString + requirement-scoped unit_key` and explicit `not_applicable` only when the current requirement permits N/A; no generic UoM/property bag;
+6. **draft-dependent provider requirements** — preserve Readiness requirement definition, Offering dispatchability and separate Price/Availability ownership while D4 may technically compose exact current owner inputs for provider conditional validation; result is revision-anchored evidence and may be unknown/unavailable; selected User-Product lane concrete validation surface remains D4/D8 proof;
+7. **FulfillmentExecutionId** — accepted as the one current durable Fulfillment lifecycle identity required by checkpoint/history/artifact/Work/Materialization correlation; no parallel FulfillmentIntent/Workflow ID for the same meaning and no speculative split-routing policy;
+8. **sale_line_key** — once minted within a Sale it never rebinds; reinterpretation may retire and mint a new key. Transient publication candidate/option keys remain context-bound because historical dispatch basis snapshots material meaning.
 
-## 4. Operator-ratified lead review direction — still non-authoritative
+No current item above proves a parent-stage reopen.
 
-The independent reviewer must challenge, not inherit, these seven lead findings:
+### New Round-1 material findings
 
-1. **G1 — historical publication basis:** add immutable ListingIntent dispatch/attempt basis sufficient to explain exact resolved values/provenance/requirement revision/media/PriceIntent/Availability/authorization/scope/result without a new generic Operation/PIM resource;
-2. **G2 — missing admitted schema homes:** add bounded `MarketplaceListing`, `FulfillmentNode` and `EconomicPerformanceSummary` schemas; current W2-E complete-coverage claim is otherwise false;
-3. **G3 — media precondition contradiction:** challenge the candidate correction from media collection POST + parent ETag misuse to a ListingIntent-bound multipart `:create-media` capability; binary content must participate in semantic idempotency equivalence;
-4. **G4 — publication value completeness:** challenge bounded `number_unit` + explicit `not_applicable` support without a generic UoM/property-bag system;
-5. **G5 — draft-dependent conditional requirements:** challenge a bounded D4 technical evaluation seam that may compose current ListingIntent + PriceIntent + Availability only to evaluate provider conditional requirements, while Readiness keeps requirement authority and Offering keeps dispatchability;
-6. **G6 — Fulfillment identity hardening:** challenge whether `FulfillmentExecutionId` is genuinely the one current durable Fulfillment lifecycle identity or should be removed as speculative/synthetic before OpenAPI;
-7. **G7 — scoped-key historical stability:** durable `sale_line_key` references cannot be recycled/rebound; transient publication candidate/option keys must not be the sole basis for historical explainability.
+**F-IND-1 — ProductChannelCorrespondence stale-state carrier.** Resolve/Clear correspondence require current correspondence revision, but the subject is keyed and has no canonical ID. The finding is accepted; final carrier depends on the focused precondition decision below.
 
-Lead conclusion only: **no parent-stage reopen currently proven**. G5 retains a targeted D1/D3/D4-R1 reopen trigger if real evidence shows the owner-preserving technical seam cannot express the provider conditional requirement contract.
+**F-GPT-1 — custom-method `If-Match` contradiction.** This is the only material contradiction surviving Round 1.
 
-## 5. Review-cycle rules / prohibited work
+RFC HTTP conditional semantics apply `If-Match` to the request's target resource. A resource-bound custom method URI such as:
 
-While the independent Whole-W2 review is open:
+```text
+POST /listing-intents/{id}:submit
+POST /listing-intents/{id}:create-media
+POST /work/{id}:hold
+POST /fulfillment-executions/{id}:record-conference
+```
 
-- do not mutate W2-A/B/C/D/E to incorporate G1–G7;
-- do not start collection/pagination/Permission/OpenAPI/tooling sub-batches;
+is not the same request target URI as the base resource GET that emitted `/.../{id}`'s ETag. W1/W2 therefore cannot simply reuse the base-resource ETag as an RFC `If-Match` header on `:verb` and claim standard conditional-request semantics.
+
+The current Round-2 candidate is:
+
+- reserve HTTP `If-Match` for requests whose request URI actually identifies the conditionally mutated resource (ordinary PATCH/PUT/DELETE or another genuine same-URI standard method);
+- custom owner methods carry the acted-on resource's same opaque ETag in the typed request (`etag` field; multipart `etag` part) when current state is required;
+- another referenced resource carries its ETag adjacent to that typed reference when exact revision is material;
+- the ETag value remains one server-issued validator; request-field transport is not a second version authority;
+- missing required request-field ETag → `422 validation-error`; stale request-field/referenced ETag → `409 resource-revision-conflict`; `428/412` remain reserved for actual HTTP conditional-header failures;
+- idempotency fingerprint includes all material ETag/precondition values and exact replay is resolved before a now-stale revision is rechecked;
+- custom requests may remain free of **business payload** while carrying technical freshness proof.
+
+This is a W1/W2-local wire question, not a D5-B1 or parent semantic reopen.
+
+## 4. What is prohibited now
+
+While focused Round 2 is open:
+
+- do not canonicalize any Whole-W2 review correction into W1/W2 artifacts;
+- do not reopen G1/G2/G4/G5/G6/G7 unless the precondition challenge directly falsifies them;
+- do not begin collection/pagination/Permission/OpenAPI/tooling sub-batches;
 - do not begin D6–D9 or implementation;
-- do not treat lead/Fable finding severity as requirement authority;
-- Fable must reconstruct authority independently and attack G1–G7 plus search for additional material contradictions;
-- Fable may modify **only `AI-DIALOG.md`** under the operator-authorized review scope; no other repository file may be changed by the reviewer;
-- do not reopen parents merely because the selected provider protocol is complex; first test whether the accepted D4 mechanism/authority seam is sufficient;
-- do not weaken historical explainability, source qualification, knowledge honesty, owner separation, idempotency, concurrency, client-class safety or YAGNI for API convenience.
+- do not treat Fable/GPT review evidence as authority;
+- do not use a colon custom-method URI as an implicit alias of the base resource merely to make `If-Match` fit;
+- do not convert consequential owner capabilities into fake PATCH/status CRUD merely to reuse conditional headers;
+- do not create a synthetic Correspondence ID merely to obtain concurrency;
+- do not weaken idempotency-before-stale-replay or no-blind-external-retry safety.
 
-## 6. Exact next action
+## 5. Exact next action
 
-**Run one coherent independent Fable D5-B2 Whole-W2 Global Coherence review.**
+**Run one focused Fable Round 2 on F-GPT-1 + F-IND-1, using media as the concrete adversarial example.**
 
-Review inputs:
+Fable must challenge:
 
-- current authority path above;
-- accepted W2-A/B/C/D/E;
-- `D5-B2-W2-WHOLE-COHERENCE-REVIEW-CANDIDATE.md` only as bounded non-authoritative lead evidence;
-- active `AI-DIALOG.md` review cycle.
+1. whether RFC `If-Match` on `/resource/{id}:verb` can legitimately validate the ETag from `GET /resource/{id}` without inventing alias resource semantics;
+2. request `etag` field/part versus custom header versus redesign of individual capabilities as honest standard methods;
+3. every admitted current-state-protected C operation, classifying its precondition carrier as:
+   - same-resource standard method → HTTP `If-Match`;
+   - owner custom method → request ETag candidate;
+   - create/capability depending on another resource → typed referenced ETag;
+   - keyed meaning such as ProductChannelCorrespondence → honest keyed standard update or custom method + request ETag;
+4. idempotency/lost-response ordering under the revised carrier model;
+5. whether `428/412` versus `422/409` is the smallest honest problem grammar.
 
-Fable must:
+Fable may modify **only `AI-DIALOG.md`**, commit + push to the same branch and end `HANDOFF → GPT`.
 
-1. revalidate branch HEAD;
-2. reconstruct repository authority independently from `AGENTS.md` + this router;
-3. follow the canonical Standard Fable review workflow;
-4. attack every G1–G7 finding and seek additional material contradictions;
-5. use current primary external standards/provider evidence only when material;
-6. return material findings only in `AI-DIALOG.md`;
-7. modify no other file;
-8. commit + push the `AI-DIALOG.md` review to the same branch;
-9. end `HANDOFF → GPT`.
-
-After Fable finishes, GPT revalidates HEAD, adjudicates every material finding against authority/evidence, and requests a focused Round 2 only if a real material contradiction survives. No canonical W2 correction lands before final convergence + operator ratification.
+No parent reopen unless focused proof actually requires one.
 
 Implementation remains blocked until D9.
 
-## 7. Fresh-session success test
+## 6. Fresh-session success test
 
 A fresh session must conclude:
 
 - D0→D4/D4-R1 + D5-B1 accepted/canonical;
 - D5-B2 Operation Matrix + Whole-Matrix ratified;
-- W1 + W2-A/B/C/D/E accepted in-stage;
-- Whole-W2 lead review is non-authoritative evidence with G1–G7 direction operator-ratified only for independent challenge;
-- `AI-DIALOG.md` has an active Whole-W2 Fable review cycle;
-- **independent Fable Whole-W2 review is the exact next action**;
-- canonical W2 artifacts remain unchanged until review adjudication + final operator ratification;
+- W1 + W2-A/B/C/D/E remain accepted in-stage authority;
+- Whole-W2 lead review and Fable Round 1 are non-authoritative evidence;
+- GPT Round-1 adjudication converged G1/G2/G4/G5/G6/G7, accepted F-IND-1 as a real gap and found F-GPT-1 as the only surviving material contradiction;
+- **focused Fable Round 2 on precondition grammar is the exact next action**;
+- no canonical W2 corrections land until Round-2 convergence + operator final ratification;
 - implementation remains blocked until D9.
 
 If not, the active authority tree is inconsistent.
