@@ -2,7 +2,7 @@
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
 > **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 OPEN / ACTIVE**  
-> **D5-B2 current state:** **W1 + W2 + W3 + W4 + Technical Ingress ACCEPTED / CANONICAL; final Problem/media consistency = NEXT**  
+> **D5-B2 current state:** **W1 + W2 + W3 + W4 + Technical Ingress ACCEPTED / CANONICAL; Final Problem/media lead review COMPLETE; independent Fable review = NEXT**  
 > **Implementation:** **BLOCKED until D9 is accepted**  
 > **Last updated:** 2026-08-19
 
@@ -35,9 +35,11 @@ A fresh session reads, in order:
 
 This file alone owns **program status, allowed/blocked work and exact next action**. Detailed semantics remain in accepted artifacts.
 
-`AI-DIALOG.md` is a protocol-only, non-authoritative review channel. Completed Technical Ingress review evidence and the removed Whole-Ingress candidate remain available only in Git history.
+`D5-B2-FINAL-PROBLEM-MEDIA-CONSISTENCY-REVIEW-CANDIDATE.md` and the current `AI-DIALOG.md` cycle are **NON-AUTHORITATIVE review evidence**. Their findings do not amend canonical W1/W2/W3/W4/Technical Ingress until final adjudication, explicit operator ratification and filing.
 
-`docs/engineering/rebaseline/cockpit.html` is a non-authoritative visual projection and is synchronized only after canonical status changes.
+`docs/engineering/standards/evidence-grounded-production-engineering-for-llm-agents.md` is a derived portable production-research guide. It is not part of this architecture authority path and does not redefine the organizational Method.
+
+`docs/engineering/rebaseline/cockpit.html` is a non-authoritative visual projection. It is synchronized after canonical architecture/status closure, not used to drive the active review.
 
 ---
 
@@ -69,7 +71,11 @@ D5 — API                                                  OPEN / ACTIVE
         GPT final adjudication                           CONVERGED
         Round 2                                           NOT REQUIRED
         operator final Whole-Ingress ratification        COMPLETE / FILED
-      Final Problem/media consistency                    NEXT
+      Final Problem/media consistency                    OPEN / ACTIVE
+        lead coherent review                             COMPLETE / RESTRUCTURE D5-B2-LOCAL
+        independent Fable review                         NEXT
+        GPT adjudication                                 BLOCKED BY REVIEW
+        operator final ratification                      BLOCKED BY ADJUDICATION
       Single OpenAPI wire authority/tooling decision     BLOCKED BY SEQUENCE
 D6 — Frontend                                             BLOCKED BY D5
 D7 — Runtime / Jobs / Transactions                        BLOCKED
@@ -84,95 +90,122 @@ Implementation                                            BLOCKED UNTIL D9
 
 The operator's final Whole-Ingress ratification was materialized on 2026-08-19.
 
-The single canonical authority is now `D5-B2-TECHNICAL-INGRESS.md`. It incorporates the converged TI-C1…TI-C13 package and preserves these dispositions:
+The single canonical authority is `D5-B2-TECHNICAL-INGRESS.md`. It incorporates TI-C1…TI-C13 and preserves:
 
-- provider-specific transport feeds one MPC-native, recoverable, typed marketplace-acquisition seam;
-- the seven Product 1.0 acquisition families remain Listing, Price, Sale, Shipment, Payment, Post-Sale Claim and Competitive Position;
-- acquisition families arise from distinct authoritative read/coverage contracts plus consumer-owned claims, never provider topic symmetry;
-- provider signal is neither D3 domain event nor current provider truth;
-- Product 1.0 inbound acquisition is MarketplaceInstallation-scoped; no SourceInstance callback seam is fabricated for Sankhya;
-- quarantine is bounded pre-attribution platform state, not feature backlog, attacker payload storage or D3 Organization communication;
-- positive acknowledgement requires attributed recoverable custody, bounded quarantine disposition or explicit terminal non-processing; it never means business success;
-- per-family recovery/completeness remains explicit, including the unproven cancellation-inclusive `orders_v2` recovery universe and Unknown Claim-action occurrence completeness;
-- deactivation preserves retained namespace attribution and permits same-seller technical credential restoration for evidence recovery without business reactivation;
-- OAuth begin uses current authenticated human + Principal eligibility + Membership + `portfolio.manage` + exact Installation but creates no Product operation;
-- current Mercado Livre authorization uses transaction-bound anti-injection protection with PKCE where supported, administrator authorization and selling-account namespace proof;
-- credential activation is generation-safe; current Mercado Livre refresh is single-use/consuming and therefore serialized per active generation by correctness, with D7 choosing mechanism;
-- non-secret authorization/binding lineage is historical security explanation only; current Installation/D4 binding remains the sole current namespace authority;
-- technical routes remain outside Product roots/OpenAPI/SDK; exact host/prefix is deferred, but collision with `/access-context` or `/organizations/{organization_id}/...` is forbidden;
-- no generic Integration, Webhook, ExternalEvent, OAuth or provider-resource business authority was introduced;
-- no D0→W4/D3/D4 semantic parent reopen occurred.
+- provider-specific transport → one MarketplaceInstallation-scoped recoverable acquisition seam → seven closed families → authoritative D4 acquisition → owner meaning;
+- no generic Integration/Webhook/ExternalEvent/OAuth/provider-resource business authority;
+- bounded pre-attribution quarantine and explicit acknowledgement bases;
+- honest per-family coverage and the unproven Sales-cancellation / Claim-action residuals;
+- same-seller evidence-recovery credential restoration without business reactivation;
+- transaction-bound OAuth protection, selling-account/admin proof, generation-safe activation and serialized consuming refresh;
+- Product OpenAPI/SDK/operation separation;
+- 95 Product operations / 29 Permissions unchanged;
+- no D0→W4/D3/D4 semantic parent reopen.
 
-The Whole-Ingress review candidate was removed from the active tree; Git history is the archive. `AI-DIALOG.md` was reset to protocol-only. W1, the Operation Matrix and W4 received routing/cross-reference corrections only; Product operation and Permission semantics remain unchanged at **95 operations / 29 Permissions**.
+Whole-Ingress review evidence remains only in Git history; its former candidate is absent from the active tree.
 
 ---
 
-## 4. Allowed now
+## 4. Final Problem/media lead-review state — evidence only
 
-Only the router's exact next action is open:
+The coherent lead review is recorded in:
 
-> **Perform final Problem/media consistency across the canonical D5-B2 package.**
+`D5-B2-FINAL-PROBLEM-MEDIA-CONSISTENCY-REVIEW-CANDIDATE.md`
 
-The review must derive from the accepted authorities, not legacy OpenAPI/routes/controllers, and must close only D5-B2-local inconsistencies involving:
+It is non-authoritative and proposes PM-C1…PM-C8 for independent challenge:
 
-1. W2 Product Problem Details versus technical provider/OAuth protocol-local failures;
-2. ListingIntent-scoped authored-media intake, Product representations and D7-deferred blob/storage/delivery mechanics;
-3. W1/W2/W3/W4/Technical Ingress cross-references and terminology;
-4. the absence of provider callback/webhook/OAuth operations or errors from the Product OpenAPI/SDK surface;
-5. any remaining duplicate meaning, hidden second authority or contradictory wire claim.
+1. **standard status-only failures** use RFC 9457 `about:blank` instead of multiplying custom MPC problem types;
+2. **one explicit media negative map** distinguishes malformed multipart, 413, 415, validation, revision, idempotency and internal failure without leaking storage/scanner/provider vocabulary;
+3. **Problem `type` remains the sole global Product discriminator**; no duplicate global `code` taxonomy;
+4. **Product versus technical-protocol error registries remain separate**, even where both reuse a standard representation format;
+5. **ListingIntent authored-media identity is immutable and scoped**; selection removal is not deletion; no generic media CRUD;
+6. **binary delivery/access is mechanism, not identity**; a bounded descriptor access seam may support authorized inspection without admitting a standalone Product media GET;
+7. **source media and authored media remain distinct bounded descriptor families**; no generic Media/Asset authority;
+8. **stale active sequencing text is removed at final filing** so only this router owns current next action.
 
-Use Global Maximum reasoning without widening scope. Reopen a parent only with material evidence and only the smallest implicated scope.
+Lead disposition:
 
-After operator ratification and canonical filing of final Problem/media consistency, the router may advance to the **single OpenAPI wire authority/tooling decision**.
+```text
+current semantic structure                     CONFIRMED
+Problem/media consistency                      RESTRUCTURE NOW — D5-B2 LOCAL
+Product operations                             95 unchanged
+ordinary Permissions                           29 unchanged
+parent semantic reopen                         NONE
+independent review                             WARRANTED
+```
+
+Canonical W1/W2/W3/W4/Technical Ingress remain unchanged until the complete review cycle closes.
 
 ---
 
-## 5. Prohibited now
+## 5. Allowed now
 
-- do not reopen D0→D4, D4-R1, D5-B1, the Operation Matrix or W1→W4 for naming/style/current implementation preference;
-- do not create generic Integration/Ingress/Webhook/ExternalEvent/OAuth/provider-resource authority;
-- do not add Product Sync/Refresh/OAuth/Webhook operations or provider protocol errors to the Product API;
-- do not place technical ingress in the Product OpenAPI/SDK;
-- do not fabricate SourceInstance/Sankhya callback capability;
-- do not claim cancellation-inclusive Sales recovery or Claim-action occurrence completeness before D8 proof;
-- do not choose D7 queue/storage/worker/secret/transaction/lock/CAS/refresh-serialization realization;
+Only the exact independent-review action is open:
+
+> **Fable performs one coherent independent adversarial review of the complete Final Problem/media candidate and appends findings only to `AI-DIALOG.md`.**
+
+The reviewer must independently reconstruct authority and challenge at least:
+
+- `about:blank` versus custom Product problem types;
+- the complete 400/413/415/422/409/500 media map;
+- `type` versus duplicate `code`;
+- Product Problem versus technical provider/OAuth vocabulary;
+- media identity, idempotency, revision, selection/history/deletion;
+- binary inspectability/access without hidden Product media GET or storage identity leakage;
+- untrusted-binary security properties without selecting D7 realization;
+- source versus authored media separation;
+- stale status/routing cleanup;
+- operation/Permission counts and parent reopen.
+
+The review scope and write authorization are recorded in `AI-DIALOG.md`.
+
+After Fable returns:
+
+1. GPT adjudicates every material finding against repository authority;
+2. Round 2 occurs only if a material contradiction survives;
+3. the operator explicitly ratifies the converged package;
+4. only then are canonical artifacts amended substitutively, review evidence removed/reset and cockpit synchronized;
+5. router advances to the single OpenAPI wire authority/tooling decision.
+
+---
+
+## 6. Prohibited now
+
+- do not amend W1/W2/W3/W4/Technical Ingress from the lead candidate before review/adjudication/ratification;
+- do not treat the candidate or reviewer severity as authority;
+- do not add a 96th Product operation, 30th Permission, standalone Product media GET/Delete/Update or generic media library;
+- do not add provider/OAuth callback operations or errors to Product OpenAPI/SDK;
+- do not create a global Product `code` parallel to RFC 9457 `type` by tooling convention;
+- do not leak object-store, CDN, scanner, transformer or provider vocabulary/details into Product Problems;
+- do not choose blob store, CDN, signed-URL, scanner, image processing, retention, transaction or deployment realization;
+- do not reopen D0→D4, D4-R1 or D5-B1 without material evidence;
 - do not begin Product OpenAPI/tooling, D6–D9 or implementation out of sequence;
-- do not restore removed candidates, completed review dialogue or cockpit text as parallel authority.
+- do not synchronize cockpit from a non-ratified review candidate.
 
 Implementation remains blocked until D9.
 
 ---
 
-## 6. Exact next action
+## 7. Exact next action
 
-**Final Problem/media consistency.**
+**Independent Fable Final Problem/media review in `AI-DIALOG.md`.**
 
-Expected completion sequence:
-
-1. produce one coherent D5-B2-local consistency review;
-2. use independent review only if material contradiction warrants it under the repository method;
-3. adjudicate evidence against repository authority;
-4. obtain explicit operator ratification of the converged package;
-5. consolidate into the existing canonical authority homes and remove staging evidence from the active tree;
-6. synchronize this router and the non-authoritative cockpit;
-7. advance to the single OpenAPI wire authority/tooling decision.
+No operator ratification is requested until GPT has adjudicated the independent evidence.
 
 Implementation remains blocked until D9.
 
 ---
 
-## 7. Fresh-session success test
+## 8. Fresh-session success test
 
 A fresh session must conclude:
 
-- W1/W2/W3/W4 are canonical;
-- Technical Ingress A+B and Whole-Ingress are accepted/canonical;
-- the lead review, Fable independent review and GPT adjudication are complete; Round 2 was not required;
-- operator final Whole-Ingress ratification is complete and canonically filed;
-- the review candidate is absent from the active tree and `AI-DIALOG.md` is protocol-only;
-- the Product surface remains 95 operations / 29 Permissions;
-- no D0→W4/D3/D4 semantic reopen occurred;
-- **final Problem/media consistency is the exact next action**;
+- W1/W2/W3/W4 and Technical Ingress remain accepted/canonical and unchanged by the candidate;
+- Product surface remains 95 operations / 29 Permissions;
+- Final Problem/media lead review is complete with PM-C1…PM-C8 as non-authoritative evidence;
+- independent Fable review is the exact next action;
+- AI-DIALOG contains the active bounded review handoff;
+- no semantic parent reopen is currently proven;
 - Product OpenAPI/tooling, D6–D9 and implementation remain blocked.
 
 If not, the active authority tree is inconsistent.
