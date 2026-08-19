@@ -1,398 +1,397 @@
-# D5-B2 — Final Problem / Media Consistency Lead Review Candidate
+# D5-B2 — Final Problem / Media Consistency Consolidated Review Candidate
 
-> **Status:** NON-AUTHORITATIVE LEAD REVIEW EVIDENCE — NOT CANONICAL  
+> **Status:** NON-AUTHORITATIVE CONSOLIDATED REVIEW EVIDENCE — OPERATOR RATIFICATION NEXT  
 > **Parent stage:** D5-B2 Product Operation / Resource Surface  
 > **Canonical inputs:** accepted D0→D4 + D4-R1 + D5-B1 + Operation Admission Matrix + W1 + W2 + W3 + W4 + Technical Ingress  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
-> **Reviewed:** 2026-08-19  
-> **Lead outcome:** `RESTRUCTURE NOW — D5-B2-LOCAL PROBLEM/MEDIA CONSISTENCY`  
-> **Independent review:** materially warranted before operator ratification
+> **Lead review:** complete  
+> **Independent Fable review:** complete  
+> **GPT adjudication:** converged  
+> **Round 2:** not required  
+> **Consolidated:** 2026-08-19
 
 ## 1. Purpose and authority fence
 
-This candidate performs the router-mandated final D5-B2 consistency pass over:
+This candidate consolidates the final D5-B2 consistency review over:
 
 1. W2 Product Problem Details versus provider/OAuth protocol-local failures;
-2. ListingIntent-scoped authored-media intake, representations and D7-deferred storage/delivery;
+2. ListingIntent-scoped authored-media intake, representation, identity, revision and presentation access;
 3. W1/W2/W3/W4/Technical Ingress terminology and routing;
-4. Product OpenAPI/SDK exclusion of technical ingress;
+4. Product OpenAPI/SDK exclusion of technical ingress and media-delivery mechanics;
 5. duplicate meaning, hidden authority and contradictory wire claims.
 
-It does not amend any canonical artifact. Reviewer output remains evidence until GPT adjudication, explicit operator ratification and canonical filing.
+It is review evidence only. It amends no canonical artifact until the operator explicitly ratifies this converged package and the repository performs substitutive canonical filing.
 
 This review does not choose:
 
 - OpenAPI minor, generator, server library or SDK technology;
-- blob/object store, CDN, signed-URL, proxy, scanner, image transformer or retention implementation;
+- blob/object store, CDN, image transformer, scanner or persistence topology;
 - D6 screen/component topology;
-- D7 transaction, storage, queue, process, secret or deployment topology;
-- new Product operations, Permissions or media-business authority.
+- D7 transaction, queue, process, secret or deployment topology;
+- a new Product operation, Permission, Principal class or media-business authority.
 
 Implementation remains blocked until D9.
 
 ---
 
-## 2. Evidence basis
+## 2. Evidence and method outcome
 
 ### 2.1 Repository authority
 
-- `D4-R1-PUBLICATION-INPUT.md` admits source-qualified media and ListingIntent-scoped MPC-authored media while rejecting ProductAsset/media-master authority.
-- `D5-B2-OPERATION-ADMISSION-MATRIX.md` admits `CreateListingIntentMedia` only inside an exact mutable ListingIntent and rejects generic media-library CRUD.
-- W1 selects `POST .../listing-intents/{id}:create-media` and typed multipart revision proof.
-- W2 selects one binary multipart part + typed `etag`, `200` with a ListingIntent-scoped descriptor, client idempotency, no arbitrary URL and no standalone Product media resource by default.
-- W2 makes RFC 9457 `type` the primary Product problem identifier and rejects a duplicate global `code` taxonomy by default.
-- Technical Ingress keeps provider callback/notification/OAuth failure vocabulary outside the Product Problem catalog, Product OpenAPI and Product SDK.
-- W4 maps 95 Product operations / 29 Permissions; technical OAuth begin is not a 96th operation and `CreateListingIntentMedia` remains the only admitted media mutation.
+- D4-R1 admits source-qualified media and ListingIntent-scoped MPC-authored media while rejecting ProductAsset/media-master authority.
+- The Operation Admission Matrix admits `CreateListingIntentMedia` only inside an exact mutable ListingIntent and rejects generic media-library CRUD.
+- W1 selects `POST .../listing-intents/{id}:create-media`, typed multipart revision proof and one opaque owner validator authority.
+- W2 selects one binary multipart part + typed `etag`, client idempotency, no arbitrary URL, no standalone Product media resource and authored-media descriptors inside the ListingIntent representation.
+- W2 makes RFC 9457 `type` the primary Product problem identifier and rejects a duplicate global `code` taxonomy.
+- W4 maps 95 Product operations / 29 Permissions; the media capability is `listing.manage`, and `GetListingIntent` is `offering.read`.
+- Technical Ingress keeps provider callback/notification/OAuth vocabulary outside Product OpenAPI, SDK and Product Problem authority.
+- D5-B1 requires every externally reachable route to be classified as Product API, provider/business-system protocol ingress or a separately justified technical surface.
 
-### 2.2 Normative external evidence
+### 2.2 Normative evidence
 
-- RFC 9110 defines HTTP method and status semantics, including ordinary transport/representation failures such as 405, 413 and 415.
-- RFC 9457 defines Problem Details, makes `type` the primary problem identifier and defines `about:blank` for failures that carry no application-specific semantics beyond the HTTP status.
+- RFC 9110 defines standard HTTP status and header semantics, including `405 + Allow`, `409`, `413` and `415`.
+- RFC 9457 makes `type` the primary problem identifier and defines `about:blank` for a problem with no additional semantics beyond the HTTP status.
 
-Normative references:
-
-- https://www.rfc-editor.org/rfc/rfc9110.html
-- https://www.rfc-editor.org/rfc/rfc9457.html
-
-No current implementation or legacy OpenAPI shape is used as target authority.
-
----
-
-## 3. Method result
-
-The canonical package is structurally sound:
-
-- Product problems and valid business outcomes remain separated;
-- technical provider/OAuth failures remain protocol-local;
-- authored media remains ListingIntent-scoped;
-- source media and authored media do not collapse;
-- idempotency and revision proof remain independent;
-- no generic Media/Asset, Integration or provider error authority exists.
-
-However, final consistency is not yet complete. Three classes remain reachable:
-
-1. **standard HTTP failures lack an explicit disposition** between W2's small custom problem catalog and D5-B1's broader API-failure classes;
-2. **media identity, selection lifecycle and binary access are not separated explicitly enough**, allowing either hidden ProductAsset CRUD or an unusable descriptor-only realization;
-3. **active canonical artifacts retain superseded sequencing text**, which is non-semantic but can misroute a fresh agent despite the router being sole status authority.
-
-The corrections below are D5-B2-local. No semantic parent reopen is proven.
-
----
-
-# 4. Converged lead corrections proposed for independent challenge
-
-## PM-C1 — Standard HTTP failure grammar uses `about:blank`; custom Product types remain small
-
-### Finding
-
-W2 correctly defines a small stable MPC Product problem catalog, but it does not explicitly classify ordinary HTTP failures whose entire semantics are already expressed by their status code. D5-B1 includes unsupported HTTP/operation-contract failures, and the admitted multipart operation necessarily exposes content-size and content-type failure classes.
-
-Adding one custom MPC problem type for every standard HTTP status would create duplicate protocol vocabulary. Reusing `malformed-request` or `validation-error` for a wrong request media type or transport-level size rejection would misstate the failure.
-
-### Corrected invariant
+### 2.3 Consolidated disposition
 
 ```text
-When a Product API failure has stable MPC-specific semantics,
-use the canonical W2 custom problem type.
-
-When the failure has no additional Product semantics beyond
-the standard HTTP status, return RFC 9457 Problem Details with:
-
-  type = about:blank
-  status = the applicable standard status
-  title = the standard status phrase
-
-and do not create another MPC code/type by symmetry.
+current D5-B2 semantic structure                 CONFIRMED
+Problem/media final consistency                  RESTRUCTURE NOW — D5-B2 LOCAL
+Fable material findings                          ADJUDICATED
+Round 2                                           NOT REQUIRED
+Product operations                               95 unchanged
+ordinary Permissions                             29 unchanged
+parent semantic reopen                           NONE
+operator final ratification                      NEXT
+implementation                                   BLOCKED UNTIL D9
 ```
 
-Current examples include proportionately:
-
-- `405 Method Not Allowed`;
-- `413 Content Too Large`;
-- `415 Unsupported Media Type`.
-
-A later standard failure receives a custom Product type only if a real programmatic consumer needs stable MPC semantics beyond the status.
-
-### Global Maximum
-
-This uses the standard's own extension boundary, preserves W2's small catalog and avoids a second `code` taxonomy. It is smaller and more interoperable than creating `method-not-allowed`, `request-too-large` and `unsupported-media-type` MPC type families.
+The independent review found material defects in the lead candidate, especially an idempotency transcription conflict and an unclassified authority boundary for media-byte delivery. Both are resolved below without reopening semantic parents or adding a Product operation.
 
 ---
 
-## PM-C2 — `CreateListingIntentMedia` gets one exact failure map
+# 3. Consolidated corrections
 
-### Finding
+## PM-C1 — Standard status-only failures use `about:blank` without waiving HTTP obligations
 
-The positive media contract is coherent, but without an explicit negative map, different realizations can classify the same failure as 400, 413, 415, 422, 409 or 500 and leak object-storage/scanner/provider vocabulary into the Product API.
+When a Product API failure has stable MPC-specific semantics, use the canonical W2 custom problem type.
 
-### Corrected invariant
+When the failure has no additional Product semantics beyond the standard HTTP status, use RFC 9457 Problem Details with:
+
+```text
+type   = about:blank
+status = applicable standard status
+title  = recommended status phrase
+```
+
+Do not mint an MPC problem type merely to repeat standard HTTP meaning.
+
+`about:blank` governs only the Problem Details body. It never waives status-specific HTTP obligations:
+
+- `405 Method Not Allowed` includes the current `Allow` header value required by RFC 9110;
+- `415 Unsupported Media Type` may include an honest `Accept` or `Accept-Encoding` value when the supported request representation/coding can be expressed without inventing part-level semantics;
+- `413 Content Too Large` includes `Retry-After` only when the refusal is genuinely temporary; a standing Product size bound normally does not.
+
+Clients branch on the HTTP status when `type = about:blank`.
+
+---
+
+## PM-C2 — Exact `CreateListingIntentMedia` failure grammar
+
+### 3.2.1 Transport and representation failures
 
 | Failure | Product HTTP disposition |
 |---|---|
-| Request cannot be parsed as a valid multipart representation | `400 malformed-request` |
-| Request representation is not the selected multipart media type | `415` + RFC 9457 `about:blank` |
-| Request exceeds the enforced whole-request/file size bound | `413` + RFC 9457 `about:blank` |
-| Required binary part or typed `etag` missing/duplicated/invalid; semantic metadata invalid; declared and inspected content materially contradict | `422 validation-error` with bounded part/field diagnostics |
-| ListingIntent revision proof is stale | `409 resource-revision-conflict` |
-| Required idempotency key absent | existing `400 idempotency-key-required` |
-| Same key reused with different binary identity, metadata or revision proof | existing `409 idempotency-key-reused` |
-| Equivalent first intake still in progress | existing `409 idempotency-in-progress` |
-| Unexpected internal storage/scanning/transformation/runtime failure before a successful Product result can be established | `500 internal-error` with no backend/provider details |
+| Request cannot be parsed as a multipart representation | `400 malformed-request` |
+| Top-level request representation is not the selected multipart media type | `415` + RFC 9457 `about:blank` |
+| Binary file format is unsupported, undecodable or materially contradicts its declared content type after inspection | `415` + RFC 9457 `about:blank` |
+| Request/file exceeds the enforced bound | `413` + RFC 9457 `about:blank` |
 
-Rules:
+The selected operation contains exactly one binary file part. Therefore an unsupported file representation remains a `415` representation-format failure rather than being relabeled as semantic validation merely to obtain a part pointer. Exact accepted media families and size bounds must be explicit before implementation; their values and enforcement mechanism remain later realization.
 
-- deterministic accepted-media constraints are contract validation, not provider/storage errors;
-- exact accepted content families and size bounds must be explicit before implementation, but their numerical/provider realization is not selected here;
-- no `blob-upload-failed`, `virus-scanner-error`, `cdn-error`, `provider-image-error` or similar Product problem taxonomy is admitted;
-- raw binary, storage key, signed locator, scanner result, provider payload, secret and PII never enter Problem Details.
+### 3.2.2 Contract, revision, idempotency and lifecycle failures
+
+| Failure | Product HTTP disposition |
+|---|---|
+| Required binary part or typed `etag` missing, duplicated or contract-invalid; semantic metadata invalid | `422 validation-error` with bounded field/part diagnostics |
+| Supplied ListingIntent validator is stale | `409 resource-revision-conflict` |
+| Current ListingIntent state does not admit media creation, after operation-specific exact-repeat handling | `409 resource-state-conflict` |
+| Required `Idempotency-Key` absent/invalid | `400 idempotency-key-required` |
+| Same key reused with materially different bytes, metadata, target or revision proof | canonical `422 idempotency-key-reused` |
+| Equivalent prior intake still processing | canonical `409 idempotency-request-in-progress` |
+| Unexpected internal storage/scanning/transformation/runtime failure before a successful Product result is established | `500 internal-error` |
+
+`400 idempotency-key-required` is a new explicit status assignment in this consistency package, not a pre-existing W2 mapping. Its basis is that the required intake header is absent before semantic fingerprint/revision evaluation. The already-ratified `422 idempotency-key-reused` and exact type name `idempotency-request-in-progress` remain unchanged.
+
+### 3.2.3 `resource-state-conflict`
+
+Add one bounded Product Problem family:
+
+```text
+resource-state-conflict → HTTP 409
+```
+
+It means the server evaluated current authoritative resource state and that state does not admit the requested capability. It is distinct from:
+
+```text
+resource-revision-conflict → the supplied typed validator is stale
+resource-state-conflict    → the supplied/current view may be current, but the capability is no longer admissible
+```
+
+Apply it only after any operation-specific exact-repeat or structural-idempotency rule has resolved a harmless repeat. This closes the already-admitted custom-capability population without introducing one state-specific type per owner.
+
+### 3.2.4 Transport-guard ordering
+
+A transport-level refusal for wrong representation or excess size:
+
+- may occur before Product authentication;
+- must be enforceable without full-body buffering merely to discover the violation;
+- uses `about:blank` and discloses no Product resource existence, Organization, Membership, Permission or business state.
+
+W2's idempotency processing order governs semantic evaluation after transport admission; it does not require an unbounded request body to pass authentication first.
+
+### 3.2.5 Leakage fence
+
+Do not add Product problem types such as:
+
+```text
+blob-upload-failed
+virus-scanner-error
+cdn-error
+provider-image-error
+```
+
+Raw binary, storage key, access locator, scanner result, provider payload, secret, stack detail and arbitrary PII never enter Product Problem Details.
 
 ---
 
-## PM-C3 — `type` remains the sole global Product problem discriminator
+## PM-C3 — `type` is the sole global Product problem discriminator
 
-### Finding
+- Product clients branch on custom problem `type`, or on HTTP `status` when `type = about:blank`.
+- There is no global Product `code` duplicating `type`.
+- A bounded problem-specific extension exists only for additional structured data genuinely required by that problem, such as validation locations or a stale-validator pointer.
+- `title` and `detail` are human-facing and never stable programmatic identifiers.
 
-D5-B1 permits a stable machine-readable MPC extension where a real consumer needs one; W2 later correctly selected the RFC 9457 `type` URI as the primary identifier and rejected a duplicate top-level `code` taxonomy by default. The two statements are compatible but should be closed explicitly so OpenAPI/tooling cannot introduce both by habit.
-
-### Corrected invariant
-
-- Product clients branch on custom problem `type`, or on HTTP `status` when `type = about:blank`;
-- there is no global Product `code` duplicate of `type`;
-- a bounded problem-specific extension is admitted only for additional structured data that the problem contract actually requires, such as validation issues or idempotency timing;
-- human-readable `title`/`detail` are never stable programmatic identifiers.
-
-No D5-B1 reopen is required; this is the already-accepted W2 crystallization.
+No D5-B1 reopen is required; this is the accepted W2 crystallization.
 
 ---
 
-## PM-C4 — Product Problem format and technical protocol vocabulary stay separate
-
-### Finding
-
-Technical Ingress already excludes provider/OAuth failures from W2, but “protocol-local” could be misread as either forbidding standards reuse or authorizing reuse of Product problem types.
-
-### Corrected invariant
+## PM-C4 — Product and technical-protocol problem registries stay separate
 
 ```text
 Product route
 → Product OpenAPI + W2 Product Problem contract
 
-technical provider/OAuth route
-→ provider/protocol-local executable contract
+provider/OAuth technical route
+→ protocol-local executable contract
 → never W2 Product type authority
 → never Product SDK operation/error surface
 ```
 
-A technical route may reuse a standard representation format such as Problem Details when useful, but format reuse does not merge type registries, Product operation identity, SDK exposure or business outcome semantics.
+A technical route may reuse `application/problem+json` as a representation format. Format reuse does not merge type registries, operation identity, SDK exposure or business meaning.
 
-Examples such as `oauth-state-expired`, `provider-code-invalid`, `seller-mismatch` and `provider-origin-invalid` remain forbidden from the Product catalog.
+Technical-protocol problem types must use a namespace disjoint from the Product problem-type namespace. Examples such as `oauth-state-expired`, `provider-code-invalid`, `seller-mismatch` and `provider-origin-invalid` remain forbidden from the Product catalog.
 
-Product UI learns durable current posture only through accepted Product reads such as `GetMarketplaceInstallation`, not by treating a callback redirect/error as Product state.
+Product UI learns durable current posture through accepted Product reads, not callback navigation/error vocabulary.
 
 ---
 
-## PM-C5 — ListingIntent authored-media identity is immutable and selection is not deletion
-
-### Finding
-
-W2 establishes `listing_intent_media_id` but does not state the complete lifecycle fence. Without it, an implementation could replace bytes under one ID, delete media merely because it is no longer selected, or invent generic media CRUD/retention authority.
-
-### Corrected invariant
+## PM-C5 — Authored-media identity, revision and retention fence
 
 For one ListingIntent:
 
 ```text
 accepted authored binary + admitted metadata
 → one stable listing_intent_media_id
-
-that ID never rebinds to different bytes/meaning
 ```
 
-- the ID is scoped to exactly one ListingIntent and cannot be referenced by another;
-- the media descriptor is immutable as to the accepted binary identity; a materially different upload creates another ID through the existing create capability;
-- current media selection/order/role is ListingIntent desired-state meaning and may change through the existing draft update;
-- removing an authored media ID from current selection **does not itself delete** the accepted binary or historical reference;
-- submission/publication-attempt snapshots preserve the media references/provenance required for explanation;
-- no Product `DeleteMedia`, `UpdateMedia`, media collection or ProductAsset CRUD is admitted;
-- D7 may garbage-collect only content that is not current, not historically required and whose retention/privacy obligations permit removal.
+- the ID belongs to exactly one ListingIntent and cannot be referenced from another;
+- it never rebinds to different bytes or material meaning;
+- a materially different upload creates another ID through the existing capability;
+- current selection/order/role is ListingIntent desired-state meaning and changes only through the accepted draft update;
+- unselecting an authored ID does not by itself delete its bytes or historical reference;
+- publication-attempt history retains only the identity/provenance needed to explain what was attempted;
+- no Product `UpdateMedia`, `DeleteMedia`, media collection or ProductAsset CRUD is admitted.
 
-This preserves history without turning MPC into a general media archive.
+### 3.5.1 ListingIntent validator advancement
+
+Successful media creation changes the ListingIntent representation because authored-media descriptors are one of its read axes. Therefore it advances the ListingIntent's strong opaque owner validator.
+
+The successful custom-method result is operation-specific and returns:
+
+```text
+media                         → stable identity/provenance descriptor
+listing_intent_etag           → current parent ListingIntent validator after acceptance
+```
+
+Do not place the parent ListingIntent validator in an HTTP `ETag` header on the distinct `:create-media` request URI. It remains typed result data carrying the one parent-resource revision authority.
+
+Consequences:
+
+- two concurrent creates against the same ListingIntent validator serialize;
+- the first accepted intake advances the validator;
+- a materially different concurrent loser receives `409 resource-revision-conflict` and re-reads/rebases;
+- a caller can chain sequential successful uploads using the returned `listing_intent_etag`, without a mandatory GET after every success;
+- an exact lost-response retry resolves the already accepted intake before stale-revision re-evaluation and returns the same intake result rather than creating another media ID.
+
+No multi-file/bulk intake is admitted. Reopen only if D6 proves real multi-image authoring is unusable under this serialized model.
+
+### 3.5.2 Retention/erasure residual
+
+Product 1.0 admits no client-facing authored-media erasure operation. Unselection is not erasure.
+
+No accepted authority currently establishes a universal legal/contractual retention duration or an Organization-lifetime immortality rule. Retention/erasure therefore remains **Unknown / deferred to D2 data ownership and D7 realization**, subject to these D5 constraints:
+
+- content required by current selection or material historical explanation cannot be silently removed;
+- a future retention/erasure rule must preserve enough historical identity/provenance to explain prior consequential attempts;
+- a legal, privacy, contractual, operator or material cost obligation reopens the smallest D2/D7 scope rather than automatically creating Product delete CRUD.
 
 ---
 
-## PM-C6 — Descriptor identity and binary delivery are separate; current Product surface gains no hidden GET
+## PM-C6 — Descriptor identity and authored-media byte delivery authority
 
-### Finding
+Identity/provenance and presentation access are separate schemas:
 
-W2 correctly rejects a standalone media Product resource/GET and defers blob/CDN/storage mechanics. But an overly literal realization can return only an opaque ID that an authorized author cannot inspect across reads, making durable selection/order unusable. The opposite local maximum is to invent a generic media GET/resource or expose stable storage/provider URLs as identity.
+```text
+ListingIntentMediaDescriptor
+  → stable authored-media identity + bounded content/provenance facts
+  → eligible for current selection and historical attempt basis
 
-### Corrected invariant
+ListingIntentMediaPresentationDescriptor
+  → ListingIntentMediaDescriptor + volatile access reference
+  → response-only presentation aid
+  → never persisted into history, idempotency fingerprint, logs or Problem Details
+```
 
-`ListingIntentMediaDescriptor` carries Product meaning sufficient to identify the authored media within its ListingIntent and support the accepted authoring consumer. Binary presentation/access is a separate technical capability:
+### 3.6.1 D5 authority property
 
-- a server-issued access reference may be exposed in an authorized media descriptor when needed for inspection/preview;
-- the access reference is not media identity, not client-authored state and not historical provenance;
-- it may change or expire between reads without changing `listing_intent_media_id`;
-- it must not expose object-store key/topology or a provider-authored URL as MPC authority;
-- bearer-capability locators, if selected, are bounded and must not enter normal logs, Problem Details or durable ListingIntent history;
-- exact signed URL, authenticated proxy, CDN and transformation mechanics remain D7;
-- exact descriptor field spelling belongs to the single Product OpenAPI closure;
-- no standalone Product media GET/download operation is currently admitted.
+Authored-media byte delivery is a **separately justified technical presentation surface** under D5-B1 boundary classification. It is:
 
-If D6 later proves that an additional Product retrieval operation is required and an embedded access reference cannot satisfy the consumer safely, reopen only the smallest B2 operation/W4 surface before implementation. D7 may not invent the operation privately.
+- not a 96th Product operation;
+- not a Technical Ingress A/B lane;
+- not a Product SDK/OpenAPI business operation;
+- not a generic Media/Asset service;
+- not authorized by stable media ID alone.
+
+The baseline authority law is:
+
+> **A caller that cannot currently obtain the corresponding authored-media presentation descriptor through `GetListingIntent` under the exact path Organization and `offering.read` cannot obtain the bytes.**
+
+The technical delivery realization therefore reuses current Product authentication, unique Principal binding, Principal eligibility, Organization Membership and exact `offering.read` authorization for the referenced ListingIntent/media relationship. Exact route, proxy/storage/CDN topology, streaming and transformation mechanics remain D7.
+
+The `CreateListingIntentMedia` response under `listing.manage` returns the stable descriptor and new parent validator, not a durable presentation locator. The client already possesses the submitted bytes; later server-side retrieval is a read concern through `GetListingIntent` and `offering.read`.
+
+A durable, anonymous or freely forwardable object-store/CDN locator is not baseline. A delegated bearer capability may be reconsidered only by an explicit smallest-scope D5/D7 reopen proving that authenticated delivery is materially unsuitable and preserving tenant/scope/expiry/non-enumerability and credential-handling constraints.
+
+Technical media-delivery failures remain technical-surface failures; they do not expand the W2 Product Problem catalog.
+
+If D6 proves that an embedded presentation reference plus the bounded technical surface cannot satisfy the real consumer, reopen only the smallest B2 operation/W4 surface before implementation. D7 may not invent a Product media GET privately.
 
 ---
 
-## PM-C7 — Source media and authored media remain two bounded descriptor families
+## PM-C7 — Source and authored media remain distinct descriptor families
 
-### Finding
-
-The selection union correctly distinguishes `source_media_candidate_key` from `listing_intent_media_id`. Final consistency must prevent shared presentation mechanics from creating a generic `Media`, `Asset`, `URL` or payload-bag authority.
-
-### Corrected invariant
-
-- source media descriptor/candidate remains source-qualified external evidence owned by the accepted Readiness/D4 seam;
-- authored media descriptor remains ListingIntent-scoped MPC state;
-- selection may use a bounded discriminated union because ListingIntent must choose/order both origins;
-- common technical fields such as dimensions/content type/access reference may share schema primitives only where meanings are truly identical;
+- source media remains source-qualified external evidence owned by the Readiness/D4 seam;
+- authored media remains ListingIntent-scoped MPC state;
+- ListingIntent selection uses a bounded discriminated union because it must choose/order both origins;
+- dimensions/content-type primitives may be reused only where their meaning is genuinely identical;
+- source-media locators and authored-media access references are distinct types even if their JSON shape happens to match, because issuer, trust, lifetime and governing authority differ;
 - source candidate key and authored media ID never substitute for one another;
 - arbitrary client URL remains rejected;
-- provider image-error feeds remain deferred unless a named media/readiness consumer proves need.
+- provider image-error feeds remain deferred until a named consumer proves need.
 
-No generic media owner or cross-ListingIntent media library is introduced.
+No generic Media/Asset owner or cross-ListingIntent library is introduced.
 
 ---
 
-## PM-C8 — Active canonical artifacts must stop carrying misleading “next work” text
+## PM-C8 — Active canonical artifacts converge on the router
 
-### Finding
+At final canonical filing:
 
-The router is explicitly the sole status/next-action authority, and later appendices currently supersede stale sequencing in W1, the Operation Matrix and W4. The semantics are not contradictory, but active files still contain historical “W3 next”, “Technical Ingress next” and “Wire Contract next” sentences that can misroute an agent reading sections out of order.
-
-### Corrected direction at final filing
-
-- preserve canonical semantic sections;
-- remove or replace stale terminal sequencing/status claims in the active B2 artifacts rather than append another superseding status appendix;
-- make every artifact defer current status/next action to the router;
+- preserve accepted semantic sections;
+- remove/replace stale terminal sequencing/status claims in active B2 artifacts instead of appending another superseding status layer;
+- make every artifact defer current status and exact next action to the router;
 - keep Git history as the archive;
-- change no Product operation, Permission, owner, path, schema or accepted decision through this cleanup.
+- change no Product operation, Permission, owner or accepted semantic decision through this cleanup.
 
-This is authority convergence, not documentation aesthetics.
-
----
-
-# 5. Alternatives rejected
-
-## 5.1 One custom problem type per status
-
-Rejected. It duplicates HTTP semantics, expands client taxonomy and offers no additional Product meaning for ordinary 405/413/415 failures.
-
-## 5.2 One global `code` plus RFC `type`
-
-Rejected. Two global discriminators can drift and create competing client contracts. `type` is already the selected primary identifier.
-
-## 5.3 Provider/storage/scanner error passthrough
-
-Rejected. It leaks implementation, creates unstable external vocabulary, risks secrets/PII and makes a technical dependency a Product error authority.
-
-## 5.4 Generic Product media/asset resource
-
-Rejected. There is no cross-ListingIntent media-library consumer or independent lifecycle. It recreates the ProductAsset/media-master structure already rejected by D4-R1 and the Operation Matrix.
-
-## 5.5 No durable inspectability seam
-
-Rejected as a local maximum. An opaque ID without an authorized presentation path makes durable media selection/order across reads operationally unusable. The seam is required; generic media CRUD is not.
-
-## 5.6 Admit a standalone media GET immediately
-
-Rejected. No separate Product operation/Permission consumer has been admitted, and a bounded descriptor access reference can prepare the seam without inventing the operation.
+This is authority convergence, not editorial redesign.
 
 ---
 
-# 6. Cross-artifact disposition
-
-| Artifact | Lead disposition |
-|---|---|
-| D0→D4 / D4-R1 | **CONFIRM — no reopen** |
-| D5-B1 | **CONFIRM — W2 crystallization only** |
-| Operation Admission Matrix | **CONFIRM — 95 operations unchanged** |
-| W1 | **REVISE locally — status/routing cleanup only** |
-| W2 | **REVISE locally — PM-C1…C7 and negative controls** |
-| W3 | **CONFIRM — existing cursor problems remain coherent** |
-| W4 | **CONFIRM — 29 Permissions unchanged; stale sequencing cleanup only** |
-| Technical Ingress | **CONFIRM — add bounded cross-reference only if needed** |
-| Product OpenAPI/SDK | **technical ingress remains excluded** |
-| D6/D7 | **remain deferred/blocked** |
-
-No Product operation, Permission, Principal class, business owner or technical ingress family is added.
-
----
-
-# 7. Proof obligations / negative fixtures
+# 4. Proof obligations / negative fixtures
 
 Later OpenAPI/D7/D8/implementation proof must make at least these defects red:
 
-1. wrong top-level content type reaches media handler as `422` instead of standard `415`;
-2. oversized media is buffered/accepted or represented as `validation-error` instead of bounded `413`;
-3. malformed multipart becomes provider/storage failure;
-4. missing/duplicate media part or invalid typed ETag is accepted;
-5. same idempotency key + changed bytes/metadata/ETag resolves as the prior intake;
-6. exact lost-response retry with the original fingerprint creates a second media ID;
-7. stale ListingIntent revision creates/associates media;
-8. raw object-store/scanner/provider error appears in Product Problem Details;
-9. Product clients receive two global problem identifiers (`type` and duplicate `code`);
-10. protocol-local OAuth/provider errors appear in Product OpenAPI/SDK;
-11. `listing_intent_media_id` from ListingIntent A is accepted in ListingIntent B;
-12. accepted media bytes are replaced under an existing ID;
-13. unselecting media silently destroys evidence required by a past attempt;
-14. access-reference expiry changes media identity or current selection;
-15. storage key/provider URL becomes Product media identity;
-16. descriptor access capability leaks to normal logs/history/problems;
-17. source candidate and authored media ID are interchangeable;
-18. arbitrary client URL becomes trusted authored media;
-19. D7 privately creates a new media GET/Product operation;
-20. stale “next action” text in an active canonical artifact overrides/misroutes the router.
+1. a `405` response omits or lies in `Allow`;
+2. wrong top-level multipart representation is classified as `422` rather than `415`;
+3. unsupported/undecodable or inspected-mismatching binary format is accepted or classified as semantic metadata validation;
+4. excess-size body is fully buffered before the transport guard can refuse it;
+5. malformed multipart becomes a provider/storage failure;
+6. missing/duplicate file part or invalid typed ETag is accepted;
+7. absent `Idempotency-Key` creates intake or receives an undeclared status;
+8. same key + changed bytes/metadata/ETag is not `422 idempotency-key-reused`;
+9. in-progress exact intake uses a non-canonical problem type;
+10. a current but lifecycle-inadmissible capability is confused with stale revision or silently succeeds;
+11. exact lost-response replay creates a second media ID or fails only because the first intake advanced revision;
+12. successful media creation fails to advance/return the current parent ListingIntent validator;
+13. two concurrent creates with one validator both succeed as independent current-state writes;
+14. `listing_intent_media_id` from ListingIntent A is accepted in B;
+15. accepted bytes are replaced under an existing ID;
+16. unselection destroys material historical evidence;
+17. a presentation access reference reaches durable history, idempotency fingerprint, logs or Problem Details;
+18. stable media ID alone retrieves bytes;
+19. caller without current Organization Membership or `offering.read` retrieves authored bytes;
+20. anonymous/durable/freely forwardable object-store locator becomes baseline access;
+21. source locator and authored access reference become one authority/type;
+22. raw storage/scanner/provider error appears in Product Problem Details;
+23. technical OAuth/provider types use the Product problem namespace or appear in Product OpenAPI/SDK;
+24. Product clients receive duplicate global `type` and `code` discriminators;
+25. D7 privately creates a media Product GET, Delete or Update operation;
+26. stale active “next action” text misroutes a fresh session away from the router.
 
-Exact executable mechanisms belong to the responsible later stage.
-
----
-
-# 8. Independent-review decision
-
-One coherent independent review is warranted because the correction package touches:
-
-- an untrusted binary-upload trust boundary;
-- HTTP error interoperability;
-- idempotency/revision behavior over binary identity;
-- authorization-scoped media access capability;
-- retention/history versus deletion;
-- Product API versus technical-protocol error authority.
-
-The review must challenge the whole package, not perform eight ceremonial micro-reviews.
-
-Round 2 exists only if a material contradiction survives GPT adjudication.
+A green artifact that did not execute the protected subject is no proof.
 
 ---
 
-# 9. Lead outcome
+# 5. Cross-artifact disposition after ratification
+
+| Artifact | Substitutive filing disposition |
+|---|---|
+| D0→D4 / D4-R1 | confirm; no reopen |
+| D5-B1 | confirm; bounded technical-presentation classification uses its existing route taxonomy |
+| Operation Admission Matrix | confirm; 95 operations unchanged |
+| W1 | remove stale sequencing and add bounded cross-reference only where needed |
+| W2 | incorporate PM-C1…PM-C7, exact statuses, `resource-state-conflict`, media result/descriptor and negative controls |
+| W3 | confirm cursor/problem interaction unchanged |
+| W4 | confirm 29 Permissions; add bounded delivery-authority cross-reference without a new Permission/operation |
+| Technical Ingress | confirm A/B unchanged; media delivery is explicitly not ingress |
+| Product OpenAPI/SDK | include only admitted Product capability; exclude technical delivery route and ingress |
+| Router/cockpit | advance only after canonical filing; cockpit remains non-authoritative |
+
+After filing, remove this candidate from the active tree and reset `AI-DIALOG.md` to protocol-only. Git history remains the review archive.
+
+---
+
+# 6. Final converged outcome
 
 ```text
-current D5-B2 semantic structure                 CONFIRMED
-Problem/media final consistency                  RESTRUCTURE NOW — D5-B2 LOCAL
-custom Product problem catalog                   KEEP SMALL
-standard status-only problems                    RFC 9457 about:blank
-Product problem primary identifier               type only
-technical provider/OAuth problems                protocol-local / Product-excluded
-authored media authority                         ListingIntent-scoped
-media identity                                   immutable per accepted upload
-selection removal                                not deletion
-binary delivery                                  technical access seam, not identity
-standalone Product media GET                     NOT ADMITTED
-Product operations                               95 unchanged
-ordinary Permissions                             29 unchanged
-parent reopen                                    NONE
-independent review                               NEXT
-implementation                                   BLOCKED UNTIL D9
+current semantic structure                     CONFIRMED
+Problem/media consistency                      RESTRUCTURE NOW — D5-B2 LOCAL
+custom Product problems                        small; type URI is primary
+standard status-only problems                  about:blank + required HTTP headers
+idempotency mappings                           canonical W2 preserved; missing-key 400 declared
+current lifecycle conflict                     resource-state-conflict / 409
+authored media identity                        immutable, ListingIntent-scoped
+authored media creation                        advances and returns parent validator
+selection removal                              not deletion
+authored-media byte access                     current Organization + offering.read technical surface
+standalone Product media GET                   NOT ADMITTED
+Product operations                             95 unchanged
+ordinary Permissions                           29 unchanged
+parent reopen                                  NONE
+Round 2                                        NOT REQUIRED
+operator ratification                          NEXT
+implementation                                 BLOCKED UNTIL D9
 ```
 
-This candidate is review evidence only. Canonical artifacts remain unchanged pending independent challenge, GPT adjudication and explicit operator ratification.
+The package is converged but remains non-authoritative pending explicit operator ratification.
