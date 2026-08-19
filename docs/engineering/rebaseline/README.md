@@ -2,7 +2,7 @@
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
 > **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 OPEN / ACTIVE**  
-> **D5-B2 current state:** **B2-A + Operation Matrix + Whole-Matrix ACCEPTED / RATIFIED; Wire W1 + W2-A ACCEPTED IN-STAGE; W2-B ListingIntent + PriceIntent + Availability schemas = NEXT**  
+> **D5-B2 current state:** **B2-A + Operation Matrix + Whole-Matrix ACCEPTED / RATIFIED; Wire W1 + W2-A + W2-B ACCEPTED IN-STAGE; W2-C Readiness + Market Intelligence + Economics schemas = NEXT**  
 > **Decision Reconciliation:** **ACCEPTED / CANONICAL**  
 > **Implementation:** BLOCKED until D9 is accepted  
 > **Last updated:** 2026-08-18
@@ -33,7 +33,7 @@ A fresh session reads, in order:
 
 This file alone owns **where the program is and what happens next**. Detailed meaning stays in the accepted artifacts above. `AI-DIALOG.md`, Git history, deleted review candidates, legacy routes/current OpenAPI and current code are never status/target authority by inheritance.
 
-`D5-B2-WIRE-CONTRACT.md` owns accepted Wire W1. `D5-B2-W2-SCHEMA-GRAMMAR.md` owns the active W2 schema batch. W2 will receive one coherent independent Fable review only after the W2 sections converge; no micro-review cadence is implied.
+`D5-B2-WIRE-CONTRACT.md` owns accepted Wire W1. `D5-B2-W2-SCHEMA-GRAMMAR.md` owns the active W2 schema batch. W2 receives one coherent independent Fable review only after its sections converge; no micro-review cadence is implied.
 
 ## 2. Program state
 
@@ -55,7 +55,8 @@ D5 — API                                              OPEN / ACTIVE
       W1 Resource / Path / HTTP Grammar              ACCEPTED IN-STAGE
       W2 Request/Response Schema Grammar             OPEN / ACTIVE
         W2-A Core Schema Grammar                     ACCEPTED IN-STAGE
-        W2-B ListingIntent + PriceIntent + Availability = NEXT
+        W2-B ListingIntent + PriceIntent + Availability ACCEPTED IN-STAGE
+        W2-C Readiness + Market Intelligence + Economics = NEXT
       Fable W2 coherent review                       AFTER W2 CONVERGES
 D6 — Frontend                                         BLOCKED BY D5
 D7 — Runtime / Jobs / Transactions                    BLOCKED
@@ -96,58 +97,68 @@ Implementation                                        BLOCKED UNTIL D9
 
 ### W2-A — accepted
 
-- MPC and native external IDs serialize as opaque strings; semantic IDs remain typed by schema name/context;
-- no universal `ExternalRef`/entity graph; external references are typed and source-qualified;
-- exact monetary/decision decimals use decimal strings; `Money = exact decimal amount + explicit currency`; no JSON floating-point money, universal minor-unit model or global `round(2)`;
-- material times use semantically named unambiguous instants;
-- create/update requests and read resources are separate schemas where authority differs;
-- Product semantic request objects are closed; property-bag/provider leakage fails contract validation;
-- `null` is never a knowledge-state convention;
-- knowledge uses the smallest owner/field-specific exclusive union, not a universal `Fact<T>`;
-- unions validate through exclusive variants (`oneOf` + fixed discriminant); discriminator metadata is optional tooling aid, not correctness;
-- freshness/provenance attaches to the smallest semantic unit for which it is true; no universal Evidence/metadata envelope;
-- no generic Result/Operation wrapper; owner resources/results carry owner outcomes;
-- business pending/rejected/ambiguous is not automatically an HTTP problem; `202` is not a synonym for asynchronous external convergence;
-- PATCH/update bodies are typed owner-specific JSON; omitted means unchanged; `null` is not generic clear; generic JSON Patch/Merge Patch is not baseline;
-- RFC 9457 `type` is the primary problem identifier; no duplicate global problem-code taxonomy by default;
-- provider-enriched evidence is a closed owner-local variant, never a raw DTO/property bag;
-- clients cannot author effective Principal/Organization/approval/convergence/server-history fields.
+- MPC/native IDs are opaque strings; external references are typed/source-qualified, never universal `ExternalRef`;
+- `Money = ExactDecimalString + explicit currency`; authoritative JSON floating-point money and universal minor units are rejected;
+- request and response schemas are separate where authority differs; semantic request objects are closed;
+- `null` never transports unknown/unavailable/partial;
+- knowledge uses smallest owner-specific exclusive unions, not universal `Fact<T>`;
+- provenance/freshness attaches to the smallest semantic unit for which it is true;
+- no generic Result/Operation wrapper; valid business pending/rejected/ambiguous remains semantic meaning;
+- typed owner-specific PATCH; omitted=unchanged; no generic JSON Patch/Merge Patch baseline;
+- RFC 9457 `type` is primary problem identifier; no duplicate problem-code taxonomy by default;
+- provider enrichment is bounded owner-local closed schema;
+- clients cannot author effective Principal/Organization/approval/convergence/history.
+
+### W2-B — accepted
+
+- one ListingIntent identity covers create/edit through a target union; drafts may be contract-valid while business-incomplete;
+- ListingIntent is sparse/declarative Offering meaning, not a full provider mirror;
+- dynamic publication uses Readiness-owned requirement keys/revisions/candidates resolved by `FOLLOW_SOURCE | EXPLICIT_OVERRIDE` only;
+- `PublicationValue` is a small closed union (`text`, `exact_decimal`, `boolean`, `option`, `text_list`, `option_list`); arbitrary objects/property bags are not baseline;
+- requirement/source/media candidate keys are context-bound opaque references, not new global entities/provider IDs;
+- media selection is source-media or ListingIntent-scoped authored-media; array order is publication order; no ProductAsset/media master;
+- PriceIntent always owns price and targets either an existing source-qualified Listing or pre-creation ListingIntent; price supersession is explicit and attributed;
+- clients do not PATCH price/availability correlations into ListingIntent; server establishes/revalidates correlations through accepted owner semantics;
+- `SubmitListingIntent` carries no business payload; it submits the current revision under `If-Match` and dispatch later revalidates required PriceIntent/Availability/authorization;
+- SellableAvailability target works before/after creation and separates control/effective capability, desired owner quantity, provider observation and convergence;
+- known zero availability remains known zero; unavailable provider observation never erases known desired value;
+- Inventory Source remains MPC identity mapped to source-qualified inventory scopes, never native stock/location identity.
 
 ## 4. Prohibited now
 
 While W2 is open:
 
 - do not begin D6–D9 target design or implementation;
-- do not alter accepted D0→D5-B1, B2, W1 or W2-A by schema convenience;
+- do not alter accepted D0→D5-B1, B2, W1 or W2-A/B by schema convenience;
 - do not derive schemas from legacy OpenAPI, provider DTOs, database rows or frontend forms;
-- do not put price/Availability inside ListingIntent;
+- do not put price/Availability/provider payloads inside ListingIntent;
 - do not create universal Fact/Evidence/Result/Operation/Resource/ExternalRef/property-bag schemas;
 - do not collapse unknown/unavailable/partial/not-applicable into null/zero/false/empty;
 - do not expose bare native IDs, raw provider payloads/errors or client-authored effective authority fields;
+- do not create mutable PriceDraft, client-side ListingIntent correlation choreography or provider-mirror desired state;
 - do not choose D7 blob/upload/server/generator/persistence mechanics during W2;
 - do not run Fable yet: W2 review occurs once after the coherent W2 package converges unless a material contradiction forces a focused round.
 
 ## 5. Exact next action
 
-**Derive W2-B — ListingIntent + PriceIntent + Availability concrete schema grammar.**
+**Derive W2-C — Product & Channel Readiness + Market Intelligence + Commercial Economics schema grammar.**
 
-W2-B must decide and adversarially stress-test:
+W2-C must decide and adversarially stress-test:
 
-1. `CreateListingIntentRequest`, `UpdateListingIntentRequest`, `ListingIntent`;
-2. one create/edit authoring architecture with an explicit target union, not separate resource models;
-3. `FOLLOW_SOURCE | EXPLICIT_OVERRIDE` field/value variants and typed source-candidate references;
-4. provider-qualified requirement/category/product-type resolution references without DTO/property-bag leakage;
-5. listing-context authored-media intake/reference/selection/order/role without ProductAsset/media-master authority;
-6. ListingIntent→PriceIntent typed correlation without embedding a price value;
-7. `PriceIntent` target union `existing Listing | pre-creation ListingIntent context`, exact Money target and explicit supersession lineage;
-8. fail-closed active-publication requirements for current PriceIntent + Availability owner input before provider dispatch;
-9. Sellable Availability read semantics: desired owner value, provider actual evidence, knowledge/freshness and convergence without provider quantity becoming owner truth;
-10. enough Inventory Source/allocation-policy schema to prove W2-A grammar under real updates;
-11. negative controls proving price, availability, arbitrary provider fields and false source authority cannot enter ListingIntent.
+1. source Product search/reference result shapes without Product mirror identity;
+2. ProductChannelReadiness keyed-Q shape, readiness conclusion and blockers without synthetic readiness ID;
+3. PublicationRequirements / Requirement / Candidate / Option shapes used by W2-B, including requirement revision and source/media candidate references;
+4. Market Intelligence CompetitivePosition and ComparableOffer shapes with source-qualified provider-rich evidence, comparability/evidence sufficiency, coverage and freshness without generic MarketObservation authority;
+5. Expected Economics with component-level knowledge/provenance so incomplete tax/fee/shipping/cost evidence cannot masquerade as complete profitability;
+6. `EvaluatePriceScenario` request/result where caller supplies legitimate hypothetical variables but never authoritative evidence replacements;
+7. `SaleEconomics` L0/L1/L2 plus R1/R2 lineage without mutable Profitability/Reconciliation resource;
+8. Economic Attribution exact/partial/ambiguous/unresolved subject/reference grammar without universal entity graph;
+9. only enough Commercial Policy schema to test W2-A update semantics; generic Rules DSL remains rejected;
+10. negative controls proving clients/providers cannot fabricate source truth, market completeness or authoritative economic evidence.
 
-W2-B still does **not** choose media blob upload/storage/hash/CDN mechanics; D7 owns those mechanics.
+W2-C does not yet choose collection pagination/filter grammar or full cross-owner policy default/inheritance/override grammar if a later configuration section can adjudicate that pattern more coherently.
 
-After W2-B, continue W2 through the remaining schema families needed for global coherence. When W2 converges as a whole, prepare one non-authoritative W2 review package and run Fable using the canonical Standard Fable review workflow before operator ratification/consolidation.
+After W2-C, continue the remaining W2 owner/schema families needed for global coherence. When W2 converges as a whole, prepare one non-authoritative W2 review package and run Fable using the canonical Standard Fable review workflow before operator ratification/consolidation.
 
 Implementation remains blocked until D9.
 
@@ -157,10 +168,11 @@ A fresh session must conclude:
 
 - D0→D4/D4-R1 and D5-B1 accepted/canonical;
 - D5-B2 OPEN / ACTIVE with B2-A, Operation Matrix and Whole-Matrix accepted;
-- Wire W1 and W2-A accepted in-stage;
+- Wire W1 and W2-A/W2-B accepted in-stage;
 - `D5-B2-W2-SCHEMA-GRAMMAR.md` is active authority for W2;
-- W2-A exact values/typed refs/knowledge unions/typed PATCH/no universal wrappers are current;
-- **W2-B ListingIntent + PriceIntent + Availability is exact next action**;
+- W2-A exact values/typed refs/knowledge unions/typed PATCH/no universal wrappers remain current;
+- W2-B keeps ListingIntent, PriceIntent and Availability distinct through initial publication and uses server-established correlations;
+- **W2-C Readiness + Market Intelligence + Economics is exact next action**;
 - Fable review happens after W2 coherently converges, not before;
 - implementation remains blocked until D9.
 
