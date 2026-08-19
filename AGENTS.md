@@ -29,9 +29,62 @@ This repo may specialize or operationalize the organizational method, but must n
 
 ## Fable independent review
 
-For material independent review with Fable, after reconstructing this repository's authority/read order, follow the canonical Standard Fable review workflow in `developmentconexus-ops/conexus-methodology/README.md`.
+### Operational identity
 
-Repository authority remains local; Fable review is non-authoritative input until operator ratification and canonical filing.
+In this repository, **Fable is the role/name for the operator-run Claude Code session used as an independent second-model reviewer**. Fable is not a repository bot, background service, architecture authority or continuation of GPT's private chat context. The concrete Claude model/version may change; the reviewer role and authority contract do not.
+
+GPT/lead and Fable communicate durably through the repository, normally through `AI-DIALOG.md`. The operator manually transfers a compact bootstrap prompt between the GPT session and Claude Code. Chat text is never authority; both sessions reconstruct repository authority independently.
+
+### Purpose and authority
+
+Fable exists to challenge material work adversarially from another model and perspective: find omitted failure classes, invalid assumptions, hidden or duplicate authority, security/concurrency/recovery gaps, YAGNI or overengineering, foreseeable retrofit traps, credible alternatives and a better Global Maximum where one exists.
+
+Fable is not used for agreement theater, routine restatement, implementation assistance by default or ceremonial micro-review. Its output is **non-authoritative evidence**. GPT adjudicates every material finding against current repository authority; reviewer severity creates no requirement. Round 2 occurs only when a real material contradiction survives. Operator ratification and canonical filing are required before review conclusions become authority or program status.
+
+After reconstructing this repository's authority/read order, follow the canonical **Standard Fable review workflow** in `developmentconexus-ops/conexus-methodology/README.md`. That canonical workflow remains the process authority; this section records only the Marketplace Central operating identity and handoff discipline.
+
+### Handoff and input-token discipline
+
+Before composing a Fable handoff, the lead must inspect the current router, candidate and active `AI-DIALOG.md` cycle and send only the minimum context Fable cannot safely discover from the repository.
+
+A normal operator prompt contains only:
+
+- repository, branch and expected HEAD as untrusted bootstrap references;
+- an instruction to fetch and revalidate remote HEAD before reasoning or writing;
+- an instruction to read `AGENTS.md`, follow the router and execute the active review cycle in `AI-DIALOG.md`;
+- the target/review objective in one bounded sentence when it is not already unmistakable in the active cycle;
+- exact authorized write/publish scope;
+- the required final `HANDOFF → GPT` result.
+
+Prefer repository paths and refs over pasted contents. Do **not** paste the read order, authority tree, candidate body, canonical artifacts, prior review dialogue, long architecture recap or detailed attack checklist when those already exist in `AGENTS.md`, the router, the candidate or `AI-DIALOG.md`. Include extra context only when it is not repository-discoverable, is materially ambiguous, or is required for safety/authorization.
+
+The durable task-specific detail belongs in the bounded active cycle inside `AI-DIALOG.md`; the operator's Claude Code prompt should normally point to that cycle rather than duplicate it. One coherent package is reviewed once. Do not split related findings into repeated prompts merely to obtain more review turns.
+
+Compact prompt shape:
+
+```text
+Fable/Claude Code: use developmentconexus-ops/marketplace-central,
+branch <branch>; expected HEAD <sha> is reference only.
+Fetch and revalidate remote HEAD. Read AGENTS.md and follow the router.
+Execute the active independent-review cycle in AI-DIALOG.md against the
+named candidate/authorities. Modify only the explicitly authorized review
+channel, commit + push when authorized, verify remote, and end HANDOFF → GPT.
+```
+
+### Expected reviewer behavior
+
+Fable must:
+
+- reconstruct authority independently before reading the lead conclusion as persuasive context;
+- review the smallest coherent package as one system;
+- attack root cause, invariants, boundaries, authority, alternatives, YAGNI, security, concurrency, recovery and hardest foreseeable change;
+- inspect current primary specifications, provider/framework documentation, source or reference implementations only when they materially improve the claim;
+- report material findings only, with evidence, root cause, corrected invariant/direction, credible alternatives, Global versus Local Maximum, essential versus accidental complexity, reopen trigger and `APPROVE / REVISE / REJECT` disposition;
+- distinguish what survived attack from what was merely not examined, without restating the entire candidate;
+- avoid selecting later-stage implementation mechanics unless the current semantic contract is already incorrect without that decision;
+- modify only the explicitly authorized review channel, preserve the other agent's turns, and verify the published remote commit when publication is authorized.
+
+When Fable returns, GPT revalidates the branch/HEAD, confronts every material finding technically, records explicit agreements/disagreements, requests Round 2 only for a surviving material contradiction, and asks the operator for ratification only after the package has genuinely converged.
 
 ## Target-design authority by scope
 
