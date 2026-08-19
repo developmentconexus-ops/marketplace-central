@@ -5,7 +5,8 @@
 > **Operation inventory:** `D5-B2-OPERATION-ADMISSION-MATRIX.md`  
 > **Parent authorities:** accepted D0→D4 + D4-R1 + D5-B1 + Decision Reconciliation Baseline + ratified D5-B2 Whole-Matrix + canonical Wire W1  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
-> **Whole-W2 final ratification incorporated:** 2026-08-19
+> **Whole-W2 final ratification incorporated:** 2026-08-19  
+> **Whole-W3 cursor Problem Details amendment incorporated:** 2026-08-19
 
 ## 1. Purpose and authority
 
@@ -1247,6 +1248,8 @@ Canonical small problem families:
 - `precondition-required`;
 - `precondition-failed`;
 - `resource-revision-conflict`;
+- `invalid-cursor`;
+- `cursor-expired`;
 - `internal-error`.
 
 Problem `type` is an absolute stable URI; exact host is later OpenAPI/serving topology.
@@ -1254,6 +1257,13 @@ Problem `type` is an absolute stable URI; exact host is later OpenAPI/serving to
 Validation errors may include bounded `errors[]` with machine-readable pointer/location + detail.
 
 `resource-revision-conflict` may identify which supplied typed validator was stale via bounded pointer/location extension; do not create separate subject-vs-reference conflict types with identical semantics.
+
+Cursor-specific applicability is owned by canonical W3:
+
+- `invalid-cursor` is HTTP `400` for a supplied cursor that cannot validly continue a **well-formed** collection request, including integrity/unknown/operation/Organization/semantic-query mismatch after normal access/privacy checks;
+- `cursor-expired` is HTTP `400` for a legitimately issued continuation that can no longer be resumed honestly;
+- a missing/invalid operation-required subject/search/filter parameter remains ordinary `422 validation-error` before cursor evaluation;
+- no `cursor-stale`, `cursor-gone`, `cursor-conflict` or provider-specific cursor taxonomy is introduced.
 
 Raw provider/business-system errors, payloads, secrets and arbitrary PII never become Product problem truth.
 
@@ -1338,7 +1348,8 @@ Later OpenAPI/contract proof must make at least these defects invalid/unreachabl
 38. same idempotency key with changed ETag/file bytes treated as same request;
 39. idempotency authorizing blind redispatch after ambiguous effect;
 40. business unknown/rejection/unavailable turned into generic Problem Details by convenience;
-41. cross-Organization validation leaking another tenant's existence.
+41. cross-Organization validation leaking another tenant's existence;
+42. cursor errors maintained in a second collection-only problem catalog instead of this canonical catalog.
 
 ---
 
@@ -1367,15 +1378,16 @@ No admitted Product family is left to a provider DTO, legacy OpenAPI, frontend f
 # 25. Whole-W2 method disposition
 
 ```text
-D0→D5-B1 / ratified B2 semantic authority    CURRENT STRUCTURE CONFIRMED
-Wire W1                                       ACCEPTED / CANONICAL
-W2 schema grammar                             ACCEPTED / CANONICAL
+D0→D5-B1 / ratified B2 semantic authority     CURRENT STRUCTURE CONFIRMED
+Wire W1                                        ACCEPTED / CANONICAL
+W2 schema grammar                              ACCEPTED / CANONICAL
 Whole-W2 lead + Fable R1/R2 + GPT adjudication CONVERGED / OPERATOR-RATIFIED
-Parent-stage reopen                           NONE
+Whole-W3 cursor Problem Details amendment       INCORPORATED / OPERATOR-RATIFIED
+Parent-stage reopen                            NONE
 ```
 
 **Global Maximum:** strong reusable wire/value/safety mechanics + owner-specific semantic schemas; complete Product 1.0 reachability without Product/PIM, provider mirror, Rules/UoM/SLA/Workflow/Finance/Task platform or generic operation ontology.
 
-W2 is closed. **The next Wire Contract sub-batch is W3 — collections / pagination / filter / search / cursor grammar**, as routed by the rebaseline router.
+W2 remains closed/canonical. Collection/query applicability for cursor problems is owned by canonical W3; exact OpenAPI type URI host/tooling remains later Wire work.
 
 Implementation remains blocked until D9.
