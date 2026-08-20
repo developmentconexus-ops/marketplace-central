@@ -9,7 +9,8 @@
 > **GPT adjudication:** CONVERGED  
 > **Round 2:** NOT REQUIRED  
 > **Operator final ratification incorporated:** 2026-08-20  
-> **Stable Product Problem origin proof:** OPEN — blocks custom Product `Problem.type` constants and canonical Product OAD authoring  
+> **Stable Product Problem origin proof:** FILED — `https://conexus.fun`  
+> **Canonical Product OAD authoring/proof:** NEXT  
 > **Implementation:** BLOCKED until D9 is accepted
 
 ## 1. Purpose and authority
@@ -315,60 +316,60 @@ This is more honest than representing browser `Blob`/`File` bytes as a JSON stri
 
 It does **not** mean automatic part binding or runtime validation. Go receives a multipart reader; TypeScript requires FormData assembly; both lanes need bounded runtime code later.
 
-## OA-C9 — Product Problem type URI policy and stable-origin proof gate
+## OA-C9 — Product Problem type URI policy and stable origin
 
-Canonical custom Product Problem identifiers require one immutable HTTPS origin:
-
-```text
-<stable-origin>/marketplace-central/problems/product/{slug}
-```
-
-Technical protocol/presentation identifiers, when independently contracted, use a disjoint namespace:
+The stable HTTPS origin is:
 
 ```text
-<stable-origin>/marketplace-central/problems/technical/{surface}/{slug}
+https://conexus.fun
 ```
 
-Rules:
+Canonical Product Problem identifiers are:
+
+```text
+https://conexus.fun/marketplace-central/problems/product/{slug}
+```
+
+Technical protocol/presentation identifiers, when independently contracted, use the disjoint namespace:
+
+```text
+https://conexus.fun/marketplace-central/problems/technical/{surface}/{slug}
+```
+
+The domain is intentionally shared across DevelopmentConexus projects. Project identity therefore lives in the first path segment rather than consuming the apex for Marketplace Central alone. Future projects may use their own non-overlapping path namespaces without changing Marketplace Central identifiers.
+
+Evidence accepted for the origin proof:
+
+- operator declaration that `conexus.fun` was newly purchased and is controlled for DevelopmentConexus use;
+- operator-supplied current browser evidence showing `https://conexus.fun` served over HTTPS with a secure connection and a Hostinger registration/management page;
+- Hostinger's documented ability for a registered-domain owner to manage DNS records through hPanel;
+- Hostinger's documented HTTPS/SSL support for hosted domains and subdomains.
+
+The previous web content historically associated with the hostname is not authority after the ownership change. What matters for the identifier is current durable control of the registered domain, not the current placeholder content or hosting vendor.
+
+Binding rules:
 
 - Product slugs are canonical W2 kebab-case names;
 - `about:blank` remains `about:blank`;
 - no version/date segment enters the identifier;
 - Product and technical namespaces remain disjoint;
-- every Product Problem schema constrains `type` to the exact URI with `const`;
-- generated human-readable pages derive from the same definitions;
-- the chosen origin must remain controlled after hosting or repository changes;
-- changing documentation hosting never changes an already-published Problem identity.
+- every custom Product Problem schema constrains `type` to the exact `conexus.fun` URI with `const`;
+- generated human-readable pages derive from the same canonical definitions;
+- documentation hosting may move between Hostinger, static hosting, a reverse proxy, CDN or another service without changing an already-published identifier;
+- the apex domain may host a company site or other projects; Marketplace Central depends only on control/resolution of its own `/marketplace-central/problems/...` namespace;
+- no portal, developer platform or central documentation application is required before Product OAD authoring; a minimal static page or permanent redirect is sufficient for first resolution proof;
+- loss/transfer of `conexus.fun` control before public Product Problem publication reopens OA-C9 immediately;
+- after publication, changing the Problem identifier host is a breaking identity change and is not a routine hosting migration.
 
-### Operator-selected ngrok endpoint
-
-The operator nominated:
+The previous ngrok endpoint remains optional preview-only infrastructure:
 
 ```text
 https://multiradial-unironically-nieves.ngrok-free.dev/
 ```
 
-It is accepted only as:
+It may be used for temporary preview or local tunnel exposure, but never appears in canonical Product `Problem.type` values.
 
-```text
-TEMPORARY PRE-PRODUCTION DOCUMENTATION / RESOLUTION PROOF ENDPOINT
-```
-
-It is not classified as a DevelopmentConexus-owned verified domain and is not embedded into canonical `Problem.type` values merely "for now". Problem identifiers are permanent; a temporary hostname cannot be swapped later without changing identity.
-
-Before Product OAD authoring may embed custom Product Problem `type` constants, a proof must establish one of:
-
-1. a DevelopmentConexus-owned and verified HTTPS domain; or
-2. an explicitly operator-accepted permanent third-party-domain residual, including the obligation never to relinquish/rename the controlling account or hostname.
-
-Until that proof is filed:
-
-```text
-ngrok may host generated preview docs
-custom Product Problem type constants remain BLOCKED
-about:blank remains usable where already canonical
-Product OAD authoring remains blocked at the Problem-origin gate
-```
+The stable-origin proof gate is **CLOSED / FILED**. Product OAD authoring may now use the exact `conexus.fun` constants above.
 
 ## OA-C10 — Exact pinned tooling and routing constraint
 
@@ -509,7 +510,7 @@ Canonical authoring must prove at least:
 17. `oneOf + const` unions survive both generators;
 18. exact decimals remain strings;
 19. knowledge states do not collapse to null/default;
-20. Product Problem schemas use exact URI constants only after OA-C9 proof;
+20. every custom Product Problem schema uses the exact `https://conexus.fun/marketplace-central/problems/product/{slug}` URI constant;
 21. `about:blank`, `405 + Allow` and the media error map remain expressible;
 22. multipart file and `etag` are reachable in both lanes;
 23. parent ListingIntent validator remains typed result data;
@@ -540,7 +541,7 @@ Canonical authoring must prove at least:
 42. legacy `/mutations` absent;
 43. manual SDK types are not imported as target wire authority;
 44. all twelve retirement consumers are removed or deliberately rehomed atomically;
-45. ngrok preview hosting cannot leak into canonical Product Problem constants.
+45. ngrok or any other temporary host cannot leak into canonical Product Problem constants.
 
 A green command that did not traverse the real source closure, all operations and generated outputs is vacuous.
 
@@ -560,6 +561,8 @@ The independent Fable spike proved:
 - `If-Match`, `Idempotency-Key`, Problem `type` and parent validator round-trip.
 
 The review also proved the limitations incorporated in OA-C1–OA-C14: standard-mux incompatibility, generator-specific type-override divergence, formatter ownership, Redocly config/version gaps, mandatory Go bundle input, component collision renaming, declaration-versus-runtime validation, multipart precision and the exact-toolchain proof gap.
+
+The stable-origin proof was closed with current operator/domain evidence for `conexus.fun`; Hostinger remains a current DNS/hosting mechanism rather than Problem identity authority.
 
 No review finding required D0→D5-B1 or W1→W4 semantic reopen. Round 2 was not required.
 
@@ -581,9 +584,9 @@ Go compatibility generation                     oapi-codegen v2.8.0 + runtime v1
 runtime TypeScript client                       D6
 Go router/server/runtime validator              D7
 legacy OpenAPI/manual SDK                       REPLACE / RETIRE AS ONE MEASURED SEAM
-ngrok endpoint                                  PREVIEW/PROOF HOST ONLY
-canonical Product Problem origin                OPEN PROOF GATE
-Product OAD authoring                            BLOCKED BY OA-C9 PROOF
+canonical Product Problem origin                https://conexus.fun
+ngrok endpoint                                  PREVIEW ONLY
+Product OAD authoring/proof                     NEXT
 D6–D9 / implementation                          BLOCKED
 ```
 
@@ -592,12 +595,12 @@ Reopen only the smallest implicated decision when evidence shows:
 - OAS 3.1.2 cannot express an accepted W1–W4 property without loss;
 - all credible pinned generators fail a required idiom;
 - a real Product consumer requires a runtime SDK property types-only generation cannot support safely;
-- a stable controlled Problem URI origin cannot be established before custom type publication;
+- control of `conexus.fun` is lost or deliberately transferred before public Product Problem publication;
 - a real offline/external consumer requires a committed bundle;
 - a real public compatibility consumer requires URI versioning;
 - a Product operation cannot be expressed without new meaning;
 - a technical surface is mistakenly required by a Product client.
 
-Do not reopen for generator naming preference, file-count aesthetics, current handler layout, legacy route convenience, desire for `/v1`, or one tool's inability when another credible tool preserves the source semantics.
+Do not reopen for hosting-vendor changes, generator naming preference, file-count aesthetics, current handler layout, legacy route convenience, desire for `/v1`, or one tool's inability when another credible tool preserves the source semantics.
 
 Current status and exact next action are owned only by `docs/engineering/rebaseline/README.md`.
