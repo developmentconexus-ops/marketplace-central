@@ -27,6 +27,51 @@ The local file is a byte-for-byte context copy, **not a fork or second authority
 
 This repo may specialize or operationalize the organizational method, but must never silently redefine or weaken it. Surface any conflict inside the method's scope. The D0–D9 Architecture Rebaseline lifecycle is repo-specific specialization, not a second organizational engineering method.
 
+## Target architecture versus staged delivery
+
+**Target architecture is not the first-release implementation scope.** D0→D9 defines durable meaning, boundaries, invariants and evolution constraints; it does not require every admitted Product capability, infrastructure mechanism or future-scale concern to be implemented before the first useful internal slice can run.
+
+For implementation planning after D9, classify material work explicitly as:
+
+```text
+BUILD NOW
+→ required by the current proven consumer, current golden flow or a safety/correctness invariant
+
+SEAM NOW
+→ preserve the right ownership/boundary/extension point now, but do not build the future capability behind it yet
+
+PROVE FIRST
+→ run the smallest bounded spike needed to decide whether a mechanism or dependency is actually required
+
+DEFER
+→ no current consumer, failure class or irreversible constraint justifies implementation yet; record the reopen trigger
+```
+
+This classification is delivery guidance, not a second architecture authority or roadmap.
+
+Preserve from the first real implementation any property whose later retrofit would threaten correctness, security, data meaning or ownership, including proportionately:
+
+- canonical owner and data meaning;
+- Organization isolation and cross-Organization fail-closed behavior;
+- source-qualified external identity;
+- authentication/authorization boundaries;
+- migrations for persistent state;
+- secrets outside source, logs and Product schemas;
+- consequential idempotency/reconciliation where the accepted contract requires it;
+- audit/recovery evidence required by accepted authority;
+- provider/business-system adapter boundaries;
+- one machine-readable Product wire authority.
+
+Do **not** build speculative scale or platform machinery merely because the target architecture leaves room for it. A single current Organization, a small internal user set, one marketplace/provider, one deployment node or local execution does not justify self-service tenancy, generic connector/plugin frameworks, Kafka, Kubernetes, service mesh, multi-region, sharding, generic workflow engines or equivalent machinery without a real consumer/failure class.
+
+Internal use also does not justify a shortcut that corrupts data, weakens tenant/security boundaries, leaks secrets, duplicates irreversible external effects or destroys future ownership. Production readiness is proportional to the current blast radius and consumer, while accepted correctness invariants remain binding.
+
+When implementation opens, prefer **vertical slices** that make one real end-to-end flow work and become provable before broad horizontal construction. Avoid implementing every repository/service/endpoint layer first and discovering only later whether a useful flow works.
+
+Reclassify BUILD NOW / SEAM NOW / PROVE FIRST / DEFER only on real evidence such as a new consumer, changed requirement, measured scale, newly reachable failure mode, provider change or implementation proof that invalidates an assumption.
+
+This section operationalizes the Method's smallest-sustainable-solution, YAGNI and “prepare the seam, not the entire future capability” rules; it does not replace or amend the organizational Method.
+
 ## Fable independent review
 
 ### Operational identity
