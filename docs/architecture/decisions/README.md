@@ -1,63 +1,86 @@
 # Architecture Decision Records
 
-## Current authority
+> **Role:** sole active authority for ADR file status/disposition during the D0–D9 rebaseline.  
+> **Decision generation routing:** `docs/engineering/rebaseline/DECISION-RECONCILIATION-BASELINE.md`  
+> **Current program status:** `docs/README.md`
 
-**Read ADR-035 before treating any earlier structural ADR as target authority.**
+## Current posture
 
-Marketplace Central is in the D0–D9 Architecture Rebaseline. Earlier ADR files remain as historical records, but ADR-035 explicitly reopens decisions that the current program must re-adjudicate.
+Pre-rebaseline ADRs are architecture history/evidence, not the new target architecture by inheritance. The 2026-08-18 Decision Reconciliation removed every fully rehomed legacy ADR from the active tree.
 
-Current status vocabulary:
+Detailed target meaning lives in accepted D-stage artifacts and `ARCHITECTURE.md`. A retained legacy ADR remains only because a later stage still has a concrete unresolved mechanism/proof/transition question for which that file is useful evidence.
 
-- **binding** — current constraint during the rebaseline;
-- **reopened** — historical evidence only until the named D-stage decides it;
-- **superseded** — historical only.
+Git history is the archive. ADR numbers are never reused.
 
-A direct old ADR file may still show the status it had when written. This registry plus later ADRs determine current status.
+## Retained legacy residues
 
-## Registry
+| ADR | Active status | Why it remains | Retirement condition |
+|---|---|---|---|
+| 008 | reopened — D7 | deployment/publisher/host evidence for production topology; its old Oracle/Tailscale-to-Sankhya path is not current target meaning | retire when D7 adjudicates deployment topology |
+| 010 | reopened — D7 | acquisition cadence/polling/runtime evidence; semantic freshness obligations already live in D0/D3 | retire when D7 adjudicates acquisition runtime |
+| 017 | historical evidence retained by explicit D2 Fact rehoming gate | reconstructed domain-judgment clauses still needed until the replacement target Fact ADR rehomes what remains valid | retire together with 034 when target Fact ADR lands |
+| 018 | reopened — D7 | execution-safety/runtime mechanics residue; generic Mutation business owner/table/poller is already superseded by D1/D3 | retire when D7 adjudicates execution-safety runtime |
+| 026 | reopened — D7 | scheduler/cursor/phase runtime evidence; no global phase business vocabulary survives D3 | retire when D7 adjudicates scheduler/runtime mechanics |
+| 030 | reopened — D7 | worker/scheduler/installation-topology evidence | retire when D7 adjudicates process/scheduler topology |
+| 034 | carried implementation/evidence anchor | current `Fact<T>` implementation/evidence anchor explicitly retained by D2; target scope is owned by D2 | retire with 017 when target Fact ADR rehomes the remaining clauses |
+| 035 | carried transition authority | governs the D0–D9 target-design/authority transition and implementation block | retire only after D0–D9 closes |
 
-| ADR | Current status |
-|---|---|
-| 001 | superseded |
-| 002 | superseded |
-| 003 | reopened — D4/D9 |
-| 004 | reopened — D1/D4 |
-| 005 | binding — Mercado Livre first |
-| 006 | binding — MPC-owned Oracle reads |
-| 007 | binding — godror/OCI Oracle runtime |
-| 008 | reopened — D7 |
-| 009 | binding — fee provenance |
-| 010 | reopened — D4/D7 |
-| 011 | reopened — D1/D2/D3 |
-| 012 | reopened — D1/D2 |
-| 013 | binding — webhook payload is not domain truth |
-| 014 | reopened — D1/D4 |
-| 015 | reopened — D1/D4 |
-| 016 | reopened — D5 |
-| 017 | superseded by ADR-034 |
-| 018 | reopened — D1/D3/D7 |
-| 019 | reopened — D1/D3 |
-| 020 | reopened — D1/D4 |
-| 021 | binding — TanStack Query owns frontend server state |
-| 022 | reopened — D1/D2/D4 |
-| 023 | reopened — D1 |
-| 024 | reopened — D1/D3 |
-| 025 | binding — provider PII retention minimization |
-| 026 | reopened — D3/D7 |
-| 027 | binding — partial-pull absence is not closure |
-| 028 | reopened — D1/D2 |
-| 029 | binding — no blind retry of provider writes |
-| 030 | reopened — D7 |
-| 031 | reopened — D1/D2 |
-| 032 | reopened — D4 |
-| 033 | binding — vendor adapters implement consumer-owned ports |
-| 034 | binding primitive — D2 decides application scope |
-| 035 | binding — Architecture Rebaseline governs target design |
+### ADR-035 snapshot fence
 
-## Numbering and provenance
+ADR-035's embedded “still-binding constraints” and “reopened” tables are a **2026-08-14 historical snapshot**. They do not own current ADR disposition.
 
-ADR numbers use three digits and are never reused. The existing ADR files and `_citations/` remain for provenance; they are not a roadmap.
+This registry and accepted D-stage artifacts supersede those embedded tables wherever later adjudication differs. In particular, D4-B1 superseded Direct Oracle/godror target transport; ADR-006/007 are retired from the active tree and are not current target constraints.
 
-A reopened ADR must not be cited as proof that the target architecture should keep its old structure. The responsible D-stage may restore, amend or supersede it after current analysis.
+### 2026-08-20 authority-surface amendment
 
-Current program stage/status lives only in `docs/engineering/rebaseline/README.md`.
+ADR-035 remains the D0–D9 transition authority, but its references to the former rebaseline router as the sole status/read-order authority are superseded. `docs/README.md` alone now owns current program status, allowed/blocked work, exact next action and selective read routing. This amendment changes routing only; it does not reopen ADR-035's implementation block or any accepted D-stage semantics.
+
+## Retired pre-rebaseline ADRs
+
+The following pre-rebaseline ADRs were fully adjudicated/rehomed and retired from the active tree on 2026-08-18:
+
+`001, 002, 003, 004, 005, 006, 007, 009, 011, 012, 013, 014, 015, 016, 019, 020, 021, 022, 023, 024, 025, 027, 028, 029, 031, 032, 033`.
+
+Their still-valid semantic meaning, if any, now lives in accepted D-stage authority and/or `ARCHITECTURE.md`; their original files remain available only through Git history.
+
+Notable reconciliations include:
+
+- ADR-003's OAuth → fee-sync → UX sequence has no remaining D9 consumer and is historical;
+- ADR-005 Mercado Livre-first meaning is carried by D0/`ARCHITECTURE.md`;
+- ADR-006/007 Direct Oracle/godror target meaning is superseded by D4-B1 Gateway-only integration;
+- ADR-009 provenance meaning is carried by D2/D4-B4;
+- ADR-013 webhook-pointer meaning is carried by D3/D4;
+- ADR-016 manual OpenAPI+SDK authority is superseded by D5-B1's single OpenAPI wire authority;
+- ADR-021 TanStack server-state constraint is carried by `ARCHITECTURE.md` and remains subject to D6 only within that fence;
+- ADR-025 PII minimization, ADR-027 honest partial absence, ADR-029 no-blind-retry and ADR-033 consumer-owned ports are carried by active architecture/D-stage authority.
+
+## Citation archaeology
+
+`docs/architecture/decisions/_citations/` contains only citation evidence still directly referenced by retained legacy residues. It is evidence, never target authority.
+
+The retained citation files are:
+
+- `RENUMBERING-REGISTRY.md` — provenance needed by retained reconstructed ADRs;
+- `adr-009-citations.md` — referenced by retained ADR-010;
+- `adr-013-citations.md` — referenced by retained ADR-018;
+- `adr-07-twodigit-citations.md` — referenced by retained ADR-026;
+- `adr-08-twodigit-citations.md` — referenced by retained ADR-030;
+- `adr-017-citations.md` — referenced by retained ADR-017/034.
+
+Everything else was retired with its citing ADRs and remains in Git history.
+
+## New target ADRs
+
+New target ADRs continue from **ADR-036+**. Historical numbers are never reused.
+
+Only accepted target decisions that materially benefit from durable ADR treatment become new ADRs; accepted D-stage artifacts are not mechanically exploded into one ADR per bullet.
+
+## Authority rule
+
+- `docs/README.md` owns current program status, allowed/blocked work, exact next action and selective read routing.
+- `ARCHITECTURE.md` owns stable cross-stage constraints.
+- Decision Reconciliation Baseline owns current decision-generation routing.
+- **This registry alone owns ADR file status/disposition.**
+- Accepted D-stage artifacts own detailed semantic meaning.
+
+If another active document appears to give an ADR a conflicting status, this registry is the status authority; resolve the semantic conflict against the responsible accepted D-stage/architecture home rather than keeping two status catalogs.

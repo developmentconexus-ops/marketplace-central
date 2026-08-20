@@ -1,306 +1,172 @@
-# Root-Cause / Global-Maximum Engineering Method
+# DevelopmentConexus Engineering Method
 
-> **Status:** canonical engineering standard  
-> **Scope:** Marketplace Central engineering work  
-> **Last verified:** 2026-08-13
+**Version:** 1.0.0  
+**Status:** ACCEPTED  
+**Authority:** organizational engineering standard  
+**Scope:** all DevelopmentConexus repositories; human, agent, or hybrid engineering
 
-## Binding principle
+## Objective
 
-> **Always simplify the code, never simplify correctness. Find the root cause, test whether the proposed solution is only a local maximum, and prefer the global structure that makes the defect class unrepresentable or mechanically impossible at the strongest reasonable boundary.**
+Find the **smallest sustainable solution** that preserves essential complexity, removes accidental complexity, resolves the root cause, and avoids foreseeable structural dead ends.
 
-This method governs non-trivial engineering work. It is not a mandate for maximum sophistication. It distinguishes **essential complexity** from **accidental complexity** and removes the latter without weakening invariants.
+**LLM-first:** maximize decision signal per token. State each normative rule once. Prefer short imperatives, stable vocabulary, and explicit conditionals. Do not add exposition, examples, artifacts, reviews, classifications, or ceremony unless they materially improve decision correctness, evidence quality, or risk control.
 
-## What this method prevents
+This is a **reasoning method, not a process framework**.
 
-1. **Patch-on-patch:** fixing a visible symptom while preserving the structural fact that made it possible.
-2. **Local-maximum optimization:** improving a workaround, legacy seam or faulty foundation instead of replacing it.
-3. **False simplification:** deleting enforcement/proof because it is inconvenient while the invalid state remains representable.
-4. **Overengineering:** creating a framework, registry, parser, compatibility layer or second source of truth when a stronger existing boundary can enforce the property.
-5. **Infinite review:** continuing hypothetical hardening after the material property is solved and proved.
+## 1. Scope and governance
 
-## Definitions
+- This method governs **how engineering is reasoned about and decided**. It does not define product architecture, technology, status, workflow, or repository-specific policy.
+- Repository instructions may specialize or operationalize this method; they MUST NOT silently weaken or redefine it. Conflicts inside this method's scope must be surfaced.
+- **Authority freezes execution, not inquiry.** Discovery may challenge accepted authority with material evidence; execution may not silently ignore accepted authority.
+- A change to this method is itself a material decision: apply this method, record the amendment, and require operator ratification.
+- Summaries, prompt snippets, templates, and local copies are derived aids unless explicitly designated canonical. They MUST cite the canonical version and MUST NOT become a second authority.
 
-### Symptom
+Reopen this method only when evidence shows a core rule is systematically misclassifying work, creating ceremony without decision-quality gain, forcing repository bindings to violate the method, or failing for a materially new actor/work class.
 
-The observable failure or finding: wrong response, race, duplicate implementation, CI escape, unsafe write, broken import boundary, contract drift or similar evidence.
+## 2. Materiality and proportionality
 
-A symptom says where a defect appeared; it does not determine where the fix belongs.
+A decision is **material** when it touches—creates, changes, removes, or deliberately leaves unprotected—any of:
 
-### Root cause
+- an invariant or correctness property;
+- authority, ownership, or an architectural boundary;
+- a public/external contract or persistent data meaning;
+- a security property or trust boundary;
+- an external or irreversible effect;
+- concurrency, recovery, or temporal correctness;
+- user-observable behavior on which another actor/system depends;
+- a hard-to-reverse technology or topology commitment.
 
-The structural fact that made the defect possible.
+If materiality cannot be determined safely, treat the decision as material until clarified.
 
-Examples:
+For a material decision, the non-degradable minimum is:
 
-- not “this handler forgot validation,” but “runtime request shapes and OpenAPI are independent authorities”;
-- not “this module wrote the wrong tenant,” but “tenant identity can be invented/defaulted at several boundaries”;
-- not “this marketplace mapping leaked,” but “provider DTOs are legally importable outside the provider boundary”;
-- not “this table has two writers,” but “data ownership is not structurally assigned to one authority.”
+- a citeable decision/outcome with its basis;
+- the invariant, when one is touched;
+- a proof strategy proportional to the claim;
+- reopen triggers.
 
-### Target property / invariant
+Depth scales with **materiality, irreversibility, uncertainty, and blast radius**. Ceremony—format, length, section count, named profiles—may shrink. Correctness obligations may not. Trivial or mechanical work should remain trivial.
 
-A statement that must remain true for every valid implementation, independent of current code shape.
+## 3. Decision core
 
-Examples:
+Use this flow proportionally:
 
-- each business fact has one owning context and one write authority;
-- provider wire models cannot become domain contracts;
-- an unknown monetary/operational fact cannot be represented as a plausible known zero;
-- application code cannot write another context’s state directly;
-- one API authority generates or mechanically validates all runtime/client contract shapes.
-
-### Local maximum
-
-A solution that improves the current implementation but preserves the structural limitation that produced the defect class.
-
-A local maximum is legal only when explicitly transitional, with a named successor and deletion condition.
-
-### Global maximum
-
-The best sustainable structure for the system’s actual constraints: it resolves the root cause, converges authorities, preserves required invariants, minimizes accidental complexity and makes invalid states impossible or mechanically detectable at the strongest reasonable boundary.
-
-Global maximum does **not** mean maximum abstraction, maximum code, big-tech infrastructure without need, perfect future-proofing or indefinite redesign.
-
-### Essential vs accidental complexity
-
-**Essential complexity** comes from real domain/system constraints: multi-tenancy, external-provider uncertainty, transactional consistency, authorization, asynchronous delivery, temporal facts, auditability, idempotency and contract evolution.
-
-**Accidental complexity** comes from implementation choices: duplicate policies, parallel abstractions, hand-synced registries, unnecessary compatibility, redundant lifecycle code, speculative providers and repeated enforcement of the same property.
-
-Remove accidental complexity; do not erase essential complexity.
-
-### YAGNI
-
-YAGNI removes speculative capability, not required correctness.
-
-YAGNI may justify deleting unused extensibility, unsupported compatibility paths, future-vendor frameworks, configuration nobody sets, abstractions with no real boundary and duplicate enforcement.
-
-YAGNI does **not** justify deleting an invariant, fail-closed default, proof for a reachable failure mode or a boundary that prevents a known defect class.
-
-## Enforcement hierarchy
-
-Prefer the strongest reasonable mechanism:
-
-1. **Structure / public API makes the invalid state unrepresentable**
-2. **Type system makes it invalid**
-3. **Database/schema constraint makes it invalid**
-4. **Runtime boundary fails closed**
-5. **Test proves reachable behavior**
-6. **Static guard/lint detects the violation**
-7. **Documentation/convention**
-
-This is a preference order, not dogma. A lower layer is valid when a stronger layer cannot express the complete property without disproportionate cost or destroying legitimate flexibility. Record why.
-
-## Required decision flow
-
-### 1. Observe and reproduce
-
-State the actual evidence. Use the correct measurement universe. Do not start from the proposed patch.
-
-For integration/runtime claims, distinguish:
-
-- `contract_validated` — local behavior/types/fakes proved;
-- `integration_validated` — real dependency/runtime proved;
-- `blocked_for_real_validation` — exact blocker named.
-
-A fake cannot prove credentials, network, provider semantics, database policy or deployment behavior.
-
-### 2. Identify the root cause
-
-Ask:
-
-- What structural fact made this possible?
-- Can the same fact produce other symptoms?
-- Are several findings evidence of one shared cause?
-- Would the finding still matter if the current directory/package layout were the opposite?
-
-Repeated findings around the same construct trigger mandatory local-vs-global review.
-
-### 3. State the target property
-
-Write the invariant independently of current implementation.
-
-Bad: “move `connectors` into `adapters`.”  
-Good: “provider-specific protocol knowledge is unreachable from business contexts; consumer-owned ports are the only dependency from business semantics toward an external provider.”
-
-Bad: “replace this SQL.”  
-Good: “one context is the only write authority for this business state.”
-
-### 4. Name authority and boundary
-
-Identify:
-
-- who owns the business meaning;
-- which artifact is the source of truth;
-- which component owns lifecycle/writes;
-- which public contract is legal;
-- the strongest reasonable enforcement boundary.
-
-A solution that creates a second authority is presumed wrong until justified.
-
-### 5. Evaluate credible candidates
-
-For each candidate answer:
-
-- Does it remove the root cause or only this symptom?
-- What defect class remains representable afterward?
-- What complexity does it add now?
-- What complexity does it avoid later?
-- Is the added complexity essential or accidental?
-- Does it preserve a legacy seam only because the seam already exists?
-
-### 6. Choose one legal outcome
-
-Exactly one:
-
-1. **Restructure now** — implement the global-maximum structure in the current work.
-2. **Transitional solution** — bounded local maximum with named successor/deletion gate.
-3. **Stop and split prerequisite** — the correct fix crosses the current boundary; do not patch around it.
-4. **Current structure confirmed** — architecture is sound and a local correction is appropriate.
-
-### 7. Define proof before implementation
-
-Specify how the target property will be demonstrated:
-
-- RED/counterfactual proof when useful;
-- GREEN positive behavior;
-- type/compile failure for illegal dependency/state;
-- schema/constraint proof;
-- generation/diff check for derived artifacts;
-- integration/live proof when an external behavior is claimed;
-- broader regression only when the changed boundary warrants it.
-
-Proof validates the property, not a spelling of the implementation.
-
-### 8. Implement and simplify
-
-After correctness is established, subtract:
-
-- duplicate paths;
-- obsolete compatibility;
-- transitional mechanisms whose successor landed;
-- dead abstractions;
-- redundant authorities;
-- guards that no longer protect a distinct reachable property.
-
-### 9. Close with evidence
-
-Complete means:
-
-- root-cause disposition explicit;
-- target property holds;
-- authority is unambiguous;
-- relevant proof is green/non-vacuous;
-- no known material contradiction remains;
-- transitional debt has a named exit;
-- findings are resolved, disproved or explicitly deferred with ownership.
-
-## Structural inversion test
-
-For every structural conclusion, state:
-
-> **What part of this conclusion would still be true if the current implementation were the opposite in every respect?**
-
-Current directory shape, migration cost, old ADR wording, import graph or schema are valid **current-state evidence** and sequencing inputs. They are not sufficient arguments that a target boundary is correct.
-
-Target structure must be justified by domain semantics, user-observable behavior, named failure modes, system constraints and enforceability.
-
-## Control versus artifact
-
-A control that exists but does not fire on the path a change actually takes is absent.
-
-Examples:
-
-- a script invoked by no required path;
-- a database policy bypassed by the runtime role;
-- a generated file with no regeneration/diff gate;
-- a test file outside test discovery;
-- a guard with no negative fixture proving it can fail.
-
-Do not count artifacts; prove effects.
-
-## Guard / lint / verifier policy
-
-A custom guard is justified only when all are true:
-
-1. it protects a material property;
-2. the failure is reachable or has occurred;
-3. a stronger structure/type/schema/runtime mechanism cannot reasonably express the complete property yet;
-4. a standard existing tool does not already enforce it;
-5. maintenance cost is lower than recurring defect risk;
-6. a negative fixture proves the guard can fire.
-
-Repeated syntax-specific patches to a guard are a signal to re-evaluate the enforcement boundary rather than indefinitely hardening spelling recognition.
-
-## Transitional enforcement
-
-Every transitional mechanism records:
-
-- property protected now;
-- why the global maximum cannot land in the current slice;
-- named successor;
-- milestone/stage that removes it;
-- deletion as part of that successor’s definition of done.
-
-Without an exit condition, treat it as permanent architecture and hold it to the permanent bar.
-
-## Data/contract/integration rules for this repository
-
-During the architecture rebaseline, these are cross-cutting reasoning constraints:
-
-- unknown is not zero/default;
-- provider payload is not domain data merely because it contains useful fields;
-- an external identifier is not automatically canonical identity;
-- a read model/projection is not an authority;
-- a successful provider HTTP response is not necessarily convergence;
-- timeout after a potentially accepted write is an ambiguous outcome, not automatic failure/retry;
-- polling, webhook, cursor and freshness semantics belong to the business capability that understands what “complete/current” means; generic platform code owns only mechanics;
-- frontend convenience does not justify a second business policy/contract authority;
-- current migrations/tables/routes are evidence to inventory, not obligations to preserve when there are no production compatibility constraints.
-
-## Engineering Decision Record
-
-Use a proportional written record for non-trivial decisions:
-
-```markdown
-## Engineering Decision Record
-
-### Symptom / evidence
-
-### Root cause
-
-### Target property
-
-### Authority and boundary
-
-### Local-maximum candidate
-
-### Global-maximum candidate
-
-### Decision
-Restructure now | Transitional solution | Stop and split prerequisite | Current structure confirmed
-
-### Enforcement
-Strongest reasonable layer and why.
-
-### Proof
-RED/GREEN/type/schema/static/integration evidence.
-
-### Transitional exit
-Successor + deletion condition, or N/A.
+```text
+Evidence
+→ Known / Inferred / Unknown / Deferred
+→ Root Cause
+→ Target Invariant
+→ Constraints
+→ Credible Alternatives
+→ Local Maximum vs Global Maximum
+→ Essential vs Accidental Complexity
+→ YAGNI / Overengineering / Future Cost
+→ Authority / Boundary when relevant
+→ Enforcement
+→ Proof Strategy
+→ Adversarial Challenge
+→ Decision
+→ Reopen Triggers
 ```
 
-Formal ADR/spec is needed when the decision changes durable architecture, contracts, ownership, security, persistence or cross-context semantics. Tiny factual/mechanical work can use a short record.
+### Evidence
 
-## Review and convergence
+- Start from evidence, not a preferred solution.
+- Evidence strength is **claim-relative**. A mock may prove local contract behavior; it does not prove a real integration.
+- Unknown MUST remain unknown; never convert uncertainty into a convenient default.
+- Current code, schemas, APIs, tests, runtime, history, and prior decisions are evidence. Existing implementation is not target authority merely because it exists.
+- Structural Inversion Test: **if the current implementation were the opposite in every relevant respect, which parts of the conclusion would still be true?**
+- Prefer primary/official sources for unstable external facts.
 
-Review is adversarial but bounded.
+### Root cause and invariant
 
-- A finding is evidence to verify, not an instruction to obey automatically.
-- Repeated findings at the same architectural altitude trigger root-cause analysis, not another patch round.
-- Optional hardening does not become blocking without a material property at risk.
-- Convergence between reviewers is weak evidence; unexplained divergence is evidence that a question remains unsettled.
+Do not patch the symptom before identifying the structural condition that made it possible. Ask whether the same condition can produce other failures and whether a local correction leaves the defect class reachable.
 
-Stop reviewing when root cause, target property, authority, boundary, trade-offs and proof are settled; remaining findings are mechanical/non-material; and no material contradiction remains.
+State the target invariant independently of implementation: what must remain true in every valid realization?
 
-**Global maximum is not permission for endless perfection search. Reopen a settled decision only on a new material finding or changed constraint.**
+### Global Maximum
+
+A **Local Maximum** is the best answer inside the current structure. A **Global Maximum** is the best sustainable structure for the real constraints, even when the current structure must change.
+
+Global Maximum does **not** mean maximum abstraction, infrastructure, generality, future-proofing, or redesign. Prefer it only when the current structure preserves the root cause or creates a foreseeable structural dead end.
+
+### Complexity law
+
+Preserve **essential complexity** from the real problem; remove **accidental complexity** introduced by the solution.
+
+YAGNI removes unsupported capability, speculative frameworks, unused extensibility, duplicate authorities, and hypothetical compatibility. It MUST NOT remove a known invariant, safety property, required isolation/recoverability/auditability, evidence/provenance, or a seam justified by evidenced evolution.
+
+Before adding a material abstraction/mechanism, ask:
+
+1. What concrete consumer, risk, or defect requires it now?
+2. What defect class does it eliminate?
+3. Is a simpler existing boundary sufficient?
+4. Can it be added later without dismantling authority or duplicating semantics?
+5. Does it reduce total complexity or only move it?
+
+Future evolution is evidenced by a declared product objective, accepted requirement, named consumer, or real constraint. Imagined possibility is not evidence.
+
+**Prepare the seam, not the entire future capability.**
+
+### Authority and mechanism
+
+**Mechanism ≠ Authority.** Shared machinery may centralize retries, scheduling, validation, observability, serialization, caching, or similar mechanics without owning the business/system meaning it supports.
+
+When ownership matters, state who owns meaning and lifecycle, what remains external, what callers may depend on, and what the boundary does not own. Two authorities for the same meaning are presumed wrong until justified.
+
+A material dependency/reuse choice must deliberately preserve ownership: differentiated semantics must not become commodity by accident; commodity machinery must not become authority by convenience.
+
+### Enforcement
+
+Choose the strongest reasonable enforcement that covers **all paths capable of reaching the protected state**, including paths the boundary structurally admits. Structure, types, schema constraints, runtime fail-closed checks, tests, static guards, and documentation are mechanisms—not a fixed ranking.
+
+Among equally sufficient mechanisms, prefer earlier feedback unless it adds disproportionate complexity.
+
+A control counts only when its firing can be demonstrated or credibly falsified.
+
+### Proof Strategy Before Implementation
+
+Define how the protected claim could be proven false **before** implementing the solution.
+
+Proof must match the claim and maturity level: architecture may require counterexample analysis, independent challenge, coherence review, or a targeted probe; implementation may require compile/type/schema failure, negative fixtures, integration, restart/recovery, concurrency, contract-diff, or end-to-end evidence.
+
+Artifact existence is not proof. **A control that cannot be shown to fire is not proven.**
+
+### Adversarial challenge and findings
+
+Attack the preferred decision: strongest counterargument, invalidating assumption, duplicate authority, framework/provider overfit, partial failure, concurrency, restart, migration trap, hardest future change.
+
+Self-review is not independent review. Before ratification, use an independent/fresh challenger when a decision creates or moves authority/trust boundaries, has external/irreversible effects, or binds multiple repositories. A repository may require independent challenge more often, not less than this floor.
+
+A reviewer finding or severity is evidence, not requirement authority. First classify it against current authority. A defect against existing authority may be corrected; a proposal that creates new authority/requirement must return to decision, never enter disguised as a correction.
+
+## 4. Outcomes, stop, and reopen
+
+Every material decision ends as one of:
+
+- **RESTRUCTURE NOW** — implement the Global Maximum now.
+- **CURRENT STRUCTURE CONFIRMED** — structure is sound; make the bounded correction.
+- **NO CHANGE REQUIRED** — examined evidence supports no change; record what was examined and what would have falsified the conclusion.
+- **TRANSITIONAL SOLUTION** — temporary local maximum; record the property protected now, why the target cannot land now, the successor, and deletion/replacement condition.
+- **STOP / SPLIT PREREQUISITE** — unresolved prerequisite blocks correctness.
+- **DEFER SAFELY** — current work can proceed; record why deferral is safe, the revisit trigger, and later owner/stage when identifiable.
+
+Stop when evidence is sufficient for the claim, root cause/invariant are clear, credible alternatives were compared, complexity/authority/proof were checked, strongest objections were addressed, and no material contradiction remains.
+
+Do not reopen accepted decisions for preference or hypothetical futures. Reopen on material evidence: changed requirement/ownership/scale, a new real consumer, newly reachable failure mode, external change, or implementation evidence that invalidates an assumption.
+
+Under deadline, keep Unknown as Unknown, state residual risk, prefer the safest/reversible option compatible with the invariant, and tighten proof/reopen triggers. Deadline never converts uncertainty into truth.
+
+## 5. Global coherence
+
+Local correctness does not guarantee global coherence.
+
+Run a Global Coherence Review when closing a major design stage, after a `RESTRUCTURE NOW`, before ratifying a decision that binds multiple repositories, or when repeated local exceptions suggest a systemic problem.
+
+Look for duplicate/missing authority, circular ownership, contradictory assumptions, repeated correctness machinery, God components, excessive fragmentation, abstractions caused only by other abstractions, removed necessary seams, and speculative extensibility.
+
+A material coherence finding returns to the Decision Loop and reopens only the decisions it actually implicates.
+
+---
+
+**Namespace note:** `evidence` and `finding` in this method are epistemic terms. Repository/domain objects with the same names retain their own scoped semantics.
