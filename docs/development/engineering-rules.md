@@ -11,6 +11,12 @@ Use, without copying into this repository:
 
 The Method governs engineering reasoning. The Repository Standard governs the operating envelope. MPC rules may strengthen them for real local constraints and must not silently weaken them.
 
+## Derived production engineering guide
+
+[`evidence-grounded-production-engineering-for-llm-agents.md`](evidence-grounded-production-engineering-for-llm-agents.md) is a restored **derived / portable / non-authoritative** guide for production coding, technology research, dependency/framework evaluation, source hierarchy and proof. It operationalizes the canonical Method; it does not replace or amend it.
+
+The restored file is preserved from historical blob `8de8ff4afbfcc2ee37a7db6ea0019e717740ebcf`. Its original relative parent-Method link referred to the retired local availability copy. The current parent authority is `developmentconexus-ops/conexus-methodology/METHOD.md` v1.0.0 as declared above.
+
 ## Local verification
 
 ```powershell
