@@ -13,6 +13,8 @@ Read, in order:
 
 Default task pack: **5 files or fewer**. Do not recursively read phase history, ADRs, Evidence, Git history, or removed runtime unless a concrete question requires them.
 
+Pre-standard current-status/read-order prose inside accepted D-stage, architecture or retained ADR artifacts is a **frozen routing snapshot**. This router and `docs/roadmap.md` supersede that prose for navigation/status only; the owning documents' accepted Product/architecture semantics remain unchanged.
+
 ## Task routes
 
 | Task / question | Smallest starting authority | Do not read by default |
