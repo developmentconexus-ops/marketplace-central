@@ -11,7 +11,7 @@ permissions:
 jobs:
   required:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     env:
       GATE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
       GATE_BASE_REF: ${{ github.event.pull_request.base.ref || 'main' }}
@@ -26,6 +26,12 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: false
+      - name: prove canonical Product OAD
+        run: node scripts/verify-product-oad.mjs
       - name: repository contract gate
         shell: pwsh
         run: npm run gate:full
