@@ -56,6 +56,19 @@ D0→D5-B1 semantic reopen                        none
 
 The superseded OpenAPI, handlers, tests and `packages/sdk-runtime` were removed in the operator-ratified runtime reset. They remain available only as Git-history evidence and are not target authority.
 
+### 2.1 2026-08-20 operator sequencing amendment
+
+The checkpointed OA-C13 sequencing originally required the canonical Product OAD replacement to land before retiring the legacy OpenAPI/manual-SDK seam. During the repository cleanup, the operator explicitly ratified a hard cutover first because no production compatibility consumer exists and the superseded runtime/CI topology was creating active-tree and agent-context cost without protecting target behavior.
+
+This amendment changes **retirement sequencing only**:
+
+```text
+original: author replacement → retire legacy seam
+amended:  retire legacy seam → author canonical replacement
+```
+
+It does **not** reopen W1–W4, change any of the 95 Product operations, change the 29 ordinary Permissions, add a Principal kind, authorize D6–D9 or authorize Product implementation. Git history remains the evidence archive for the retired seam.
+
 The current-state failure class is:
 
 > **Two writable wire representations drift while retaining target meaning already rejected by the rebaseline.**
@@ -578,7 +591,7 @@ TypeScript contract generation                  openapi-typescript 7.13.0
 Go compatibility generation                     oapi-codegen v2.8.0 + runtime v1.7.0
 runtime TypeScript client                       D6
 Go router/server/runtime validator              D7
-legacy OpenAPI/manual SDK                       REPLACE / RETIRE AS ONE MEASURED SEAM
+legacy OpenAPI/manual SDK                       RETIRED; canonical replacement authoring next
 canonical Product Problem origin                https://conexus.fun
 ngrok endpoint                                  PREVIEW ONLY
 Product OAD authoring/proof                     NEXT
