@@ -44,11 +44,11 @@ headers:
   Allow: {description: Current methods allowed for the request target., schema: {type: string, minLength: 1}}
 
 responses:
-  BadRequest: {description: Malformed request, missing required idempotency identity, or invalid/expired cursor., content: {'application/problem+json': {schema: {$ref: '#/schemas/BadRequestProblemBody'}}}}
+  BadRequest: {description: "Malformed request, missing required idempotency identity, or invalid/expired cursor.", content: {'application/problem+json': {schema: {$ref: '#/schemas/BadRequestProblemBody'}}}}
   AuthenticationRequired: {description: Authentication is required., content: {'application/problem+json': {schema: {$ref: '#/schemas/AuthenticationRequiredProblem'}}}}
   AccessDenied: {description: Current Product access is denied., content: {'application/problem+json': {schema: {$ref: '#/schemas/AccessDeniedProblem'}}}}
   ResourceNotFound: {description: Resource is not visible or not found., content: {'application/problem+json': {schema: {$ref: '#/schemas/ResourceNotFoundProblem'}}}}
-  Conflict: {description: Current revision, state, or idempotent intake conflicts with this request., content: {'application/problem+json': {schema: {$ref: '#/schemas/ConflictProblemBody'}}}}
+  Conflict: {description: "Current revision, state, or idempotent intake conflicts with this request.", content: {'application/problem+json': {schema: {$ref: '#/schemas/ConflictProblemBody'}}}}
   PreconditionFailed: {description: If-Match does not match the current resource., content: {'application/problem+json': {schema: {$ref: '#/schemas/PreconditionFailedProblem'}}}}
   ContentTooLarge: {description: Request body exceeds the enforced bound., content: {'application/problem+json': {schema: {$ref: '#/schemas/AboutBlank413Problem'}}}}
   UnsupportedMediaType: {description: Request representation is unsupported., content: {'application/problem+json': {schema: {$ref: '#/schemas/AboutBlank415Problem'}}}}
