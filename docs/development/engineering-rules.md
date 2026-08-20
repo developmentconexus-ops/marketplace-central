@@ -35,7 +35,7 @@ For PR/diff claims, proof is over the intended `base...candidate` range. A clean
 
 ## Dependency and target-architecture rule
 
-A dependency or lockfile change must be explicitly inside the declared PR scope, including why the dependency is necessary now and the verification that exercises it.
+Dependency or lockfile change must be explicitly inside the declared PR scope, including why the dependency is necessary now and the verification that exercises it.
 
 Never bend accepted target architecture merely to preserve removed or superseded code/tests. A check that exists only for a retired subject may be removed only when attributable evidence proves either:
 
