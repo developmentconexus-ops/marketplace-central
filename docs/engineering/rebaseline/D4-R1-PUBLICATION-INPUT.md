@@ -21,7 +21,7 @@ The targeted review confirmed:
 - no 13th publication/content/integration business domain is introduced;
 - D5-B2 may resume only from this accepted seam, not from the pre-R1 review candidate by inheritance.
 
-`docs/engineering/rebaseline/README.md` remains the sole current-program status/router. The original D4 §10 next-action text is a historical closure snapshot from before this targeted reopen; current next action is defined only by the router.
+`docs/README.md` remains the sole current-program status/router. The original D4 §10 next-action text is a historical closure snapshot from before this targeted reopen; current next action is defined only by the router.
 
 ---
 

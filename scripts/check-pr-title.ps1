@@ -34,5 +34,5 @@ if ($Title -match $pattern) {
 }
 Write-Output "pr_title=nonconventional status=failed"
 Write-Output "title_length=$($Title.Length)"
-Write-Output 'expected: type(scope)?: subject -- e.g. "fix(catalogingest): reject empty GTIN", types: feat fix docs style refactor perf test build ci chore revert'
+Write-Output 'expected: type(scope)?: subject -- e.g. "docs(api): author canonical Product OAD", types: feat fix docs style refactor perf test build ci chore revert'
 exit 1

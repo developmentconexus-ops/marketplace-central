@@ -1,6 +1,0 @@
-package domain
-
-import (
-	_ "marketplace-central/apps/server_core/internal/contexts/beta/internal/domain"
-	_ "marketplace-central/apps/server_core/internal/contexts/gamma/contracts"
-)

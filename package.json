@@ -2,69 +2,11 @@
   "name": "marketplace-central",
   "version": "0.1.0",
   "private": true,
-  "workspaces": [
-    "apps/web",
-    "packages/*"
-  ],
   "engines": {
     "node": ">=26.3.0 <27"
   },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.eslint.json --noEmit",
     "gate": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane all",
-    "gate:full": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane full",
-    "gate:gofmt": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane gofmt",
-    "gate:format": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane format",
-    "gate:build": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane build",
-    "gate:typecheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane typecheck",
-    "gate:lint-go": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane lint-go",
-    "gate:lint-web": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane lint-web",
-    "gate:governance": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane governance",
-    "gate:arch": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane arch",
-    "gate:boundary": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane boundary",
-    "gate:test-go": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane test-go",
-    "gate:test-web": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane test-web",
-    "gate:census": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane census",
-    "gate:ci-hygiene": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane ci-hygiene",
-    "gate:selftest": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane selftest",
-    "gate:integration": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane integration",
-    "gate:edge": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane edge",
-    "dev": "npm run dev --workspace @marketplace-central/web",
-    "build": "npm run build --workspace @marketplace-central/web",
-    "start": "npm run start --workspace @marketplace-central/web",
-    "test": "npm run test --workspace @marketplace-central/web",
-    "test:run": "npm run test --workspace @marketplace-central/web",
-    "local:up": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local.ps1 -Command up",
-    "local:status": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local.ps1 -Command status",
-    "local:build": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local.ps1 -Command build",
-    "local:test": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local.ps1 -Command test",
-    "local:stop": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local.ps1 -Command stop",
-    "docker:dev": "docker compose up --build postgres backend frontend",
-    "docker:oauth": "docker compose --profile oauth up --build",
-    "docker:down": "docker compose down",
-    "web:dev": "npm run dev --workspace @marketplace-central/web",
-    "web:test": "npm run test --workspace @marketplace-central/web",
-    "web:build": "npm run build --workspace @marketplace-central/web",
-    "harness:unit": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command unit",
-    "harness:integration": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command integration",
-    "harness:live": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command live",
-    "harness:browser": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command browser",
-    "harness:edge": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command edge",
-    "harness:provider-write": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command provider-write",
-    "harness:governance": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command governance",
-    "harness:pg:up": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command pg-session-up",
-    "harness:pg:down": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 -Command pg-session-down"
-  },
-  "devDependencies": {
-    "@types/node": "^22.20.1",
-    "eslint": "^10.8.1",
-    "eslint-plugin-react-hooks": "^7.1.1",
-    "jsdom": "^26.1.0",
-    "prettier": "^3.9.6",
-    "typescript": "^5",
-    "typescript-eslint": "^8.66.0"
-  },
-  "allowScripts": {
-    "esbuild@0.27.4": true
+    "gate:full": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane full"
   }
 }

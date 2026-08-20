@@ -1,8 +1,0 @@
-{
-  "attempted_path": "apps/server_core/internal/modules/inventory/domain/stock_policy.go",
-  "allowed_paths": [
-    "contracts/governance/harness-evals.json",
-    "scripts/tests/harness-eval.tests.ps1",
-    "scripts/tests/fixtures/harness-eval/out-of-scope-write/**"
-  ]
-}

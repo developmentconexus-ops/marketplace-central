@@ -54,7 +54,7 @@ Product path / schema / collection / access     owned by W1 / W2 / W3 / W4
 D0→D5-B1 semantic reopen                        none
 ```
 
-Current OpenAPI, handlers, tests and `packages/sdk-runtime` remain current-state evidence until replaced; they are not target authority.
+The superseded OpenAPI, handlers, tests and `packages/sdk-runtime` were removed in the operator-ratified runtime reset. They remain available only as Git-history evidence and are not target authority.
 
 The current-state failure class is:
 
@@ -424,7 +424,7 @@ A D5 contract SDK exports generated paths, operations and schemas only. It does 
 
 D6 may choose a small typed Fetch transport, a stable generated runtime client or bounded TanStack Query adapters. Paths, params, bodies, responses and Product Problems still derive from the OAD.
 
-The current `packages/sdk-runtime` is a replacement target, not target authority.
+The historical `packages/sdk-runtime` remains replacement evidence only; it is neither active nor target authority.
 
 ## OA-C12 — Technical surfaces are mechanically excluded
 
@@ -440,36 +440,31 @@ The Product OAD and Product SDK contain none of:
 
 Separate technical contracts may later exist for their actual protocols. They are never joined into the Product OAD for documentation convenience.
 
-## OA-C13 — Legacy artifacts retire as one measured seam
+## OA-C13 — Legacy artifacts remain retired as one measured seam
 
 Target disposition:
 
 ```text
 contracts/api/marketplace-central.openapi.yaml
-→ remove from target active tree when canonical Product OAD replaces it
-→ preserve in Git history unless a real legacy production consumer is named
+→ absent before canonical Product OAD authoring
+→ preserved only in Git history; no active compatibility consumer is admitted
 
 packages/sdk-runtime manual Product DTO/operation catalog
-→ stop extending
-→ replace target Product imports with generated contract types
-→ retain only bounded genuinely legacy/non-Product modules during migration
+→ absent from the active tree
+→ generated projections start from the canonical OAD without a migration bridge
 → never present as target Product SDK authority
 ```
 
-The replacement owns the complete mechanical retirement set:
+The runtime reset retired the old control set together with its subject population. Canonical OAD authoring owns this forward replacement set:
 
-1. `GOV_API_SDK_SPLIT` implementation;
-2. `api-sdk-atomicity` invariant;
-3. `openapi-without-sdk` eval;
-4. legacy OpenAPI knowledge route;
-5. legacy `modules.json` `openapi_prefixes`;
-6. first Go byte-literal OpenAPI parity test;
-7. second Go byte-literal OpenAPI parity test;
-8. obsolete single-level Prettier exclusion;
-9. `api-sdk` shared seam;
-10. `sdk-runtime` knowledge route;
-11. ratchet/baseline entries tied to retiring SDK tests;
-12. `GOV_FRONTEND_FETCH` path-name exemption and its synthetic governance fixtures.
+1. a zero-population guard for the retired OpenAPI/manual-SDK paths;
+2. exact 95-operation and 29-Permission checks;
+3. deterministic source lint and bundle proof;
+4. deterministic TypeScript and Go projection generation;
+5. a strict source/generated authority seam;
+6. generated Product routing/transport contracts rather than handwritten duplication;
+7. contract-drift ratchets tied to accepted W1–W4 meaning;
+8. a generated transport boundary whose concrete runtime role is selected by D6/D7.
 
 Useful controls are replaced, not merely deleted:
 
@@ -539,8 +534,8 @@ Canonical authoring must prove at least:
 40. authored-media delivery route absent;
 41. technical Problem namespace absent from Product OAD;
 42. legacy `/mutations` absent;
-43. manual SDK types are not imported as target wire authority;
-44. all twelve retirement consumers are removed or deliberately rehomed atomically;
+43. retired manual SDK types remain absent from the active tree;
+44. retired OpenAPI/manual-SDK paths remain at zero population;
 45. ngrok or any other temporary host cannot leak into canonical Product Problem constants.
 
 A green command that did not traverse the real source closure, all operations and generated outputs is vacuous.
@@ -603,4 +598,4 @@ Reopen only the smallest implicated decision when evidence shows:
 
 Do not reopen for hosting-vendor changes, generator naming preference, file-count aesthetics, current handler layout, legacy route convenience, desire for `/v1`, or one tool's inability when another credible tool preserves the source semantics.
 
-Current status and exact next action are owned only by `docs/engineering/rebaseline/README.md`.
+Current status and exact next action are owned only by `docs/README.md`.

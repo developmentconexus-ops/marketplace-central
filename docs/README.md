@@ -29,6 +29,7 @@ Stage-local status and read-order prose accepted before this checkpoint is super
 | Product Problem namespace | `https://conexus.fun/marketplace-central/problems/product/{slug}` |
 | Technical Problem namespace | `https://conexus.fun/marketplace-central/problems/technical/{surface}/{slug}` when a technical contract actually needs it |
 | Ngrok | preview/tunnel only; forbidden in canonical `Problem.type` values |
+| Active runtime baseline | **NONE — superseded implementation, SDK, migrations and deployment topology are Git history only** |
 | Implementation | **BLOCKED until D9 is accepted** |
 
 The 95 admitted Product operations define the Product 1.0 contract surface. They do **not** require 95 runtime handlers before the first useful internal vertical slice.
@@ -79,9 +80,7 @@ Read D0–D4 only when a concrete OAD question cannot be answered by the D5 pack
 | Engineering reasoning for material work | [DevelopmentConexus Engineering Method](engineering/standards/root-cause-global-maximum-method.md) — non-authoritative local availability copy of `developmentconexus-ops/conexus-methodology/METHOD.md` v1.0.0; replace manually only after operator-approved adoption, without sync machinery |
 | Historical/current-state facts needed for a specific decision | [Evidence Register](engineering/rebaseline/EVIDENCE-REGISTER.md), then only the cited primary evidence/code |
 | Observed legacy defect/proof classes | [Defect Class Catalog](engineering/defect-class-catalog.md) — supporting reference only |
-| Current read-only Oracle validation procedure | [Live Oracle Docker](operations/live-oracle-docker.md) — current-state procedure, not target architecture |
-| Machine-selectable knowledge routes | [`knowledge-routes.json`](../contracts/governance/knowledge-routes.json) — tooling aid, not status authority |
-| Current runtime behavior | relevant code, schema, OpenAPI and tests after the semantic authority above |
+| Historical runtime evidence required for a decision | [Evidence Register](engineering/rebaseline/EVIDENCE-REGISTER.md), then the exact cited Git revision/path only |
 
 ## Exact next action: canonical Product OAD authoring/proof
 
@@ -92,7 +91,7 @@ The current architectural sub-batch may:
 3. use exact Product Problem constants under `https://conexus.fun/marketplace-central/problems/product/{slug}`;
 4. add the accepted rules-only Redocly configuration and deterministic lint/bundle/generation proof;
 5. generate and compile the derived TypeScript and Go contract projections;
-6. retire or rehome the measured legacy OpenAPI/manual-SDK authority seam atomically;
+6. preserve the proven absence of the retired legacy OpenAPI/manual SDK while canonical projections land;
 7. execute negative controls and repository gates;
 8. stop and reopen only the smallest authority if executable proof discovers a material contradiction.
 
@@ -176,17 +175,12 @@ Binding rules:
 - `AI-DIALOG.md` is created only for an active bounded Fable review cycle and is deleted before merge; Git history preserves the cycle.
 - External research is absorbed into the responsible D-stage decision or retained as clearly time-bounded supporting evidence.
 - Superseded candidates are removed after their surviving meaning is filed.
-- `engineering/rebaseline/README.md` is a temporary compatibility pointer for old links only; it owns no status and is not part of the read order.
 
-## Machine/runtime authorities
+## Active repository mechanics
 
-The following describe current mechanics and are not automatically target architecture:
+No runtime application, deployment topology, migration set, legacy API contract or manual SDK is active during the D0–D9 rebaseline. Superseded artifacts exist only in Git history and may be consulted through the Evidence Register for a specific decision; they carry no compatibility obligation.
 
-- `contracts/api/marketplace-central.openapi.yaml` — legacy/current HTTP contract until the canonical Product OAD replacement lands;
-- `contracts/governance/` — current machine-enforced repository governance;
-- `contracts/gate/` — current verification ratchets;
-- `scripts/gate.ps1` — shared local/CI gate implementation;
-- application code and migrations — evidence of what currently runs.
+`scripts/gate.ps1` is the shared local/CI check for the two-file authority bootstrap and the zero-population legacy ratchet. Reintroducing implementation or runtime machinery requires its responsible accepted D-stage, accepted D9 and an explicit replacement for every affected guard.
 
 ## Fresh-session success test
 

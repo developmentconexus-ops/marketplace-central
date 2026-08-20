@@ -1,6 +1,0 @@
-package edge
-
-func summarise(f Fact) string {
-	v, _ := f.Value()
-	return v
-}

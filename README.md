@@ -13,6 +13,8 @@ Read only:
 
 `docs/README.md` is the sole current-program status and selective documentation index. Historical plans, handoffs, review dialogue, branches and current code shape are not the roadmap.
 
+The superseded application, deployment, migration and manually maintained API/SDK trees were removed during the architecture rebaseline. Git history preserves them as evidence; they are not an active compatibility surface.
+
 ## Verification
 
 ```powershell
@@ -20,4 +22,4 @@ npm run gate
 npm run gate:full
 ```
 
-The same gate implementation runs locally and in CI.
+The same compact authority/zero-legacy gate runs locally and in CI while implementation remains blocked through D9.

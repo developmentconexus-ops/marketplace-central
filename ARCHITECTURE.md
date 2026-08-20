@@ -29,13 +29,13 @@ It must support trustworthy flows for:
 ## Stable platform constraints
 
 1. **Independent monorepo.** Marketplace Central remains its own repository/application. Future integration into a broader product does not justify coupling current domain boundaries to another repository.
-2. **Go backend is canonical business execution.** `apps/server_core` is the server-side application. Business policy is not duplicated in React.
-3. **React frontend is a client, not a second domain authority.** Server state is managed through TanStack Query (ADR-021) unless a material finding explicitly reopens that decision.
+2. **Go backend is canonical business execution.** The concrete server tree is selected after D9 from accepted D7 runtime decisions. Business policy is not duplicated in React.
+3. **React frontend is a client, not a second domain authority.** D6 selects the concrete frontend/package topology, realized only after D9. Server state is managed through TanStack Query (ADR-021) unless a material finding explicitly reopens that decision.
 4. **PostgreSQL stores MPC-owned canonical state.** External systems are sources/dependencies, not alternate writable application stores.
 5. **Sankhya is external to MPC and is integrated through its sanctioned API Gateway.** Business-system access stays behind MPC-owned consumer ports/adapters. Direct Oracle/database access is explicitly outside the target architecture and is not a fallback path. If the Gateway/API surface cannot satisfy a materially required Product 1.0 claim, the architecture stops and re-adjudicates the requirement/transport explicitly; it does not fall back to Oracle by convenience. Legacy Oracle/godror code remains current-state/history evidence only.
 6. **Mercado Livre first.** Other marketplace providers are deferred until the Mercado Livre operating loop is coherent and the adapter protocol is proven (ADR-005).
 7. **Marketplace provider boundary.** Provider integrations enter through vendor adapters and implement ports owned by consuming business contexts (ADR-033). Provider wire DTO/protocol knowledge stays inside the vendor boundary; exact target package layout remains later realization detail unless a stage explicitly freezes it.
-8. **Honest absence.** Unknown facts do not become plausible zero/default values. `internal/kernel/fact` is an accepted primitive for uncertainty where semantically appropriate (ADR-034); D2 decides its correct scope rather than forcing it onto every value.
+8. **Honest absence.** Unknown facts do not become plausible zero/default values. D2's bounded `Fact<T>` knowledge shape is accepted where uncertainty is materially part of correctness; no former package path or implementation survives as target structure.
 9. **Exactness where the domain requires it.** Money/tax/cost/pricing values must not lose correctness through floating-point convenience. D2 owns the exact shared/domain representation.
 10. **Tenant-ready data isolation is a real invariant.** The exact tenant runtime/RLS model is under D7, but tenant isolation may not depend solely on developers remembering predicates.
 11. **External writes are controlled.** A provider write has explicit authority/policy, duplicate protection, auditability and reconciliation. An ambiguous outcome is not blindly retried (ADR-029).
@@ -73,7 +73,7 @@ A future session must not infer target architecture from existing artifacts befo
 The rebaseline is testing — not blindly accepting — a top-level shape with:
 
 ```text
-apps/server_core/internal/
+future Go server realization/
   contexts/       business authorities
   adapters/       external-system translations
   kernel/         tiny shared value semantics only

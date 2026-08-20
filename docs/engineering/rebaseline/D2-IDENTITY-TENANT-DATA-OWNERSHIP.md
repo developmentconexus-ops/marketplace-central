@@ -427,7 +427,7 @@ Domains/sources determine whether quantity is integer/fractional and what unit/p
 
 ### 9.3 `Fact<T>` scope
 
-ADR-034's `Fact<T>` primitive remains the current implementation/evidence anchor for knowledge shape during the rebaseline, but D2 owns its target scope.
+ADR-034 remains historical evidence for the bounded `Fact<T>` knowledge shape during the rebaseline. Its former implementation/package has been retired; D2 owns the target semantics and no old package layout is inherited.
 
 Use `Fact<T>` where knowledge state, provenance or temporal validity are materially part of correctness; do not force it onto every value.
 

@@ -1,3 +1,0 @@
-package mercadolivre
-
-const provider = "mercado_livre"

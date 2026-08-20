@@ -1,5 +1,0 @@
-package pricing
-
-// A test fabricating a vendor fixture: identity as a value, the system working.
-// Exempt for the vendor rule only.
-const fixtureProvider = "mercado_livre"

@@ -88,5 +88,5 @@ npm run gate:full
 - Presence is not execution; a check must exercise the relevant subject and demonstrate its negative control where required.
 - Mocks/fakes prove local contract behavior, not real integration behavior.
 - Claims depending on Mercado Livre, Sankhya, PostgreSQL deployment or browser runtime require appropriate real-environment evidence.
-- Run Go commands from `apps/server_core`.
+- After D9 admits a Go implementation tree, run Go commands from the module root selected by D7; no Go runtime tree is active during the rebaseline.
 - Never expose secrets or PII in logs, transcripts, commits or docs.
