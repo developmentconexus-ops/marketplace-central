@@ -6,7 +6,8 @@
 > **Parent authorities:** accepted D0→D4 + D4-R1 + D5-B1 + Decision Reconciliation Baseline + ratified D5-B2 Whole-Matrix  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
 > **Whole-W2 final ratification incorporated:** 2026-08-19  
-> **Final Problem/media consistency cross-reference incorporated:** 2026-08-19
+> **Final Problem/media consistency cross-reference incorporated:** 2026-08-19  
+> **OpenAPI wire-authority/tooling cross-reference incorporated:** 2026-08-20
 
 ## 1. Purpose
 
@@ -296,13 +297,24 @@ Provider OAuth/webhook/callback/connector ingress is a separate D4 protocol surf
 
 ---
 
-## 17. OpenAPI version decision remains tooling-scoped
+## 17. OpenAPI authority/tooling routing
 
-One machine-readable OpenAPI document remains the Product API wire authority.
+`D5-B2-OPENAPI-WIRE-AUTHORITY-TOOLING.md` is the canonical D5-B2 authority for the single machine-readable Product OAD and its bounded validation/generation tooling.
 
-The exact OpenAPI minor is **not selected by recency alone**. Choose it only when W3/later schema requirements and actual server/client generator compatibility prove the smallest suitable version.
+Binding cross-reference:
 
-No second manually authoritative SDK/schema representation is admitted.
+```text
+entry document       contracts/api/product/openapi.yaml
+feature level        OpenAPI 3.1.2
+source OAD           authority
+bundle / generated   derived
+```
+
+The source OAD preserves this W1 path/HTTP grammar. Tooling cannot rewrite custom `:verb` paths, introduce `/v1`, add environment `servers`, admit provider/technical roots or create a second hand-authored SDK/schema authority.
+
+The standard Go `net/http.ServeMux` is not a valid neutral realization for a wildcard followed by `:verb` in the same path segment. This is a D7 routing constraint, not permission to change W1 grammar or select a D7 framework here.
+
+Custom Product Problem `type` constants and Product OAD authoring remain blocked until the canonical tooling authority's stable-origin proof gate is discharged.
 
 ---
 
@@ -328,13 +340,13 @@ Later OpenAPI/contract proof must falsify at least:
 
 ## 19. W1 outcome
 
-**Outcome:** `CURRENT PARENT STRUCTURE CONFIRMED` + ratified Whole-W2 correction incorporated.
+**Outcome:** `CURRENT PARENT STRUCTURE CONFIRMED` + ratified Whole-W2 and OpenAPI wire-authority/tooling cross-references incorporated.
 
 > **Use identity-oriented Organization/source-qualified paths, honest standard resource methods, explicit owner capabilities and exactly one opaque revision authority. HTTP `If-Match` is reserved for a request whose literal target is the protected resource; custom/reference revision proofs travel as typed request data.**
 
 No D0→D5-B1 parent reopen is required.
 
-W1 is canonical and closed. W2, W3 and W4 are separately consolidated canonical schema, collection and enforcement authorities, and `D5-B2-TECHNICAL-INGRESS.md` is the canonical technical non-Product ingress authority. Current status and exact next action are owned only by the rebaseline router.
+W1 is canonical and closed. W2, W3 and W4 are separately consolidated canonical schema, collection and enforcement authorities; `D5-B2-TECHNICAL-INGRESS.md` is the canonical technical non-Product ingress authority; and `D5-B2-OPENAPI-WIRE-AUTHORITY-TOOLING.md` is the canonical machine-readable wire-authority/tooling authority. Current status and exact next action are owned only by the rebaseline router.
 
 Implementation remains blocked until D9.
 

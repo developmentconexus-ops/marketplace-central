@@ -2,7 +2,7 @@
 
 > **Role:** sole current-program status/router after `AGENTS.md`  
 > **Current phase:** **D5 — API — OPEN / ACTIVE; D5-B1 ACCEPTED / CANONICAL; D5-B2 OPEN / ACTIVE**  
-> **D5-B2 current state:** **W1 + W2 + W3 + W4 + Technical Ingress + Final Problem/media consistency ACCEPTED / CANONICAL; single OpenAPI wire authority / tooling decision OPEN / ACTIVE; GPT adjudication CONVERGED; operator final ratification = NEXT**  
+> **D5-B2 current state:** **W1 + W2 + W3 + W4 + Technical Ingress + Final Problem/media consistency + Single OpenAPI wire authority/tooling ACCEPTED / CANONICAL; stable Product Problem origin proof = NEXT**  
 > **Implementation:** **BLOCKED until D9 is accepted**  
 > **Last updated:** 2026-08-20
 
@@ -28,20 +28,19 @@ A fresh session reads, in order:
 16. `docs/engineering/rebaseline/D5-B2-WIRE-CONTRACT.md` — canonical W1
 17. `docs/engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md` — canonical W2, including canonical Problem Details and authored-media grammar
 18. `docs/engineering/rebaseline/D5-B2-W3-COLLECTION-GRAMMAR.md` — canonical W3
-19. `docs/engineering/rebaseline/D5-B2-W4-PERMISSION-CLIENT-CLASS-ENFORCEMENT.md` — canonical W4
+19. `docs/engineering/rebaseline/D5-B2-W4-PERMISSION-CLIENT-CLASS-ENFORCEMENT.md` — canonical W4 and exact 95-operation names/mapping
 20. `docs/engineering/rebaseline/D5-B2-TECHNICAL-INGRESS.md` — canonical technical non-Product ingress
-21. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
-22. code/OpenAPI/schemas/tests/runtime only as evidence when needed
+21. `docs/engineering/rebaseline/D5-B2-OPENAPI-WIRE-AUTHORITY-TOOLING.md` — canonical machine-readable wire-authority/tooling decision
+22. `docs/engineering/rebaseline/EVIDENCE-REGISTER.md`
+23. code/OpenAPI/schemas/tests/runtime only as evidence when needed
 
 This file alone owns **program status, allowed/blocked work and exact next action**. Detailed semantics remain in accepted artifacts.
 
-`docs/engineering/rebaseline/D5-B2-OPENAPI-WIRE-AUTHORITY-TOOLING-CANDIDATE.md` is **NON-AUTHORITATIVE converged adjudication evidence**. It records the lead direction, Fable compatibility findings, GPT adjudication and the remaining stable-origin proof gate. It does not make the tooling decision canonical and does not authorize Product OpenAPI authoring.
-
-`AI-DIALOG.md` preserves the completed Fable review cycle as working evidence until final ratification/filing. It is never authority.
+`AI-DIALOG.md` is protocol-only with no active cycle. It is never authority. Completed review cycles remain in Git history.
 
 `docs/engineering/standards/evidence-grounded-production-engineering-for-llm-agents.md` is a derived portable production-research guide. It is not part of this architecture authority path and does not redefine the organizational Method.
 
-`docs/engineering/rebaseline/cockpit.html` is a non-authoritative visual projection. No canonical status changed during review/adjudication, so the cockpit is not updated by this sub-batch.
+`docs/engineering/rebaseline/cockpit.html` is a non-authoritative visual projection synchronized after canonical status changes.
 
 ---
 
@@ -72,17 +71,15 @@ D5 — API                                                  OPEN / ACTIVE
       Final Problem/media consistency                    ACCEPTED / CANONICAL
         lead + Fable + GPT review                        COMPLETE / CONVERGED
         operator final ratification                      COMPLETE / FILED
-      Single OpenAPI wire authority/tooling decision     OPEN / ACTIVE
+      Single OpenAPI wire authority/tooling decision     ACCEPTED / CANONICAL
         lead authority/tooling research                  COMPLETE
-        lead review candidate                            COMPLETE
         independent Fable compatibility/adversarial      COMPLETE
         GPT final adjudication                           COMPLETE / CONVERGED
         Round 2                                           NOT REQUIRED
-        operator origin-policy decision                  RECEIVED / BOUNDED
-        operator final package ratification              NEXT
-        canonical filing                                 BLOCKED BY RATIFICATION
-        stable Product Problem origin proof              BLOCKS TYPE CONSTANTS
-        canonical Product OpenAPI authoring              BLOCKED BY RATIFICATION + ORIGIN PROOF
+        operator final package ratification              COMPLETE / FILED
+        canonical filing                                 COMPLETE
+      Stable Product Problem origin proof                OPEN / NEXT
+      Canonical Product OpenAPI authoring                 BLOCKED BY ORIGIN PROOF
 D6 — Frontend                                             BLOCKED BY D5
 D7 — Runtime / Jobs / Transactions                        BLOCKED
 D8 — Golden Flows                                         BLOCKED
@@ -94,25 +91,19 @@ Implementation                                            BLOCKED UNTIL D9
 
 ## 3. Final Problem/media consistency — filed dispositions
 
-The converged lead + Fable + GPT package was operator-ratified and filed substitutively into its existing canonical homes. Detailed semantics live only in those artifacts; this list is a routing index, not a second authority.
+The operator-ratified package is filed substitutively into W1/W2/W4/Technical Ingress. Detailed semantics live only in those homes.
 
 | Correction | Canonical home |
 |---|---|
 | RFC 9457 `about:blank` for status-only failures; `405 + Allow`, `415 Accept`, `413 Retry-After` obligations | W2 §§2.15.1–2.15.2 |
-| exact `CreateListingIntentMedia` failure map (400/413/415/422/409/500) | W2 §3.9.2 |
-| `400 idempotency-key-required`; `422 idempotency-key-reused` and `409 idempotency-request-in-progress` preserved unchanged | W2 §§3.9.2, 18, 19 |
-| bounded `409 resource-state-conflict` family | W2 §§3.9.2, 19 |
-| transport size/media-type guards before full-body buffering, without tenant/resource disclosure | W2 §§3.9.3, 18 |
+| exact `CreateListingIntentMedia` failure map | W2 §3.9.2 |
+| bounded `409 resource-state-conflict` | W2 §§3.9.2, 19 |
 | immutable ListingIntent-scoped authored-media identity | W2 §3.9.5 |
-| successful media creation advances and returns the parent ListingIntent validator as typed result data | W2 §3.9.1 |
-| exact idempotent retry resolves the prior intake before re-evaluating the now-stale validator | W2 §§3.9.1, 18 |
-| stable `ListingIntentMediaDescriptor` vs volatile `ListingIntentMediaPresentationDescriptor` | W2 §3.9.7 |
-| access reference never enters history, fingerprint, logs or Problem Details | W2 §3.9.7 |
-| authored-media byte delivery = separately justified technical presentation surface reusing current Organization + `offering.read`; no durable anonymous locator; failures do not expand the Product Problem catalog | W2 §3.9.8, W1 §20, W4 §15.2, Technical Ingress §12.1 |
-| retention/erasure remains Unknown / deferred to D2 + D7; no `DeleteMedia`, no invented lifetime | W2 §3.9.6 |
-| Product and technical-protocol Problem namespaces remain disjoint | W2 §19 |
-| source vs authored media stay distinct descriptor families | W2 §3.9.9 |
-| converged negative controls / proof obligations | W2 §23 items 43–67 |
+| parent ListingIntent validator returned as typed result | W2 §3.9.1 |
+| stable descriptor vs volatile presentation descriptor | W2 §3.9.7 |
+| authored-media byte delivery as technical presentation surface | W2 §3.9.8, W1 §20, W4 §15.2, Technical Ingress §12.1 |
+| retention/erasure remains Unknown / D2+D7 | W2 §3.9.6 |
+| Product and technical Problem namespaces disjoint | W2 §19 |
 
 Preserved:
 
@@ -123,51 +114,49 @@ standalone Product media GET/Update/Delete       not admitted
 new Principal kind                               none
 Technical Ingress A/B                            canonical
 W3 collection/cursor semantics                   canonical
-implementation                                   blocked until D9
 ```
 
 ---
 
-## 4. OpenAPI authority/tooling converged package — non-authoritative pending ratification
+## 4. OpenAPI wire authority/tooling — filed dispositions
 
-The lead direction survived independent executable attack with bounded corrections.
+The accepted decision lives in `D5-B2-OPENAPI-WIRE-AUTHORITY-TOOLING.md`. This list is routing only, not a second detailed authority.
 
 ```text
-one multi-document design-first Product OAD
-root: contracts/api/product/openapi.yaml
-OAS: 3.1.2
+one logical design-first Product OAD
+entry: contracts/api/product/openapi.yaml
+OpenAPI: 3.1.2
 
-source OAD                            sole wire authority
-bundle                               temporary derived input for Go
-TypeScript projection                generated directly from source
-Go projection                        generated from deterministic bundle
-static docs                          derived
-
-lint + bundle                        @redocly/cli 2.45.0
-TypeScript contract projection       openapi-typescript 7.13.0
-Go compatibility projection          oapi-codegen v2.8.0
-Go generated runtime dependency       oapi-codegen/runtime v1.7.0
-
-runtime TypeScript transport          D6
-Go router/server/runtime validation   D7
+source OAD                         sole wire authority
+resolved bundle                    derived / temporary
+generated TypeScript               derived
+generated Go                       derived
 ```
 
-### 4.1 Confirmed direction
+Pinned baseline:
 
-- one entry document plus local relative refs remains one authority;
-- no `/v1`, environment `servers` or technical routes;
-- bearer authentication without converting the 29 MPC Permissions into OAuth scopes;
-- bounded `x-mpc-*` W4 projections;
-- exact OAS 3.1 multipart raw file + `text/plain` ETag part;
-- mandatory generated TypeScript contract types;
-- runtime TypeScript transport deferred to D6;
-- Go server/router/validator realization deferred to D7;
-- legacy OpenAPI/manual SDK replaced as one measured seam;
-- no 96th Product operation, 30th Permission or new Principal kind.
+```text
+@redocly/cli                    2.45.0
+openapi-typescript              7.13.0
+oapi-codegen                    v2.8.0
+github.com/oapi-codegen/runtime v1.7.0
+```
 
-### 4.2 Name-only operation crystallizations
+Binding dispositions:
 
-Pending final filing into W4 §8:
+- source refs are local/relative and components are globally unique;
+- Redocly config is rules-only with exact OAS pin and `no-empty-servers: off`;
+- source OAD extensions are allowlisted; type/shape overrides are forbidden;
+- Go generation consumes the temporary bundle; TypeScript generation consumes source;
+- the Product OAD source tree is excluded from Prettier;
+- standard `net/http.ServeMux` cannot realize canonical `{id}:verb`; D7 must provide compatible partial-segment routing without changing W1;
+- D5 proves declarations; D7 owns runtime unknown-field/pattern/multipart validation;
+- generated contract types are mandatory; runtime TypeScript transport remains D6;
+- the legacy OpenAPI/manual SDK retire as one measured twelve-consumer seam;
+- exact Go 1.25.1 and current-toolchain proofs are both required during authoring;
+- Technical Ingress A/B and authored-media byte delivery remain outside Product OAD/SDK.
+
+Final W4 operation names:
 
 ```text
 GetEffectiveAvailabilityAllocationScopePolicy
@@ -176,106 +165,78 @@ ListFulfillmentExecutions
 GetFulfillmentExecution
 ```
 
-The Availability GET preserves configured value/mode, effective value and effective-source provenance; UPDATE mutates only the configured owner value/mode. They do not share one round-trip schema.
+W4 remains 95 rows / 29 Permissions; the filing is name-only.
 
-### 4.3 Load-bearing compatibility corrections
+---
 
-- standard `net/http.ServeMux` is excluded for the canonical `{id}:verb` grammar; D7 selects or implements a compatible mux, while D5 proves dispatch through a bounded custom mux;
-- source extensions are allowlisted; type/shape-changing `x-go-*` extensions are forbidden;
-- Product OAD source files are outside Prettier;
-- `redocly.yaml` is rules-only with no `apis:` block;
-- exact OAS 3.1.2 is asserted mechanically;
-- `no-empty-servers` is disabled deliberately;
-- component names are globally unique before bundle and collision suffixes are forbidden after bundle;
-- Go generation consumes the temporary bundle; TypeScript generation consumes source directly;
-- D5 proves schema declarations; D7 owns runtime unknown-field/pattern/multipart-part validation;
-- Go enum naming churn remains derived/compiler-visible; no `x-enum-varnames` enters source now;
-- exact Go 1.25.1 proof remains required in addition to the already-run newer-toolchain proof.
+## 5. Stable Product Problem origin gate
 
-### 4.4 Legacy retirement set
+Canonical custom Product Problem identifiers require one immutable HTTPS origin:
 
-The replacement sub-batch must retire or rehome together:
+```text
+<stable-origin>/marketplace-central/problems/product/{slug}
+```
 
-1. `GOV_API_SDK_SPLIT`;
-2. `api-sdk-atomicity`;
-3. `openapi-without-sdk` eval;
-4. legacy OpenAPI knowledge route;
-5. legacy `modules.json` path prefixes;
-6. two Go literal OpenAPI parity tests;
-7. obsolete single-level Prettier exclusion;
-8. `api-sdk` shared seam;
-9. `sdk-runtime` knowledge route;
-10. baselines tied to retiring SDK tests;
-11. governance fixtures encoding the old seam;
-12. the `GOV_FRONTEND_FETCH` package-name exemption.
+Technical protocol/presentation types use a disjoint namespace only in their own future executable contracts.
 
-Useful atomicity/drift controls are replaced by source-OAD → deterministic-generation → clean-regeneration controls, not simply deleted.
-
-### 4.5 Product Problem origin disposition
-
-The operator nominated:
+The operator-nominated endpoint:
 
 ```text
 https://multiradial-unironically-nieves.ngrok-free.dev/
 ```
 
-Official ngrok documentation classifies the free hostname as one automatically assigned **development domain** specific to the account. The free plan cannot customize that hostname or bring a user-owned domain.
-
-Therefore the endpoint is accepted only for:
+is accepted only for:
 
 ```text
 temporary preview documentation
 resolution/hosting compatibility proof
 ```
 
-It is not silently reclassified as a DevelopmentConexus-owned verified domain and is not embedded into permanent Product `Problem.type` constants "for now".
+It is not embedded into permanent Product `Problem.type` values merely "for now".
 
-Before custom Product Problem types enter the Product OAD, prove either:
+The gate closes only when evidence proves one of:
 
-1. a DevelopmentConexus-owned verified HTTPS origin; or
-2. explicit operator acceptance of a permanent third-party-domain residual, including an obligation never to relinquish/rename the controlling account/hostname.
+1. a DevelopmentConexus-owned and verified HTTPS origin; or
+2. an explicitly operator-accepted permanent third-party-domain residual, including the obligation never to relinquish/rename the controlling account or hostname.
 
-Until then:
+Until that proof is canonically filed:
 
 ```text
 ngrok preview hosting                         ALLOWED
-custom Product Problem URI constants          BLOCKED
 about:blank where already canonical           UNAFFECTED
-Product OAD authoring                         BLOCKED AT ORIGIN GATE
+custom Product Problem URI constants          BLOCKED
+canonical Product OAD authoring               BLOCKED
 ```
 
-This is a bounded proof gate, not a Product semantic reopen.
+This is a bounded identity/publication proof gate, not a Product semantic reopen.
 
 ---
 
-## 5. Allowed now
+## 6. Allowed now
 
-Only the following coherent action is open:
+Only the following coherent work is open:
 
-> **Operator final ratification of the converged OpenAPI wire authority/tooling package recorded in `D5-B2-OPENAPI-WIRE-AUTHORITY-TOOLING-CANDIDATE.md`.**
+> **Prove and file the stable Product Problem HTTPS origin.**
 
-Ratification must cover the package as adjudicated, including:
+The proof must establish:
 
-- the four final operation names;
-- exact pins and source/bundle generation pipeline;
-- extension/formatter/config/component controls;
-- standard-mux exclusion as a D7 constraint, not a W1 change;
-- the twelve-item legacy retirement seam;
-- exact Go 1.25.1 proof obligation;
-- ngrok as temporary preview/proof hosting only;
-- stable Product Problem origin proof before custom `type` constants or Product OAD authoring.
+- exact immutable origin;
+- current control/ownership or explicitly accepted permanent third-party residual;
+- HTTPS availability;
+- ability to serve or permanently redirect Problem documentation;
+- separation of Product and technical namespaces;
+- explicit assurance that preview/deployment hosting changes do not change identifier identity.
 
-No further Fable round is required unless new material evidence creates a real contradiction.
+Do not author the Product OAD while the origin is unresolved, because its custom Product Problem `type` constants would otherwise be temporary identities.
 
 ---
 
-## 6. Prohibited now
+## 7. Prohibited now
 
-- do not treat the candidate, Fable findings or this router summary as canonical detailed semantics;
-- do not author the Product OAD before final ratification and the stable-origin proof;
-- do not embed the ngrok hostname into permanent Product Problem identifiers merely because it is free today;
-- do not modify W1/W2/W3/W4/Technical Ingress as a tooling convenience;
-- do not keep legacy OpenAPI or manual SDK as parallel target authority;
+- do not author the Product OAD before the stable-origin proof is filed;
+- do not embed the ngrok hostname into permanent Product Problem identifiers merely because it is currently free/available;
+- do not alter W1/W2/W3/W4/Technical Ingress semantics as a tooling convenience;
+- do not keep the legacy OpenAPI or manual SDK as parallel target authority;
 - do not select OAS 3.2 by recency or downgrade to 3.0 for one generator;
 - do not create independent OADs per D1 owner;
 - do not use code-first Go as target authority;
@@ -284,45 +245,40 @@ No further Fable round is required unless new material evidence creates a real c
 - do not add a 96th Product operation, 30th Permission, Principal kind, media CRUD or `/v1`;
 - do not convert MPC Permissions into OAuth scopes;
 - do not select the D7 router, runtime validator, storage, CDN or deployment now;
-- do not update the cockpit from an unratified package;
 - do not begin D6–D9 or implementation.
 
 Implementation remains blocked until D9.
 
 ---
 
-## 7. Exact next action
+## 8. Exact next action
 
-**Obtain operator final ratification of the converged OpenAPI wire authority/tooling package.**
+**Stable Product Problem origin proof.**
 
-After ratification:
+After that proof is accepted/filed:
 
 ```text
-canonical filing into D5-B2 homes
-→ name-only W4 §8 correction
-→ candidate removal
-→ AI-DIALOG reset to protocol-only
-→ router/cockpit synchronization
-→ stable Product Problem origin proof if still unresolved
-→ Product OAD authoring/proof only after the origin gate
+canonical Product OAD authoring + executable proof
+→ D5-B2 closure/review as routed
+→ D5 close
+→ D6
 ```
 
 Implementation remains blocked until D9.
 
 ---
 
-## 8. Fresh-session success test
+## 9. Fresh-session success test
 
 A fresh session must conclude:
 
-- W1/W2/W3/W4, Technical Ingress and Final Problem/media remain accepted/canonical;
+- W1/W2/W3/W4, Technical Ingress, Final Problem/media and OpenAPI wire authority/tooling are accepted/canonical;
 - Product surface remains 95 operations / 29 Permissions;
-- the OpenAPI/tooling candidate is non-authoritative converged evidence;
-- Fable review and GPT adjudication are complete;
-- Round 2 is not required;
-- final operator package ratification is the exact next action;
-- ngrok is temporary preview/proof hosting, not yet a canonical Product Problem identity origin;
-- custom Product Problem URI constants and Product OAD authoring remain blocked by the stable-origin proof;
-- D6–D9 and implementation remain blocked.
+- W4 contains all 95 final operation names with no exception manifest;
+- the OpenAPI/tooling review candidate is absent from the active tree;
+- `AI-DIALOG.md` is protocol-only with no active cycle;
+- ngrok is temporary preview/proof hosting, not a canonical Product Problem identity origin;
+- stable Product Problem origin proof is the exact next action;
+- Product OAD authoring, D6–D9 and implementation remain blocked.
 
 If not, the active authority tree is inconsistent.

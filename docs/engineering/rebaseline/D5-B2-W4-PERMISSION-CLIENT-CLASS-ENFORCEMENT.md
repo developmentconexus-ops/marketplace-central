@@ -9,7 +9,8 @@
 > **Parent authorities:** accepted D0→D4 + D4-R1 + D5-B1 + Decision Reconciliation Baseline + ratified D5-B2 Whole-Matrix + canonical W1/W2/W3  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
 > **Whole-W4 final ratification incorporated:** 2026-08-19  
-> **Final Problem/media consistency cross-reference incorporated:** 2026-08-19
+> **Final Problem/media consistency cross-reference incorporated:** 2026-08-19  
+> **OpenAPI wire-authority/tooling name-only crystallization incorporated:** 2026-08-20
 
 ## 1. Purpose and authority
 
@@ -348,7 +349,7 @@ Automation remains unable to silently supersede a standing human correspondence 
 
 ## 8.7 Availability — 9
 
-The two policy operations retain their accepted Operation Matrix labels until final OpenAPI operation-name spelling; W4 does not invent a name merely to complete this table.
+The final D5-local wire names are canonical. The read name intentionally preserves `Effective`: it returns configured owner mode/value, the effective value and effective-source provenance; the update writes only configured owner mode/value. The two operations do not share one round-trip schema.
 
 | Operation | Class | Permission | Allowed Principal |
 |---|---|---|---|
@@ -359,8 +360,8 @@ The two policy operations retain their accepted Operation Matrix labels until fi
 | `CreateInventorySource` | C | `availability.manage` | H |
 | `UpdateInventorySource` | C | `availability.manage` | H |
 | `DeactivateInventorySource` | C | `availability.manage` | H |
-| get effective allocation/scope policy | Q | `availability.read` | H / A / S |
-| update allocation/scope policy | C | `availability.manage` | H |
+| `GetEffectiveAvailabilityAllocationScopePolicy` | Q | `availability.read` | H / A / S |
+| `UpdateAvailabilityAllocationScopePolicy` | C | `availability.manage` | H |
 
 ## 8.8 Market Intelligence — 3
 
@@ -443,8 +444,8 @@ No `economics.scenario.execute` Permission is introduced: the operation is state
 
 | Operation | Class | Permission | Allowed Principal |
 |---|---|---|---|
-| `ListFulfillmentStates` | Q | `fulfillment.read` | H / A / S |
-| `GetFulfillmentState` | Q | `fulfillment.read` | H / A / S |
+| `ListFulfillmentExecutions` | Q | `fulfillment.read` | H / A / S |
+| `GetFulfillmentExecution` | Q | `fulfillment.read` | H / A / S |
 | `ListFulfillmentNodes` | Q | `fulfillment.read` | H / A / S |
 | `GetFulfillmentNode` | Q | `fulfillment.read` | H / A / S |
 | `CreateFulfillmentNode` | C | `fulfillment.manage` | H |
@@ -456,6 +457,8 @@ No `economics.scenario.execute` Permission is introduced: the operation is state
 | `RecordPhysicalConference` | C | `fulfillment.execute` | H OR currently qualified S |
 | `RecordPacking` | C | `fulfillment.execute` | H |
 | `RecordDispatchHandoff` | C | `fulfillment.execute` | H OR currently qualified S |
+
+The List/Get names identify the already-canonical W2 `FulfillmentExecution` wire home; they add no resource, operation or owner.
 
 ## 8.17 Fulfillment artifacts — 2
 
@@ -604,13 +607,16 @@ Later OpenAPI/runtime proof must make at least these defects invalid/unreachable
 26. a generic `system_capabilities[]`/machine-capability graph is introduced without a real cross-operation consumer;
 27. operation permission is inferred from D1 package name, current handler/middleware or provider endpoint rather than this mapping;
 28. deferred/rejected Product operation receives a Permission mapping by symmetry;
-29. sensitive read Permissions are split speculatively without a real least-privilege consumer.
+29. sensitive read Permissions are split speculatively without a real least-privilege consumer;
+30. the Product OAD carries an `operationId`, Permission, class or Principal set that differs from the corresponding W4 row;
+31. Availability GET loses `Effective` and collapses configured/effective/provenance into the update schema;
+32. `ListFulfillmentStates` or `GetFulfillmentState` reappears as a parallel wire identity beside `FulfillmentExecution`.
 
 ---
 
 ## 13. W4 outcome / reopen triggers
 
-**Outcome:** `CURRENT PARENT STRUCTURE CONFIRMED` with bounded D2 identity/access confirmation and Whole-W4 local corrections incorporated.
+**Outcome:** `CURRENT PARENT STRUCTURE CONFIRMED` with bounded D2 identity/access confirmation, Whole-W4 local corrections and final OpenAPI operation-name crystallization incorporated.
 
 > **Use external AuthN + unique MPC Principal binding + current Principal access eligibility + current Organization Membership + flat exact Permission + operation-specific Principal-class admission. Keep owner business validity and Governance separate. Require current server-resolved Fulfillment epistemic qualification only for the two system-admitted physical checkpoints; never turn it into a generic IAM/capability framework.**
 
@@ -643,12 +649,13 @@ GPT final adjudication                            CONVERGED
 Round 2                                           NOT REQUIRED
 D0/D1/D3/D4/D4-R1/D5-B1/W1/W2/W3 reopen          NONE
 D2                                                bounded authority confirmation incorporated
+OpenAPI operation-name filing                     COMPLETE / NAME-ONLY
 W4                                                ACCEPTED / CANONICAL
 ```
 
 Whole-W4 is closed. Current status and exact next action are owned only by the rebaseline router.
 
-Do not begin final OpenAPI/tooling, D6–D9 or implementation out of sequence. Implementation remains blocked until D9.
+The OpenAPI wire-authority/tooling decision is canonical. Do not author the Product OAD until the stable Product Problem origin proof gate is discharged and the router authorizes authoring. Do not begin D6–D9 or implementation out of sequence. Implementation remains blocked until D9.
 
 ---
 

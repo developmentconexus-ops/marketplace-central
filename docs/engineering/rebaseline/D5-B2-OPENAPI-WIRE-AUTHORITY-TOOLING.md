@@ -1,34 +1,30 @@
-# D5-B2 — Single OpenAPI Wire Authority / Tooling Review Candidate
+# D5-B2 — Single OpenAPI Wire Authority / Tooling
 
-> **Status:** NON-AUTHORITATIVE CONVERGED ADJUDICATION EVIDENCE — OPERATOR FINAL RATIFICATION NEXT  
+> **Status:** ACCEPTED / CANONICAL  
 > **Parent stage:** D5-B2 Product Operation / Resource Surface  
 > **Canonical inputs:** accepted D0→D4 + D4-R1 + D5-B1 + Operation Admission Matrix + W1 + W2 + W3 + W4 + Technical Ingress + Final Problem/media consistency  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
-> **Opened:** 2026-08-19  
+> **Lead research opened:** 2026-08-19  
 > **Independent Fable review:** COMPLETE  
 > **GPT adjudication:** CONVERGED  
 > **Round 2:** NOT REQUIRED  
-> **Operator origin-policy decision:** RECEIVED; bounded as described in OA-C9  
-> **Operator final package ratification:** NEXT
+> **Operator final ratification incorporated:** 2026-08-20  
+> **Stable Product Problem origin proof:** OPEN — blocks custom Product `Problem.type` constants and canonical Product OAD authoring  
+> **Implementation:** BLOCKED until D9 is accepted
 
-## 1. Purpose and authority fence
+## 1. Purpose and authority
 
-This candidate consolidates the lead research, Fable independent adversarial review, executable compatibility spike and GPT adjudication for the one machine-readable Product API wire authority and its bounded tooling.
+This document is the single canonical D5-B2 authority for the Product API's **machine-readable wire authority and bounded tooling**.
 
-It remains **non-authoritative evidence**. It does not amend W1, W2, W3, W4, Technical Ingress or any semantic parent. It does not make the legacy OpenAPI, current Go handlers or current TypeScript SDK target authority. It does not authorize Product OpenAPI authoring before final operator ratification and canonical filing.
+It does not replace the semantic homes:
 
-The converged package settles:
+- W1 owns Product resource/path/HTTP grammar;
+- W2 owns request/response schemas, Problem Details, idempotency, revision and authored-media grammar;
+- W3 owns collection/query/cursor grammar;
+- W4 owns Permission, Principal-class and current-access enforcement;
+- Technical Ingress owns technical non-Product acquisition/OAuth ingress.
 
-1. one logical Product OpenAPI Description;
-2. OpenAPI feature level;
-3. source/bundle/generated-artifact authority status;
-4. exact operation-name law;
-5. Product Problem URI namespace policy and the remaining origin proof gate;
-6. authored-media multipart representation;
-7. pinned lint, bundle and generation tooling;
-8. D5 contract SDK versus D6/D7 runtime realization;
-9. executable negative controls against drift and duplicate authority;
-10. atomic retirement scope for the legacy OpenAPI/manual SDK seam.
+This document decides how those accepted meanings become one machine-readable Product API description and how derived projections are validated and generated without creating a second authority.
 
 It deliberately does **not** choose:
 
@@ -43,101 +39,35 @@ It deliberately does **not** choose:
 - D6 screen/BFF composition;
 - D7 transaction, storage, worker or deployment realization.
 
-Implementation remains blocked until D9.
-
 ---
 
-## 2. Evidence state
+## 2. Preserved semantic surface
 
-### 2.1 Repository authority preserved
+```text
+Product operations                              95
+ordinary Permissions                            29
+Principal kinds                                 H / A / S only
+standalone Product media GET/Update/Delete      not admitted
+Technical Ingress A/B                           outside Product OAD/SDK
+Product path / schema / collection / access     owned by W1 / W2 / W3 / W4
+D0→D5-B1 semantic reopen                        none
+```
 
-- Product API remains exactly **95 admitted operations**.
-- Ordinary Permission vocabulary remains exactly **29**.
-- W1 owns Product path/HTTP grammar.
-- W2 owns schemas, Problem Details, idempotency and revision grammar.
-- W3 owns collection/query/cursor grammar.
-- W4 owns Permission, Principal class and current-access enforcement.
-- Technical Ingress A/B and authored-media byte delivery remain outside Product OpenAPI and Product SDK.
-- Product paths remain without `/v1`.
-- Product custom methods remain `POST {resource-or-keyed-subject}:verb`.
-- `type` remains the sole global Product Problem discriminator.
-- current OpenAPI, code, tests and `sdk-runtime` remain current-state evidence only.
+Current OpenAPI, handlers, tests and `packages/sdk-runtime` remain current-state evidence until replaced; they are not target authority.
 
-No D0→D5-B1 or W1→W4 semantic reopen was proved.
-
-### 2.2 Current-state failure class
-
-The current tree contains a large hand-maintained OpenAPI and a separately hand-maintained TypeScript SDK. They preserve legacy `/mutations`, provider/current-code vocabulary and old error families.
-
-The failure class is:
+The current-state failure class is:
 
 > **Two writable wire representations drift while retaining target meaning already rejected by the rebaseline.**
 
-The target design therefore replaces, rather than extends, that seam.
-
-### 2.3 Fable executable spike
-
-Fable exercised a temporary OAS 3.1.2 multi-document fixture with exactly pinned tools:
-
-```text
-@redocly/cli                     2.45.0
-openapi-typescript               7.13.0
-typescript                       5.9.3
-oapi-codegen                     v2.8.0
-github.com/oapi-codegen/runtime  v1.7.0
-repository Go directive          1.25.1
-executed Go toolchain            1.26.4
-repository Node                  26.3.0
-```
-
-The fixture jointly exercised:
-
-- local multi-document refs;
-- ordinary Organization GET;
-- custom `POST ...:verb`;
-- `If-Match` and `Idempotency-Key`;
-- closed-object declarations;
-- `oneOf + const` unions;
-- exact decimal strings;
-- RFC 9457 base and custom Problems with exact HTTPS `type` constants;
-- `about:blank`;
-- `405 + Allow`;
-- multipart raw file + typed `etag` part;
-- media success carrying the parent ListingIntent validator;
-- W3-shaped cursor fields;
-- bounded `x-mpc-*` extensions.
-
-### 2.4 Proved compatible
-
-- one multi-document OAD remains one closure;
-- Redocly lint and deterministic YAML/JSON bundling;
-- source and bundled TypeScript generation produce byte-identical output;
-- TypeScript generation is deterministic and compiles under strict mode;
-- `const`, `oneOf`, `allOf`, exact decimal strings, headers, statuses and Problem media type survive generation;
-- oapi-codegen consumes the resolved bundle and generates compiling Go;
-- custom `:verb` dispatch, multipart read, `If-Match`, `Idempotency-Key`, Problem `type` and parent validator were exercised through `httptest` with a compatible mux;
-- no parent semantic reopen is necessary.
-
-### 2.5 Proved limitations
-
-- the standard Go `net/http.ServeMux` registration generated by `std-http-server` cannot represent a wildcard followed by `:verb` in the same path segment;
-- `x-go-type`/`x-go-name` can silently produce mutually contradictory Go and TypeScript contracts;
-- the repository Prettier scope would reach the proposed nested OAD tree unless explicitly excluded;
-- Redocly defaults conflict with the deliberate omission of `servers`;
-- Redocly does not by default prove the exact OAS patch version;
-- `openapi-typescript` can silently use a discovered `redocly.yaml` `apis:` block instead of the CLI input;
-- oapi-codegen v2.8.0 requires the resolved bundle for this multi-document shape;
-- component-key collisions are silently renamed by the bundler;
-- `additionalProperties: false`, string patterns and multipart part typing are declarations, not runtime enforcement;
-- the executed Go proof used Go 1.26.4 with module directive 1.25.1, not the exact 1.25.1 toolchain.
+The target design replaces rather than extends that seam.
 
 ---
 
-# 3. Converged decision package
+# 3. Canonical decision package
 
 ## OA-C1 — One logical OAD is the Product wire authority
 
-The canonical machine-readable Product API wire authority will be one OpenAPI Description rooted at:
+The canonical machine-readable Product API wire authority is one OpenAPI Description rooted at:
 
 ```text
 contracts/api/product/openapi.yaml
@@ -168,7 +98,7 @@ Required properties:
 - no template/macro/code-first preprocessor;
 - no `join` of independent APIs;
 - no hand-maintained bundle;
-- all component keys globally unique across the entire source closure;
+- all component keys globally unique across the source closure;
 - bundle inspection rejects collision-generated names such as `Money-2`.
 
 A bounded overlay may exist only as a clearly derived generator/distribution projection for a proven consumer. It never changes source semantics or becomes a second target authority.
@@ -182,11 +112,11 @@ openapi: 3.1.2
 jsonSchemaDialect: https://spec.openapis.org/oas/3.1/dialect/base
 ```
 
-OAS 3.1.2 expresses all currently accepted W1–W4 properties. No accepted Product meaning requires 3.2, while the selected generator/tooling compatibility is proved at 3.1.2.
+OAS 3.1.2 expresses all accepted W1–W4 properties. No accepted Product meaning requires 3.2, while the selected generator/tooling compatibility is proved at 3.1.2.
 
-The exact value is mechanically pinned; lint success alone is not proof because Redocly accepts unsupported patch spellings unless configured otherwise.
+The exact value is mechanically pinned; generic lint success is not enough because the selected Redocly release does not independently prove the exact patch value.
 
-Reopen only when a concrete accepted Product contract requires a 3.2-only feature and all selected tools prove it without semantic downgrade or parallel authority.
+Reopen only when a concrete accepted Product contract requires a later-only feature and all selected tools prove it without semantic downgrade or parallel authority.
 
 ## OA-C3 — Source, bundle and generated artifacts have distinct status
 
@@ -213,26 +143,19 @@ lint source
 
 The bundle is mandatory for the selected Go lane but remains uncommitted by default. Commit it only for a named real offline/external consumer; it remains derived.
 
-The Product OAD source tree is excluded from Prettier. Redocly and the authoring/gate rules own its shape. This preserves the repository's already-measured failure class where a formatter rewrote the contract and invalidated byte-literal parity tests.
+The Product OAD source tree is excluded from Prettier. Redocly and the OAD-specific authoring/gate rules own its form. This preserves the repository's already-measured failure class where a formatter rewrote the contract and invalidated byte-literal parity checks.
 
 ## OA-C4 — `operationId` is exact stable Product operation identity
 
-Every admitted Product operation has one unique PascalCase `operationId`. W4 §8 is the canonical 95-row spelling/mapping source after final filing.
+Every admitted Product operation has one unique PascalCase `operationId`. W4 §8 is the canonical 95-row spelling/mapping source.
 
 Final name-only crystallizations:
 
 ```text
-get effective allocation/scope policy
-→ GetEffectiveAvailabilityAllocationScopePolicy
-
-update allocation/scope policy
-→ UpdateAvailabilityAllocationScopePolicy
-
-ListFulfillmentStates
-→ ListFulfillmentExecutions
-
-GetFulfillmentState
-→ GetFulfillmentExecution
+GetEffectiveAvailabilityAllocationScopePolicy
+UpdateAvailabilityAllocationScopePolicy
+ListFulfillmentExecutions
+GetFulfillmentExecution
 ```
 
 The Availability asymmetry is material:
@@ -251,7 +174,15 @@ GET and UPDATE do not share one round-trip schema.
 
 The Fulfillment pair only names the already-canonical `FulfillmentExecution` wire home.
 
-After ratification, these four names are filed into W4 §8 as a name-only correction. Then one gate parses all 95 W4 rows and diffs the complete `(operationId, class, permission, principal-kinds)` mapping against the OAD. No four-row exception manifest is permitted.
+A gate parses all 95 W4 rows and diffs the complete `(operationId, class, permission, principal-kinds)` mapping against the OAD. No exception manifest is permitted.
+
+Rules:
+
+- exactly 95 `operationId` values;
+- all unique and PascalCase;
+- no generator-driven renaming;
+- no framework `Controller`/`Handler`, provider name or HTTP-verb suffix by habit;
+- a semantic operation change requires explicit architecture adjudication rather than silent `operationId` reuse.
 
 ## OA-C5 — Product path/server/version profile
 
@@ -384,7 +315,7 @@ This is more honest than representing browser `Blob`/`File` bytes as a JSON stri
 
 It does **not** mean automatic part binding or runtime validation. Go receives a multipart reader; TypeScript requires FormData assembly; both lanes need bounded runtime code later.
 
-## OA-C9 — Product Problem type URI policy and origin proof gate
+## OA-C9 — Product Problem type URI policy and stable-origin proof gate
 
 Canonical custom Product Problem identifiers require one immutable HTTPS origin:
 
@@ -411,26 +342,19 @@ Rules:
 
 ### Operator-selected ngrok endpoint
 
-The operator nominated this zero-cost endpoint:
+The operator nominated:
 
 ```text
 https://multiradial-unironically-nieves.ngrok-free.dev/
 ```
 
-Official ngrok plan documentation establishes:
-
-- the free plan provides one **automatically assigned development domain** specific to the account;
-- free users cannot choose/customize the hostname;
-- free users cannot bring their own domain;
-- development endpoints do not have an endpoint timeout, but remain dependent on the ngrok account/service and plan.
-
-Therefore the nominated endpoint is accepted only as:
+It is accepted only as:
 
 ```text
 TEMPORARY PRE-PRODUCTION DOCUMENTATION / RESOLUTION PROOF ENDPOINT
 ```
 
-It is **not** classified as a DevelopmentConexus-owned verified domain and is not embedded into canonical `Problem.type` values merely "for now". Problem identifiers are permanent; a temporary hostname cannot be swapped later without changing identity.
+It is not classified as a DevelopmentConexus-owned verified domain and is not embedded into canonical `Problem.type` values merely "for now". Problem identifiers are permanent; a temporary hostname cannot be swapped later without changing identity.
 
 Before Product OAD authoring may embed custom Product Problem `type` constants, a proof must establish one of:
 
@@ -443,14 +367,8 @@ Until that proof is filed:
 ngrok may host generated preview docs
 custom Product Problem type constants remain BLOCKED
 about:blank remains usable where already canonical
-Product OpenAPI authoring remains blocked at the Problem-origin gate
+Product OAD authoring remains blocked at the Problem-origin gate
 ```
-
-Primary evidence:
-
-- https://ngrok.com/docs/pricing-limits/free-plan-limits
-- https://ngrok.com/docs/pricing-limits/how-ngrok-charges
-- RFC 9457: https://www.rfc-editor.org/rfc/rfc9457.html
 
 ## OA-C10 — Exact pinned tooling and routing constraint
 
@@ -481,6 +399,15 @@ openapi-typescript generates the mandatory TypeScript contract projection direct
 oapi-codegen consumes the resolved temporary bundle. It proves models/strict interfaces but does not select the D7 router or runtime validator.
 
 The standard Go `net/http.ServeMux` is **not** a valid neutral proof vehicle for canonical `{id}:verb` paths. D5 has proved a D7 routing constraint: the runtime must provide partial-segment pattern support or a compatible implementation of the generated mux interface. The D5 fixture uses a bounded custom mux to prove dispatch without selecting Chi, Echo, Gin, Gorilla or another D7 framework.
+
+Compatibility proof must execute both:
+
+```text
+exact minimum: GOTOOLCHAIN=go1.25.1 or equivalent CI image
+current/newer toolchain: forward-compatibility evidence
+```
+
+A newer toolchain honoring the `go 1.25.1` module directive does not by itself prove execution under the exact minimum toolchain.
 
 ## OA-C11 — Generated contract projections are mandatory; runtime SDK is D6
 
@@ -528,7 +455,7 @@ packages/sdk-runtime manual Product DTO/operation catalog
 → never present as target Product SDK authority
 ```
 
-The replacement must own the complete mechanical retirement set, not discover it as red gates after deletion:
+The replacement owns the complete mechanical retirement set:
 
 1. `GOV_API_SDK_SPLIT` implementation;
 2. `api-sdk-atomicity` invariant;
@@ -619,36 +546,31 @@ A green command that did not traverse the real source closure, all operations an
 
 ---
 
-## 4. GPT adjudication of Fable findings
+## 4. Review evidence and adjudication
 
-| Finding | Adjudication |
-|---|---|
-| F-1 standard mux cannot serve `:verb` grammar | ACCEPT. Preserve W1; record D7 router constraint; custom-mux compatibility fixture. |
-| F-2 generator-specific type overrides create two contracts | ACCEPT. Closed extension allowlist; type/shape overrides forbidden. |
-| F-3 Prettier reaches nested OAD | ACCEPT. Exclude `contracts/api/product/**` from Prettier; Redocly owns form. |
-| F-4 proposed GitHub Pages origin not established | ACCEPT root cause. Reject ngrok as temporary canonical identity; retain stable-origin proof gate. |
-| F-5 legacy retirement under-scoped | ACCEPT corrected twelve-consumer set. |
-| F-6 four names not filed in W4 | ACCEPT. Name-only W4 filing after final ratification. |
-| F-7 Availability GET lost `effective` | ACCEPT. Use `GetEffectiveAvailabilityAllocationScopePolicy`. |
-| F-8 version pin/no-empty-servers gaps | ACCEPT. Exact custom pin; explicitly disable contradictory rule. |
-| F-9 Redocly config can hijack TypeScript input | ACCEPT. Rules-only config; explicit CLI entry/output. |
-| F-10 Go requires bundle | ACCEPT. Bundle mandatory in Go pipeline, never authority. |
-| F-11 component collisions silently rename | ACCEPT. Pre-bundle uniqueness plus bundle collision assertion. |
-| F-12 closure is declaration-only | ACCEPT. D5 declaration proof; D7 runtime validation obligation. |
-| F-13 Go enum identifiers can churn | ACCEPT evidence; do not admit `x-enum-varnames` now. |
-| F-14 multipart "usable" needed precision | ACCEPT. Expressible/reachable, not automatic binding/validation. |
-| Additional GPT finding: exact Go toolchain unproved | ACCEPT. Add exact Go 1.25.1 proof alongside current-toolchain proof. |
+The independent Fable spike proved:
 
-Round 2 is not required. Every correction is D5-B2-local or a name-only W4 filing; no semantic parent contradiction survives.
+- deterministic Redocly YAML/JSON bundle;
+- TypeScript generated from source equals TypeScript generated from bundle byte-for-byte;
+- strict TypeScript compilation;
+- `const`, `oneOf`, `allOf`, exact decimals, headers, statuses and Problem media type preserved;
+- oapi-codegen consumes the resolved bundle and generates compiling Go;
+- live `httptest` custom-verb dispatch with a compatible mux;
+- multipart file/etag reachability;
+- `If-Match`, `Idempotency-Key`, Problem `type` and parent validator round-trip.
+
+The review also proved the limitations incorporated in OA-C1–OA-C14: standard-mux incompatibility, generator-specific type-override divergence, formatter ownership, Redocly config/version gaps, mandatory Go bundle input, component collision renaming, declaration-versus-runtime validation, multipart precision and the exact-toolchain proof gap.
+
+No review finding required D0→D5-B1 or W1→W4 semantic reopen. Round 2 was not required.
 
 ---
 
-## 5. Final disposition pending ratification
+## 5. Canonical closure and reopen triggers
 
 ```text
 W1 / W2 / W3 / Technical Ingress               CONFIRMED
 W4 semantics                                    CONFIRMED
-W4 operation spelling                           NAME-ONLY FILING REQUIRED
+W4 final operation names                        FILED NAME-ONLY
 Product operations                              95 unchanged
 ordinary Permissions                            29 unchanged
 source model                                    one multi-document design-first OAD
@@ -657,33 +579,13 @@ lint/bundle                                     Redocly CLI 2.45.0
 TypeScript contract generation                  openapi-typescript 7.13.0
 Go compatibility generation                     oapi-codegen v2.8.0 + runtime v1.7.0
 runtime TypeScript client                       D6
-Go router/server/runtime validator               D7
+Go router/server/runtime validator              D7
 legacy OpenAPI/manual SDK                       REPLACE / RETIRE AS ONE MEASURED SEAM
 ngrok endpoint                                  PREVIEW/PROOF HOST ONLY
-canonical Product Problem origin                 BLOCKED BY STABLE-ORIGIN PROOF
-independent Fable review                         COMPLETE
-GPT adjudication                                 CONVERGED
-Round 2                                          NOT REQUIRED
-operator final package ratification              NEXT
-canonical filing                                 BLOCKED BY RATIFICATION
-Product OAD authoring                            BLOCKED BY RATIFICATION + OA-C9 PROOF
+canonical Product Problem origin                OPEN PROOF GATE
+Product OAD authoring                            BLOCKED BY OA-C9 PROOF
 D6–D9 / implementation                          BLOCKED
 ```
-
-## 6. Final ratification effect
-
-After explicit operator ratification of this converged package:
-
-1. file the four operation names into W4 §8 without changing class, Permission or Principal admission;
-2. make this decision canonical in the appropriate D5-B2 home;
-3. remove this candidate from the active tree;
-4. reset `AI-DIALOG.md` to protocol-only;
-5. update the router and cockpit projection;
-6. open the bounded stable-origin proof if still unresolved;
-7. author the Product OAD only after the OA-C9 origin gate is discharged;
-8. preserve implementation blocked until D9.
-
-## 7. Reopen triggers
 
 Reopen only the smallest implicated decision when evidence shows:
 
@@ -697,3 +599,5 @@ Reopen only the smallest implicated decision when evidence shows:
 - a technical surface is mistakenly required by a Product client.
 
 Do not reopen for generator naming preference, file-count aesthetics, current handler layout, legacy route convenience, desire for `/v1`, or one tool's inability when another credible tool preserves the source semantics.
+
+Current status and exact next action are owned only by `docs/engineering/rebaseline/README.md`.
