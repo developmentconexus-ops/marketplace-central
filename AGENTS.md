@@ -80,7 +80,9 @@ npm run gate:full
 
 `scripts/gate.ps1` is the shared local/CI gate implementation.
 
-- Red is a stop; do not weaken a control or raise a baseline to make it green.
+- Red is a stop for every current control; never raise a baseline merely to make it green.
+- A check that measures only a superseded legacy topology may be retired in an explicitly scoped change that records what it measured and what replaces it—or why no replacement is required.
+- Never silence current security, Organization-isolation, data-integrity, Product-contract, PII or irreversible external-effect controls merely to accelerate the rebaseline.
 - Presence is not execution; a check must exercise the relevant subject and demonstrate its negative control where required.
 - Mocks/fakes prove local contract behavior, not real integration behavior.
 - Claims depending on Mercado Livre, Sankhya, PostgreSQL deployment or browser runtime require appropriate real-environment evidence.

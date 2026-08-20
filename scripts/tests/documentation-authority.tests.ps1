@@ -59,6 +59,8 @@ Assert-True ($agents.Contains('BUILD NOW') -and $agents.Contains('SEAM NOW') -an
   'AGENTS.md lost staged-delivery classification'
 Assert-True ($agents.Contains('`AI-DIALOG.md` is temporary')) `
   'AGENTS.md does not make AI-DIALOG temporary'
+Assert-True ($agents.Contains('superseded legacy topology') -and $agents.Contains('Never silence current security')) `
+  'AGENTS.md does not distinguish scoped retirement of legacy-only checks from weakening current safety controls'
 Assert-True (-not $agents.Contains('docs/engineering/rebaseline/README.md')) `
   'AGENTS.md still routes the default session through the retired status path'
 
