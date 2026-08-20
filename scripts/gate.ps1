@@ -13,7 +13,11 @@ function Fail([string]$Message) {
 }
 
 function Repo-Path([string]$Path) {
-    return $Path.Replace('\', '/').TrimStart('./')
+    $normalized = $Path.Replace('\', '/')
+    if ($normalized.StartsWith('./', [StringComparison]::Ordinal)) {
+        return $normalized.Substring(2)
+    }
+    return $normalized
 }
 
 function Test-BootstrapBudget([long]$Bytes) {
@@ -25,6 +29,7 @@ $allowedRoot = @(
     '.gitignore',
     '.node-version',
     'AGENTS.md',
+    'ARCHITECTURE.md',
     'CLAUDE.md',
     'README.md',
     'package.json',
@@ -122,7 +127,7 @@ $forbiddenPathFindings = @()
 foreach ($path in $tracked) {
     $lower = $path.ToLowerInvariant()
     if ($lower.StartsWith('docs/superpowers/')) { $forbiddenPathFindings += $path; continue }
-    if ($lower -match '(^|/)docs/work/' -or $lower.StartsWith('docs/work/')) { $forbiddenPathFindings += $path; continue }
+    if ($lower.StartsWith('docs/work/')) { $forbiddenPathFindings += $path; continue }
     if ($lower -match '(^|/)(old|archive)(/|$)') { $forbiddenPathFindings += $path; continue }
     if ($lower -match '(^|/)[^/]*(handoff|dialogue|ai-dialog)[^/]*\.md$') { $forbiddenPathFindings += $path; continue }
 }
@@ -220,8 +225,6 @@ if ($durableWorkDependencies.Count -gt 0) {
     Fail ("Durable docs depend on temporary docs/work material:`n" + ($durableWorkDependencies -join "`n"))
 }
 
-# Reachability: follow relative Markdown links from docs/index.md. Citation archaeology
-# is considered child-index-owned when the ADR registry itself is reachable.
 $trackedMarkdown = @{}
 foreach ($path in @($tracked | Where-Object { $_.EndsWith('.md', [StringComparison]::OrdinalIgnoreCase) })) { $trackedMarkdown[$path] = $true }
 $reachable = @{}
@@ -246,11 +249,10 @@ foreach ($path in @($trackedMarkdown.Keys | Where-Object { $_.StartsWith('docs/'
     $unreachableDocs += $path
 }
 if ($unreachableDocs.Count -gt 0) {
-    Fail ("Durable docs are not reachable from docs/index.md routing:`n" + ($unreachableDocs | Sort-Object | ForEach-Object { $_ }) -join "`n")
+    $unreachableText = ($unreachableDocs | Sort-Object) -join "`n"
+    Fail "Durable docs are not reachable from docs/index.md routing:`n$unreachableText"
 }
 
-# Machine routing/selectors are optional in the current hard-reset tree, but any
-# current route manifest that exists must resolve repo-local file selectors.
 $machineRouteFiles = @($tracked | Where-Object { $_ -match '(?i)(routes|selectors)\.(json|ya?ml)$' })
 $machineSelectors = 0
 foreach ($path in $machineRouteFiles) {
@@ -271,7 +273,6 @@ if (-not $rules.Contains('full replacement coverage = proved')) { Fail 'Engineer
 if (-not $rules.Contains('Dependency or lockfile change')) { Fail 'Engineering rules lost explicit dependency/lockfile scope.' }
 if (-not $rules.Contains('Never bend accepted target architecture')) { Fail 'Engineering rules permit legacy code/tests to warp target architecture.' }
 
-# Determine exact base/candidate for diff and review-isolation proof.
 $headSha = (& git -C $root rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0 -or $headSha -notmatch '^[0-9a-f]{40}$') { Fail 'Unable to resolve HEAD.' }
 $headRef = $env:GATE_HEAD_REF
@@ -313,7 +314,6 @@ foreach ($property in @('workspaces', 'dependencies', 'devDependencies')) {
     if ($package.PSObject.Properties.Name -contains $property) { Fail "package.json contains retired property: $property" }
 }
 
-# Deterministic falsifiers for the material operating-envelope guards.
 $negativeControls = 0
 if (-not (Test-BootstrapBudget 20481) -and (Test-BootstrapBudget 20480)) { $negativeControls++ } else { Fail 'Bootstrap-budget negative control failed.' }
 if (-not (Test-AllowedTrackedPath 'apps/server_core/main.go') -and (Test-AllowedTrackedPath 'docs/index.md')) { $negativeControls++ } else { Fail 'Repository-allowlist negative control failed.' }
