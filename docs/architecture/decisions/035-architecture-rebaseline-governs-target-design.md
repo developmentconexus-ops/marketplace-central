@@ -60,7 +60,7 @@ Historical plans, handoffs, wikis and old design documents are removed from the 
 
 There is no `old/`, `archive/` or parallel legacy roadmap.
 
-Current program status and exact next action live only at `docs/engineering/rebaseline/README.md`.
+Current program status and exact next action live only at `docs/README.md`.
 
 ### 5. Hard cutover is permitted, but only after the relevant design decision
 
@@ -129,7 +129,7 @@ This table is a **2026-08-14 snapshot**, not the current disposition map.
 ## Consequences
 
 1. `AGENTS.md` routes every fresh session through the current rebaseline status before historical material.
-2. `docs/engineering/rebaseline/README.md` is the sole current program/status/next-action authority.
+2. `docs/README.md` is the sole current program/status/next-action authority.
 3. `ARCHITECTURE.md` contains stable constraints, not an inventory that blesses current code shape.
 4. `docs/architecture/decisions/README.md` is the ADR status registry.
 5. Existing OpenAPI, schema, modules, contexts, packages, runtime and frontend are supporting evidence consulted by the D-stage that needs them, not an exhaustive D0 prerequisite.

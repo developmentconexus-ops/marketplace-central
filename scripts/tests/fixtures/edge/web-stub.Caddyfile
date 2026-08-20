@@ -1,4 +1,0 @@
-# Stand-in for web:80 (the built SPA) in the edge fixture.
-:80 {
-	respond "web-stub-index-html" 200
-}

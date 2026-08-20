@@ -1,72 +1,20 @@
+.env*
+*.exe
+*.log
 node_modules/
 dist/
 coverage/
-.vite/
-apps/web/node_modules/
-packages/*/node_modules/
-apps/server_core/bin/
-apps/server_core/.gocache/
-apps/server_core/.gomodcache/
 .gocache/
 .gomodcache/
-*.exe
-.env*
-scripts/.runs/
-.gate/
-.next/
-next-env.d.ts
 *.tsbuildinfo
+.gate/
+scripts/.runs/
 .worktrees/
-data/
-certificates/
+.brain/
+.superpowers/
+.mnfs/
 .claude/*
-!.claude/plugins/
-!.claude/plugins/mnfs-workflow/
-!.claude/plugins/mnfs-workflow/**
 !.claude/settings.json
-!.claude/skills/
-!.claude/skills/**
-.trello-agent/project.json
-.mnfs/MIS-001-mercado-livre-operating-cockpit/M-08-repository-integrity-harness/F-01-baseline-recovery/runs/
-
-# Retained F-01 local evidence and runtime log (kept on disk, not versioned)
-.superpowers/sdd/evidence/m06-f03-orders-desktop-docker.png
-.superpowers/sdd/evidence/m06-f03-orders-mobile-docker.png
-.superpowers/sdd/evidence/m06-f03-total-validation-desktop.png
-.superpowers/sdd/evidence/m06-f03-total-validation-mobile.png
-.superpowers/sdd/local-runtime-docker-path-correction-brief.md
-.superpowers/sdd/local-runtime-task-1-brief.md
-.superpowers/sdd/local-runtime-task-1-report.md
-.superpowers/sdd/local-runtime-task-1-review-package.md
-.superpowers/sdd/local-runtime-task-2-brief.md
-.superpowers/sdd/local-runtime-task-2-report.md
-.superpowers/sdd/local-runtime-task-2-review-package.md
-.superpowers/sdd/progress.md
-.superpowers/sdd/review-bee1054..49a3362.diff
-.superpowers/sdd/task-2-brief.md
-.superpowers/sdd/task-2-report.md
-.tmp-web-4174.log
-
-# Generated artifacts (session tooling and diagnostic probes)
-__pycache__/
+tmp/
 output/
-
-# tsc emit ao lado do fonte. apps/web/src e' 100% .ts/.tsx: qualquer .js ali e'
-# saida de compilador, nunca fonte. Nao e' so' sujeira — a ordem padrao de
-# resolucao do Vite poe .js ANTES de .tsx, entao um emit esquecido faz o dev
-# server servir build velho no lugar do arquivo que voce acabou de editar.
-apps/web/src/**/*.js
-apps/web/src/**/*.js.map
-apps/web/src/**/*.d.ts
-packages/*/src/**/*.js
-packages/*/src/**/*.js.map
-packages/*/src/**/*.d.ts
-# vite.config.js e' o pior caso do mesmo defeito: o Vite procura o config em
-# .js ANTES de .ts, entao um emit esquecido aqui faz o build inteiro rodar
-# sobre configuracao compilada velha. O fonte e' vite.config.ts.
-apps/web/vite.config.js
-
-# Binario compilado da sonda da API (go build ./cmd/mlprobe). O fonte fica
-# versionado; o executavel, nao.
-apps/server_core/mlprobe
-apps/server_core/mlprobe.exe
+__pycache__/

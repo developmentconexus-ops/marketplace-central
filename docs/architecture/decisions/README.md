@@ -22,7 +22,7 @@ Git history is the archive. ADR numbers are never reused.
 | 018 | reopened — D7 | execution-safety/runtime mechanics residue; generic Mutation business owner/table/poller is already superseded by D1/D3 | retire when D7 adjudicates execution-safety runtime |
 | 026 | reopened — D7 | scheduler/cursor/phase runtime evidence; no global phase business vocabulary survives D3 | retire when D7 adjudicates scheduler/runtime mechanics |
 | 030 | reopened — D7 | worker/scheduler/installation-topology evidence | retire when D7 adjudicates process/scheduler topology |
-| 034 | carried implementation/evidence anchor | current `Fact<T>` implementation/evidence anchor explicitly retained by D2; target scope is owned by D2 | retire with 017 when target Fact ADR rehomes the remaining clauses |
+| 034 | carried historical evidence anchor | historical `Fact<T>` proof and domain-judgment clauses remain useful to D2; the former implementation/package is retired and owns no target structure | retire with 017 when target Fact ADR rehomes the remaining clauses |
 | 035 | carried transition authority | governs the D0–D9 target-design/authority transition and implementation block | retire only after D0–D9 closes |
 
 ### ADR-035 snapshot fence

@@ -1,17 +1,3 @@
-# PR title = Conventional Commit. Linear history plus
-# squash merge makes the PR title the commit subject, so this one job validates
-# what actually lands on main; validating every branch commit would not.
-#
-# A separate workflow because the trigger set differs from ci.yml: `edited` has
-# to re-run the check when the title changes, and none of ci.yml's lanes should
-# re-run for that. The title reaches the script through an environment variable,
-# never interpolated into the run: line -- a PR title is attacker-controlled
-# text, and `${{ }}` inside run: is the injection vector.
-#
-# NOT a required check yet. Promotion happens in issue #4, after it has been
-# observed red once and green on real PRs, by reading the context string off
-# `gh pr checks`.
-
 name: pr-title
 
 on:
@@ -22,8 +8,8 @@ permissions: {}
 
 jobs:
   conventional-title:
-    name: conventional-title
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
         with:

@@ -595,7 +595,7 @@ D1–D7 must choose the smallest mechanism inside the real owning business/techn
 
 The bounded closure review plus independent adversarial review found no remaining product-semantic blocker after the amendments above.
 
-A fresh session must read `AGENTS.md`, `docs/engineering/rebaseline/README.md`, `docs/engineering/standards/root-cause-global-maximum-method.md`, `ARCHITECTURE.md`, the ADR registry and then this artifact.
+A fresh session reads `AGENTS.md` and `docs/README.md`, then follows the smallest selective route named there for the concrete task.
 
 The final cold review confirmed:
 

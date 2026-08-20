@@ -1,5 +1,0 @@
-package application
-
-const defaultChannel = "mercado_livre"
-
-func channelIsDefault(code string) bool { return code == defaultChannel }

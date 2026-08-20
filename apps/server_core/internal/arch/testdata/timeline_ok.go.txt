@@ -1,7 +1,0 @@
-package listings
-
-// The letters m-e-l-i inside "Timeline". Substring matching reported 64 of
-// these; segment matching must report zero.
-type TimelineEvent struct{}
-
-func describe() string { return "read listing timeline: %w" }
