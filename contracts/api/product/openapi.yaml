@@ -1,0 +1,315 @@
+openapi: 3.1.2
+jsonSchemaDialect: https://spec.openapis.org/oas/3.1/dialect/base
+info:
+  title: Marketplace Central Product API
+  version: 0.1.0-d5
+  description: >-
+    D5 canonical Product OpenAPI Description authoring candidate. This branch
+    crystallizes the accepted Product operation/path/access surface. It is not
+    D5 closure until the accepted W2/W3 schema/collection grammar and the
+    OA-C14 tooling proof are complete. Product implementation remains blocked
+    until D9.
+security:
+  - MpcBearerAuth: []
+paths:
+  /access-context:
+    get: { operationId: GetCurrentAccessContext, x-mpc-operation-class: Q, x-mpc-required-permission: authenticated, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: identity-access, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/members:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListOrganizationMembers, x-mpc-operation-class: Q, x-mpc-required-permission: access.read, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: identity-access, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/access-roles:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListAccessRoles, x-mpc-operation-class: Q, x-mpc-required-permission: access.read, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: identity-access, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/members/{principal_id}/access-roles/{role_key}:assign:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/principal_id' }, { $ref: '#/components/parameters/role_key' }]
+    post: { operationId: AssignAccessRole, x-mpc-operation-class: C, x-mpc-required-permission: access.manage, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: identity-access, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/members/{principal_id}/access-roles/{role_key}:revoke:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/principal_id' }, { $ref: '#/components/parameters/role_key' }]
+    post: { operationId: RevokeAccessRole, x-mpc-operation-class: C, x-mpc-required-permission: access.manage, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: identity-access, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/marketplace-installations:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListMarketplaceInstallations, x-mpc-operation-class: Q, x-mpc-required-permission: portfolio.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: marketplace-portfolio, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+    post: { operationId: CreateMarketplaceInstallation, x-mpc-operation-class: C, x-mpc-required-permission: portfolio.manage, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: marketplace-portfolio, responses: { '201': { $ref: '#/components/responses/Created' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/marketplace_installation_id' }]
+    get: { operationId: GetMarketplaceInstallation, x-mpc-operation-class: Q, x-mpc-required-permission: portfolio.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: marketplace-portfolio, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+    patch: { operationId: UpdateMarketplaceInstallationConfiguration, x-mpc-operation-class: C, x-mpc-required-permission: portfolio.manage, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: marketplace-portfolio, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}:deactivate:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/marketplace_installation_id' }]
+    post: { operationId: DeactivateMarketplaceInstallation, x-mpc-operation-class: C, x-mpc-required-permission: portfolio.manage, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: marketplace-portfolio, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/selling-entities:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListSellingEntities, x-mpc-operation-class: Q, x-mpc-required-permission: portfolio.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: marketplace-portfolio, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/source-products:search:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: SearchSourceProductsForMarketplace, x-mpc-operation-class: Q, x-mpc-required-permission: readiness.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: product-channel-readiness, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/product-channel-readiness:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: GetProductChannelReadiness, x-mpc-operation-class: Q, x-mpc-required-permission: readiness.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: product-channel-readiness, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/publication-requirements:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: GetPublicationRequirements, x-mpc-operation-class: Q, x-mpc-required-permission: readiness.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: product-channel-readiness, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/product-channel-readiness:resolve-correspondence:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    post: { operationId: ResolveProductChannelCorrespondence, x-mpc-operation-class: C, x-mpc-required-permission: readiness.manage, x-mpc-principal-kinds: [H, A], x-mpc-semantic-owner: product-channel-readiness, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/product-channel-readiness:clear-correspondence:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    post: { operationId: ClearProductChannelCorrespondence, x-mpc-operation-class: C, x-mpc-required-permission: readiness.manage, x-mpc-principal-kinds: [H, A], x-mpc-semantic-owner: product-channel-readiness, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/listings:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/marketplace_installation_id' }]
+    get: { operationId: ListMarketplaceListings, x-mpc-operation-class: Q, x-mpc-required-permission: offering.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: offering, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/listings/{native_listing_key}:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/marketplace_installation_id' }, { $ref: '#/components/parameters/native_listing_key' }]
+    get: { operationId: GetMarketplaceListing, x-mpc-operation-class: Q, x-mpc-required-permission: offering.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: offering, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/listing-intents:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListListingIntents, x-mpc-operation-class: Q, x-mpc-required-permission: offering.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: offering, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+    post: { operationId: CreateListingIntentDraft, x-mpc-operation-class: C, x-mpc-required-permission: listing.manage, x-mpc-principal-kinds: [H, A], x-mpc-semantic-owner: offering, responses: { '201': { $ref: '#/components/responses/Created' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/listing-intents/{listing_intent_id}:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/listing_intent_id' }]
+    get: { operationId: GetListingIntent, x-mpc-operation-class: Q, x-mpc-required-permission: offering.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: offering, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+    patch: { operationId: UpdateListingIntentDraft, x-mpc-operation-class: C, x-mpc-required-permission: listing.manage, x-mpc-principal-kinds: [H, A], x-mpc-semantic-owner: offering, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/listing-intents/{listing_intent_id}:discard:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/listing_intent_id' }]
+    post: { operationId: DiscardListingIntentDraft, x-mpc-operation-class: C, x-mpc-required-permission: listing.manage, x-mpc-principal-kinds: [H, A], x-mpc-semantic-owner: offering, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/listing-intents/{listing_intent_id}:submit:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/listing_intent_id' }]
+    post: { operationId: SubmitListingIntent, x-mpc-operation-class: C, x-mpc-required-permission: listing.manage, x-mpc-principal-kinds: [H, A], x-mpc-semantic-owner: offering, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/listing-intents/{listing_intent_id}:create-media:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/listing_intent_id' }]
+    post: { operationId: CreateListingIntentMedia, x-mpc-operation-class: C, x-mpc-required-permission: listing.manage, x-mpc-principal-kinds: [H, A], x-mpc-semantic-owner: offering, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/price-intents:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListPriceIntents, x-mpc-operation-class: Q, x-mpc-required-permission: offering.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: offering, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+    post: { operationId: CreatePriceIntent, x-mpc-operation-class: C, x-mpc-required-permission: price.manage, x-mpc-principal-kinds: [H, A], x-mpc-semantic-owner: offering, responses: { '201': { $ref: '#/components/responses/Created' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/price-intents/{price_intent_id}:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/price_intent_id' }]
+    get: { operationId: GetPriceIntent, x-mpc-operation-class: Q, x-mpc-required-permission: offering.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: offering, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/sellable-availability:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListSellableAvailability, x-mpc-operation-class: Q, x-mpc-required-permission: availability.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: availability, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/sellable-availability/current:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: GetSellableAvailability, x-mpc-operation-class: Q, x-mpc-required-permission: availability.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: availability, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/inventory-sources:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListInventorySources, x-mpc-operation-class: Q, x-mpc-required-permission: availability.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: availability, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+    post: { operationId: CreateInventorySource, x-mpc-operation-class: C, x-mpc-required-permission: availability.manage, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: availability, responses: { '201': { $ref: '#/components/responses/Created' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/inventory-sources/{inventory_source_id}:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/inventory_source_id' }]
+    get: { operationId: GetInventorySource, x-mpc-operation-class: Q, x-mpc-required-permission: availability.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: availability, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+    patch: { operationId: UpdateInventorySource, x-mpc-operation-class: C, x-mpc-required-permission: availability.manage, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: availability, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/inventory-sources/{inventory_source_id}:deactivate:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/inventory_source_id' }]
+    post: { operationId: DeactivateInventorySource, x-mpc-operation-class: C, x-mpc-required-permission: availability.manage, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: availability, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/availability-allocation-scope-policy:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: GetEffectiveAvailabilityAllocationScopePolicy, x-mpc-operation-class: Q, x-mpc-required-permission: availability.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: availability, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+    patch: { operationId: UpdateAvailabilityAllocationScopePolicy, x-mpc-operation-class: C, x-mpc-required-permission: availability.manage, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: availability, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/competitive-positions:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListCompetitivePositions, x-mpc-operation-class: Q, x-mpc-required-permission: market.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: market-intelligence, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/competitive-position:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: GetCompetitivePosition, x-mpc-operation-class: Q, x-mpc-required-permission: market.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: market-intelligence, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/comparable-offers:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListComparableOffers, x-mpc-operation-class: Q, x-mpc-required-permission: market.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: market-intelligence, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/expected-economics:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListExpectedEconomics, x-mpc-operation-class: Q, x-mpc-required-permission: economics.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: commercial-economics, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/expected-economics/current:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: GetExpectedEconomics, x-mpc-operation-class: Q, x-mpc-required-permission: economics.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: commercial-economics, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/price-scenarios:evaluate:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    post: { operationId: EvaluatePriceScenario, x-mpc-operation-class: C, x-mpc-required-permission: economics.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: commercial-economics, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/sale-economics:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListSaleEconomics, x-mpc-operation-class: Q, x-mpc-required-permission: economics.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: commercial-economics, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/sale-economics/current:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: GetSaleEconomics, x-mpc-operation-class: Q, x-mpc-required-permission: economics.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: commercial-economics, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/economic-performance-summary:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: GetEconomicPerformanceSummary, x-mpc-operation-class: Q, x-mpc-required-permission: economics.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: commercial-economics, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/commercial-policy:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: GetCommercialPolicy, x-mpc-operation-class: Q, x-mpc-required-permission: economics.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: commercial-economics, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+    patch: { operationId: UpdateCommercialPolicy, x-mpc-operation-class: C, x-mpc-required-permission: economics.policy.manage, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: commercial-economics, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/economic-attributions:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListEconomicAttributions, x-mpc-operation-class: Q, x-mpc-required-permission: economics.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: commercial-economics, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/economic-attributions/{economic_attribution_id}:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/economic_attribution_id' }]
+    get: { operationId: GetEconomicAttribution, x-mpc-operation-class: Q, x-mpc-required-permission: economics.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: commercial-economics, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/economic-attributions/{economic_attribution_id}:resolve:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/economic_attribution_id' }]
+    post: { operationId: ResolveEconomicAttribution, x-mpc-operation-class: C, x-mpc-required-permission: economics.reconcile, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: commercial-economics, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/authorization-decisions:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListAuthorizationDecisions, x-mpc-operation-class: Q, x-mpc-required-permission: governance.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: controlled-action-governance, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+    post: { operationId: CreateAuthorizationDecision, x-mpc-operation-class: C, x-mpc-required-permission: governance.decide, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: controlled-action-governance, responses: { '201': { $ref: '#/components/responses/Created' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/authorization-decisions/{authorization_decision_id}:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/authorization_decision_id' }]
+    get: { operationId: GetAuthorizationDecision, x-mpc-operation-class: Q, x-mpc-required-permission: governance.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: controlled-action-governance, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/authorization-delegations:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListAuthorizationDelegations, x-mpc-operation-class: Q, x-mpc-required-permission: governance.manage, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: controlled-action-governance, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+    post: { operationId: EstablishAuthorizationDelegation, x-mpc-operation-class: C, x-mpc-required-permission: governance.manage, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: controlled-action-governance, responses: { '201': { $ref: '#/components/responses/Created' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/authorization-delegations/{authorization_delegation_id}:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/authorization_delegation_id' }]
+    patch: { operationId: UpdateAuthorizationDelegation, x-mpc-operation-class: C, x-mpc-required-permission: governance.manage, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: controlled-action-governance, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/authorization-delegations/{authorization_delegation_id}:revoke:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/authorization_delegation_id' }]
+    post: { operationId: RevokeAuthorizationDelegation, x-mpc-operation-class: C, x-mpc-required-permission: governance.manage, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: controlled-action-governance, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/sales:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/marketplace_installation_id' }]
+    get: { operationId: ListMarketplaceSales, x-mpc-operation-class: Q, x-mpc-required-permission: sales.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: marketplace-sales, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/sales/{native_sale_key}:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/marketplace_installation_id' }, { $ref: '#/components/parameters/native_sale_key' }]
+    get: { operationId: GetMarketplaceSale, x-mpc-operation-class: Q, x-mpc-required-permission: sales.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: marketplace-sales, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/sales/{native_sale_key}:resolve-selling-entity-attribution:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/marketplace_installation_id' }, { $ref: '#/components/parameters/native_sale_key' }]
+    post: { operationId: ResolveSaleSellingEntityAttribution, x-mpc-operation-class: C, x-mpc-required-permission: sales.manage, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: marketplace-sales, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/business-order-intents:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListBusinessOrderIntents, x-mpc-operation-class: Q, x-mpc-required-permission: materialization.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: business-system-materialization, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/business-order-intents/{business_order_intent_id}:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/business_order_intent_id' }]
+    get: { operationId: GetBusinessOrderIntent, x-mpc-operation-class: Q, x-mpc-required-permission: materialization.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: business-system-materialization, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/business-order-intents/{business_order_intent_id}/party-resolution:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/business_order_intent_id' }]
+    get: { operationId: GetBusinessSystemPartyResolution, x-mpc-operation-class: Q, x-mpc-required-permission: materialization.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: business-system-materialization, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/business-order-intents/{business_order_intent_id}/party-resolution:resolve:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/business_order_intent_id' }]
+    post: { operationId: ResolveBusinessSystemPartyResolution, x-mpc-operation-class: C, x-mpc-required-permission: materialization.resolve, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: business-system-materialization, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/business-order-intents/{business_order_intent_id}/destination-realization:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/business_order_intent_id' }]
+    get: { operationId: GetDestinationRealization, x-mpc-operation-class: Q, x-mpc-required-permission: materialization.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: business-system-materialization, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/invoicing-intents:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListInvoicingIntents, x-mpc-operation-class: Q, x-mpc-required-permission: materialization.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: business-system-materialization, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/invoicing-intents/{invoicing_intent_id}:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/invoicing_intent_id' }]
+    get: { operationId: GetInvoicingIntent, x-mpc-operation-class: Q, x-mpc-required-permission: materialization.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: business-system-materialization, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/fulfillment-executions:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListFulfillmentExecutions, x-mpc-operation-class: Q, x-mpc-required-permission: fulfillment.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: fulfillment, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/fulfillment-executions/{fulfillment_execution_id}:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/fulfillment_execution_id' }]
+    get: { operationId: GetFulfillmentExecution, x-mpc-operation-class: Q, x-mpc-required-permission: fulfillment.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: fulfillment, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/fulfillment-nodes:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListFulfillmentNodes, x-mpc-operation-class: Q, x-mpc-required-permission: fulfillment.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: fulfillment, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+    post: { operationId: CreateFulfillmentNode, x-mpc-operation-class: C, x-mpc-required-permission: fulfillment.manage, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: fulfillment, responses: { '201': { $ref: '#/components/responses/Created' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/fulfillment-nodes/{fulfillment_node_id}:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/fulfillment_node_id' }]
+    get: { operationId: GetFulfillmentNode, x-mpc-operation-class: Q, x-mpc-required-permission: fulfillment.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: fulfillment, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+    patch: { operationId: UpdateFulfillmentNode, x-mpc-operation-class: C, x-mpc-required-permission: fulfillment.manage, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: fulfillment, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/fulfillment-nodes/{fulfillment_node_id}:deactivate:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/fulfillment_node_id' }]
+    post: { operationId: DeactivateFulfillmentNode, x-mpc-operation-class: C, x-mpc-required-permission: fulfillment.manage, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: fulfillment, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/fulfillment-operating-targets:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: GetFulfillmentOperatingTargets, x-mpc-operation-class: Q, x-mpc-required-permission: fulfillment.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: fulfillment, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+    patch: { operationId: UpdateFulfillmentOperatingTargets, x-mpc-operation-class: C, x-mpc-required-permission: fulfillment.manage, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: fulfillment, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/fulfillment-executions/{fulfillment_execution_id}:record-separation:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/fulfillment_execution_id' }]
+    post: { operationId: RecordSeparation, x-mpc-operation-class: C, x-mpc-required-permission: fulfillment.execute, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: fulfillment, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/fulfillment-executions/{fulfillment_execution_id}:record-physical-conference:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/fulfillment_execution_id' }]
+    post: { operationId: RecordPhysicalConference, x-mpc-operation-class: C, x-mpc-required-permission: fulfillment.execute, x-mpc-principal-kinds: [H, S], x-mpc-semantic-owner: fulfillment, x-mpc-physical-qualification: fulfillment.physical-conference, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/fulfillment-executions/{fulfillment_execution_id}:record-packing:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/fulfillment_execution_id' }]
+    post: { operationId: RecordPacking, x-mpc-operation-class: C, x-mpc-required-permission: fulfillment.execute, x-mpc-principal-kinds: [H], x-mpc-semantic-owner: fulfillment, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/fulfillment-executions/{fulfillment_execution_id}:record-dispatch-handoff:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/fulfillment_execution_id' }]
+    post: { operationId: RecordDispatchHandoff, x-mpc-operation-class: C, x-mpc-required-permission: fulfillment.execute, x-mpc-principal-kinds: [H, S], x-mpc-semantic-owner: fulfillment, x-mpc-physical-qualification: fulfillment.dispatch-handoff, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/fulfillment-executions/{fulfillment_execution_id}/artifacts:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/fulfillment_execution_id' }]
+    get: { operationId: ListFulfillmentArtifacts, x-mpc-operation-class: Q, x-mpc-required-permission: fulfillment.execute, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: fulfillment, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/fulfillment-executions/{fulfillment_execution_id}/artifacts/{artifact_key}:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/fulfillment_execution_id' }, { $ref: '#/components/parameters/artifact_key' }]
+    get: { operationId: GetFulfillmentArtifact, x-mpc-operation-class: Q, x-mpc-required-permission: fulfillment.execute, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: fulfillment, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/shipments:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/marketplace_installation_id' }]
+    get: { operationId: ListShipments, x-mpc-operation-class: Q, x-mpc-required-permission: fulfillment.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: fulfillment, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/shipments/{native_shipment_key}:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/marketplace_installation_id' }, { $ref: '#/components/parameters/native_shipment_key' }]
+    get: { operationId: GetShipment, x-mpc-operation-class: Q, x-mpc-required-permission: fulfillment.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: fulfillment, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/post-sale-resolutions:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListPostSaleResolutions, x-mpc-operation-class: Q, x-mpc-required-permission: post_sale.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: post-sale-resolution, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+    post: { operationId: CreatePostSaleResolution, x-mpc-operation-class: C, x-mpc-required-permission: post_sale.manage, x-mpc-principal-kinds: [H, A], x-mpc-semantic-owner: post-sale-resolution, responses: { '201': { $ref: '#/components/responses/Created' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/post-sale-resolutions/{post_sale_resolution_id}:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/post_sale_resolution_id' }]
+    get: { operationId: GetPostSaleResolution, x-mpc-operation-class: Q, x-mpc-required-permission: post_sale.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: post-sale-resolution, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/work:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }]
+    get: { operationId: ListWork, x-mpc-operation-class: Q, x-mpc-required-permission: work.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: operational-work, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/work/{work_id}:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/work_id' }]
+    get: { operationId: GetWork, x-mpc-operation-class: Q, x-mpc-required-permission: work.read, x-mpc-principal-kinds: [H, A, S], x-mpc-semantic-owner: operational-work, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/work/{work_id}:assign:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/work_id' }]
+    post: { operationId: AssignWork, x-mpc-operation-class: C, x-mpc-required-permission: work.manage, x-mpc-principal-kinds: [H, A], x-mpc-semantic-owner: operational-work, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/work/{work_id}:clear-assignment:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/work_id' }]
+    post: { operationId: ClearWorkAssignment, x-mpc-operation-class: C, x-mpc-required-permission: work.manage, x-mpc-principal-kinds: [H, A], x-mpc-semantic-owner: operational-work, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/work/{work_id}:hold:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/work_id' }]
+    post: { operationId: HoldWork, x-mpc-operation-class: C, x-mpc-required-permission: work.manage, x-mpc-principal-kinds: [H, A], x-mpc-semantic-owner: operational-work, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/work/{work_id}:resume:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/work_id' }]
+    post: { operationId: ResumeWork, x-mpc-operation-class: C, x-mpc-required-permission: work.manage, x-mpc-principal-kinds: [H, A], x-mpc-semantic-owner: operational-work, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+  /organizations/{organization_id}/work/{work_id}:escalate:
+    parameters: [{ $ref: '#/components/parameters/organization_id' }, { $ref: '#/components/parameters/work_id' }]
+    post: { operationId: EscalateWork, x-mpc-operation-class: C, x-mpc-required-permission: work.manage, x-mpc-principal-kinds: [H, A], x-mpc-semantic-owner: operational-work, responses: { '200': { $ref: '#/components/responses/Ok' }, default: { $ref: '#/components/responses/ProductProblem' } } }
+components:
+  securitySchemes:
+    MpcBearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    organization_id: { name: organization_id, in: path, required: true, schema: { type: string, minLength: 1 } }
+    principal_id: { name: principal_id, in: path, required: true, schema: { type: string, minLength: 1 } }
+    role_key: { name: role_key, in: path, required: true, schema: { type: string, minLength: 1 } }
+    marketplace_installation_id: { name: marketplace_installation_id, in: path, required: true, schema: { type: string, minLength: 1 } }
+    native_listing_key: { name: native_listing_key, in: path, required: true, schema: { type: string, minLength: 1 } }
+    listing_intent_id: { name: listing_intent_id, in: path, required: true, schema: { type: string, minLength: 1 } }
+    price_intent_id: { name: price_intent_id, in: path, required: true, schema: { type: string, minLength: 1 } }
+    inventory_source_id: { name: inventory_source_id, in: path, required: true, schema: { type: string, minLength: 1 } }
+    economic_attribution_id: { name: economic_attribution_id, in: path, required: true, schema: { type: string, minLength: 1 } }
+    authorization_decision_id: { name: authorization_decision_id, in: path, required: true, schema: { type: string, minLength: 1 } }
+    authorization_delegation_id: { name: authorization_delegation_id, in: path, required: true, schema: { type: string, minLength: 1 } }
+    native_sale_key: { name: native_sale_key, in: path, required: true, schema: { type: string, minLength: 1 } }
+    business_order_intent_id: { name: business_order_intent_id, in: path, required: true, schema: { type: string, minLength: 1 } }
+    invoicing_intent_id: { name: invoicing_intent_id, in: path, required: true, schema: { type: string, minLength: 1 } }
+    fulfillment_execution_id: { name: fulfillment_execution_id, in: path, required: true, schema: { type: string, minLength: 1 } }
+    fulfillment_node_id: { name: fulfillment_node_id, in: path, required: true, schema: { type: string, minLength: 1 } }
+    artifact_key: { name: artifact_key, in: path, required: true, schema: { type: string, minLength: 1 } }
+    native_shipment_key: { name: native_shipment_key, in: path, required: true, schema: { type: string, minLength: 1 } }
+    post_sale_resolution_id: { name: post_sale_resolution_id, in: path, required: true, schema: { type: string, minLength: 1 } }
+    work_id: { name: work_id, in: path, required: true, schema: { type: string, minLength: 1 } }
+  schemas:
+    ProductProblem:
+      type: object
+      additionalProperties: false
+      required: [type, title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer, minimum: 400, maximum: 599 }
+        detail: { type: string }
+        instance: { type: string, format: uri-reference }
+  responses:
+    Ok:
+      description: Successful Product owner response. Typed W2/W3 response body is authored in the same D5 gate before acceptance.
+    Created:
+      description: Canonical MPC resource or occurrence created. Typed W2 response and Location are authored in the same D5 gate before acceptance.
+    ProductProblem:
+      description: RFC 9457 Product Problem Details. Exact canonical Product problem constants are authored in the same D5 gate before acceptance.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProductProblem' }
