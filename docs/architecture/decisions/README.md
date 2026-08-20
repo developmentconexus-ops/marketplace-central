@@ -2,7 +2,7 @@
 
 > **Role:** sole active authority for ADR file status/disposition during the D0–D9 rebaseline.  
 > **Decision generation routing:** `docs/engineering/rebaseline/DECISION-RECONCILIATION-BASELINE.md`  
-> **Current program status:** `docs/engineering/rebaseline/README.md`
+> **Current program status:** `docs/README.md`
 
 ## Current posture
 
@@ -30,6 +30,10 @@ Git history is the archive. ADR numbers are never reused.
 ADR-035's embedded “still-binding constraints” and “reopened” tables are a **2026-08-14 historical snapshot**. They do not own current ADR disposition.
 
 This registry and accepted D-stage artifacts supersede those embedded tables wherever later adjudication differs. In particular, D4-B1 superseded Direct Oracle/godror target transport; ADR-006/007 are retired from the active tree and are not current target constraints.
+
+### 2026-08-20 authority-surface amendment
+
+ADR-035 remains the D0–D9 transition authority, but its references to the former rebaseline router as the sole status/read-order authority are superseded. `docs/README.md` alone now owns current program status, allowed/blocked work, exact next action and selective read routing. This amendment changes routing only; it does not reopen ADR-035's implementation block or any accepted D-stage semantics.
 
 ## Retired pre-rebaseline ADRs
 
@@ -73,7 +77,7 @@ Only accepted target decisions that materially benefit from durable ADR treatmen
 
 ## Authority rule
 
-- Router owns current program status/next action.
+- `docs/README.md` owns current program status, allowed/blocked work, exact next action and selective read routing.
 - `ARCHITECTURE.md` owns stable cross-stage constraints.
 - Decision Reconciliation Baseline owns current decision-generation routing.
 - **This registry alone owns ADR file status/disposition.**

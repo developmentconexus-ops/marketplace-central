@@ -13,6 +13,8 @@ A fresh session reads only:
 
 Then stop and select the smallest additional read set from the tables below. Do not recursively read every D-stage, ADR, evidence file, code tree or Git history.
 
+Stage-local status and read-order prose accepted before this checkpoint is superseded by this index; it remains historical context, not an active route or second status authority.
+
 ## Current checkpoint
 
 | Field | Current value |
@@ -72,9 +74,9 @@ Read D0–D4 only when a concrete OAD question cannot be answered by the D5 pack
 | Task concerns | Smallest starting read |
 |---|---|
 | Stable cross-stage platform constraint | [`ARCHITECTURE.md`](../ARCHITECTURE.md) |
-| Which decision generation is current after iterative rebaseline work | [Decision Reconciliation Baseline](engineering/rebaseline/DECISION-RECONCILIATION-BASELINE.md) — on demand, never default-read; its older “always-read” self-description is superseded by this index |
+| Which decision generation is current after iterative rebaseline work | [Decision Reconciliation Baseline](engineering/rebaseline/DECISION-RECONCILIATION-BASELINE.md) — on demand, never default-read |
 | ADR file status or unresolved legacy residue | [ADR Registry](architecture/decisions/README.md), then only the named ADR |
-| Engineering reasoning for material work | [DevelopmentConexus Engineering Method](engineering/standards/root-cause-global-maximum-method.md) |
+| Engineering reasoning for material work | [DevelopmentConexus Engineering Method](engineering/standards/root-cause-global-maximum-method.md) — non-authoritative local availability copy of `developmentconexus-ops/conexus-methodology/METHOD.md` v1.0.0; replace manually only after operator-approved adoption, without sync machinery |
 | Historical/current-state facts needed for a specific decision | [Evidence Register](engineering/rebaseline/EVIDENCE-REGISTER.md), then only the cited primary evidence/code |
 | Observed legacy defect/proof classes | [Defect Class Catalog](engineering/defect-class-catalog.md) — supporting reference only |
 | Current read-only Oracle validation procedure | [Live Oracle Docker](operations/live-oracle-docker.md) — current-state procedure, not target architecture |
@@ -161,6 +163,10 @@ Every active document must have one responsibility and one of these dispositions
 | SUPPORTING | evidence/reference read only for a concrete need; cannot override canonical authority |
 | TEMPORARY | exists only on the active branch/PR; must be absorbed or deleted before merge |
 | HISTORY | recoverable through Git; not mirrored into `old/`, archive, handoff or roadmap trees |
+
+| Document | Disposition | Responsibility |
+|---|---|---|
+| `README.md` | SUPPORTING | GitHub landing pointer only; no independent program status or next action |
 
 Binding rules:
 

@@ -64,6 +64,7 @@ Unless explicitly reopened by accepted authority:
 - One branch per coherent change.
 - After the current checkpoint, use one PR per D-stage; do not open the next D-stage until the previous one is accepted and merged to `main`.
 - Use a conventional-commit PR title and declare both what changes and what deliberately does not change.
+- Dependency or lockfile changes require explicit declared scope.
 - Temporary candidates, plans, review channels and handoffs must be absorbed or deleted before merge. Do not add `docs/superpowers/`, active `old/` trees, parallel roadmaps or permanent session handoffs.
 - Cold-review the final diff against the intended property and scope before merge.
 - Never push without explicit operator permission. Never merge without explicit operator authorization.
@@ -81,8 +82,9 @@ npm run gate:full
 `scripts/gate.ps1` is the shared local/CI gate implementation.
 
 - Red is a stop for every current control; never raise a baseline merely to make it green.
-- A check that measures only a superseded legacy topology may be retired in an explicitly scoped change that records what it measured and what replaces it—or why no replacement is required.
+- A legacy-only check may retire only after attributable current-tree evidence proves its subject population is zero or full replacement coverage; prefer ratchet-to-zero before deletion. Narrative alone is insufficient.
 - Never silence current security, Organization-isolation, data-integrity, Product-contract, PII or irreversible external-effect controls merely to accelerate the rebaseline.
+- Do not alter accepted target architecture merely to preserve legacy code or tests.
 - Presence is not execution; a check must exercise the relevant subject and demonstrate its negative control where required.
 - Mocks/fakes prove local contract behavior, not real integration behavior.
 - Claims depending on Mercado Livre, Sankhya, PostgreSQL deployment or browser runtime require appropriate real-environment evidence.

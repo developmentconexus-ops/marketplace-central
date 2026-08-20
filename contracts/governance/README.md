@@ -25,4 +25,4 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/tests/governance-contracts
 
 Temporary exceptions are baseline records, not permissions and not promises of a specific future refactor. Each exception identifies the exact current path/key/edge and the D-stage in which that fact must be re-adjudicated if it remains relevant. New violations remain invalid.
 
-Current program status and the exact next action live only in `docs/engineering/rebaseline/README.md`.
+Current program status and the exact next action live only in `docs/README.md`.

@@ -20,8 +20,8 @@
           "estimated_tokens": 260
         },
         {
-          "path": "scripts/tests/harness-orchestration.tests.ps1",
-          "selector": "fixtures",
+          "path": "scripts/tests/harness-execution.tests.ps1",
+          "selector": "execution fixtures",
           "reason": "current harness behavior tests",
           "estimated_tokens": 120
         }
@@ -55,6 +55,12 @@
           "path": "ARCHITECTURE.md",
           "selector": "stable cross-stage constraints",
           "reason": "open only for a material cross-stage architecture question",
+          "estimated_tokens": 2000
+        },
+        {
+          "path": "docs/engineering/standards/root-cause-global-maximum-method.md",
+          "selector": "DevelopmentConexus Engineering Method availability copy",
+          "reason": "material engineering reasoning when the documentation index routes to the Method",
           "estimated_tokens": 2000
         },
         {
