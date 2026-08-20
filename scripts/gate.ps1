@@ -4,6 +4,7 @@ param(
     [string]$Lane = 'all'
 )
 
+Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 
@@ -14,10 +15,10 @@ function Fail([string]$Message) {
 
 function Repo-Path([string]$Path) {
     $normalized = $Path.Replace('\', '/')
-    if ($normalized.StartsWith('./', [StringComparison]::Ordinal)) {
-        return $normalized.Substring(2)
+    while ($normalized.StartsWith('./', [StringComparison]::Ordinal)) {
+        $normalized = $normalized.Substring(2)
     }
-    return $normalized
+    return $normalized.TrimStart('/')
 }
 
 function Test-BootstrapBudget([long]$Bytes) {
@@ -42,7 +43,8 @@ $allowedPrefixes = @(
     '.github/workflows/',
     'docs/',
     'scripts/',
-    'contracts/api/product/'
+    'contracts/api/product/',
+    'qualification/'
 )
 
 function Test-AllowedTrackedPath([string]$Path) {
@@ -58,11 +60,6 @@ function Test-ReviewDiffNames([string[]]$Names) {
     return $Names.Count -eq 1 -and (Repo-Path $Names[0]) -eq 'docs/work/current/ai-dialog.md'
 }
 
-function Test-RouteTarget([string]$Target) {
-    if ([string]::IsNullOrWhiteSpace($Target)) { return $false }
-    return Test-Path -LiteralPath (Join-Path $root (Repo-Path $Target))
-}
-
 function Get-RelativeMarkdownLinks([string]$FilePath) {
     $text = Get-Content -LiteralPath $FilePath -Raw
     $links = @()
@@ -74,6 +71,11 @@ function Get-RelativeMarkdownLinks([string]$FilePath) {
         if ($target) { $links += $target }
     }
     return @($links)
+}
+
+function Test-RepoTarget([string]$Target) {
+    if ([string]::IsNullOrWhiteSpace($Target)) { return $false }
+    return Test-Path -LiteralPath (Join-Path $root (Repo-Path $Target))
 }
 
 $required = @(
@@ -106,6 +108,12 @@ if ($missing.Count -gt 0) {
     Fail ('Required repository authority/mechanics missing: ' + ($missing -join ', '))
 }
 
+$headSha = (& git -C $root rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0 -or $headSha -notmatch '^[0-9a-f]{40}$') { Fail 'Unable to resolve HEAD.' }
+$headRef = $env:GATE_HEAD_REF
+if ([string]::IsNullOrWhiteSpace($headRef)) { $headRef = (& git -C $root branch --show-current).Trim() }
+$isReview = $headRef -like 'review/*'
+
 [string[]]$tracked = @(& git -C $root ls-files --cached)
 if ($LASTEXITCODE -ne 0) { Fail 'Unable to enumerate tracked files.' }
 $tracked = @($tracked | ForEach-Object { Repo-Path $_ })
@@ -117,8 +125,7 @@ if ($outsideEnvelope.Count -gt 0) {
 
 $retiredRouter = 'docs/' + 'README.md'
 $retiredMethod = 'docs/engineering/standards/' + 'root-cause-global-maximum-method.md'
-$forbiddenExact = @($retiredRouter, $retiredMethod)
-$forbiddenTracked = @($tracked | Where-Object { $forbiddenExact -contains $_ })
+$forbiddenTracked = @($tracked | Where-Object { $_ -in @($retiredRouter, $retiredMethod) })
 if ($forbiddenTracked.Count -gt 0) {
     Fail ('Retired authority path remains tracked: ' + ($forbiddenTracked -join ', '))
 }
@@ -126,8 +133,12 @@ if ($forbiddenTracked.Count -gt 0) {
 $forbiddenPathFindings = @()
 foreach ($path in $tracked) {
     $lower = $path.ToLowerInvariant()
+    if ($lower.StartsWith('docs/work/')) {
+        if ($isReview -and $lower -eq 'docs/work/current/ai-dialog.md') { continue }
+        $forbiddenPathFindings += $path
+        continue
+    }
     if ($lower.StartsWith('docs/superpowers/')) { $forbiddenPathFindings += $path; continue }
-    if ($lower.StartsWith('docs/work/')) { $forbiddenPathFindings += $path; continue }
     if ($lower -match '(^|/)(old|archive)(/|$)') { $forbiddenPathFindings += $path; continue }
     if ($lower -match '(^|/)[^/]*(handoff|dialogue|ai-dialog)[^/]*\.md$') { $forbiddenPathFindings += $path; continue }
 }
@@ -159,15 +170,24 @@ if (-not $agent.Contains('AGENTS.md` → `docs/index.md` → `docs/roadmap.md`')
 $authorityMarker = '<!-- program-status-authority -->'
 $markerOwners = @()
 foreach ($path in @($tracked | Where-Object { $_.EndsWith('.md', [StringComparison]::OrdinalIgnoreCase) })) {
-    $full = Join-Path $root $path
-    if ((Get-Content $full -Raw).Contains($authorityMarker)) { $markerOwners += $path }
+    if ((Get-Content (Join-Path $root $path) -Raw).Contains($authorityMarker)) { $markerOwners += $path }
 }
 if ($markerOwners.Count -ne 1 -or $markerOwners[0] -ne 'docs/roadmap.md') {
     Fail ('Mutable program-status authority marker must exist only in docs/roadmap.md; found: ' + ($markerOwners -join ', '))
 }
 
 $roadmapMarkers = @(
+    'D0 — Product / System Definition | ACCEPTED / CLOSED',
+    'D1 — Domains / Boundaries | ACCEPTED / CLOSED',
+    'D2 — Identity / Tenant / Data Ownership | ACCEPTED / CLOSED',
+    'D3 — Communication / Events | ACCEPTED / CLOSED',
+    'D4 — External Integrations | ACCEPTED / CLOSED',
+    'D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL',
     'D5 — API — OPEN / ACTIVE',
+    'D6 — Frontend | BLOCKED BY D5',
+    'D7 — Runtime / Jobs / Transactions | BLOCKED',
+    'D8 — Golden Flows | BLOCKED',
+    'D9 — Adversarial Architecture Review | BLOCKED',
     'Author and prove the canonical Product OpenAPI Description',
     'contracts/api/product/openapi.yaml',
     '95 Product operations',
@@ -184,9 +204,11 @@ foreach ($marker in $roadmapMarkers) {
 
 foreach ($forbidden in @('D5 — API — OPEN / ACTIVE', 'Exact next action', '<!-- program-status-authority -->')) {
     if ($index.Contains($forbidden)) { Fail "docs/index.md duplicates mutable roadmap state: $forbidden" }
-}
-foreach ($forbidden in @('D5 — API — OPEN / ACTIVE', 'Exact next action', '<!-- program-status-authority -->')) {
     if ($readme.Contains($forbidden)) { Fail "README.md is not landing-only: $forbidden" }
+    if ($agent.Contains($forbidden)) { Fail "AGENTS.md duplicates mutable roadmap state: $forbidden" }
+}
+if (-not $readme.Contains('[`AGENTS.md`](AGENTS.md)') -or -not $readme.Contains('[`docs/index.md`](docs/index.md)')) {
+    Fail 'README.md must remain a landing page pointing to AGENTS.md and docs/index.md.'
 }
 
 $activeRoutingFiles = @(
@@ -235,7 +257,6 @@ while ($queue.Count -gt 0) {
     if ($reachable.ContainsKey($source)) { continue }
     $reachable[$source] = $true
     $sourceFull = Join-Path $root $source
-    if (-not (Test-Path $sourceFull -PathType Leaf)) { continue }
     foreach ($target in Get-RelativeMarkdownLinks $sourceFull) {
         $resolved = [IO.Path]::GetFullPath((Join-Path (Split-Path $sourceFull -Parent) $target))
         $relative = Repo-Path ([IO.Path]::GetRelativePath($root, $resolved))
@@ -244,27 +265,23 @@ while ($queue.Count -gt 0) {
 }
 $unreachableDocs = @()
 foreach ($path in @($trackedMarkdown.Keys | Where-Object { $_.StartsWith('docs/') -and -not $_.StartsWith('docs/work/') })) {
-    if ($reachable.ContainsKey($path)) { continue }
-    if ($path.StartsWith('docs/architecture/decisions/_citations/') -and $reachable.ContainsKey('docs/architecture/decisions/README.md')) { continue }
-    $unreachableDocs += $path
+    if (-not $reachable.ContainsKey($path)) { $unreachableDocs += $path }
 }
 if ($unreachableDocs.Count -gt 0) {
-    $unreachableText = ($unreachableDocs | Sort-Object) -join "`n"
-    Fail "Durable docs are not reachable from docs/index.md routing:`n$unreachableText"
+    Fail ("Durable docs are not reachable from docs/index.md or a routed child document:`n" + (($unreachableDocs | Sort-Object) -join "`n"))
 }
 
 $machineRouteFiles = @($tracked | Where-Object { $_ -match '(?i)(routes|selectors)\.(json|ya?ml)$' })
 $machineSelectors = 0
 foreach ($path in $machineRouteFiles) {
-    if ($path.EndsWith('.json', [StringComparison]::OrdinalIgnoreCase)) {
-        $document = Get-Content (Join-Path $root $path) -Raw | ConvertFrom-Json
-        $json = $document | ConvertTo-Json -Depth 50
-        foreach ($match in [regex]::Matches($json, '"([^"\r\n]+\.(?:md|ps1|json|ya?ml|toml))"')) {
-            $candidate = Repo-Path $match.Groups[1].Value
-            if ($candidate -match '^[A-Za-z][A-Za-z0-9+.-]*:') { continue }
-            $machineSelectors++
-            if (-not (Test-RouteTarget $candidate)) { Fail "$path contains unresolved machine selector: $candidate" }
-        }
+    if (-not $path.EndsWith('.json', [StringComparison]::OrdinalIgnoreCase)) { continue }
+    $document = Get-Content (Join-Path $root $path) -Raw | ConvertFrom-Json
+    $json = $document | ConvertTo-Json -Depth 50
+    foreach ($match in [regex]::Matches($json, '"([^"\r\n]+\.(?:md|ps1|json|ya?ml|toml))"')) {
+        $candidate = Repo-Path $match.Groups[1].Value
+        if ($candidate -match '^[A-Za-z][A-Za-z0-9+.-]*:') { continue }
+        $machineSelectors++
+        if (-not (Test-RepoTarget $candidate)) { Fail "$path contains unresolved machine selector: $candidate" }
     }
 }
 
@@ -273,23 +290,34 @@ if (-not $rules.Contains('full replacement coverage = proved')) { Fail 'Engineer
 if (-not $rules.Contains('Dependency or lockfile change')) { Fail 'Engineering rules lost explicit dependency/lockfile scope.' }
 if (-not $rules.Contains('Never bend accepted target architecture')) { Fail 'Engineering rules permit legacy code/tests to warp target architecture.' }
 
-$headSha = (& git -C $root rev-parse HEAD).Trim()
-if ($LASTEXITCODE -ne 0 -or $headSha -notmatch '^[0-9a-f]{40}$') { Fail 'Unable to resolve HEAD.' }
-$headRef = $env:GATE_HEAD_REF
-if ([string]::IsNullOrWhiteSpace($headRef)) { $headRef = (& git -C $root branch --show-current).Trim() }
 $baseSha = $env:GATE_BASE_SHA
 if ([string]::IsNullOrWhiteSpace($baseSha) -or $baseSha -notmatch '^[0-9a-f]{40}$') {
-    $baseSha = (& git -C $root rev-parse HEAD^ 2>$null).Trim()
+    $originMain = (& git -C $root rev-parse --verify refs/remotes/origin/main 2>$null).Trim()
+    if ($LASTEXITCODE -eq 0 -and $originMain -match '^[0-9a-f]{40}$') {
+        $baseSha = (& git -C $root merge-base $headSha $originMain).Trim()
+    } else {
+        $baseSha = (& git -C $root rev-parse HEAD^ 2>$null).Trim()
+    }
 }
 if ([string]::IsNullOrWhiteSpace($baseSha) -or $baseSha -notmatch '^[0-9a-f]{40}$') { Fail 'Unable to resolve a non-vacuous diff base.' }
 & git -C $root cat-file -e "$baseSha^{commit}" 2>$null
-if ($LASTEXITCODE -ne 0) { Fail "Candidate/base ref does not exist locally: $baseSha" }
+if ($LASTEXITCODE -ne 0) { Fail "Base/candidate commit does not exist locally: $baseSha" }
 
-$isReview = $headRef -like 'review/*'
 if ($isReview) {
+    $candidateRef = $env:GATE_CANDIDATE_REF
+    if ([string]::IsNullOrWhiteSpace($candidateRef)) { $candidateRef = $env:GATE_BASE_REF }
+    if ([string]::IsNullOrWhiteSpace($candidateRef)) { Fail 'Review mode requires an explicit candidate branch/ref.' }
+
+    & git -C $root show-ref --verify --quiet "refs/remotes/origin/$candidateRef"
+    if ($LASTEXITCODE -ne 0) {
+        & git -C $root ls-remote --exit-code --heads origin $candidateRef *> $null
+        if ($LASTEXITCODE -ne 0) { Fail "Review candidate ref does not exist on origin: $candidateRef" }
+    }
+
     $candidateTree = @(& git -C $root ls-tree -r --name-only $baseSha)
     $candidateWork = @($candidateTree | Where-Object { (Repo-Path $_).StartsWith('docs/work/') })
-    if ($candidateWork.Count -gt 0) { Fail 'Exact candidate ref is contaminated by docs/work material.' }
+    if ($candidateWork.Count -gt 0) { Fail 'Exact candidate tree is contaminated by docs/work material.' }
+
     $reviewNames = @(& git -C $root diff --name-only "$baseSha..$headSha")
     if (-not (Test-ReviewDiffNames $reviewNames)) {
         Fail ('Review branch must differ from exact candidate only by docs/work/current/ai-dialog.md; found: ' + ($reviewNames -join ', '))
@@ -318,8 +346,8 @@ $negativeControls = 0
 if (-not (Test-BootstrapBudget 20481) -and (Test-BootstrapBudget 20480)) { $negativeControls++ } else { Fail 'Bootstrap-budget negative control failed.' }
 if (-not (Test-AllowedTrackedPath 'apps/server_core/main.go') -and (Test-AllowedTrackedPath 'docs/index.md')) { $negativeControls++ } else { Fail 'Repository-allowlist negative control failed.' }
 if ((Test-ReviewDiffNames @('docs/work/current/ai-dialog.md')) -and -not (Test-ReviewDiffNames @('docs/work/current/ai-dialog.md','README.md'))) { $negativeControls++ } else { Fail 'Review-isolation negative control failed.' }
-if (-not (Test-RouteTarget 'docs/__missing-route__.md') -and (Test-RouteTarget 'docs/index.md')) { $negativeControls++ } else { Fail 'Route-resolution negative control failed.' }
-if ($authorityMarker -ne '<!-- not-the-authority -->') { $negativeControls++ } else { Fail 'Status-authority marker negative control failed.' }
+if (-not (Test-RepoTarget 'docs/__missing-route__.md') -and (Test-RepoTarget 'docs/index.md')) { $negativeControls++ } else { Fail 'Route-resolution negative control failed.' }
+if ($authorityMarker -eq '<!-- program-status-authority -->' -and $authorityMarker -ne '<!-- not-the-authority -->') { $negativeControls++ } else { Fail 'Status-authority marker negative control failed.' }
 
 Write-Host "gate lane: $Lane"
 Write-Host "required files: $($required.Count)"
