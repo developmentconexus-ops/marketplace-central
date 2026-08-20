@@ -16,14 +16,14 @@ Git history is the archive. ADR numbers are never reused.
 
 | ADR | Active status | Why it remains | Retirement condition |
 |---|---|---|---|
-| 008 | reopened — D7 | deployment/publisher/host evidence for production topology; its old Oracle/Tailscale-to-Sankhya path is not current target meaning | retire when D7 adjudicates deployment topology |
-| 010 | reopened — D7 | acquisition cadence/polling/runtime evidence; semantic freshness obligations already live in D0/D3 | retire when D7 adjudicates acquisition runtime |
-| 017 | historical evidence retained by explicit D2 Fact rehoming gate | reconstructed domain-judgment clauses still needed until the replacement target Fact ADR rehomes what remains valid | retire together with 034 when target Fact ADR lands |
-| 018 | reopened — D7 | execution-safety/runtime mechanics residue; generic Mutation business owner/table/poller is already superseded by D1/D3 | retire when D7 adjudicates execution-safety runtime |
-| 026 | reopened — D7 | scheduler/cursor/phase runtime evidence; no global phase business vocabulary survives D3 | retire when D7 adjudicates scheduler/runtime mechanics |
-| 030 | reopened — D7 | worker/scheduler/installation-topology evidence | retire when D7 adjudicates process/scheduler topology |
-| 034 | carried historical evidence anchor | historical `Fact<T>` proof and domain-judgment clauses remain useful to D2; the former implementation/package is retired and owns no target structure | retire with 017 when target Fact ADR rehomes the remaining clauses |
-| 035 | carried transition authority | governs the D0–D9 target-design/authority transition and implementation block | retire only after D0–D9 closes |
+| [008](008-production-deploy-topology.md) | reopened — D7 | deployment/publisher/host evidence for production topology; its old Oracle/Tailscale-to-Sankhya path is not current target meaning | retire when D7 adjudicates deployment topology |
+| [010](010-mercado-livre-polling-visible-refresh.md) | reopened — D7 | acquisition cadence/polling/runtime evidence; semantic freshness obligations already live in D0/D3 | retire when D7 adjudicates acquisition runtime |
+| [017](017-unknown-is-never-zero.md) | historical evidence retained by explicit D2 Fact rehoming gate | reconstructed domain-judgment clauses still needed until the replacement target Fact ADR rehomes what remains valid | retire together with 034 when target Fact ADR lands |
+| [018](018-mutation-envelope-table-and-poller.md) | reopened — D7 | execution-safety/runtime mechanics residue; generic Mutation business owner/table/poller is already superseded by D1/D3 | retire when D7 adjudicates execution-safety runtime |
+| [026](026-scheduler-phase-vocabulary.md) | reopened — D7 | scheduler/cursor/phase runtime evidence; no global phase business vocabulary survives D3 | retire when D7 adjudicates scheduler/runtime mechanics |
+| [030](030-scheduler-second-instance-per-installation.md) | reopened — D7 | worker/scheduler/installation-topology evidence | retire when D7 adjudicates process/scheduler topology |
+| [034](034-fact-substitui-adr-017.md) | carried historical evidence anchor | historical `Fact<T>` proof and domain-judgment clauses remain useful to D2; the former implementation/package is retired and owns no target structure | retire with 017 when target Fact ADR rehomes the remaining clauses |
+| [035](035-architecture-rebaseline-governs-target-design.md) | carried transition authority | governs the D0–D9 target-design/authority transition and implementation block | retire only after D0–D9 closes |
 
 ### ADR-035 snapshot fence
 
@@ -68,12 +68,12 @@ Notable reconciliations include:
 
 The retained citation files are:
 
-- `RENUMBERING-REGISTRY.md` — provenance needed by retained reconstructed ADRs;
-- `adr-009-citations.md` — referenced by retained ADR-010;
-- `adr-013-citations.md` — referenced by retained ADR-018;
-- `adr-07-twodigit-citations.md` — referenced by retained ADR-026;
-- `adr-08-twodigit-citations.md` — referenced by retained ADR-030;
-- `adr-017-citations.md` — referenced by retained ADR-017/034.
+- [`RENUMBERING-REGISTRY.md`](_citations/RENUMBERING-REGISTRY.md) — provenance needed by retained reconstructed ADRs;
+- [`adr-009-citations.md`](_citations/adr-009-citations.md) — referenced by retained ADR-010;
+- [`adr-013-citations.md`](_citations/adr-013-citations.md) — referenced by retained ADR-018;
+- [`adr-07-twodigit-citations.md`](_citations/adr-07-twodigit-citations.md) — referenced by retained ADR-026;
+- [`adr-08-twodigit-citations.md`](_citations/adr-08-twodigit-citations.md) — referenced by retained ADR-030;
+- [`adr-017-citations.md`](_citations/adr-017-citations.md) — referenced by retained ADR-017/034.
 
 Everything else was retired with its citing ADRs and remains in Git history.
 
