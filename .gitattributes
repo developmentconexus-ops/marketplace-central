@@ -5,3 +5,7 @@
 *.yaml text eol=lf
 *.ps1  text eol=lf
 *.toml text eol=lf
+
+# The restored production-engineering guide intentionally preserves four historical
+# Markdown hard-break lines. Keep diff whitespace enforcement everywhere else.
+docs/development/evidence-grounded-production-engineering-for-llm-agents.md whitespace=-trailing-space

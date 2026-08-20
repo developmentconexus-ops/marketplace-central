@@ -32,6 +32,7 @@ Pre-standard current-status/read-order prose inside accepted D-stage, architectu
 | ADR disposition / retirement trigger | [ADR Registry](architecture/decisions/README.md), then only the named ADR | all ADRs |
 | Historical/current-state Evidence for a concrete decision | [Evidence Register](engineering/rebaseline/EVIDENCE-REGISTER.md), then exact cited ref/path | repository archaeology |
 | Repository-local engineering/Git/CI/proof rules | [`development/engineering-rules.md`](development/engineering-rules.md) | organizational Method text copied locally |
+| Production coding, technology research, framework/dependency evaluation and source hierarchy | [Evidence-Grounded Production Engineering for LLM Agents](development/evidence-grounded-production-engineering-for-llm-agents.md) — derived guide, non-authoritative | broad recursive research |
 
 ## Product OAD bounded subpacks
 
