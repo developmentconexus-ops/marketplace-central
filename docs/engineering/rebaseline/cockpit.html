@@ -5,117 +5,55 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Marketplace Central — Architecture Rebaseline Cockpit</title>
 <style>
-:root{--bg:#071018;--panel:#0f1d28;--panel2:#152936;--text:#edf5fa;--muted:#9bb0be;--line:#294352;--accent:#61d1ff;--ok:#63da90;--warn:#e9bd66;--bad:#ef7580;font-family:Inter,system-ui,sans-serif}html[data-theme=light]{--bg:#edf4f7;--panel:#fff;--panel2:#f3f7f9;--text:#152a38;--muted:#607788;--line:#d0dfe6;--accent:#0879a7;--ok:#147d47;--warn:#916405;--bad:#b43d49}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text)}a{color:var(--accent);text-decoration:none}.shell{display:grid;grid-template-columns:245px 1fr;min-height:100vh}.side{position:sticky;top:0;height:100vh;padding:22px 15px;background:var(--panel);border-right:1px solid var(--line)}.brand{font-weight:900;letter-spacing:.08em}.side small,.muted{color:var(--muted)}nav{margin:22px 0}nav a{display:block;padding:7px 8px;border-radius:8px;color:var(--muted);font-size:13px}nav a:hover{background:var(--panel2);color:var(--text)}button{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:8px 10px;cursor:pointer}.main{padding:28px clamp(15px,4vw,52px) 70px}.warning,.hero,.card,.tree,.code{background:var(--panel);border:1px solid var(--line);border-radius:15px}.warning{padding:14px;margin-bottom:18px;border-color:var(--warn)}.warning strong{color:var(--warn)}.hero{display:grid;grid-template-columns:1.25fr .75fr;gap:18px;padding:24px}.eyebrow{color:var(--accent);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em}h1{font-size:clamp(31px,5vw,50px);line-height:1;margin:8px 0}h2{margin:0}.meta,.grid{display:grid;gap:11px}.meta{grid-template-columns:1fr 1fr;margin-top:18px}.metric{padding:11px;background:var(--panel2);border:1px solid var(--line);border-radius:11px}.metric span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase}.metric b{display:block;margin-top:4px;font-size:12px;overflow-wrap:anywhere}.tag{display:inline-block;border:1px solid currentColor;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:800;text-transform:uppercase}.ok{color:var(--ok)}.active{color:var(--accent)}.deferred{color:var(--warn)}.blocked{color:var(--bad)}.lock{margin-top:18px;padding-top:13px;border-top:1px solid var(--line);color:var(--bad);font-weight:850}section{margin:32px 0;scroll-margin-top:15px}.head{display:flex;justify-content:space-between;gap:14px;align-items:end;margin-bottom:12px}.head h2{font-size:28px}.head p{margin:0;color:var(--muted);font-size:12px}.stages{display:grid;grid-template-columns:repeat(10,minmax(75px,1fr));gap:7px;overflow:auto}.stage{padding:12px 7px;text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:10px}.stage small{display:block;color:var(--muted)}.stage.accepted{border-color:var(--ok)}.stage.active{border-color:var(--accent)}.stage.blocked{opacity:.65}.two{grid-template-columns:repeat(2,1fr)}.three{grid-template-columns:repeat(3,1fr)}.card{padding:16px}.card h3{margin:4px 0 8px}.card p,.card li{color:var(--muted);font-size:13px;line-height:1.5}.card ul{padding-left:18px}.current{border-color:var(--accent);background:linear-gradient(135deg,var(--panel2),var(--panel))}.inv{border-left:3px solid var(--accent)}.reject{border-left:3px solid var(--bad)}.tree,pre{font-family:ui-monospace,Consolas,monospace;white-space:pre-wrap}.tree{padding:15px;color:var(--muted);font-size:12px;line-height:1.6}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}.toolbar input{flex:1;min-width:230px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:9px}.toolbar button.on{border-color:var(--accent);color:var(--accent)}.hidden{display:none!important}.authority{display:grid;grid-template-columns:30px 1fr;gap:9px}.authority i{font-style:normal;color:var(--accent)}.authority small{display:block;color:var(--muted)}.code{overflow:hidden}.code .bar{text-align:right;padding:8px;border-bottom:1px solid var(--line)}.code pre{margin:0;padding:16px;background:#040b11;color:#dbe7ef;font-size:12px;line-height:1.52;max-height:720px;overflow:auto}.foot{margin-top:38px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:920px){.shell{display:block}.side{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}nav{display:none}.hero,.two,.three{grid-template-columns:1fr}.main{padding:17px 13px 50px}}
+:root{--bg:#071018;--panel:#0f1d28;--panel2:#152936;--text:#edf5fa;--muted:#9bb0be;--line:#294352;--accent:#61d1ff;--ok:#63da90;--warn:#e9bd66;--bad:#ef7580;font-family:Inter,system-ui,sans-serif}html[data-theme=light]{--bg:#edf4f7;--panel:#fff;--panel2:#f3f7f9;--text:#152a38;--muted:#607788;--line:#d0dfe6;--accent:#0879a7;--ok:#147d47;--warn:#916405;--bad:#b43d49}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text)}a{color:var(--accent);text-decoration:none}.shell{max-width:1180px;margin:auto;padding:28px 18px 70px}.warning,.hero,.card,.tree,.code{background:var(--panel);border:1px solid var(--line);border-radius:15px}.warning{padding:14px;border-color:var(--warn);margin-bottom:18px}.warning strong{color:var(--warn)}.hero{display:grid;grid-template-columns:1.35fr .65fr;gap:18px;padding:24px}.eyebrow{color:var(--accent);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em}h1{font-size:clamp(30px,5vw,48px);line-height:1;margin:8px 0}h2{margin:0 0 12px}.muted{color:var(--muted)}.meta,.grid{display:grid;gap:11px}.meta{grid-template-columns:repeat(2,1fr);margin-top:18px}.grid.two{grid-template-columns:repeat(2,1fr)}.grid.three{grid-template-columns:repeat(3,1fr)}.metric,.card{padding:15px;background:var(--panel);border:1px solid var(--line);border-radius:12px}.metric{background:var(--panel2)}.metric span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase}.metric b{display:block;margin-top:4px;font-size:12px;overflow-wrap:anywhere}.tag{display:inline-block;border:1px solid currentColor;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:800;text-transform:uppercase}.ok{color:var(--ok)}.active{color:var(--accent)}.deferred{color:var(--warn)}.blocked{color:var(--bad)}.lock{margin-top:18px;color:var(--bad);font-weight:850}section{margin:30px 0}.tree,pre{font-family:ui-monospace,Consolas,monospace;white-space:pre-wrap}.tree{padding:16px;color:var(--muted);font-size:12px;line-height:1.65}.card h3{margin:5px 0 8px}.card p,.card li{color:var(--muted);font-size:13px;line-height:1.5}.card ul{padding-left:18px}.current{border-color:var(--accent);background:linear-gradient(135deg,var(--panel2),var(--panel))}.code{padding:16px}.footer{margin-top:32px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:16px}@media(max-width:850px){.hero,.grid.two,.grid.three,.meta{grid-template-columns:1fr}}
 </style>
 </head>
-<body><div class="shell"><aside class="side">
-<div class="brand">MPC REBASELINE</div><small>Architecture cockpit · visual projection</small>
-<nav><a href="#status">Executive status</a><a href="#journey">D0 → D9</a><a href="#openapi">OpenAPI authority</a><a href="#origin">Stable origin</a><a href="#ingress">Technical Ingress</a><a href="#media">Problem &amp; media</a><a href="#invariants">Invariants</a><a href="#authority">Authority navigator</a><a href="#handoff">New-session handoff</a></nav>
-<button id="theme">Light / Dark</button>
-</aside><main class="main">
-<div class="warning"><strong>VISUAL PROJECTION — NOT ARCHITECTURE AUTHORITY</strong><br>Use somente para orientação. Antes de qualquer conclusão ou write, revalide branch/remote HEAD e leia <a href="https://github.com/developmentconexus-ops/marketplace-central/blob/docs/global-methodology-alignment/docs/engineering/rebaseline/README.md">docs/engineering/rebaseline/README.md</a>, única authority de status, allowed work e exact next action.</div>
-
-<section id="status" class="hero"><div>
-<div class="eyebrow">Marketplace Central · Architecture Rebaseline</div><h1>Marketplace Operations Control Plane</h1><p class="muted">Projeção do estado canônico depois da ratificação e filing de Single OpenAPI Wire Authority / Tooling.</p>
-<div class="meta"><div class="metric"><span>Repo</span><b>developmentconexus-ops/marketplace-central</b></div><div class="metric"><span>Branch</span><b>docs/global-methodology-alignment</b></div><div class="metric"><span>Canonical surface</span><b>95 Product operations · 29 Permissions</b></div><div class="metric"><span>Snapshot</span><b>2026-08-20 · America/Sao_Paulo</b></div></div>
-</div><div><span class="tag active">CURRENT</span><h2>D5 · API</h2><p>W1, W2, W3, W4, Technical Ingress, Final Problem/media e OpenAPI authority/tooling — <b>ACCEPTED / CANONICAL</b></p><span class="tag active">NEXT</span><h3>Stable Product Problem origin proof</h3><p class="muted">Provar uma origem HTTPS imutável antes de publicar constantes customizadas de <code>Problem.type</code> e antes de autorar o Product OAD.</p><div class="lock">🔒 Implementation blocked until D9</div></div></section>
-
-<div class="toolbar"><input id="search" placeholder="Buscar decisão, estágio ou obrigação…"><button class="on" data-filter="all">Todos</button><button data-filter="accepted">Accepted</button><button data-filter="active">Active</button><button data-filter="deferred">Deferred</button><button data-filter="blocked">Blocked</button></div>
-
-<section id="journey"><div class="head"><h2>D0 → D9</h2><p>Gates reais; sem percentual artificial.</p></div>
-<div class="stages"><div class="stage accepted" data-status="accepted"><b>D0 ✓</b><small>Product</small></div><div class="stage accepted" data-status="accepted"><b>D1 ✓</b><small>Domains</small></div><div class="stage accepted" data-status="accepted"><b>D2 ✓</b><small>Identity</small></div><div class="stage accepted" data-status="accepted"><b>D3 ✓</b><small>Comms</small></div><div class="stage accepted" data-status="accepted"><b>D4 ✓</b><small>Integrations</small></div><div class="stage active" data-status="active"><b>D5 ●</b><small>API</small></div><div class="stage blocked" data-status="blocked"><b>D6 ○</b><small>Frontend</small></div><div class="stage blocked" data-status="blocked"><b>D7 ○</b><small>Runtime</small></div><div class="stage blocked" data-status="blocked"><b>D8 ○</b><small>Golden</small></div><div class="stage blocked" data-status="blocked"><b>D9 ○</b><small>Adversarial</small></div></div>
-<div class="tree">D5 API
-├── B1 Semantic API Model                       ✓ CANONICAL
-└── B2 Product Operation / Resource Surface
-    ├── Operation Admission Matrix              ✓ RATIFIED
-    ├── Whole-Matrix Global Coherence           ✓ RATIFIED
-    ├── W1 Resource / Path / HTTP               ✓ CANONICAL
-    ├── W2 Request / Response Schema            ✓ CANONICAL
-    ├── W3 Collections / Query / Cursor         ✓ CANONICAL
-    ├── W4 Permission / Client-Class            ✓ CANONICAL
-    ├── Technical non-Product ingress           ✓ CANONICAL
-    ├── Final Problem/media consistency         ✓ CANONICAL
-    ├── Single OpenAPI authority/tooling        ✓ CANONICAL
-    ├── Stable Product Problem origin proof     ● NEXT
-    └── Product OAD authoring/proof              🔒 BLOCKED BY ORIGIN
-
-Then → D5 close → D6 → D7 → D8 → D9 → IMPLEMENTATION UNLOCKED</div></section>
-
-<section id="openapi"><div class="head"><h2>Canonical OpenAPI authority/tooling</h2><p>One source authority; every projection derived.</p></div>
-<div class="grid three">
-<div class="card" data-status="accepted"><span class="tag ok">CANONICAL</span><h3>One Product OAD</h3><ul><li>Entry: <code>contracts/api/product/openapi.yaml</code>.</li><li>OpenAPI <code>3.1.2</code>, exact pin.</li><li>Local relative refs only; globally unique component keys.</li><li>No independent OAD per D1 owner, remote refs, templates, joins or code-first authority.</li></ul></div>
-<div class="card" data-status="accepted"><span class="tag ok">CANONICAL</span><h3>Authority chain</h3><ul><li>Source OAD = authority.</li><li>Bundle = temporary derived artifact.</li><li>TypeScript generated from source.</li><li>Go generated from bundle.</li><li>Generated artifacts are read-only and regeneration-checked.</li></ul></div>
-<div class="card" data-status="accepted"><span class="tag ok">PINNED</span><h3>Tooling baseline</h3><ul><li><code>@redocly/cli@2.45.0</code>.</li><li><code>openapi-typescript@7.13.0</code>.</li><li><code>oapi-codegen@v2.8.0</code>.</li><li><code>oapi-codegen/runtime@v1.7.0</code>.</li><li>Exact Go 1.25.1 + current-toolchain proofs.</li></ul></div>
-<div class="card" data-status="accepted"><h3>Wire operation names</h3><ul><li><code>GetEffectiveAvailabilityAllocationScopePolicy</code>.</li><li><code>UpdateAvailabilityAllocationScopePolicy</code>.</li><li><code>ListFulfillmentExecutions</code>.</li><li><code>GetFulfillmentExecution</code>.</li><li>W4 remains 95 rows / 29 Permissions.</li></ul></div>
-<div class="card" data-status="deferred"><h3>D7 routing constraint</h3><p>The standard Go <code>net/http.ServeMux</code> cannot directly realize canonical <code>{id}:verb</code> patterns. D7 must select a compatible mux/router; W1 does not change and D5 does not select the framework.</p></div>
-<div class="card reject" data-status="accepted"><h3>Excluded</h3><p>No Technical Ingress A/B, OAuth callbacks, provider webhooks, authored-media byte delivery, provider Problems, <code>/v1</code>, OAuth-scope Permissions or second hand-authored SDK.</p></div>
-</div></section>
-
-<section id="origin"><div class="head"><h2>Stable Product Problem origin</h2><p>Exact next action.</p></div>
-<div class="card current" data-status="active"><span class="tag active">NEXT</span><h3>Prove one immutable HTTPS origin</h3><div class="grid two"><div><h4>Gate closes with</h4><ul><li>DevelopmentConexus-owned and verified HTTPS origin; or</li><li>explicit permanent third-party-domain residual, with a never-relinquish/rename obligation.</li><li>Ability to serve or permanently redirect Problem documentation.</li><li>Product and technical namespaces remain disjoint.</li></ul></div><div><h4>Current ngrok disposition</h4><p><code>https://multiradial-unironically-nieves.ngrok-free.dev/</code></p><ul><li>Allowed for temporary preview docs.</li><li>Allowed for resolution/hosting compatibility proof.</li><li>Not embedded into permanent Product <code>Problem.type</code> values.</li><li>Product OAD authoring remains blocked.</li></ul></div></div></div></section>
-
-<section id="ingress"><div class="head"><h2>Canonical Technical Ingress</h2><p>Mechanism and trust boundary; never a generic business domain.</p></div>
-<div class="grid three">
-<div class="card" data-status="accepted"><span class="tag ok">CANONICAL</span><h3>Marketplace acquisition</h3><ul><li>MarketplaceInstallation-scoped.</li><li>Seven closed acquisition families.</li><li>Provider signal ≠ D3 event ≠ current truth.</li><li>No fabricated SourceInstance/Sankhya callback seam.</li></ul></div>
-<div class="card" data-status="accepted"><span class="tag ok">CANONICAL</span><h3>Custody and acknowledgement</h3><ul><li>Protocol-invalid → reject/no custody.</li><li>Non-admitted → terminal non-processing.</li><li>Admitted + attributed → recoverable Organization custody.</li><li>ACK needs custody, bounded quarantine or terminal disposition; never business success.</li></ul></div>
-<div class="card" data-status="accepted"><span class="tag ok">CANONICAL</span><h3>Authorization ceremony</h3><ul><li>Current human + eligibility + Membership + <code>portfolio.manage</code> + exact Installation.</li><li>Not a 96th Product operation.</li><li>State + transaction-bound anti-injection/PKCE.</li><li>Selling-account administrator proof; same-seller only.</li><li>Generation-safe activation and serialized single-use refresh.</li></ul></div>
-</div></section>
-
-<section id="media"><div class="head"><h2>Problem Details &amp; authored media</h2><p>Canonical in W2; bounded cross-references in W1/W4/Technical Ingress.</p></div>
-<div class="grid three">
-<div class="card" data-status="accepted"><span class="tag ok">CANONICAL</span><h3>Problem grammar</h3><ul><li><code>type</code> is the only global discriminator.</li><li>Status-only failure → <code>about:blank</code>.</li><li><code>405 + Allow</code> remains mandatory.</li><li>Product and technical namespaces remain disjoint.</li></ul></div>
-<div class="card" data-status="accepted"><span class="tag ok">CANONICAL</span><h3>CreateListingIntentMedia</h3><ul><li>Raw multipart file + typed text <code>etag</code>.</li><li>Success returns <code>media</code> + parent <code>listing_intent_etag</code>.</li><li>Idempotency, revision and state conflicts remain distinct.</li><li>Part parsing/validation and unknown-field runtime rejection remain D7 obligations.</li></ul></div>
-<div class="card" data-status="deferred"><h3>Honest residual</h3><p>Retention/erasure remains Unknown and deferred to D2/D7. There is no Product <code>DeleteMedia</code>, standalone media CRUD or durable anonymous locator baseline.</p></div>
-</div></section>
-
-<section id="invariants"><div class="head"><h2>Non-negotiable invariants</h2><p>Fail these and the architecture drifts.</p></div><div class="grid three"><div class="card inv"><h3>One meaning → one authority</h3></div><div class="card inv"><h3>Mechanism ≠ authority</h3></div><div class="card inv"><h3>Source OAD → generated projections</h3></div><div class="card inv"><h3>Provider signal ≠ event/truth</h3></div><div class="card inv"><h3>Unknown ≠ zero/complete</h3></div><div class="card inv"><h3>Permission ≠ Governance</h3></div><div class="card inv"><h3>ACK ≠ business success</h3></div><div class="card inv"><h3>Product Problem identity is permanent</h3></div><div class="card inv"><h3>Prepare the seam, not the whole future capability</h3></div></div></section>
-
-<section id="authority"><div class="head"><h2>Authority navigator</h2><p>Current status authority = router.</p></div><div class="card authority">
-<i>1</i><div><b>AGENTS.md</b><small>Bootstrap and repository workflow.</small></div>
-<i>2</i><div><b>docs/engineering/rebaseline/README.md</b><small>Sole status, allowed work and exact next action.</small></div>
-<i>3</i><div><b>root-cause-global-maximum-method.md</b><small>Decision method.</small></div>
-<i>4</i><div><b>ARCHITECTURE.md + reconciliation + ADR registry</b><small>Stable constraints and current decision routing.</small></div>
-<i>5</i><div><b>D0 → D4 + D4-R1 + D5-B1</b><small>Accepted semantic authority path.</small></div>
-<i>6</i><div><b>Operation Matrix + W1 + W2 + W3 + W4</b><small>Product operation and wire semantics.</small></div>
-<i>7</i><div><b>D5-B2-TECHNICAL-INGRESS.md</b><small>Canonical provider ingress / authorization trust boundary.</small></div>
-<i>8</i><div><b>D5-B2-OPENAPI-WIRE-AUTHORITY-TOOLING.md</b><small>Canonical machine-readable wire authority and tooling.</small></div>
-<i>9</i><div><b>EVIDENCE-REGISTER.md</b><small>Supporting evidence; code/runtime only when needed.</small></div>
-</div></section>
-
-<section id="handoff"><div class="head"><h2>New-session handoff</h2><p>Copy only as bootstrap; the new session must revalidate the repo.</p></div><div class="code"><div class="bar"><button id="copy-handoff">Copy New Session Prompt</button></div><pre id="handoff-text">Estamos continuando o Architecture Rebaseline do Marketplace Central.
+<body><main class="shell">
+<div class="warning"><strong>VISUAL PROJECTION — NOT ARCHITECTURE AUTHORITY</strong><br>Antes de qualquer conclusão ou write, revalide o remote HEAD e leia <a href="https://github.com/developmentconexus-ops/marketplace-central/blob/docs/global-methodology-alignment/docs/engineering/rebaseline/README.md">docs/engineering/rebaseline/README.md</a>, única authority de status, allowed work e exact next action.</div>
+<section class="hero"><div><div class="eyebrow">Marketplace Central · Architecture Rebaseline</div><h1>Marketplace Operations Control Plane</h1><p class="muted">Arquitetura-alvo forte, delivery incremental. O rebaseline define invariantes e boundaries; não exige construir toda capacidade futura no primeiro release.</p><div class="meta"><div class="metric"><span>Repo</span><b>developmentconexus-ops/marketplace-central</b></div><div class="metric"><span>Branch</span><b>docs/global-methodology-alignment</b></div><div class="metric"><span>Canonical surface</span><b>95 Product operations · 29 Permissions</b></div><div class="metric"><span>Stable Problem origin</span><b>https://conexus.fun</b></div></div></div><div><span class="tag active">CURRENT</span><h2>D5 · API</h2><p>W1, W2, W3, W4, Technical Ingress, Final Problem/media e OpenAPI authority/tooling — <b>ACCEPTED / CANONICAL</b>.</p><span class="tag active">NEXT</span><h3>Canonical Product OAD authoring/proof</h3><p class="muted">Autorar uma única OAS 3.1.2 Product OAD e provar geração/compatibilidade, sem implementar runtime.</p><div class="lock">🔒 Implementation blocked until D9</div></div></section>
+<section><h2>D0 → D9</h2><div class="tree">D0 Product/System                 ✓ ACCEPTED
+D1 Domains/Boundaries              ✓ ACCEPTED
+D2 Identity/Tenant/Data            ✓ ACCEPTED
+D3 Communication/Events            ✓ ACCEPTED
+D4 External Integrations           ✓ ACCEPTED
+D5 API                              ● ACTIVE
+  B1 Semantic API                  ✓ CANONICAL
+  B2 Operation/Resource Surface
+    Matrix                         ✓ RATIFIED
+    W1 / W2 / W3 / W4             ✓ CANONICAL
+    Technical Ingress              ✓ CANONICAL
+    Final Problem/media            ✓ CANONICAL
+    OpenAPI authority/tooling      ✓ CANONICAL
+    Stable Problem origin          ✓ FILED
+    Product OAD authoring/proof    ● NEXT
+D6 Frontend                         🔒 BLOCKED
+D7 Runtime                          🔒 BLOCKED
+D8 Golden Flows                     🔒 BLOCKED
+D9 Adversarial                      🔒 BLOCKED
+IMPLEMENTATION                      🔒 BLOCKED UNTIL D9</div></section>
+<section><h2>Stable Product Problem origin</h2><div class="grid two"><div class="card"><span class="tag ok">FILED</span><h3>DevelopmentConexus namespace</h3><p><code>https://conexus.fun</code> é a origem permanente controlada. Marketplace Central usa:</p><div class="tree">https://conexus.fun/marketplace-central/problems/product/{slug}
+https://conexus.fun/marketplace-central/problems/technical/{surface}/{slug}</div><p>O domínio pode servir também Metal Docs, MNFS e outros projetos em namespaces próprios. Hosting pode mudar; os identificadores não.</p></div><div class="card"><span class="tag deferred">PREVIEW ONLY</span><h3>ngrok</h3><p><code>multiradial-unironically-nieves.ngrok-free.dev</code> pode continuar útil para túnel/preview local, mas nunca entra em <code>Problem.type</code>.</p></div></div></section>
+<section><h2>Canonical OpenAPI authority/tooling</h2><div class="grid three"><div class="card"><span class="tag ok">CANONICAL</span><h3>One Product OAD</h3><ul><li><code>contracts/api/product/openapi.yaml</code></li><li>OpenAPI <code>3.1.2</code></li><li>Local relative refs only</li><li>Source OAD = sole wire authority</li></ul></div><div class="card"><h3>Derived pipeline</h3><ul><li>Redocly lint + deterministic bundle</li><li>TypeScript from source</li><li>Go from bundle</li><li>Exact Go 1.25.1 + current toolchain proof</li></ul></div><div class="card"><h3>Pinned baseline</h3><ul><li><code>@redocly/cli@2.45.0</code></li><li><code>openapi-typescript@7.13.0</code></li><li><code>oapi-codegen@v2.8.0</code></li><li><code>runtime@v1.7.0</code></li></ul></div></div></section>
+<section><h2>Target architecture ≠ initial delivery scope</h2><div class="grid two"><div class="card current"><h3>Delivery classification</h3><div class="tree">BUILD NOW   current consumer / golden flow / correctness
+SEAM NOW    preserve boundary, capability later
+PROVE FIRST bounded spike before committing mechanism
+DEFER       no current consumer/failure class; reopen trigger</div></div><div class="card"><h3>Meaning for first internal release</h3><ul><li>Single current Organization may be enough operationally.</li><li>Mercado Livre may be the only marketplace implemented first.</li><li>Local/single-node deployment may be evaluated later in D7.</li><li>No speculative Kubernetes/Kafka/plugin framework/self-service tenancy.</li><li>Security, tenant isolation, secrets, data meaning and irreversible-effect safety are not optional.</li><li>After D9, build vertical slices end-to-end rather than every horizontal layer first.</li></ul></div></div></section>
+<section><h2>Exact next action</h2><div class="card current"><span class="tag active">NEXT</span><h3>Canonical Product OAD authoring/proof</h3><p>Author the 95-operation Product contract from W1–W4, use exact <code>conexus.fun</code> Problem constants, run lint/bundle/TypeScript/Go proof, mechanically compare against W4 and retire/rehome the measured legacy OpenAPI/manual-SDK authority seam. This is contract authoring, not runtime implementation.</p></div></section>
+<section><h2>Non-negotiable invariants</h2><div class="grid three"><div class="card">One meaning → one authority</div><div class="card">Mechanism ≠ authority</div><div class="card">Unknown ≠ plausible default</div><div class="card">Permission ≠ Governance</div><div class="card">Provider signal ≠ domain truth</div><div class="card">Prepare the seam, not the whole future capability</div></div></section>
+<section><h2>New-session bootstrap</h2><div class="code"><pre>Estamos continuando o Architecture Rebaseline do Marketplace Central.
 
 Repo: developmentconexus-ops/marketplace-central
 Branch: docs/global-methodology-alignment
 
-REGRA DE AUTHORITY
-Este texto é bootstrap only. Revalide remote HEAD e leia AGENTS.md → router → Method → ARCHITECTURE.md → reconciliation → ADR registry → D0→D4/D4-R1 → D5/B2/Matrix/W1/W2/W3/W4/Technical Ingress/OpenAPI Authority → Evidence Register. O router é a única authority de status, allowed work e exact next action.
+Este texto é bootstrap only. Faça fetch/revalidate do remote HEAD, leia AGENTS.md e siga docs/engineering/rebaseline/README.md como única authority de status/allowed work/exact next action.
 
-ESTADO DO SNAPSHOT
-D0–D4 = accepted; D5 = open/active.
-W1, W2, W3, W4, Technical Ingress, Final Problem/media e Single OpenAPI wire authority/tooling = ACCEPTED / CANONICAL.
-OpenAPI/tooling review candidate = removed from active tree; Git history is archive.
-AI-DIALOG.md = protocol-only, sem ciclo ativo.
-Product surface = 95 operations / 29 Permissions; nenhum Principal kind novo.
-Implementation = BLOCKED until D9.
-
-OPENAPI/TOOLING LOAD-BEARING
-- One Product OAD rooted at contracts/api/product/openapi.yaml.
-- OAS 3.1.2; source OAD authority; bundle/Go/TS/docs derived.
-- Redocly 2.45.0, openapi-typescript 7.13.0, oapi-codegen 2.8.0 + runtime 1.7.0.
-- TypeScript generated from source; Go generated from temporary bundle.
-- W4 carries all 95 final operation names; 29 Permissions unchanged.
-- Technical ingress and authored-media delivery remain outside Product OAD/SDK.
-- Legacy OpenAPI/manual SDK retire as one measured twelve-consumer seam.
-- Standard net/http ServeMux cannot realize {id}:verb directly; this is a D7 router constraint, not a W1 change.
-
-EXACT NEXT ACTION AT THIS SNAPSHOT
-Stable Product Problem origin proof. The ngrok endpoint is preview/proof hosting only; do not embed it into permanent Problem.type constants. Product OAD authoring, D6–D9 and implementation remain blocked.
-</pre></div></section>
-
-<div class="foot">Generated from repository authority · Snapshot date 2026-08-20 · This file is orientation only; it is never authority.</div>
-</main></div>
-<script>
-const root=document.documentElement;document.getElementById('theme').onclick=()=>{root.dataset.theme=root.dataset.theme==='dark'?'light':'dark'};
-const cards=[...document.querySelectorAll('[data-status]')];const search=document.getElementById('search');let filter='all';function apply(){const q=search.value.toLowerCase();cards.forEach(el=>{const st=el.dataset.status||'';const text=el.textContent.toLowerCase();el.classList.toggle('hidden',!(filter==='all'||st===filter)||!text.includes(q))})}search.oninput=apply;document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-filter]').forEach(x=>x.classList.remove('on'));b.classList.add('on');filter=b.dataset.filter;apply()});document.getElementById('copy-handoff').onclick=async()=>{await navigator.clipboard.writeText(document.getElementById('handoff-text').textContent);const b=document.getElementById('copy-handoff');b.textContent='Copied ✓';setTimeout(()=>b.textContent='Copy New Session Prompt',1500)};
-</script>
-</body></html>
+Snapshot orientation only:
+- D0→D4 accepted; D5 open.
+- W1/W2/W3/W4, Technical Ingress, Final Problem/media e OpenAPI authority/tooling canonical.
+- Stable Product Problem origin filed: https://conexus.fun.
+- Product surface: 95 operations / 29 Permissions.
+- Target architecture != initial delivery scope; use BUILD NOW / SEAM NOW / PROVE FIRST / DEFER when implementation opens.
+- Exact next action at this snapshot: canonical Product OAD authoring/proof.
+- D6–D9 and implementation remain blocked until their gates.</pre></div></section>
+<div class="footer">Snapshot 2026-08-20 · projection only · router remains sole status authority.</div>
+</main></body></html>
