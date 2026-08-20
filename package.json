@@ -6,7 +6,7 @@
     "node": ">=26.3.0 <27"
   },
   "scripts": {
-    "gate": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane all",
-    "gate:full": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane full"
+    "gate": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane all && pwsh -NoProfile -ExecutionPolicy Bypass -File qualification/product-openapi/check-surface.ps1",
+    "gate:full": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/gate.ps1 -Lane full && pwsh -NoProfile -ExecutionPolicy Bypass -File qualification/product-openapi/check-surface.ps1"
   }
 }
