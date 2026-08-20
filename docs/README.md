@@ -79,7 +79,6 @@ Read D0–D4 only when a concrete OAD question cannot be answered by the D5 pack
 | ADR file status or unresolved legacy residue | [ADR Registry](architecture/decisions/README.md), then only the named ADR |
 | Engineering reasoning for material work | [DevelopmentConexus Engineering Method](engineering/standards/root-cause-global-maximum-method.md) — non-authoritative local availability copy of `developmentconexus-ops/conexus-methodology/METHOD.md` v1.0.0; replace manually only after operator-approved adoption, without sync machinery |
 | Historical/current-state facts needed for a specific decision | [Evidence Register](engineering/rebaseline/EVIDENCE-REGISTER.md), then only the cited primary evidence/code |
-| Observed legacy defect/proof classes | [Defect Class Catalog](engineering/defect-class-catalog.md) — supporting reference only |
 | Historical runtime evidence required for a decision | [Evidence Register](engineering/rebaseline/EVIDENCE-REGISTER.md), then the exact cited Git revision/path only |
 
 ## Exact next action: canonical Product OAD authoring/proof
