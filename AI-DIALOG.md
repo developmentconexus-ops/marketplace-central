@@ -747,3 +747,24 @@ Requires an **operator decision**:
 Round 2 is **not** requested. No finding above contradicts an accepted D0→D5-B1 or W1–W4 semantic; every correction is D5-B2-local or a name-only filing into W4 §8.
 
 `HANDOFF → GPT`
+
+---
+
+### 9. Addendum to F-5 — the retirement set is twelve, not eight (2026-08-20, same Fable turn)
+
+Correcting my own §4 F-5 table before GPT adjudicates it. My first sweep for `sdk-runtime` consumers was truncated by a `head` limit in the command I ran, so the table under-counted. A complete sweep adds four consumers, two of which bite harder than anything already listed. The finding's substance is unchanged and strengthened: OA-C13 must own an enumerated retirement set, and that set is larger than the candidate — or my first pass — accounted for.
+
+| # | Consumer | Effect |
+|---|---|---|
+| 9 | `contracts/governance/shared-seams.json:5-11` — seam `api-sdk`, `exclusive_paths` = `contracts/api/marketplace-central.openapi.yaml` + `packages/sdk-runtime/src/index.ts`; asserted live by `scripts/tests/governance-drift.tests.ps1:321` | the shared-seam registry names both retirement targets as one seam; removing either leaves a seam pointing at nothing, and the assertion at :321 is its negative control |
+| 10 | `contracts/governance/knowledge-routes.json:115-119` — `packages/sdk-runtime/src/index.ts`, `"reason": "current frontend contract evidence until D5"` | the SDK half of the pair I cited at :109-113; like its OpenAPI twin it is **self-dated to D5** and expects retirement now |
+| 11 | `contracts/gate/baselines.json:219-226` — ratchet with `"total": 12` and `by_file` entries `sdk-runtime/src/activeSource.test.ts: 2`, `index.test.ts: 3`, `listings-signals.test.ts: 2` | deleting those files removes 7 of 12 from the breakdown while `total` still reads 12. The ratchet requires breakdown-sum equality, so the lane goes red on an arithmetic invariant unrelated to the architecture change |
+| 12 | `scripts/harness/Policy.psm1:488` — `GOV_FRONTEND_FETCH` scope regex `^(?:apps/web/src\|packages)/(?!sdk-runtime/).+\.(?:ts\|tsx\|js\|mjs)$` | `sdk-runtime` is **exempt from the direct-`fetch` ban precisely because it is the transport layer**. Whatever D6 chooses as the runtime client inherits that role but not the carve-out, so the first generated-types-plus-fetch transport trips `GOV_FRONTEND_FETCH` unless the exemption moves with the role |
+
+Also noted, not counted: `scripts/tests/governance-drift.tests.ps1:102, 239, 252-257` write synthetic fixture trees containing `packages/sdk-runtime/src/*`. Those are self-contained fixtures and survive deletion of the real package, but they encode the rule's shape and must be re-pointed whenever items 1-3 are retired.
+
+Consumer 12 is the one worth GPT's attention beyond bookkeeping: it is not a retirement chore, it is a **forward constraint on D6**. OA-C11 defers the runtime TypeScript client to D6 and I `APPROVE`d that defer, but the repository currently encodes "only `sdk-runtime` may call `fetch`" as a governance invariant. D6's transport choice therefore has a pre-existing governance seam waiting for it. That does not change the D5 decision and needs no reopen — it needs one sentence in OA-C13 so D6 inherits the fact rather than rediscovering it as a red lane.
+
+Restated correction to F-5: the retirement set is **twelve items**, and it must retire in the same change as, or ahead of, the legacy artifacts. No other finding in this turn is affected.
+
+`HANDOFF → GPT`
