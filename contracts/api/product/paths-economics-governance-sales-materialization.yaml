@@ -1,0 +1,535 @@
+pathItems:
+  ExpectedEconomics:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListExpectedEconomics
+      summary: List expected economics
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: economics.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: CommercialEconomics
+      parameters:
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+        - {name: marketplace_installation_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+      responses:
+        '200': {description: Expected economics., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/ExpectedEconomicsCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  ExpectedEconomicsCurrent:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: GetExpectedEconomics
+      summary: Get expected economics
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: economics.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: CommercialEconomics
+      parameters: [{$ref: './components.yaml#/parameters/EconomicsSubjectKind'}, {$ref: './components.yaml#/parameters/SubjectMarketplaceInstallationId'}, {$ref: './components.yaml#/parameters/SubjectNativeListingKey'}, {$ref: './components.yaml#/parameters/SubjectSourceInstanceId'}, {$ref: './components.yaml#/parameters/SubjectNativeProductKey'}]
+      responses:
+        '200': {description: Expected economics., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/ExpectedEconomics'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  EvaluatePriceScenario:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    post:
+      operationId: EvaluatePriceScenario
+      summary: Evaluate price scenario
+      x-mpc-operation-class: C
+      x-mpc-required-permission: economics.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: CommercialEconomics
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EvaluatePriceScenarioRequest'}}}}
+      responses:
+        '200': {description: Stateless price-scenario evaluation., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/PriceScenarioEvaluation'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  SaleEconomics:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListSaleEconomics
+      summary: List sale economics
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: economics.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: CommercialEconomics
+      parameters:
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+        - {name: marketplace_installation_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+        - {name: sale_occurred_from, in: query, required: false, schema: {type: string, format: date-time}}
+        - {name: sale_occurred_before, in: query, required: false, schema: {type: string, format: date-time}}
+      responses:
+        '200': {description: Sale economics., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/SaleEconomicsCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  SaleEconomicsItem:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/MarketplaceInstallationId'}, {$ref: './components.yaml#/parameters/NativeSaleKey'}]
+    get:
+      operationId: GetSaleEconomics
+      summary: Get sale economics
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: economics.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: CommercialEconomics
+      responses:
+        '200': {description: Sale economics., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/SaleEconomics'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  EconomicPerformanceSummary:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: GetEconomicPerformanceSummary
+      summary: Get economic performance summary
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: economics.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: CommercialEconomics
+      parameters:
+        - {name: period_from, in: query, required: true, schema: {type: string, format: date-time}}
+        - {name: period_before, in: query, required: true, schema: {type: string, format: date-time}}
+        - {name: marketplace_installation_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+      responses:
+        '200': {description: Economic performance summary., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EconomicPerformanceSummary'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  CommercialPolicy:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: GetCommercialPolicy
+      summary: Get commercial policy
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: economics.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: CommercialEconomics
+      responses:
+        '200': {$ref: './components.yaml#/responses/CommercialPolicyOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+    patch:
+      operationId: UpdateCommercialPolicy
+      summary: Update commercial policy
+      x-mpc-operation-class: C
+      x-mpc-required-permission: economics.policy.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: CommercialEconomics
+      parameters: [{$ref: './components.yaml#/parameters/IfMatch'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/UpdateCommercialPolicyRequest'}}}}
+      responses:
+        '200': {$ref: './components.yaml#/responses/CommercialPolicyOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '412': {$ref: './components.yaml#/responses/PreconditionFailed'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '428': {$ref: './components.yaml#/responses/PreconditionRequired'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  EconomicAttributions:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListEconomicAttributions
+      summary: List economic attributions
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: economics.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: CommercialEconomics
+      parameters:
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+        - {name: attribution_state, in: query, required: false, schema: {type: string, enum: [exact, partial, ambiguous, unresolved]}}
+      responses:
+        '200': {description: Economic attributions., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EconomicAttributionsCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  EconomicAttribution:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/EconomicAttributionId'}]
+    get:
+      operationId: GetEconomicAttribution
+      summary: Get economic attribution
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: economics.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: CommercialEconomics
+      responses:
+        '200': {$ref: './components.yaml#/responses/EconomicAttributionOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  ResolveEconomicAttribution:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/EconomicAttributionId'}]
+    post:
+      operationId: ResolveEconomicAttribution
+      summary: Resolve economic attribution
+      x-mpc-operation-class: C
+      x-mpc-required-permission: economics.reconcile
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: CommercialEconomics
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/ResolveEconomicAttributionRequest'}}}}
+      responses:
+        '200': {description: Current economic attribution and validator., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EconomicAttributionMutationResult'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  AuthorizationDecisions:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListAuthorizationDecisions
+      summary: List authorization decisions
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: governance.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: ControlledActionGovernance
+      parameters:
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+        - {name: decided_from, in: query, required: false, schema: {type: string, format: date-time}}
+        - {name: decided_before, in: query, required: false, schema: {type: string, format: date-time}}
+      responses:
+        '200': {description: Authorization decisions., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/AuthorizationDecisionsCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+    post:
+      operationId: CreateAuthorizationDecision
+      summary: Create authorization decision
+      x-mpc-operation-class: C
+      x-mpc-required-permission: governance.decide
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: ControlledActionGovernance
+      parameters: [{$ref: './components.yaml#/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/CreateAuthorizationDecisionRequest'}}}}
+      responses:
+        '201': {$ref: './components.yaml#/responses/AuthorizationDecisionCreated'}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  AuthorizationDecision:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/AuthorizationDecisionId'}]
+    get:
+      operationId: GetAuthorizationDecision
+      summary: Get authorization decision
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: governance.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: ControlledActionGovernance
+      responses:
+        '200': {description: Authorization decision., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/AuthorizationDecision'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  AuthorizationDelegations:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListAuthorizationDelegations
+      summary: List authorization delegations
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: governance.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: ControlledActionGovernance
+      parameters:
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+        - {name: delegate_principal_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+      responses:
+        '200': {description: Authorization delegations., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/AuthorizationDelegationsCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+    post:
+      operationId: EstablishAuthorizationDelegation
+      summary: Establish authorization delegation
+      x-mpc-operation-class: C
+      x-mpc-required-permission: governance.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: ControlledActionGovernance
+      parameters: [{$ref: './components.yaml#/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EstablishAuthorizationDelegationRequest'}}}}
+      responses:
+        '201': {$ref: './components.yaml#/responses/AuthorizationDelegationCreated'}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  AuthorizationDelegation:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/AuthorizationDelegationId'}]
+    patch:
+      operationId: UpdateAuthorizationDelegation
+      summary: Update authorization delegation
+      x-mpc-operation-class: C
+      x-mpc-required-permission: governance.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: ControlledActionGovernance
+      parameters: [{$ref: './components.yaml#/parameters/IfMatch'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/UpdateAuthorizationDelegationRequest'}}}}
+      responses:
+        '200': {$ref: './components.yaml#/responses/AuthorizationDelegationOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '412': {$ref: './components.yaml#/responses/PreconditionFailed'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '428': {$ref: './components.yaml#/responses/PreconditionRequired'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  RevokeAuthorizationDelegation:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/AuthorizationDelegationId'}]
+    post:
+      operationId: RevokeAuthorizationDelegation
+      summary: Revoke authorization delegation
+      x-mpc-operation-class: C
+      x-mpc-required-permission: governance.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: ControlledActionGovernance
+      responses:
+        '200': {description: Revoked authorization delegation., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/AuthorizationDelegation'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  MarketplaceSales:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/MarketplaceInstallationId'}]
+    get:
+      operationId: ListMarketplaceSales
+      summary: List marketplace sales
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: sales.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: MarketplaceSales
+      parameters:
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+        - {name: sale_occurred_from, in: query, required: false, schema: {type: string, format: date-time}}
+        - {name: sale_occurred_before, in: query, required: false, schema: {type: string, format: date-time}}
+        - {name: selling_entity_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+      responses:
+        '200': {description: Marketplace sales., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/MarketplaceSalesCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  MarketplaceSale:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/MarketplaceInstallationId'}, {$ref: './components.yaml#/parameters/NativeSaleKey'}]
+    get:
+      operationId: GetMarketplaceSale
+      summary: Get marketplace sale
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: sales.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: MarketplaceSales
+      responses:
+        '200': {$ref: './components.yaml#/responses/MarketplaceSaleOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  ResolveSaleSellingEntityAttribution:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/MarketplaceInstallationId'}, {$ref: './components.yaml#/parameters/NativeSaleKey'}]
+    post:
+      operationId: ResolveSaleSellingEntityAttribution
+      summary: Resolve sale selling entity attribution
+      x-mpc-operation-class: C
+      x-mpc-required-permission: sales.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: MarketplaceSales
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/ResolveSaleSellingEntityAttributionRequest'}}}}
+      responses:
+        '200': {description: Current sale interpretation and validator., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/MarketplaceSaleMutationResult'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  BusinessOrderIntents:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListBusinessOrderIntents
+      summary: List business order intents
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: materialization.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: BusinessSystemMaterialization
+      parameters:
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+        - {name: sale_marketplace_installation_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+        - {name: sale_native_key, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueKey'}}
+        - {name: source_instance_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+      responses:
+        '200': {description: Business order intents., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/BusinessOrderIntentsCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  BusinessOrderIntent:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/BusinessOrderIntentId'}]
+    get:
+      operationId: GetBusinessOrderIntent
+      summary: Get business order intent
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: materialization.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: BusinessSystemMaterialization
+      responses:
+        '200': {description: Business order intent., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/BusinessOrderIntent'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  PartyResolution:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/BusinessOrderIntentId'}]
+    get:
+      operationId: GetBusinessSystemPartyResolution
+      summary: Get business system party resolution
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: materialization.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: BusinessSystemMaterialization
+      responses:
+        '200': {$ref: './components.yaml#/responses/PartyResolutionOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  ResolvePartyResolution:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/BusinessOrderIntentId'}]
+    post:
+      operationId: ResolveBusinessSystemPartyResolution
+      summary: Resolve business system party resolution
+      x-mpc-operation-class: C
+      x-mpc-required-permission: materialization.resolve
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: BusinessSystemMaterialization
+      parameters: [{$ref: './components.yaml#/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/ResolvePartyResolutionRequest'}}}}
+      responses:
+        '200': {description: Current party resolution and validator., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/PartyResolutionMutationResult'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  DestinationRealization:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/BusinessOrderIntentId'}]
+    get:
+      operationId: GetDestinationRealization
+      summary: Get destination realization
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: materialization.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: BusinessSystemMaterialization
+      responses:
+        '200': {description: Destination realization., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/DestinationRealization'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  InvoicingIntents:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListInvoicingIntents
+      summary: List invoicing intents
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: materialization.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: BusinessSystemMaterialization
+      parameters:
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+        - {name: business_order_intent_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+      responses:
+        '200': {description: Invoicing intents., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/InvoicingIntentsCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  InvoicingIntent:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/InvoicingIntentId'}]
+    get:
+      operationId: GetInvoicingIntent
+      summary: Get invoicing intent
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: materialization.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: BusinessSystemMaterialization
+      responses:
+        '200': {description: Invoicing intent., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/InvoicingIntent'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
