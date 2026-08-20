@@ -7,6 +7,7 @@ $agentsPath = Join-Path $repoRoot 'AGENTS.md'
 $docsIndexPath = Join-Path $repoRoot 'docs/README.md'
 $rootReadmePath = Join-Path $repoRoot 'README.md'
 $compatibilityPath = Join-Path $repoRoot 'docs/engineering/rebaseline/README.md'
+$reconciliationPath = Join-Path $repoRoot 'docs/engineering/rebaseline/DECISION-RECONCILIATION-BASELINE.md'
 $knowledgeRoutesPath = Join-Path $repoRoot 'contracts/governance/knowledge-routes.json'
 $bootstrapBudgetBytes = 20KB
 
@@ -36,7 +37,7 @@ Assert-True (Test-WithinBudget -Bytes $bootstrapBudgetBytes -Budget $bootstrapBu
 Assert-True (-not (Test-WithinBudget -Bytes ($bootstrapBudgetBytes + 1) -Budget $bootstrapBudgetBytes)) `
   'bootstrap budget predicate accepted an oversized bootstrap'
 
-foreach ($requiredPath in @($agentsPath, $docsIndexPath, $rootReadmePath, $compatibilityPath, $knowledgeRoutesPath)) {
+foreach ($requiredPath in @($agentsPath, $docsIndexPath, $rootReadmePath, $compatibilityPath, $reconciliationPath, $knowledgeRoutesPath)) {
   Assert-True (Test-Path -LiteralPath $requiredPath -PathType Leaf) "missing documentation authority file: $requiredPath"
 }
 
@@ -44,6 +45,7 @@ $agents = Get-Content -Raw -LiteralPath $agentsPath
 $docsIndex = Get-Content -Raw -LiteralPath $docsIndexPath
 $rootReadme = Get-Content -Raw -LiteralPath $rootReadmePath
 $compatibility = Get-Content -Raw -LiteralPath $compatibilityPath
+$reconciliation = Get-Content -Raw -LiteralPath $reconciliationPath
 
 $bootstrapBytes = (Get-Item -LiteralPath $agentsPath).Length + (Get-Item -LiteralPath $docsIndexPath).Length
 Assert-True (Test-WithinBudget -Bytes $bootstrapBytes -Budget $bootstrapBudgetBytes) `
@@ -104,6 +106,15 @@ Assert-True ($compatibility.Contains('docs/README.md')) `
   'compatibility pointer does not route to docs/README.md'
 Assert-True (-not $compatibility.Contains('<!-- program-status-authority -->')) `
   'compatibility pointer claims program-status authority'
+
+Assert-True ($reconciliation.Contains('on-demand routing map')) `
+  'Decision Reconciliation Baseline is not explicitly on-demand'
+Assert-True ($reconciliation.Contains('Do **not** read this file during the default fresh-session bootstrap')) `
+  'Decision Reconciliation Baseline still behaves as default bootstrap'
+Assert-True (-not $reconciliation.Contains('Always read:')) `
+  'Decision Reconciliation Baseline still mandates the old recursive read shape'
+Assert-True ($reconciliation.Contains('Exact program status and the next action live only in `docs/README.md`')) `
+  'Decision Reconciliation Baseline claims status ownership outside docs/README.md'
 
 $forbiddenPaths = @(
   'AI-DIALOG.md',
