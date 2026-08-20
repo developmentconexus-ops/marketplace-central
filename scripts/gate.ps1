@@ -106,8 +106,32 @@ if ($negativeHits.Count -ne 1) {
     Fail 'Zero-legacy guard negative control did not detect its synthetic fixture.'
 }
 
-$index = Get-Content -LiteralPath (Join-Path $root 'docs/README.md') -Raw
-$agent = Get-Content -LiteralPath (Join-Path $root 'AGENTS.md') -Raw
+$indexPath = Join-Path $root 'docs/README.md'
+$agentPath = Join-Path $root 'AGENTS.md'
+$index = Get-Content -LiteralPath $indexPath -Raw
+$agent = Get-Content -LiteralPath $agentPath -Raw
+
+$bootstrapBytes = (Get-Item -LiteralPath $agentPath).Length + (Get-Item -LiteralPath $indexPath).Length
+if ($bootstrapBytes -gt 20480) {
+    Fail "Two-file bootstrap exceeds 20 KiB: $bootstrapBytes bytes"
+}
+
+$indexDir = Split-Path -Parent $indexPath
+$linkMatches = [regex]::Matches($index, '\[[^\]]+\]\(([^)]+)\)')
+$relativeLinks = 0
+foreach ($match in $linkMatches) {
+    $href = $match.Groups[1].Value.Trim()
+    if (-not $href -or $href.StartsWith('#') -or $href -match '^[A-Za-z][A-Za-z0-9+.-]*:') { continue }
+    $target = ($href -split '#', 2)[0]
+    $target = ($target -split '\?', 2)[0]
+    if (-not $target) { continue }
+    $relativeLinks++
+    $resolved = [System.IO.Path]::GetFullPath((Join-Path $indexDir $target))
+    if (-not (Test-Path -LiteralPath $resolved)) {
+        Fail "docs/README.md contains a dead relative link: $href"
+    }
+}
+
 $markers = @(
     'D5 — API — OPEN / ACTIVE',
     'Author and prove the canonical Product OpenAPI Description',
@@ -132,6 +156,8 @@ foreach ($property in @('workspaces', 'dependencies', 'devDependencies')) {
 Write-Host "gate lane: $Lane"
 Write-Host "required files: $($required.Count)"
 Write-Host "tracked files inspected: $($tracked.Count)"
+Write-Host "bootstrap_bytes: $bootstrapBytes"
+Write-Host "docs_index_relative_links: $relativeLinks"
 Write-Host 'legacy tracked paths: 0'
 Write-Host 'negative controls: 1/1'
 Write-Host 'gate: PASS'
