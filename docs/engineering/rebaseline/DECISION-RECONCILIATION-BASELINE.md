@@ -1,412 +1,163 @@
 # Decision Reconciliation Baseline
 
 > **Status:** ACCEPTED / CANONICAL  
-> **Purpose:** always-read decision-generation/routing index for the accepted D0→D4 + D4-R1 architecture and accepted D5-B1 contract laws before D5-B2 binds them to concrete API/code-facing contracts.  
+> **Role:** on-demand routing map from superseded architectural ideas to their current accepted semantic homes  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
 > **Accepted:** 2026-08-18  
 > **Operator ratification:** 2026-08-18
 
----
+## 1. When to read this file
 
-# 1. Role
+Do **not** read this file during the default fresh-session bootstrap. Start with `AGENTS.md` and `docs/README.md`.
 
-This baseline answers one question:
+Read this map only when a concrete task needs to answer one of these questions:
 
-> **Which decision generation is current, where is its semantic authority, what older idea must not be implemented, what remains genuinely open/deferred, and which invariants technical stages may not silently re-decide?**
+- which generation of an iterated decision is current;
+- where an older ADR, module shape or design idea was rehomed;
+- whether a technical proposal would silently resurrect superseded authority;
+- which later stage owns a genuinely deferred mechanism or proof.
 
-It is an authority-routing artifact, not a second semantic architecture.
+This file routes decisions. It is not a second semantic architecture, ADR-status registry, roadmap or current-program status page.
 
-It exists because D0→D4 were intentionally iterative and D4-R1 was discovered only while D5-B2 was being derived. Without reconciliation, a later implementation/review could resurrect a stale ADR, stale candidate, legacy module shape or earlier formulation simply because it still existed somewhere in the repository.
+## 2. Authority by scope
 
----
-
-# 2. Scope-based authority model
-
-This baseline owns only **decision-generation reconciliation/routing**:
-
-- which generation of a decision is current;
-- which accepted artifact owns the detailed meaning;
-- which older architectural idea routes to which current semantic home;
-- which questions remain intentionally open and which later stage owns them.
-
-It does **not** own detailed product/domain semantics. It does **not** own ADR file status.
-
-Scope ownership:
-
-1. `docs/engineering/rebaseline/README.md` — current program status and exact next action;
+1. `docs/README.md` — current program status, allowed/blocked work, exact next action and selective read routes;
 2. `ARCHITECTURE.md` — stable cross-stage constraints;
-3. this baseline — current decision-generation routing map;
+3. this baseline — decision-generation and legacy-idea routing only;
 4. `docs/architecture/decisions/README.md` — sole ADR file status/disposition authority;
 5. accepted D-stage artifacts — detailed semantic authority in their stage scope;
-6. Evidence Register, code, schemas, OpenAPI, tests and Git history — supporting evidence unless active authority explicitly carries their meaning.
+6. Evidence Register, code, schemas, APIs, tests, runtime and Git history — supporting evidence unless accepted authority explicitly carries their meaning.
 
-If this baseline disagrees with an accepted semantic home, **this baseline is defective and must shrink/correct; it never overrides the semantic authority**.
+If this map disagrees with an accepted semantic home, this map is defective and must shrink or be corrected; it never overrides that home. Absence from this map is never permission to violate accepted authority.
 
-Absence from this baseline is never permission. `ARCHITECTURE.md` and accepted D-stage artifacts remain the complete constraint set.
+## 3. Current semantic homes
 
----
+| Scope | Current semantic home | Technical stages must not infer from… |
+|---|---|---|
+| Product mission, actors and Product 1.0 boundary | D0 + `ARCHITECTURE.md` | dashboard-only or generic-provider-hub legacy shapes |
+| Business authorities and ownership edges | D1 | legacy packages/modules or provider resource grouping |
+| Organization, Principal, identities, knowledge and durable data ownership | D2 | bare external IDs, a Product mirror or ambient tenant defaults |
+| Q/C/E/P, propagation, idempotency, recovery and projections | D3 | transport choice, polling phases or cross-context SQL |
+| Mercado Livre, Sankhya, provider capability/coverage and external effects | D4 | provider DTOs, Direct Oracle fallback or a generic integration owner |
+| Publication input and listing authoring | D4-R1 | Product/PIM mastery, a rules engine or a separate publication aggregate |
+| Semantic Product API laws | D5-B1 | provider/integration ontology or current legacy routes |
+| Concrete Product operation/wire surface | accepted D5-B2 W1–W4 + Technical Ingress + OpenAPI tooling | manual SDK/OpenAPI duplication or runtime framework preference |
 
-# 3. Current decision generation
+These homes define semantics, not a required number of services, processes, databases, repositories or first-release features.
 
-## 3.1 Product / system boundary
+## 4. Historical idea → current home
 
-**Semantic home:** D0 + `ARCHITECTURE.md`.
-
-Current generation:
-
-- MPC is the internal **Marketplace Operations Control Plane + Commercial Intelligence** product;
-- external systems retain authority for facts/processes inherently theirs;
-- MPC owns cross-system marketplace operating semantics needed to observe → understand → reconcile → decide/policy → execute → verify → audit/reconcile;
-- Mercado Livre is first marketplace proof; Sankhya is first business-system proof;
-- Organization remains explicit;
-- MPC is not an ERP replacement, Product/PIM/MDM master, generic marketplace/integration platform, universal workflow engine or unrestricted autonomous-agent platform;
-- enterprise-generic repositioning requires D0/D1 reopen, never implementation generalization.
-
-Do not resurrect dashboard-only, ERP-shaped, generic-provider-hub or MPC-Product-master interpretations.
-
-## 3.2 Business authority boundaries
-
-**Semantic home:** D1.
-
-Current semantic authorities:
-
-1. Marketplace Portfolio
-2. Product & Channel Readiness
-3. Marketplace Offering Operations
-4. Availability Control
-5. Market Intelligence
-6. Commercial Economics
-7. Controlled Action Governance
-8. Marketplace Sales
-9. Business-System Materialization
-10. Fulfillment Lifecycle
-11. Post-Sale Resolution
-12. Operational Work
-
-Plus the accepted non-domain D2 identity/access substrate.
-
-These are semantic authorities, **not** a required number of services, databases or processes.
-
-Load-bearing laws:
-
-- one business meaning → one semantic authority;
-- mechanism ≠ authority;
-- Product master remains external;
-- no generic Integration/Evidence/Mutation/Workflow/SLA/Policy business domain;
-- Governance authorization ≠ ordinary Permission ≠ domain disposition;
-- Work lifecycle ≠ originating business truth;
-- Offering Listing/Price meaning ≠ Sellable Availability;
-- Economics interpretation ≠ marketplace write;
-- Materialization ≠ physical Fulfillment;
-- provider resource grouping never merges MPC business authorities.
-
-Legacy module/package names do not define current boundaries.
-
-## 3.3 Identity / tenant / data ownership
-
-**Semantic home:** D2.
-
-Current generation:
-
-- Organization is tenant/isolation root;
-- MPC-owned canonical IDs are stable opaque identities;
-- Marketplace Installation and SourceInstance qualify external namespaces without becoming credentials/protocol;
-- Selling Entity, Inventory Source and Fulfillment Node retain distinct accepted meanings;
-- Principal is accountable actor identity with human/automation/system distinctions;
-- Product remains `SourceInstance + native Product key`; no MPC Product mirror/master;
-- provider Listing/Variation, Sale/Order, Shipment and native financial movements remain source-qualified external identities;
-- material Business Intents remain owner-local identities; no universal Action/Command/Intent owner;
-- Membership / AccessRole / Permission / RoleAssignment stay in the D2 ordinary-access substrate; consequential authorization stays Governance-owned;
-- Organization-owned durable state/evidence is explicitly Organization-scoped;
-- unknown/empty/absent/not-applicable distinctions and material provenance/time remain honest;
-- historical snapshots explain past decisions without becoming current authority;
-- automation recurrence never silently reverses a standing human decision in the same semantic scope;
-- pre-rebaseline persistence imposes no compatibility/migration model on the target.
-
-Bare native identity, separate canonical Tenant, Product mirror and universal entity/evidence graphs are not current target structures.
-
-## 3.4 Communication / failure / recovery
-
-**Semantic home:** D3.
-
-Current grammar:
-
-- **Q** — current owner meaning;
-- **C** — request owner capability/work;
-- **E** — committed producer occurrence with an independent consumer reaction;
-- **P** — read-only composition across authorities.
-
-Current safety laws include:
-
-- communication never transfers authority;
-- Organization scope remains explicit and durable communication/recovery state can recover scope without ambient guessing;
-- duplicate delivery is expected; semantic idempotency prevents duplicate business effect;
-- no global ordering or exactly-once authority;
-- known/known-empty/unknown/unavailable plus material partial/freshness/provenance remain honest;
-- `accepted != completed != externally applied != converged`;
-- accepted/rejected/pending/ambiguous are preserved where materially reachable;
-- no blind replay after possible external acceptance;
-- projections never become write/current-truth/concurrency authority;
-- cross-owner workflows are correlated/convergent; no cross-owner atomicity is invented;
-- **recoverable consequential propagation:** a required reaction cannot be lost into a silent permanent stall;
-- **evidence-edge occurrence recoverability:** material historical occurrences remain recoverable from the smallest sufficient durable authority; latest state cannot erase them;
-- cutover cannot silently discard pending reactions required for accepted Product 1.0 progression;
-- a source-committed material actionable condition ends represented in Work or explicitly reconciled;
-- reusable external-effect safety machinery verifies owner-issued proofs/correlation without owning business validity or authorization.
-
-Transport/runtime realization remains D7.
-
-## 3.5 External integration boundary
-
-**Semantic home:** D4-B1/B2/B3/B4 + D4-R1.
-
-Governing rule: **consumer owns meaning; adapter owns protocol**.
-
-Current generation:
-
-- D4 owns acquisition/protocol/capability/coverage/effect translation, not a business domain or generic evidence store;
-- one provider acquisition may feed several consumer-owned semantic ports without D4 or one consumer owning the provider payload wholesale;
-- credentials/auth are mechanism, not identity/business truth;
-- notification/callback is acquisition evidence/pointer; authoritative reread establishes material current provider meaning;
-- point/enumeration/delta/notification coverage is operation-scoped;
-- Integration Support / Provider Effective Capability / Effective Business Capability remain distinct;
-- external effects preserve owner intent/correlation, prerequisites, acceptance/ambiguity and authoritative reread/convergence;
-- provider 2xx never proves business convergence by itself;
-- provider-specific richness is kept for named consumers/correctness needs without lowest-common-denominator flattening or raw DTO mirroring;
-- Sankhya target transport is the sanctioned API Gateway; Direct Oracle/database is not target fallback;
-- provider-native Mercado Livre and Sankhya topology remains adapter-local realization, not MPC ontology;
-- source admissibility is explicit: missing evidence never authorizes fabrication or an unadjudicated scraping/source path;
-- provider PII is minimized.
-
-Time-bound provider facts and concrete protocol surfaces remain in D4; this baseline does not restate them.
-
-## 3.6 Publication / listing authoring seam
-
-**Semantic home:** D4-R1 + D1/D2/D3 parents.
-
-Current generation:
-
-- external Product remains external/source-qualified;
-- Readiness owns publication requirements, Product↔channel correspondence, source candidates and **source-level readiness**;
-- Offering owns `ListingIntent` as the one **create/edit authoring/draft identity** and owns **draft dispatchability** from current Readiness meaning;
-- no separate `PublicationPreparation` aggregate;
-- listing-value resolution is **`FOLLOW_SOURCE | EXPLICIT_OVERRIDE`** at baseline only;
-- no generic DERIVED/rules/mapping DSL;
-- source acquisition remains D4 mechanism/evidence feeding consumer-owned ports; no generic `SourceProductObservation` business owner;
-- embedded source adapters do not require self-HTTP; external connector ingress gets a wire contract only when a real connector creates a consumer;
-- human and automation authoring use the same Semantic Product API authority; automation cannot impersonate source truth or silently reverse human overrides;
-- media may be source-qualified or ListingIntent-specific MPC authoring without creating Product-media master;
-- provider requirement/schema churn remains source-qualified D4 evidence and historical intent context, not universal ProductAttribute ontology;
-- provider execution may jointly realize multiple owner-issued meanings in one physical request without merging business ownership;
-- Mercado Livre initial publication × Availability is **PASS-B**: Offering never owns quantity; Availability issues its own meaning/input; technical execution may serialize both and each owner independently evaluates convergence;
-- publication create/edit may be multi-step, partial and asynchronous; no `createListing = success` simplification.
-
-Do not resurrect PublicationPreparation, SourceProductObservation owner/service, generic source-ingestion API, ProductAsset master, mapping/rules engine, AI-specific API or separate create/edit architectures.
-
-## 3.7 API laws already accepted before B2
-
-**Semantic home:** D5-B1 + `ARCHITECTURE.md`.
-
-B2 may not re-decide:
-
-- semantic/domain-oriented Product API distinct from protocol ingress;
-- Organization-owned Product API under `/organizations/{organization_id}/...`;
-- same-Organization resolution for secondary references;
-- Principal/auth context is not a client-authored business field;
-- Permission/invoke access remains distinct from domain disposition/Governance;
-- source-qualified external identity on the wire; no bare native correlation key;
-- honest knowledge/freshness/provenance on reads;
-- accepted/rejected/pending/ambiguous business outcomes distinct from transport problems;
-- fail-closed idempotency key by default for consequential intake unless an operation proves structural/natural idempotency;
-- optimistic concurrency only where stale client state is materially unsafe;
-- RFC 9457 Problem Details for API-level failures;
-- one machine-readable Product API wire authority: OpenAPI;
-- supported clients derive/conform and server behavior conforms; conformance controls must be shown to fire;
-- hard cutover/no compatibility tax absent an entitled consumer;
-- bulk only when a real operation/workflow proves member-level semantics.
-
----
-
-# 4. Historical idea → current semantic home
-
-This table is semantic routing only. **ADR status is owned solely by the ADR registry.**
-
-| Older architectural idea | Current semantic home / instruction |
+| Superseded or older idea | Current home / implementation instruction |
 |---|---|
-| Marketplace dashboard as product | D0 control-plane product loop; do not implement dashboard-only architecture |
-| Product mirror / MPC Product master | D2 external Product identity + D1 Readiness consumers; do not create MPC Product master |
-| separate canonical Tenant | D2 Organization root |
-| generic Integration business domain | Portfolio business meaning + D4 protocol + D7 mechanics |
-| provider plugin/self-registration business framework | concrete D4 adapters; shared technical mechanism only when later proven |
-| Direct Oracle/godror Sankhya target | D4 sanctioned Gateway only |
-| `SELLER_SKU == CODPROD` | D2/D4 evidence + Readiness correspondence; not identity law |
-| CODPROD+EAN unattended link formula | D2 corroboration safety + Readiness policy |
-| generic Mutation business owner | domain-local intents + Governance + D3/D7 execution safety |
-| generic divergence ledger as truth owner | source-domain correctness + Work lifecycle |
-| `sync`/polling phase as product semantics | domain freshness/coverage + D4/D7 mechanics |
-| provider DTO/resource model in core | consumer-owned semantic ports + adapter-local protocol |
-| lowest-common-denominator marketplace model | semantic core + provider-enriched evidence |
-| generic CollectorPort/market-source framework | explicit source admissibility + later D7 mechanism if proven |
-| generic Customer/Address master for Sankhya | bounded Materialization Party/Destination realization |
-| MPC tax engine | sanctioned Sankhya fiscal engine + Economics interpretation |
-| global Fee/Payment/Settlement MPC entity | source-qualified external movements + Economics attribution/reconciliation |
-| PublicationPreparation aggregate | Offering ListingIntent draft + Readiness Q |
-| SourceProductObservation business service | D4 acquisition feeding consumer-owned ports |
-| generic listing transformation/rules engine | `FOLLOW_SOURCE | EXPLICIT_OVERRIDE`; targeted future reopen only on repeated need |
-| dedicated AI business/API authority | D2 automation Principal + ordinary Product API/Governance |
+| Marketplace dashboard as the product | D0 control-plane product loop; do not implement dashboard-only architecture |
+| Product mirror / MPC Product master | D2 external source-qualified Product identity + D1 Readiness consumers; do not create an MPC Product master |
+| Separate canonical Tenant | D2 Organization root |
+| Generic Integration business domain | Portfolio business meaning + D4 protocol + D7 mechanics |
+| Provider plugin/self-registration business framework | concrete D4 adapters; shared technical machinery only when later proven |
+| Direct Oracle/godror Sankhya target | D4 sanctioned API Gateway only; Direct Oracle is current-state evidence, not fallback |
+| `SELLER_SKU == CODPROD` identity law | D2/D4 evidence + Readiness correspondence; never canonical identity |
+| CODPROD+EAN unattended-link formula | D2 corroboration safety + Readiness policy |
+| Generic Mutation business owner | domain-local intents + Governance + D3/D7 execution safety |
+| Generic divergence ledger as truth owner | source-domain correctness + Operational Work lifecycle |
+| `sync`/polling phase as Product semantics | domain freshness/coverage + D4/D7 acquisition/runtime mechanics |
+| Provider DTO/resource model in core | consumer-owned semantic ports + adapter-local protocol |
+| Lowest-common-denominator marketplace model | shared semantics where meanings align + source-qualified provider-rich evidence |
+| Generic CollectorPort/market-source framework | explicit source admissibility + later bounded D7 mechanism if proven |
+| Generic Customer/Address master for Sankhya | bounded Materialization Party/Destination realization |
+| MPC tax engine | sanctioned Sankhya fiscal engine + Commercial Economics interpretation |
+| Global Fee/Payment/Settlement MPC entity | source-qualified external movements + Economics attribution/reconciliation |
+| `PublicationPreparation` aggregate | Offering-owned `ListingIntent` draft + Readiness query |
+| `SourceProductObservation` business service | D4 acquisition feeding consumer-owned ports; no generic source-Product owner |
+| Generic listing transformation/rules engine | `FOLLOW_SOURCE | EXPLICIT_OVERRIDE`; reopen only on repeated evidenced need |
+| Dedicated AI business/API authority | D2 automation Principal + ordinary Product API/Governance |
 | Product API listing quantity owned by Offering | Availability-owned meaning; joint technical realization only |
-| manual OpenAPI + manual SDK authority | OpenAPI one wire authority + conformant/derived clients/server |
-| compatibility/versioning for legacy API | hard cutover until a real entitled consumer appears |
+| Manual OpenAPI + manual SDK authority | one OpenAPI wire authority + derived/conformant client/server projections |
+| Compatibility/versioning for the legacy API | hard cutover until a real entitled production consumer appears |
+| Generic Workflow/SLA/Policy domain | owner-local semantics + Governance/Work; mechanism never becomes business authority |
+| Provider callback/webhook as current truth | D4 acquisition pointer/evidence + authoritative reread when material |
+| Provider `2xx` as convergence | accepted/submitted outcome only; owner-specific reread and reconciliation establish convergence |
 
----
+Git history preserves the original formulations and retired ADR files. Do not restore them into the active tree merely to retain history.
 
-# 5. What remains genuinely open
+## 5. High-risk implementation reconciliation guard
 
-## D5-B2
+The list below is intentionally compact and non-exhaustive. Detailed meaning remains in `ARCHITECTURE.md` and the accepted D-stage artifacts.
 
-- exact Product 1.0 operation/resource inventory;
-- request/response schemas;
-- Permission→operation mapping;
-- concrete paths/nouns under B1 laws;
-- pagination/filter/sort/cursor only where a real consumer proves need;
-- operation-local bulk only where proven;
-- concrete OpenAPI/server/client generation and conformance tooling.
+Technical stages must not silently re-decide by convenience:
 
-## D6
+1. Product is external/source-qualified, not an MPC master.
+2. Organization is the tenant/isolation root and cross-Organization paths fail closed.
+3. One business meaning has one semantic authority; mechanism does not acquire authority.
+4. D1 business authorities and accepted semantic edges remain binding.
+5. Q/C/E/P meaning, recoverable consequential propagation and material occurrence recovery remain distinct.
+6. Domain-local intents do not become a generic mutation/workflow authority.
+7. Governance authorization, ordinary Permission and owner business disposition remain separate.
+8. Work lifecycle never becomes the originating business truth; material actionable conditions cannot become ownerless silent state.
+9. External/provider identities remain source-qualified and distinct from MPC canonical identities.
+10. Consumers own semantic ports; adapters own provider/business-system protocol.
+11. Sankhya target transport is the sanctioned API Gateway; Direct Oracle is not a convenience fallback.
+12. Possible external acceptance is never followed by blind retry.
+13. Provider richness is preserved for named needs without raw DTO mirroring or fabricated equivalence.
+14. Provider PII is minimized.
+15. Missing evidence never authorizes fabricated data or an unadjudicated scraping/source path.
+16. Externally governed obligations and policy provenance cannot be silently relaxed by MPC.
+17. Offering, Readiness and Availability retain their accepted publication ownership split.
+18. `ListingIntent` is the one create/edit listing-authoring identity.
+19. `FOLLOW_SOURCE | EXPLICIT_OVERRIDE` is the baseline; recurring automation never silently reverses a standing human decision.
+20. No hidden PIM, source-observation, rules, connector-platform or AI-specific business framework is introduced.
+21. Joint technical realization may serialize multiple owner-issued meanings without transferring ownership or inventing a semantic edge.
+22. Each owner evaluates its own convergence after provider effects.
+23. Earlier approval is not permanent execution authority after materially governing conditions drift.
+24. Multi-target intent, authorization, attempted scope and member-level outcomes remain distinguishable.
+25. Cutover/recovery cannot silently discard pending reactions required for accepted lifecycle progression.
+26. Product API keeps explicit Organization scope and source-qualified external identity.
+27. OpenAPI remains the one machine-readable Product wire authority; no second manual SDK/wire authority survives.
+28. Hard cutover remains valid while no entitled production compatibility consumer exists.
 
-- screens/navigation/editor topology;
-- projection/view composition required by UX;
-- frontend feature/package structure.
+A technical design that appears to require violating one of these is evidence for a targeted architecture reopen—not permission for a workaround.
 
-## D7
+## 6. Deferred owner/stage map
 
-- process/server/worker/scheduler topology;
-- transaction/outbox/queue/cursor/lease/lock mechanisms;
-- token refresh/cache/secret realization;
-- RLS/runtime Organization-isolation realization;
-- idempotency persistence/TTL/locking;
-- retry/backoff/rate-control mechanisms;
-- media blob/cache/CDN realization;
-- production deployment topology;
-- retained runtime ADR residues named by the ADR registry.
+| Later stage | Questions deliberately owned there |
+|---|---|
+| D5 | current canonical Product OAD authoring/proof and D5-B2 closure only |
+| D6 | screens/navigation/editor topology, client composition and frontend package structure |
+| D7 | router/server, processes, workers, schedulers, transactions, outbox/queue, cursor/lease/lock, secrets, RLS realization, idempotency persistence, retry/rate control, media storage and deployment topology |
+| D8 | selected end-to-end success/failure/retry/reconciliation proofs, including real controlled external effects when authorized |
+| D9 | final adversarial whole-architecture contradiction, overbuild and under-specification review |
 
-## D8
+Unknown or deferred is never permission to invent a plausible default. Reopen only the smallest responsible authority when real evidence invalidates an assumption.
 
-- first controlled Mercado Livre create/Price/Availability effects + authoritative reread/convergence;
-- shared-User-Product blast-radius real-write proof;
-- selected irreversible Sankhya fiscal progression;
-- controlled alternate destination/contact realization before claiming it;
-- first consequential native-party write if the golden flow reaches it;
-- unproven provider/fiscal branches only when a selected golden flow materially depends on them.
+## 7. ADR and active-tree reconciliation
 
-## D9
+The ADR registry is the only authority for ADR file status/disposition. Fully rehomed pre-rebaseline ADRs remain in Git history, not the active tree. Retained legacy residues remain only because a later stage still owns a concrete unresolved mechanism/proof/transition question.
 
-- final adversarial architecture/system review;
-- implementation remains blocked until D9 acceptance.
+`ADR-035` remains transition authority through D0–D9. Its embedded 2026-08-14 status tables are historical snapshot evidence; current ADR disposition comes from the registry and later accepted stages. ADR numbers are never reused.
 
-## Bounded Unknown / Deferred classes
+## 8. Usage and reopen triggers
 
-Detailed homes remain D4/D4-R1. Current classes include unselected Mercado Livre modes/configurations, paused/zero-quantity representation-first creation, broader payment/account movement universe, R3 bank-side reconciliation, controlled-product marketplace paths, post-invoice return/reversal branches, unproven fiscal components and future reusable source→listing transformations/media library/external connector wire contract.
-
-Unknown/Deferred is **never** permission to invent a plausible default.
-
----
-
-# 6. Implementation reconciliation guard
-
-The following list highlights high-risk invariants; **it is not exhaustive**. `ARCHITECTURE.md` and accepted D-stage artifacts remain the complete constraint set. Absence from this index is never permission.
-
-Technical stages MUST NOT silently re-decide by convenience:
-
-1. Product ownership — external/source-qualified, not MPC master.
-2. Organization root/isolation semantics.
-3. D1 business authorities and accepted semantic edges.
-4. Q/C/E/P meaning, recoverable consequential propagation and evidence-occurrence recovery.
-5. domain-local Intent ownership versus generic mutation/workflow authority.
-6. Governance versus Permission versus domain disposition.
-7. Work lifecycle versus originating business truth; material actionable conditions cannot become ownerless silent state.
-8. external/provider identity versus MPC canonical identity.
-9. consumer-owned port / adapter-owned protocol boundary.
-10. sanctioned Sankhya Gateway-only target transport.
-11. no blind retry after ambiguous possible external acceptance.
-12. provider richness without provider DTO mirroring.
-13. Provider PII minimization.
-14. explicit source admissibility; missing data never authorizes fabricated/unadjudicated source acquisition.
-15. externally governed obligation/policy provenance; MPC cannot silently relax external obligations.
-16. Offering / Readiness / Availability publication ownership split.
-17. ListingIntent as the one create/edit authoring identity.
-18. `FOLLOW_SOURCE | EXPLICIT_OVERRIDE` baseline and standing-human-decision safety.
-19. no hidden PIM/source-observation/rule/connector/AI business framework.
-20. joint technical realization may compose owner-issued meanings but may not create ownership transfer or hidden semantic edges.
-21. owner-specific convergence after provider effects.
-22. execution-time validity/authorization: an earlier approval does not authorize blind execution after material governing drift and cannot waive mandatory safety invariants.
-23. material multi-target separation: intended scope, authorized scope and attempted/outcome scope remain distinct; member-level confirmed/rejected/ambiguous/not-executed outcomes survive.
-24. cutover/recovery cannot silently discard pending reactions required for accepted lifecycle progression.
-25. semantic Product API with explicit Organization scope and source-qualified identity.
-26. OpenAPI as the one machine-readable Product API wire authority; no second manual SDK/wire authority.
-27. hard cutover while no entitled production compatibility consumer exists.
-
-A technical design that appears to require violating one of these is evidence for a targeted architecture reopen — not permission for a workaround.
-
----
-
-# 7. ADR / active-tree reconciliation
-
-The ADR registry is the **only active authority for ADR file status/disposition**.
-
-The 2026-08-18 reconciliation retired all fully rehomed pre-rebaseline ADRs from the active tree. The retained legacy residue set is owned and enumerated only by the registry. Git history is the archive; ADR numbers are never reused.
-
-`ADR-035` remains transition authority through D0–D9, but its embedded 2026-08-14 still-binding/reopened tables are historical snapshot evidence only; current ADR disposition is owned by the registry and later accepted D-stage authority.
-
-The citation-harvest tree is retained only for citation files still directly referenced by retained legacy residues. No `old/` or in-repo archive tree exists.
-
----
-
-# 8. Fresh-session read shape
-
-Always read:
+Fresh-session routing is:
 
 ```text
 AGENTS.md
-→ rebaseline README/router
-→ DevelopmentConexus Method
-→ ARCHITECTURE.md
-→ Decision Reconciliation Baseline
-→ ADR registry (only unresolved technical/transition residues)
-→ accepted/current D-stage artifact(s) needed for the work
-→ Evidence Register
-→ implementation evidence only when necessary
+→ docs/README.md
+→ only the task-specific authority/evidence selected there
+→ this reconciliation map only when legacy decision-generation conflict exists
 ```
 
-A fresh reviewer must not need `AI-DIALOG.md`, stale candidates, retired ADRs or legacy implementation to discover current target architecture.
+Reconcile this map only when:
 
----
-
-# 9. Reopen triggers
-
-Reconcile this baseline only when its routing map materially changes because:
-
-- an accepted D-stage decision is amended/reopened;
-- a new target ADR changes current decision routing;
-- later real proof invalidates an architectural assumption;
+- an accepted D-stage decision is amended or reopened;
+- a new target ADR changes decision routing;
+- executable proof invalidates an accepted architectural assumption;
 - a Product requirement changes D0/D1 ownership;
 - a retained legacy ADR is adjudicated and leaves the active tree;
-- D0–D9 closes and ADR-035/transition machinery retires.
+- D0–D9 closes and transition machinery retires.
 
-Do not reopen for implementation naming, package layout, framework preference or rediscovery of a retired Git-history decision.
+Do not reopen it for implementation naming, package layout, framework preference or rediscovery of a retired Git-history decision.
 
----
+## 9. Reconciliation verdict
 
-# 10. Reconciliation verdict
+The accepted D0→D4/D4-R1 + D5 decision set remains the current coherent target authority. This file preserves routing and implementation guards without requiring a fresh session to reread or reconstruct every accepted stage.
 
-**CURRENT D0→D4/D4-R1 + D5-B1 DECISION SET RECONCILED / COHERENT.**
-
-Independent review and GPT adjudication found:
-
-- no contradiction among accepted D0→D4/D4-R1 + D5-B1;
-- no missing business authority/boundary;
-- no D6/D7 mechanism frozen by this index;
-- no material architecture prerequisite blocks D5-B2;
-- Structural Inversion passes: deleting/inverting current implementation/OpenAPI does not change the reconciled architecture.
-
-**Exact program status/next action remains owned only by the router.**
+Exact program status and the next action live only in `docs/README.md`.

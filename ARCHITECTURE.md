@@ -1,7 +1,7 @@
 # Marketplace Central Architecture
 
 > **Status:** stable product-level constraints during Architecture Rebaseline  
-> **Detailed target architecture:** intentionally under D0–D9 design; see `docs/engineering/rebaseline/README.md`  
+> **Detailed target architecture:** intentionally under D0–D9 design; see `docs/README.md`  
 > **Last updated:** 2026-08-18
 
 ## Purpose
@@ -199,4 +199,4 @@ A green artifact that did not execute the relevant subject is no proof.
 
 ## Current stage
 
-Read `docs/engineering/rebaseline/README.md` for the sole current status and exact next action.
+Read `docs/README.md` for the sole current status and exact next action.

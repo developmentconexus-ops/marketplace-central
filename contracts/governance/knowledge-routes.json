@@ -20,8 +20,8 @@
           "estimated_tokens": 260
         },
         {
-          "path": "scripts/tests/harness-orchestration.tests.ps1",
-          "selector": "fixtures",
+          "path": "scripts/tests/harness-execution.tests.ps1",
+          "selector": "execution fixtures",
           "reason": "current harness behavior tests",
           "estimated_tokens": 120
         }
@@ -30,50 +30,117 @@
     {
       "id": "root-bootstrap",
       "module_id": "repository",
-      "concerns": ["bootstrap"],
+      "concerns": ["bootstrap", "status"],
       "selectors": [
         {
           "path": "AGENTS.md",
-          "selector": "Current program and read order",
-          "reason": "single session bootstrap",
-          "estimated_tokens": 320
+          "selector": "DEFAULT READ and repository operating rails",
+          "reason": "compact repository bootstrap",
+          "estimated_tokens": 1100
         },
         {
-          "path": "docs/engineering/rebaseline/README.md",
-          "selector": "current phase and exact next action",
-          "reason": "sole current-program status authority",
-          "estimated_tokens": 900
-        },
-        {
-          "path": "docs/engineering/standards/root-cause-global-maximum-method.md",
-          "selector": "engineering decision method",
-          "reason": "canonical root-cause and global-maximum method",
-          "estimated_tokens": 700
+          "path": "docs/README.md",
+          "selector": "Current checkpoint and selective read routes",
+          "reason": "sole current-program status and documentation index",
+          "estimated_tokens": 2000
         }
       ]
     },
     {
-      "id": "portfolio-core",
+      "id": "architecture-core",
       "module_id": "repository",
-      "concerns": ["portfolio", "architecture", "evidence"],
+      "concerns": ["architecture", "decisions", "evidence"],
       "selectors": [
         {
           "path": "ARCHITECTURE.md",
-          "selector": "stable product-level constraints",
-          "reason": "architecture constitution during D0-D9",
-          "estimated_tokens": 420
+          "selector": "stable cross-stage constraints",
+          "reason": "open only for a material cross-stage architecture question",
+          "estimated_tokens": 2000
+        },
+        {
+          "path": "docs/engineering/standards/root-cause-global-maximum-method.md",
+          "selector": "DevelopmentConexus Engineering Method availability copy",
+          "reason": "material engineering reasoning when the documentation index routes to the Method",
+          "estimated_tokens": 2000
+        },
+        {
+          "path": "docs/engineering/rebaseline/DECISION-RECONCILIATION-BASELINE.md",
+          "selector": "current decision generation routing",
+          "reason": "on-demand map from superseded ideas to accepted semantic homes",
+          "estimated_tokens": 2000
         },
         {
           "path": "docs/architecture/decisions/README.md",
           "selector": "ADR status registry",
-          "reason": "current binding, reopened and superseded decision status",
-          "estimated_tokens": 280
+          "reason": "sole ADR file status and disposition authority",
+          "estimated_tokens": 1100
         },
         {
           "path": "docs/engineering/rebaseline/EVIDENCE-REGISTER.md",
-          "selector": "supporting current-state and historical evidence",
-          "reason": "non-authoritative evidence consulted on demand by D-stages",
-          "estimated_tokens": 600
+          "selector": "supporting evidence",
+          "reason": "non-authoritative evidence consulted only for a concrete decision",
+          "estimated_tokens": 1800
+        }
+      ]
+    },
+    {
+      "id": "d5-product-oad",
+      "module_id": "repository",
+      "concerns": ["api", "contracts", "openapi"],
+      "selectors": [
+        {
+          "path": "docs/engineering/rebaseline/D5-API.md",
+          "selector": "accepted D5 semantic API laws",
+          "reason": "parent authority for Product API authoring",
+          "estimated_tokens": 2000
+        },
+        {
+          "path": "docs/engineering/rebaseline/D5-B2-PRODUCT-OPERATION-SURFACE.md",
+          "selector": "admitted Product resource and operation surface",
+          "reason": "bounded Product surface input",
+          "estimated_tokens": 2000
+        },
+        {
+          "path": "docs/engineering/rebaseline/D5-B2-OPERATION-ADMISSION-MATRIX.md",
+          "selector": "admitted and rejected operation inventory",
+          "reason": "complete Product 1.0 operation admission input",
+          "estimated_tokens": 2000
+        },
+        {
+          "path": "docs/engineering/rebaseline/D5-B2-WIRE-CONTRACT.md",
+          "selector": "W1 resource path and HTTP grammar",
+          "reason": "canonical path and HTTP input",
+          "estimated_tokens": 2000
+        },
+        {
+          "path": "docs/engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md",
+          "selector": "W2 schema and Problem grammar",
+          "reason": "canonical request response and schema input",
+          "estimated_tokens": 2000
+        },
+        {
+          "path": "docs/engineering/rebaseline/D5-B2-W3-COLLECTION-GRAMMAR.md",
+          "selector": "W3 collection and cursor grammar",
+          "reason": "canonical collection input",
+          "estimated_tokens": 2000
+        },
+        {
+          "path": "docs/engineering/rebaseline/D5-B2-W4-PERMISSION-CLIENT-CLASS-ENFORCEMENT.md",
+          "selector": "exact 95-operation mapping",
+          "reason": "canonical operationId Permission and Principal projection",
+          "estimated_tokens": 2000
+        },
+        {
+          "path": "docs/engineering/rebaseline/D5-B2-TECHNICAL-INGRESS.md",
+          "selector": "non-Product technical ingress exclusions",
+          "reason": "prevents provider OAuth and callback protocols entering Product OAD",
+          "estimated_tokens": 2000
+        },
+        {
+          "path": "docs/engineering/rebaseline/D5-B2-OPENAPI-WIRE-AUTHORITY-TOOLING.md",
+          "selector": "OpenAPI authority tooling and stable Problem origin",
+          "reason": "canonical Product OAD authoring and proof profile",
+          "estimated_tokens": 2000
         }
       ]
     },
@@ -108,14 +175,14 @@
         },
         {
           "path": "contracts/api/marketplace-central.openapi.yaml",
-          "selector": "orders and profitability paths/schemas",
-          "reason": "current HTTP contract evidence until D5",
+          "selector": "orders and profitability paths and schemas",
+          "reason": "legacy current HTTP contract evidence until canonical Product OAD replacement",
           "estimated_tokens": 420
         },
         {
           "path": "packages/sdk-runtime/src/index.ts",
-          "selector": "orders and profitability methods/types",
-          "reason": "current frontend contract evidence until D5",
+          "selector": "orders and profitability methods and types",
+          "reason": "legacy current frontend contract evidence until D5 replacement",
           "estimated_tokens": 300
         }
       ]
