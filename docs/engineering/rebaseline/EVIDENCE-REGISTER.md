@@ -2,18 +2,19 @@
 
 > **Status:** SUPPORTING EVIDENCE  
 > **Baseline:** `main@de1dc88bcef5a6ed5515378e7c646682c0bc15d2`  
+> **Snapshot rule:** repository-tree facts below describe that historical baseline, not the current active tree.  
 > Evidence informs D1–D9; it does not become target architecture by itself.
 
-## Current repository facts
+## Historical repository facts at baseline `de1dc88`
 
 - `internal/modules/` has 21 legacy module directories.
 - `internal/contexts/` has 2 newer contexts: `catalog` and `listings`.
 - `internal/adapters/` already has `erp` and `marketplace` families.
 - `cmd/` has 7 entrypoint directories.
 - Frontend ownership is split between app-local routes/pages and feature packages.
-- OpenAPI, a hand-written SDK and routing knowledge currently coexist.
-- The migration chain contains both legacy and newer-context state.
-- `scripts/gate.ps1` and `scripts/harness.ps1` are active verification/runtime-test mechanisms.
+- OpenAPI, a hand-written SDK and routing knowledge coexist at that baseline.
+- The migration chain contains both legacy and newer-context state at that baseline.
+- `scripts/gate.ps1` and `scripts/harness.ps1` are baseline-era verification/runtime-test mechanisms.
 
 ## Operator constraints
 
