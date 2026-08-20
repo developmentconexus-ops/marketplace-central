@@ -2,7 +2,7 @@
 
 > **Role:** sole active authority for ADR file status/disposition during the D0–D9 rebaseline.  
 > **Decision generation routing:** `docs/engineering/rebaseline/DECISION-RECONCILIATION-BASELINE.md`  
-> **Current program status:** `docs/README.md`
+> **Current program status:** `docs/roadmap.md`
 
 ## Current posture
 
@@ -16,14 +16,14 @@ Git history is the archive. ADR numbers are never reused.
 
 | ADR | Active status | Why it remains | Retirement condition |
 |---|---|---|---|
-| 008 | reopened — D7 | deployment/publisher/host evidence for production topology; its old Oracle/Tailscale-to-Sankhya path is not current target meaning | retire when D7 adjudicates deployment topology |
-| 010 | reopened — D7 | acquisition cadence/polling/runtime evidence; semantic freshness obligations already live in D0/D3 | retire when D7 adjudicates acquisition runtime |
-| 017 | historical evidence retained by explicit D2 Fact rehoming gate | reconstructed domain-judgment clauses still needed until the replacement target Fact ADR rehomes what remains valid | retire together with 034 when target Fact ADR lands |
-| 018 | reopened — D7 | execution-safety/runtime mechanics residue; generic Mutation business owner/table/poller is already superseded by D1/D3 | retire when D7 adjudicates execution-safety runtime |
-| 026 | reopened — D7 | scheduler/cursor/phase runtime evidence; no global phase business vocabulary survives D3 | retire when D7 adjudicates scheduler/runtime mechanics |
-| 030 | reopened — D7 | worker/scheduler/installation-topology evidence | retire when D7 adjudicates process/scheduler topology |
-| 034 | carried historical evidence anchor | historical `Fact<T>` proof and domain-judgment clauses remain useful to D2; the former implementation/package is retired and owns no target structure | retire with 017 when target Fact ADR rehomes the remaining clauses |
-| 035 | carried transition authority | governs the D0–D9 target-design/authority transition and implementation block | retire only after D0–D9 closes |
+| [008](008-production-deploy-topology.md) | reopened — D7 | deployment/publisher/host evidence for production topology; its old Oracle/Tailscale-to-Sankhya path is not current target meaning | retire when D7 adjudicates deployment topology |
+| [010](010-mercado-livre-polling-visible-refresh.md) | reopened — D7 | acquisition cadence/polling/runtime evidence; semantic freshness obligations already live in D0/D3 | retire when D7 adjudicates acquisition runtime |
+| [017](017-unknown-is-never-zero.md) | historical evidence retained by explicit D2 Fact rehoming gate | reconstructed domain-judgment clauses still needed until the replacement target Fact ADR rehomes what remains valid | retire together with 034 when target Fact ADR lands |
+| [018](018-mutation-envelope-table-and-poller.md) | reopened — D7 | execution-safety/runtime mechanics residue; generic Mutation business owner/table/poller is already superseded by D1/D3 | retire when D7 adjudicates execution-safety runtime |
+| [026](026-scheduler-phase-vocabulary.md) | reopened — D7 | scheduler/cursor/phase runtime evidence; no global phase business vocabulary survives D3 | retire when D7 adjudicates scheduler/runtime mechanics |
+| [030](030-scheduler-second-instance-per-installation.md) | reopened — D7 | worker/scheduler/installation-topology evidence | retire when D7 adjudicates process/scheduler topology |
+| [034](034-fact-substitui-adr-017.md) | carried historical evidence anchor | historical `Fact<T>` proof and domain-judgment clauses remain useful to D2; the former implementation/package is retired and owns no target structure | retire with 017 when target Fact ADR rehomes the remaining clauses |
+| [035](035-architecture-rebaseline-governs-target-design.md) | carried transition authority | governs the D0–D9 target-design/authority transition and implementation block | retire only after D0–D9 closes |
 
 ### ADR-035 snapshot fence
 
@@ -31,9 +31,17 @@ ADR-035's embedded “still-binding constraints” and “reopened” tables are
 
 This registry and accepted D-stage artifacts supersede those embedded tables wherever later adjudication differs. In particular, D4-B1 superseded Direct Oracle/godror target transport; ADR-006/007 are retired from the active tree and are not current target constraints.
 
-### 2026-08-20 authority-surface amendment
+### Repository Standard routing amendment — 2026-08-20
 
-ADR-035 remains the D0–D9 transition authority, but its references to the former rebaseline router as the sole status/read-order authority are superseded. `docs/README.md` alone now owns current program status, allowed/blocked work, exact next action and selective read routing. This amendment changes routing only; it does not reopen ADR-035's implementation block or any accepted D-stage semantics.
+ADR-035 remains the D0–D9 transition authority. Pre-standard references inside accepted/historical artifacts to former current-status/read-order routers are frozen historical routing prose and are superseded for navigation only by:
+
+```text
+AGENTS.md
+→ docs/index.md
+→ docs/roadmap.md
+```
+
+`docs/roadmap.md` alone owns mutable current-program status/allowed work/next action; `docs/index.md` alone owns task routing. This changes routing only and does not reopen ADR-035's implementation block or any accepted D-stage semantics.
 
 ## Retired pre-rebaseline ADRs
 
@@ -60,12 +68,12 @@ Notable reconciliations include:
 
 The retained citation files are:
 
-- `RENUMBERING-REGISTRY.md` — provenance needed by retained reconstructed ADRs;
-- `adr-009-citations.md` — referenced by retained ADR-010;
-- `adr-013-citations.md` — referenced by retained ADR-018;
-- `adr-07-twodigit-citations.md` — referenced by retained ADR-026;
-- `adr-08-twodigit-citations.md` — referenced by retained ADR-030;
-- `adr-017-citations.md` — referenced by retained ADR-017/034.
+- [`RENUMBERING-REGISTRY.md`](_citations/RENUMBERING-REGISTRY.md) — provenance needed by retained reconstructed ADRs;
+- [`adr-009-citations.md`](_citations/adr-009-citations.md) — referenced by retained ADR-010;
+- [`adr-013-citations.md`](_citations/adr-013-citations.md) — referenced by retained ADR-018;
+- [`adr-07-twodigit-citations.md`](_citations/adr-07-twodigit-citations.md) — referenced by retained ADR-026;
+- [`adr-08-twodigit-citations.md`](_citations/adr-08-twodigit-citations.md) — referenced by retained ADR-030;
+- [`adr-017-citations.md`](_citations/adr-017-citations.md) — referenced by retained ADR-017/034.
 
 Everything else was retired with its citing ADRs and remains in Git history.
 
@@ -77,7 +85,8 @@ Only accepted target decisions that materially benefit from durable ADR treatmen
 
 ## Authority rule
 
-- `docs/README.md` owns current program status, allowed/blocked work, exact next action and selective read routing.
+- `docs/roadmap.md` owns mutable current program status, allowed/blocked work and exact next action.
+- `docs/index.md` owns selective task routing.
 - `ARCHITECTURE.md` owns stable cross-stage constraints.
 - Decision Reconciliation Baseline owns current decision-generation routing.
 - **This registry alone owns ADR file status/disposition.**

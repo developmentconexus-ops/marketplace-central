@@ -12,13 +12,20 @@ jobs:
   required:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      GATE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+      GATE_BASE_REF: ${{ github.event.pull_request.base.ref || 'main' }}
+      GATE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      GATE_HEAD_REF: ${{ github.event.pull_request.head.ref || github.ref_name }}
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
-      - name: authority and zero-legacy gate
+      - name: repository contract gate
         shell: pwsh
         run: npm run gate:full
