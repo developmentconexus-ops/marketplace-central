@@ -27,22 +27,39 @@ Pre-standard current-status/read-order prose inside accepted D-stage, architectu
 | Mercado Livre, Sankhya, provider boundaries/effects/reconciliation | [D4 External Integrations](engineering/rebaseline/D4-EXTERNAL-INTEGRATIONS.md) | old adapters/runtime |
 | Publication input, `ListingIntent`, readiness/source-following/override | [D4-R1 Publication Input](engineering/rebaseline/D4-R1-PUBLICATION-INPUT.md) | generic PIM assumptions |
 | Product API semantic laws | [D5 API](engineering/rebaseline/D5-API.md) | D6–D9 |
+| Current decision-generation reconciliation | [Decision Reconciliation Baseline](engineering/rebaseline/DECISION-RECONCILIATION-BASELINE.md) | all phase history |
 | Stable cross-stage architecture constraints | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | all phase documents |
 | ADR disposition / retirement trigger | [ADR Registry](architecture/decisions/README.md), then only the named ADR | all ADRs |
 | Historical/current-state Evidence for a concrete decision | [Evidence Register](engineering/rebaseline/EVIDENCE-REGISTER.md), then exact cited ref/path | repository archaeology |
 | Repository-local engineering/Git/CI/proof rules | [`development/engineering-rules.md`](development/engineering-rules.md) | organizational Method text copied locally |
 
-## Product OAD task pack
+## Product OAD bounded subpacks
 
-For canonical Product OAD authoring, start with this bounded pack:
+Canonical Product OAD authoring is material and spans several accepted D5 homes. Do **not** open all of them at once. Use one subpack at a time; every subpack remains within the five-file repository limit.
 
-1. [D5 API](engineering/rebaseline/D5-API.md)
-2. [Product Operation Surface](engineering/rebaseline/D5-B2-PRODUCT-OPERATION-SURFACE.md) + [Operation Admission Matrix](engineering/rebaseline/D5-B2-OPERATION-ADMISSION-MATRIX.md)
-3. [W1 Wire Contract](engineering/rebaseline/D5-B2-WIRE-CONTRACT.md)
-4. [W2 Schema Grammar](engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md) + [W3 Collection Grammar](engineering/rebaseline/D5-B2-W3-COLLECTION-GRAMMAR.md)
-5. [W4 Permission / Client-Class Enforcement](engineering/rebaseline/D5-B2-W4-PERMISSION-CLIENT-CLASS-ENFORCEMENT.md) + [Technical Ingress](engineering/rebaseline/D5-B2-TECHNICAL-INGRESS.md) + [OpenAPI Wire Authority / Tooling](engineering/rebaseline/D5-B2-OPENAPI-WIRE-AUTHORITY-TOOLING.md)
+**Start / authority and tooling — 4 files total with the bootstrap:**
 
-Read D0–D4 only when the D5 package cannot answer a concrete contract question without reopening earlier semantics.
+- this router + [`roadmap.md`](roadmap.md);
+- [D5 API](engineering/rebaseline/D5-API.md);
+- [OpenAPI Wire Authority / Tooling](engineering/rebaseline/D5-B2-OPENAPI-WIRE-AUTHORITY-TOOLING.md).
+
+**Operation/path authoring — add at most 3 owning files:**
+
+- [Operation Admission Matrix](engineering/rebaseline/D5-B2-OPERATION-ADMISSION-MATRIX.md);
+- [Product Operation Surface](engineering/rebaseline/D5-B2-PRODUCT-OPERATION-SURFACE.md);
+- [W1 Wire Contract](engineering/rebaseline/D5-B2-WIRE-CONTRACT.md).
+
+**Schema/collection authoring — add at most 2 owning files:**
+
+- [W2 Schema Grammar](engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md);
+- [W3 Collection Grammar](engineering/rebaseline/D5-B2-W3-COLLECTION-GRAMMAR.md).
+
+**Access/technical exclusion proof — add at most 2 owning files:**
+
+- [W4 Permission / Client-Class Enforcement](engineering/rebaseline/D5-B2-W4-PERMISSION-CLIENT-CLASS-ENFORCEMENT.md);
+- [Technical Ingress](engineering/rebaseline/D5-B2-TECHNICAL-INGRESS.md).
+
+Switch subpacks as the concrete authoring question changes. Read D0–D4 only when the D5 package cannot answer a concrete contract question without reopening earlier semantics.
 
 ## Organizational standards
 
