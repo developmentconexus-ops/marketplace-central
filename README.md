@@ -6,14 +6,10 @@ Marketplace Central is an internal **Marketplace Operations Control Plane + Comm
 
 ## Start here
 
-Read only:
-
 1. [`AGENTS.md`](AGENTS.md)
-2. [`docs/README.md`](docs/README.md)
+2. [`docs/index.md`](docs/index.md)
 
-`docs/README.md` is the sole current-program status and selective documentation index. Historical plans, handoffs, review dialogue, branches and current code shape are not the roadmap.
-
-The superseded application, deployment, migration and manually maintained API/SDK trees were removed during the architecture rebaseline. Git history preserves them as evidence; they are not an active compatibility surface.
+Stable Product Problem origin: `https://conexus.fun`.
 
 ## Verification
 
@@ -22,4 +18,4 @@ npm run gate
 npm run gate:full
 ```
 
-The same compact authority/zero-legacy gate runs locally and in CI while implementation remains blocked through D9.
+Repository history and closed PRs preserve superseded implementation and operating-envelope evidence; they are not active Product authority.
