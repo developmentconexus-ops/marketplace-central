@@ -27,6 +27,7 @@ const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 const go = process.platform === 'win32' ? 'go.exe' : 'go';
 const HTTP_METHODS = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);
 const PROBLEM_PREFIX = 'https://conexus.fun/marketplace-central/problems/product/';
+const ALLOWED_EXTENSIONS = new Set(['x-mpc-operation-class', 'x-mpc-required-permission', 'x-mpc-principal-kinds', 'x-mpc-semantic-owner', 'x-mpc-required-physical-qualification']);
 
 function fail(message) { throw new Error(message); }
 function assert(condition, message) { if (!condition) fail(message); }
@@ -107,6 +108,21 @@ function component(document, kind, name) {
   assert(found, `bundled component not found: ${kind}.${name}`);
   return resolveRef(document, found[1]);
 }
+function generatedSchemaExpression(text, name, lane) {
+  const match = text.match(new RegExp(`${name}:\\s*([^;]+);`));
+  assert(match, `${lane} projection lacks ${name} schema expression`);
+  return match[1];
+}
+function generatedObjectBlock(text, name, lane) {
+  const match = text.match(new RegExp(`${name}:\\s*\\{([\\s\\S]*?)\\n\\s*\\};`));
+  assert(match, `${lane} projection lacks ${name} object`);
+  return match[1];
+}
+function generatedGoStruct(text, name) {
+  const match = text.match(new RegExp(`type ${name} struct \\{([\\s\\S]*?)\\n\\}`));
+  assert(match, `Go projection lacks ${name} struct`);
+  return match[1];
+}
 
 function parseW4(text) {
   const start = text.indexOf('# 8. Exact 95-operation enforcement matrix');
@@ -167,6 +183,13 @@ function validate(document) {
   assert(JSON.stringify(document.security) === JSON.stringify([{ MpcBearerAuth: [] }]), 'root security must be exactly MpcBearerAuth');
   const bearer = document.components?.securitySchemes?.MpcBearerAuth;
   assert(bearer?.type === 'http' && bearer?.scheme === 'bearer', 'MpcBearerAuth must be HTTP bearer');
+  assert(!Object.hasOwn(bearer ?? {}, 'bearerFormat'), 'Product bearer credential format is a D7 mechanism and must remain unspecified');
+
+  walk(document, (node) => {
+    for (const key of Object.keys(node)) {
+      if (key.startsWith('x-')) assert(ALLOWED_EXTENSIONS.has(key), `resolved Product OAD contains non-allowlisted extension ${key}`);
+    }
+  });
 
   const all = operations(document);
   const ids = all.map((entry) => entry.operation.operationId);
@@ -180,14 +203,13 @@ function validate(document) {
     assert(!path.startsWith('/v1'), `version prefix leaked into Product path: ${path}`);
   }
 
-  const allowedExtensions = new Set(['x-mpc-operation-class', 'x-mpc-required-permission', 'x-mpc-principal-kinds', 'x-mpc-semantic-owner', 'x-mpc-required-physical-qualification']);
   for (const entry of all) {
     const op = entry.operation;
     const expected = w4ById.get(op.operationId);
     assert(/^[A-Z][A-Za-z0-9]*$/.test(op.operationId), `operationId is not stable PascalCase: ${op.operationId}`);
     assert(!op.operationId.startsWith('AcquireMarketplace'), `internal acquisition operation leaked: ${op.operationId}`);
     for (const key of ['x-mpc-operation-class', 'x-mpc-required-permission', 'x-mpc-principal-kinds', 'x-mpc-semantic-owner']) assert(Object.hasOwn(op, key), `${op.operationId} missing ${key}`);
-    for (const key of Object.keys(op).filter((key) => key.startsWith('x-'))) assert(allowedExtensions.has(key), `${op.operationId} contains non-allowlisted extension ${key}`);
+    for (const key of Object.keys(op).filter((key) => key.startsWith('x-'))) assert(ALLOWED_EXTENSIONS.has(key), `${op.operationId} contains non-allowlisted extension ${key}`);
     assert(!Object.hasOwn(op, 'security'), `${op.operationId} overrides global Product security`);
     assert(!Object.hasOwn(op.responses ?? {}, '202'), `${op.operationId} introduces generic 202`);
     assert(op['x-mpc-operation-class'] === expected.operationClass, `${op.operationId} class mismatch`);
@@ -228,6 +250,20 @@ function validate(document) {
   }
   const decimal = component(document, 'schemas', 'ExactDecimalString');
   assert(decimal.type === 'string' && typeof decimal.pattern === 'string' && !decimal.pattern.toLowerCase().includes('e'), 'exact decimal grammar is not a non-exponent string');
+  const etag = component(document, 'schemas', 'StrongETag');
+  assert(etag.type === 'string' && typeof etag.pattern === 'string', 'StrongETag must be a patterned string');
+  const etagPattern = new RegExp(etag.pattern);
+  assert(etagPattern.test('"opaque-validator"') && !etagPattern.test('W/"weak"') && !etagPattern.test('opaque-validator'), 'StrongETag must admit only quoted non-weak entity tags');
+  const desiredKnown = component(document, 'schemas', 'DesiredQuantityKnown');
+  const desiredQuantity = resolveRef(document, desiredKnown.properties?.quantity);
+  const desiredQuantityPattern = new RegExp(desiredQuantity?.pattern ?? '');
+  assert(desiredQuantity?.type === 'string' && desiredQuantityPattern.test('0') && desiredQuantityPattern.test('1.25') && !desiredQuantityPattern.test('-1'), 'Availability desired quantity must remain an exact non-negative decimal string');
+  const assignment = component(document, 'schemas', 'WorkAssignment');
+  const assignmentBranches = (assignment.oneOf ?? []).map((branch) => resolveRef(document, branch));
+  const assignedBranch = assignmentBranches.find((branch) => branch.properties?.state?.const === 'assigned');
+  const unassignedBranch = assignmentBranches.find((branch) => branch.properties?.state?.const === 'unassigned');
+  assert(assignedBranch && (assignedBranch.required ?? []).includes('principal_id'), 'assigned WorkAssignment must require principal_id');
+  assert(unassignedBranch && !Object.hasOwn(unassignedBranch.properties ?? {}, 'principal_id'), 'unassigned WorkAssignment must not carry principal_id');
 
   const customProblemTypes = [];
   walk(document, (node) => {
@@ -273,6 +309,8 @@ function validate(document) {
   sameSet(Object.keys(mediaSchema?.properties ?? {}), ['file', 'etag'], 'CreateListingIntentMedia multipart parts');
   sameSet(mediaSchema?.required ?? [], ['file', 'etag'], 'CreateListingIntentMedia required multipart parts');
   assert(mediaContent?.encoding?.etag?.contentType === 'text/plain', 'CreateListingIntentMedia etag part must be text/plain');
+  const mediaResult = responseSchema(document, media);
+  assert(mediaResult?.properties?.listing_intent_etag && (mediaResult.required ?? []).includes('listing_intent_etag'), 'CreateListingIntentMedia result lacks current parent ListingIntent validator');
 
   const workOriginKinds = (component(document, 'schemas', 'WorkOrigin').oneOf ?? []).map((branch) => {
     const schema = resolveRef(document, branch);
@@ -295,6 +333,7 @@ function negativeSemanticControls(document) {
   expectFailure('fourth principal kind', () => { const candidate = clone(document); byId(operations(candidate), 'GetCurrentAccessContext').operation['x-mpc-principal-kinds'].push('X'); return candidate; });
   expectFailure('missing idempotency carrier', () => { const candidate = clone(document); const entry = byId(operations(candidate), 'CreateInventorySource'); entry.operation.parameters = (entry.operation.parameters ?? []).filter((raw) => resolveRef(candidate, raw)?.name !== 'Idempotency-Key'); return candidate; });
   expectFailure('wrong Product Problem origin', () => { const candidate = clone(document); component(candidate, 'schemas', 'AccessDeniedProblem').properties.type.const = 'https://example.invalid/problem'; return candidate; });
+  expectFailure('schema extension leakage', () => { const candidate = clone(document); component(candidate, 'schemas', 'Money')['x-enum-varnames'] = ['Money']; return candidate; });
 }
 
 function redoclyProof() {
@@ -328,6 +367,18 @@ function typescriptProof() {
   const generated = readFileSync(first, 'utf8');
   assert(generated.includes('This file was auto-generated by openapi-typescript'), 'TypeScript projection lacks generated banner');
   assert(generated.includes('GetCurrentAccessContext') && generated.includes('EscalateWork'), 'TypeScript projection lacks boundary operation IDs');
+  assert(/ExactDecimalString:\s*string;/.test(generated), 'TypeScript projection does not preserve ExactDecimalString as string');
+  const publication = generatedSchemaExpression(generated, 'PublicationValue', 'TypeScript');
+  for (const branch of ['PublicationTextValue', 'PublicationExactDecimalValue', 'PublicationBooleanValue', 'PublicationOptionValue', 'PublicationTextListValue', 'PublicationOptionListValue', 'PublicationNumberUnitValue', 'PublicationNotApplicableValue']) assert(publication.includes(`components["schemas"]["${branch}"]`), `TypeScript PublicationValue lost ${branch}`);
+  const desiredQuantity = generatedSchemaExpression(generated, 'DesiredQuantity', 'TypeScript');
+  for (const branch of ['DesiredQuantityKnown', 'DesiredQuantityUnknown', 'DesiredQuantityUnavailable']) assert(desiredQuantity.includes(`components["schemas"]["${branch}"]`), `TypeScript DesiredQuantity lost ${branch}`);
+  const mediaMultipart = generatedObjectBlock(generated, 'CreateListingIntentMediaMultipart', 'TypeScript');
+  assert(/\bfile:\s*[^;]+;/.test(mediaMultipart), 'TypeScript multipart projection lost file part');
+  assert(/etag:\s*components\["schemas"\]\["StrongETag"\];/.test(mediaMultipart), 'TypeScript multipart projection lost typed etag part');
+  assert(generated.includes('"multipart/form-data": components["schemas"]["CreateListingIntentMediaMultipart"];'), 'TypeScript operation projection does not reach CreateListingIntentMedia multipart schema');
+  const mediaResult = generatedObjectBlock(generated, 'CreateListingIntentMediaResult', 'TypeScript');
+  assert(/listing_intent_etag:\s*components\["schemas"\]\["StrongETag"\];/.test(mediaResult), 'TypeScript media result lost typed parent ListingIntent validator');
+  assert(generated.includes('"application/json": components["schemas"]["CreateListingIntentMediaResult"];'), 'TypeScript operation projection does not reach CreateListingIntentMedia result schema');
   run(npx, ['--yes', '-p', 'typescript@5.9.3', 'tsc', '--noEmit', '--strict', '--skipLibCheck', first]);
 }
 
@@ -356,6 +407,16 @@ function goProof(bundlePath) {
   assert(generated.includes('type StrictServerInterface interface'), 'Go projection lacks StrictServerInterface');
   assert(generated.includes('GetCurrentAccessContext') && generated.includes('EscalateWork'), 'Go projection lacks boundary operation IDs');
   assert(!/\"(os\/exec|unsafe|syscall)\"/.test(generated), 'Go projection contains forbidden high-risk import');
+  assert(/type ExactDecimalString\s+(?:=\s*)?string\b/.test(generated), 'Go projection does not preserve ExactDecimalString as string');
+  for (const branch of ['PublicationTextValue', 'PublicationExactDecimalValue', 'PublicationBooleanValue', 'PublicationOptionValue', 'PublicationTextListValue', 'PublicationOptionListValue', 'PublicationNumberUnitValue', 'PublicationNotApplicableValue']) assert(generated.includes(`As${branch}()`), `Go PublicationValue lost ${branch} union projection`);
+  for (const branch of ['DesiredQuantityKnown', 'DesiredQuantityUnknown', 'DesiredQuantityUnavailable']) assert(generated.includes(`As${branch}()`), `Go DesiredQuantity lost ${branch} knowledge-state projection`);
+  const mediaRequest = generatedGoStruct(generated, 'CreateListingIntentMediaRequestObject');
+  assert(/\bBody\s+\*multipart\.Reader\b/.test(mediaRequest), 'Go strict request projection must expose CreateListingIntentMedia multipart.Reader');
+  const goMediaMultipart = generatedGoStruct(generated, 'CreateListingIntentMediaMultipart');
+  assert(/`json:"file"`/.test(goMediaMultipart) && /`json:"etag"`/.test(goMediaMultipart), 'Go multipart model lost file or etag part');
+  assert(/type CreateListingIntentMedia200JSONResponse(?:\s*=\s*|\s+)CreateListingIntentMediaResult\b/.test(generated), 'Go operation response does not preserve CreateListingIntentMediaResult');
+  const goMediaResult = generatedGoStruct(generated, 'CreateListingIntentMediaResult');
+  assert(/\bStrongETag\s+`json:"listing_intent_etag"`/.test(goMediaResult), 'Go media result lost typed parent ListingIntent validator');
 
   writeFileSync(join(dir, 'go.mod'), ['module productoadproof', '', 'go 1.25.1', '', 'require github.com/oapi-codegen/runtime v1.7.0', ''].join('\n'));
   writeFileSync(join(dir, 'colon_suffix_test.go'), `package productapi\n\nimport (\n  \"net/http\"\n  \"net/http/httptest\"\n  \"testing\"\n)\n\ntype exactSuffixMux struct { method, path string; handler http.Handler }\nfunc (m exactSuffixMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {\n  if r.Method == m.method && r.URL.Path == m.path { m.handler.ServeHTTP(w, r); return }\n  http.NotFound(w, r)\n}\nfunc TestCanonicalColonSuffixDispatch(t *testing.T) {\n  called := false\n  mux := exactSuffixMux{method: http.MethodPost, path: \"/organizations/org/listing-intents/li:submit\", handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { called = true; w.WriteHeader(http.StatusNoContent) })}\n  res := httptest.NewRecorder()\n  mux.ServeHTTP(res, httptest.NewRequest(http.MethodPost, \"/organizations/org/listing-intents/li:submit\", nil))\n  if !called || res.Code != http.StatusNoContent { t.Fatalf(\"colon-suffix dispatch failed: called=%v status=%d\", called, res.Code) }\n}\n`);
@@ -375,6 +436,8 @@ function sourceTreeProof() {
   assert(!sourceTreeText.includes('x-go-'), 'forbidden x-go-* override leaked into Product source tree');
   assert(!sourceTreeText.includes('problems/technical/'), 'technical Problem namespace leaked into Product source tree');
   assert(!/(^|\n)\s*servers\s*:/m.test(sourceTreeText), 'servers leaked into Product source tree');
+  const sourceExtensions = [...sourceTreeText.matchAll(/(?:^|[\s,{])(x-[A-Za-z0-9_-]+)\s*:/gm)].map((match) => match[1]);
+  for (const key of sourceExtensions) assert(ALLOWED_EXTENSIONS.has(key), `Product source tree contains non-allowlisted extension ${key}`);
   const refs = [...sourceTreeText.matchAll(/\$ref:\s*['"]?([^'"}\s]+)['"]?/g)].map((match) => match[1]);
   assert(refs.length > 0, 'Product source tree contains no refs');
   assert(refs.every((ref) => ref.startsWith('./') || ref.startsWith('#/')), `remote/non-local Product source ref found: ${refs.find((ref) => !ref.startsWith('./') && !ref.startsWith('#/'))}`);
@@ -403,7 +466,8 @@ try {
   console.log('product_oad_stable_origin=https://conexus.fun');
   console.log(`product_oad_idempotency_carriers=${result.idempotencyOps.length}/14`);
   console.log(`product_oad_collection_operations=${result.listSearch.length}/26`);
-  console.log('product_oad_negative_controls=7/7');
+  console.log('product_oad_negative_controls=8/8');
+  console.log('product_oad_generated_projection_semantics=PASS');
   console.log('product_oad_legacy_runtime_population=0');
   console.log('product_oad_runtime_schema_enforcement=NOT_CLAIMED_D7');
   console.log('product_oad_router_selection=NONE_D7');
