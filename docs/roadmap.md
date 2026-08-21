@@ -12,7 +12,7 @@
 | Current stage | **D6 — Frontend — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D5 ACCEPTED / CLOSED** |
 | D6-discovered bounded amendment | **D6-R1 Marketplace Performance Intelligence — OPERATOR-APPROVED / EXECUTABLE OAD PROOF PASS** |
-| Exact next action | **D6-B1 — re-derive the interaction map and low-fidelity wireframes in Portuguese against the proved 99-operation / 30-Permission Product surface, including Strategy & Intelligence → Performance; then operator-review before frontend topology/dependency adjudication** |
+| Exact next action | **D6-B1 — operator-review/adjudicate the revised Portuguese 99-operation interaction map + low-fidelity wireframe proof; only if approved proceed to frontend topology/dependency adjudication** |
 | Canonical Product OAD candidate | `contracts/api/product/openapi.yaml` |
 | Product surface in current D6 candidate | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
@@ -79,7 +79,7 @@ The amendment is bounded; it is not permission to generally reopen D0–D5.
 - unknown/partial/unavailable/stale and accepted/pending/rejected/ambiguous remain honest;
 - Product/Technical Ingress separation remains binding.
 
-D6-R1 requires the Portuguese strategic group:
+D6-R1 refines the strategic group:
 
 ```text
 ESTRATÉGIA E INTELIGÊNCIA
@@ -90,6 +90,8 @@ ESTRATÉGIA E INTELIGÊNCIA
   Mercado
   Economia
 ```
+
+The revised [interaction map](engineering/rebaseline/D6-B1-INTERACTION-MAP.md) maps all 99 Product operations and the Portuguese [low-fidelity wireframe proof](../qualification/d6-wireframes/index.html) exercises the approved shell plus the strategic Performance workspace. Internal challenge against the interaction-map falsifiers found no additional Product/API prerequisite. These artifacts remain **candidate proof**, not D6-B1 ratification, until operator review.
 
 Performance requires an exact Marketplace Installation. Future multi-marketplace views may compose per-Installation results but may not add provider metrics as if their measurement bases were automatically equivalent.
 
