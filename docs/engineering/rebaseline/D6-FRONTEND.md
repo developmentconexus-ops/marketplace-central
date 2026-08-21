@@ -160,15 +160,57 @@ Before B1 ratification, the smallest proof package must be capable of falsifying
 
 Browser/component implementation evidence is not required to open or reason about D6 while Product implementation remains blocked. Claims that later depend on actual browser behavior require browser-level evidence at the stage where execution is authorized.
 
+## 3.9 First frontend coverage findings and bounded parent correction
+
+The first D0–D5 frontend-coverage pass deliberately attacked channel onboarding and global shell identity before screen-by-screen design.
+
+### Available channel versus connected Installation
+
+The intended UX architecture distinguishes:
+
+```text
+available channel kind
+  != connected Marketplace Installation/account
+  != current channel operational context
+  != low-frequency configuration/control
+```
+
+For Product 1.0 the currently admitted connectable marketplace kind remains **Mercado Livre only**. D5 already rejected a generic provider/integration catalog, so D6 does not reopen D4/D5 merely to imitate marketplace-hub catalogs or to advertise hypothetical Amazon/Shopee support.
+
+The frontend may expose a stable **Add channel** interaction architecture, but the set of connectable channel kinds must follow admitted Product/integration authority. It must not hardcode future providers as currently connectable. A future provider becomes visible as connectable only after its required D4/D5 support is explicitly admitted; this should extend the existing UX model rather than require a different information architecture.
+
+### Authorization ceremony
+
+Provider authorization is not a missing Product operation. The accepted D5 Technical Ingress authorization ceremony remains separate from the Product API: a current Product-authorized human may begin authorization for an exact existing Marketplace Installation, then provider callback/current-authority revalidation establishes or restores the bound credential generation. The frontend must not invent `ConnectMarketplace` Product semantics around that technical ceremony.
+
+### Presentation identity falsifier
+
+D6 found one real bounded read-completeness gap: already-admitted human interactions cannot reliably render Organization/access context when only opaque `organization_id`, `principal_id` and `role_key` values are guaranteed.
+
+The smallest repair is the operator-approved candidate [D2-R1 Presentation Identity](D2-R1-PRESENTATION-IDENTITY.md) plus a D5 wire correction on the existing reads. It adds required human-readable `display_name` metadata for the current Principal, accessible Organizations, Organization members and AccessRoles while preserving canonical ID/key authority.
+
+This repair:
+
+- creates no new Product operation;
+- creates no new ordinary Permission;
+- creates no new Principal kind;
+- does not make OIDC/profile/provider names canonical identity;
+- does not authorize frontend-local aliases to become Product truth;
+- does not reopen other D0–D5 semantics.
+
+The existing full Product OAD proof must remain green, including 95 operations, 29 ordinary Permissions, H/A/S Principal kinds and generated projection compatibility, before the final App Shell/IA decision consumes this correction.
+
 ---
 
 ## 4. Exact next D6 work
 
-Continue only inside D6-B1:
+Continue only inside D6-B1 and do not resume inherited screen-by-screen design:
 
-1. derive the smallest Product 1.0 screen/interaction inventory from accepted Product objectives and the canonical OAD;
-2. map each material interaction to its semantic owner, Product operation/query/capability and ordinary Permission;
-3. attack the mapping for duplicate authority, hidden screen-shaped API assumptions, dishonest knowledge states and unsafe consequential retries;
-4. only after the interaction model is coherent, evaluate the minimum frontend feature/package topology needed to realize it.
+1. prove the bounded D2-R1/D5 presentation-identity correction without changing the 95-operation / 29-Permission surface;
+2. finish the user mental model and Product information architecture from accepted Product capabilities;
+3. adjudicate the global App Shell: Organization context, primary navigation/grouping, channel context, subnavigation, permission-conditioned visibility, content region, contextual panels and responsive structural behavior;
+4. attack that shell/IA for hidden business authority, channel-as-super-domain mistakes and low-frequency configuration leakage into routine operations;
+5. only after App Shell / IA approval, derive user flows and screen inventory;
+6. only after those are coherent, produce low-fidelity HTML wireframes focused on layout, hierarchy, density, states and interaction rather than final visual design.
 
 Do not begin D7–D9 or Product implementation.
