@@ -24,6 +24,7 @@ Pre-standard current-status/read-order prose inside accepted D-stage, architectu
 | Domains, semantic owners, allowed ownership edges | [D1 Domains/Boundaries](engineering/rebaseline/D1-DOMAINS-BOUNDARIES.md) | implementation history |
 | Organization, Principal, identity, data ownership, knowledge/provenance | [D2 Identity/Tenant/Data Ownership](engineering/rebaseline/D2-IDENTITY-TENANT-DATA-OWNERSHIP.md) | provider/runtime details |
 | Human-readable Organization/Principal/AccessRole presentation identity | [D2-R1 Presentation Identity](engineering/rebaseline/D2-R1-PRESENTATION-IDENTITY.md) | profile/directory/runtime mechanics |
+| Marketplace Performance Intelligence bounded D0–D5 repair, historical performance evidence, retail-media read contract | [D6-R1 Marketplace Performance Intelligence](engineering/rebaseline/D6-R1-MARKETPLACE-PERFORMANCE-INTELLIGENCE.md) | D7 runtime/storage realization, Ads management, AI implementation |
 | Q/C/E/P, communication, events, recovery, projections | [D3 Communication/Events](engineering/rebaseline/D3-COMMUNICATION-EVENTS.md) | D4 provider detail |
 | Mercado Livre, Sankhya, provider boundaries/effects/reconciliation | [D4 External Integrations](engineering/rebaseline/D4-EXTERNAL-INTEGRATIONS.md) | old adapters/runtime |
 | Publication input, `ListingIntent`, readiness/source-following/override | [D4-R1 Publication Input](engineering/rebaseline/D4-R1-PUBLICATION-INPUT.md) | generic PIM assumptions |
@@ -62,6 +63,8 @@ Canonical Product OAD authoring is material and spans several accepted D5 homes.
 - [W4 Permission / Client-Class Enforcement](engineering/rebaseline/D5-B2-W4-PERMISSION-CLIENT-CLASS-ENFORCEMENT.md);
 - [Technical Ingress](engineering/rebaseline/D5-B2-TECHNICAL-INGRESS.md).
 
+For the D6-discovered Performance repair, start from [D6-R1 Marketplace Performance Intelligence](engineering/rebaseline/D6-R1-MARKETPLACE-PERFORMANCE-INTELLIGENCE.md) and switch to one D5 subpack only when the exact wire/proof question requires it. D6-R1 supersedes only its explicitly bounded 95→99 / 29→30 / 26→28 amendments; it does not generally reopen accepted D5.
+
 Switch subpacks as the concrete authoring question changes. Read D0–D4 only when the D5 package cannot answer a concrete contract question without reopening earlier semantics.
 
 ## D6 Frontend bounded subpacks
@@ -81,7 +84,7 @@ D6 must consume accepted Product/API authority without re-reading the full rebas
 - [D6 Frontend](engineering/rebaseline/D6-FRONTEND.md);
 - [`../contracts/api/product/openapi.yaml`](../contracts/api/product/openapi.yaml).
 
-Use D5 narrative documents only when the canonical OAD plus D6 authority cannot answer a concrete wire-semantic question. For the bounded human-readable Organization/Principal/AccessRole label rule, switch to D2-R1 rather than inventing frontend-local identity.
+Use D5 narrative documents only when the canonical OAD plus D6 authority cannot answer a concrete wire-semantic question. For the bounded human-readable Organization/Principal/AccessRole label rule, switch to D2-R1 rather than inventing frontend-local identity. For the strategy/performance workspace and repaired 99/30 Product surface, switch to D6-R1 rather than inventing frontend-local analytics.
 
 **Frontend dependency/topology research — replace the OAD/architecture owner with the derived research guide only when a concrete technology question exists:**
 
