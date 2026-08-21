@@ -162,14 +162,18 @@
         <div class="grid kpi">
           <div class="card"><div class="small">Visitas</div><div class="kpi-value">15.842</div><strong>+12,4%</strong><br><span class="state">Completo</span><span class="owner">Performance</span></div>
           <div class="card"><div class="small">Vendas</div><div class="kpi-value">428</div><strong>+4,1%</strong><br><span class="state">Completo</span><span class="owner">Performance · evidência de Vendas</span></div>
-          <div class="card"><div class="small">ROAS informado pelo marketplace</div><div class="kpi-value">6,37×</div><strong>+0,62×</strong><br><span class="state partial">Parcial</span><span class="owner">Performance</span></div>
+          <div class="card"><div class="small">ROAS informado pelo marketplace</div><div class="kpi-value">6,37×</div><strong>Sem delta confiável</strong><br><span class="state partial">Parcial</span><span class="state unknown">Evidência insuficiente</span><br><span class="owner">Performance</span></div>
           <div class="card"><div class="small">Margem realizada</div><div class="kpi-value">18,4%</div><strong>−1,8 p.p.</strong><br><span class="owner">Economia · leitura separada</span></div>
         </div>
         <div class="grid two" style="margin-top:12px">
-          <div class="card"><h2>O que mudou</h2><p>Visitas cresceram mais rápido que vendas.</p><p>A cobertura de mídia está <strong>parcial</strong> para 3 dias do período.</p><p>O Product marcou a comparação de ROAS como <strong>comparável</strong> apenas no período coberto.</p></div>
-          <div class="card"><h2>Sinais para investigar</h2><p><strong>Porcelanato A:</strong> visitas ↑, vendas ↓, preço comparável acima.</p><p><strong>Cuba B:</strong> ROAS alto e perda de impressão por orçamento.</p><p class="small">Sinais não afirmam causalidade e não recomendam execução automática.</p></div>
+          <div class="card"><h2>O que mudou com evidência comparável</h2><p>Visitas cresceram mais rápido que vendas.</p><p>A cobertura de mídia está <strong>parcial</strong> para 3 dias do período; por isso o Product não publica delta de ROAS como comparável.</p></div>
+          <div class="card"><h2>Composição para investigação</h2><p><strong>Porcelanato A:</strong> a tela coloca lado a lado visitas, vendas e posição de preço comparável.</p><p><strong>Cuba B:</strong> a tela coloca lado a lado ROAS e perda de impressão por orçamento.</p><p class="small">Composição somente leitura de Performance + Mercado + Economia, cada owner condicionado à sua Permission. Não existe <code>signals[]</code>, score, ranking ou recomendação automática no Product.</p></div>
         </div>
-        <div class="notice"><strong>Base de medição explícita</strong>ROAS/CVR do marketplace não são reconstruídos pelo navegador. Evidência histórica preservada mantém a autoridade original do marketplace.</div>
+        <div class="grid two" style="margin-top:12px">
+          <div class="card"><h3>Comparação bloqueada por cobertura</h3><span class="state unknown">Evidência insuficiente</span><p>ROAS: período atual ou comparativo não possui cobertura suficiente. O frontend mostra ausência de delta em vez de calcular no navegador.</p></div>
+          <div class="card"><h3>Comparação bloqueada por semântica</h3><span class="state warn">Não comparável</span><p>CTR: a base/revisão de medição mudou entre os períodos. Dois números existentes não são promovidos a uma tendência falsa.</p></div>
+        </div>
+        <div class="notice"><strong>Base de medição explícita</strong>ROAS/CVR do marketplace não são reconstruídos pelo navegador. Evidência histórica preservada mantém a autoridade original do marketplace; cobertura insuficiente ou base incompatível bloqueia a comparação.</div>
       </section>
 
       <section class="screen" data-screen="performance-listings">
@@ -205,7 +209,7 @@
         <p class="lead">Aqui a pergunta é competitiva: como nossa oferta se posiciona diante de ofertas comparáveis? Performance própria e economia continuam separadas.</p>
         <div class="grid three"><div class="card"><h3>Publicação analisada</h3><strong>MLB123 · Torneira alta</strong><br><span class="owner">Offering</span></div><div class="card"><h3>Posição de preço</h3><div class="kpi-value">+8,1%</div><span class="owner">Mercado</span></div><div class="card"><h3>Cobertura comparável</h3><div class="kpi-value">7 ofertas</div><span class="state partial">Parcial</span><br><span class="owner">Mercado</span></div></div>
         <table style="margin-top:12px"><thead><tr><th>Oferta comparável</th><th>Preço entregue</th><th>Evidência</th></tr></thead><tbody><tr><td>Comparável A</td><td>R$ 359,90</td><td><span class="state">Conhecida</span></td></tr><tr><td>Comparável B</td><td>R$ 369,00</td><td><span class="state">Conhecida</span></td></tr></tbody></table>
-        <div class="notice"><strong>Mercado não altera preço</strong>A decisão pode informar Economics/Offering, mas `market.read` não cria PriceIntent.</div>
+        <div class="notice"><strong>Mercado não altera preço</strong>A decisão pode informar Economics/Offering, mas <code>market.read</code> não cria PriceIntent.</div>
       </section>
 
       <section class="screen" data-screen="availability">
