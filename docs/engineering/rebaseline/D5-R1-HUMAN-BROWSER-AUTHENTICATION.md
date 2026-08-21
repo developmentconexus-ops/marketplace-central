@@ -1,6 +1,6 @@
 # D5-R1 — Human Browser Authentication Correction
 
-> **Status:** OPERATOR-APPROVED BOUNDED D5 CORRECTION — executable proof required in the current D6 candidate  
+> **Status:** OPERATOR-APPROVED BOUNDED D5 CORRECTION / EXECUTABLE PROOF PASS  
 > **Program:** Architecture Rebaseline / Technical System Design  
 > **Discovered during:** D6-B2 cross-repository review with MetalDocs  
 > **Parent authorities:** accepted D2 identity/access + accepted D5-B2 client/auth, W4 and OpenAPI wire authority  
@@ -164,12 +164,14 @@ OIDC login/callback/logout protocol endpoints remain Technical Non-Product ingre
 
 ## 6. Product invariants preserved
 
-The correction must mechanically preserve:
+Executable proof on the corrected current candidate establishes:
 
 ```text
-Product operations                  99
-ordinary Permissions                30
+Product operations                  99 / 99
+ordinary Permissions                30 / 30
 Principal kinds                     H / A / S only
+accepted D5 baseline                95 / 29 non-regression PASS
+pre-auth D6-R1 surface              99 / 30 non-regression PASS
 Performance operations              exact 4 Qs
 Performance Permission              performance.read
 Product stable origin               https://conexus.fun
@@ -177,21 +179,25 @@ Organization scoping                unchanged
 Idempotency / ETag grammar           unchanged
 Problem Details                     unchanged
 Technical Ingress separation        unchanged
+current TypeScript + Go projection   deterministic / compilable
+legacy runtime population            0
 Product implementation              BLOCKED UNTIL D9
 D7 runtime/deployment                NOT OPEN
 ```
 
-The accepted 95/29 D5 baseline and the pre-auth 99/30 D6-R1 surface remain executable historical non-regression fixtures. Current generated TypeScript/Go projections must also remain deterministic/compilable under the corrected security profile.
+The accepted 95/29 D5 baseline and the pre-auth 99/30 D6-R1 surface remain executable historical non-regression fixtures. Current generated TypeScript/Go projections also compile under the corrected security profile.
 
 ## 7. Negative controls
 
-The corrected proof must fail if any of these become reachable:
+The corrected proof fails if any of these become reachable:
 
 1. one universal `MpcBearerAuth` silently returns;
 2. the human session becomes browser-readable instead of HttpOnly;
 3. an unsafe human method escapes the required CSRF method set;
 4. H is admitted through the machine-bearer profile;
 5. OIDC access/refresh tokens become the normal browser Product credential again.
+
+Current result: **5 / 5 negative controls PASS**.
 
 These controls supplement, rather than replace, the accepted D5 and D6-R1 semantic/OAD negative controls.
 
@@ -211,6 +217,6 @@ D7 may not reopen the browser-token isolation property merely for implementation
 
 ## 9. Continuation law
 
-D6-B1 remains operator-ratified. D6-B2 may resume only after this bounded D5 correction is executable and the current 99/30 Product candidate is green again.
+D6-B1 remains operator-ratified. The bounded D5 correction is executable; D6-B2 may resume from the operator-approved Marketplace Central ↔ MetalDocs cross-repository adjudication.
 
 D7–D9 remain blocked. Product implementation remains blocked until D9.
