@@ -501,7 +501,7 @@ schemas:
     minProperties: 1
     properties:
       organic_units: {$ref: '#/schemas/CountChange'}
-      organic_sales_amount: {$ref: './components.yaml#/schemas/MoneyChange'}
+      organic_sales_amount: {$ref: '#/schemas/MoneyChange'}
   RetailMediaMeasureChanges:
     type: object
     additionalProperties: false
