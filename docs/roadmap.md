@@ -11,7 +11,7 @@
 | Product | **Marketplace Operations Control Plane + Commercial Intelligence** |
 | Current stage | **D6 — Frontend — OPEN / ACTIVE** |
 | Accepted through | **D0–D5**, including the canonical Product OpenAPI Description and executable proof |
-| Exact next action | **D6-B1 — produce and falsify the ten-state low-fidelity HTML wireframe proof set from the operator-approved App Shell/IA and the 95-operation interaction map** |
+| Exact next action | **D6-B1 — operator-review/adjudicate the 95-operation interaction map + ten-state low-fidelity HTML wireframe proof; only if approved proceed to frontend topology/dependency adjudication** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **95 Product operations · 29 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
@@ -90,9 +90,11 @@ Three bounded frontend-coverage findings have been adjudicated:
 
 1. **Available channels / authorization:** no generic Integration/Channel Catalog Product operation and no fake Product `ConnectMarketplace` capability. Product 1.0 remains Mercado Livre-only for current connectability; D5 Technical Ingress remains the provider authorization ceremony.
 2. **Presentation identity:** [D2-R1 Presentation Identity](engineering/rebaseline/D2-R1-PRESENTATION-IDENTITY.md) plus the bounded D5 wire correction provides non-authoritative human-readable labels while Organization/Principal/AccessRole IDs/keys remain canonical authority. The canonical OAD proof remains green at 95 operations / 29 Permissions / H-A-S.
-3. **SourceInstance discovery:** `SearchSourceProductsForMarketplace` now treats `source_instance_id` as an optional operation-local narrowing filter. Omission means bounded search across current Organization-scoped Readiness-admitted/configured SourceInstances and never ambient/default-source selection; every result remains source-qualified. Point readiness/requirements reads still require the exact SourceInstance selected from the search result. No Source Registry/Product operation is added, and the canonical OAD proof remains green.
+3. **SourceInstance discovery:** `SearchSourceProductsForMarketplace` treats `source_instance_id` as an optional operation-local narrowing filter. Omission means bounded search across current Organization-scoped Readiness-admitted/configured SourceInstances and never ambient/default-source selection; every result remains source-qualified. Point readiness/requirements reads still require the exact SourceInstance selected from the search result. No Source Registry/Product operation is added, and the canonical OAD proof remains green.
 
-D6-B1 is **not yet ratified**. The current next falsifier is the low-fidelity HTML wireframe proof set, which must demonstrate the approved IA and interaction laws without introducing unsupported actions or frontend authority.
+The low-fidelity proof now exists at `qualification/d6-wireframes/index.html`. It contains ten navigable grayscale/static wireframe states and passed the internal interaction-map negative-control challenge without exposing a new Product/API prerequisite. It is design evidence only, not Product/runtime/browser proof.
+
+D6-B1 is **not yet ratified**. The exact current gate is operator review of the interaction map and wireframes. Frontend topology/dependency selection begins only if that interaction model is approved.
 
 ## D6 blocked/deferred boundary
 
