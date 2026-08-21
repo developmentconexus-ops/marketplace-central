@@ -1,425 +1,308 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Marketplace Central — D6 Low-Fidelity Wireframes</title>
+  <title>Marketplace Central — D6 Wireframes</title>
   <style>
-    /* D6 low-fidelity wireframe only. Grayscale, system typography, no final brand/design-system choices. */
-    :root {
-      --bg: #f5f5f5;
-      --surface: #ffffff;
-      --surface-2: #fafafa;
-      --line: #d7d7d7;
-      --line-strong: #a8a8a8;
-      --text: #202020;
-      --muted: #666;
-      --soft: #ececec;
-      --dark: #343434;
-      --radius: 10px;
-      --shadow: 0 1px 2px rgba(0,0,0,.05);
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; }
-    button, input, select, textarea { font: inherit; }
-    button { cursor: pointer; }
-    .app { min-height: 100vh; display: grid; grid-template-columns: 238px minmax(0, 1fr); }
-    .sidebar { position: sticky; top: 0; height: 100vh; overflow: auto; background: var(--surface); border-right: 1px solid var(--line); padding: 18px 14px; }
-    .brand { padding: 3px 8px 18px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
-    .brand strong { display: block; font-size: 16px; }
-    .brand small { display: block; margin-top: 4px; color: var(--muted); }
-    .nav-group { margin: 16px 0 6px; padding: 0 8px; color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
-    .nav-btn { width: 100%; border: 0; background: transparent; color: var(--text); text-align: left; padding: 9px 10px; border-radius: 7px; margin: 2px 0; display: flex; align-items: center; gap: 8px; }
-    .nav-btn:hover, .nav-btn.active { background: var(--soft); }
-    .nav-btn.disabled { color: #aaa; cursor: default; }
-    .nav-dot { width: 8px; height: 8px; border: 1px solid var(--line-strong); border-radius: 50%; flex: none; }
-    .main { min-width: 0; }
-    .topbar { height: 62px; background: var(--surface); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; position: sticky; top: 0; z-index: 4; }
-    .org { display: flex; align-items: center; gap: 10px; }
-    .org-label { color: var(--muted); font-size: 12px; }
-    .context-pill, .chip, .status { border: 1px solid var(--line); background: var(--surface-2); border-radius: 999px; padding: 5px 9px; white-space: nowrap; }
-    .principal { display: flex; align-items: center; gap: 8px; color: var(--muted); }
-    .avatar { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line-strong); display: grid; place-items: center; background: var(--soft); color: var(--dark); font-size: 11px; }
-    .screen { display: none; }
-    .screen.active { display: block; }
-    .page { padding: 24px; max-width: 1500px; margin: 0 auto; }
-    .wire-label { display: inline-flex; gap: 8px; align-items: center; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
-    .wire-label::before { content: ""; width: 18px; border-top: 1px solid var(--line-strong); }
-    .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
-    .page-head h1 { font-size: 24px; line-height: 1.2; margin: 0 0 6px; font-weight: 650; }
-    .page-head p { margin: 0; color: var(--muted); max-width: 800px; }
-    .head-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    .btn { border: 1px solid var(--line-strong); background: var(--surface); padding: 8px 12px; border-radius: 7px; color: var(--text); }
-    .btn.primary { background: var(--dark); color: white; border-color: var(--dark); }
-    .btn.danger { border-style: dashed; }
-    .btn[disabled] { color: #aaa; border-color: var(--line); background: var(--surface-2); cursor: default; }
-    .contextbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 18px; box-shadow: var(--shadow); }
-    .contextbar strong { font-size: 12px; }
-    .field { display: flex; flex-direction: column; gap: 5px; min-width: 160px; }
-    .field label { font-size: 11px; color: var(--muted); }
-    .control { min-height: 36px; border: 1px solid var(--line-strong); background: var(--surface); border-radius: 7px; padding: 8px 10px; color: var(--text); }
-    input.control { width: 100%; }
-    .grid { display: grid; gap: 14px; }
-    .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-    .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); min-width: 0; }
-    .card-head { padding: 13px 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-    .card-head h2, .card-head h3 { margin: 0; font-size: 14px; }
-    .card-body { padding: 14px; }
-    .metric { font-size: 25px; font-weight: 650; margin: 4px 0; }
-    .muted { color: var(--muted); }
-    .tiny { font-size: 11px; color: var(--muted); }
-    .divider { border-top: 1px solid var(--line); margin: 14px 0; }
-    .table-wrap { overflow: auto; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border-bottom: 1px solid var(--line); text-align: left; padding: 10px 11px; vertical-align: top; }
-    th { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; background: var(--surface-2); }
-    tr:last-child td { border-bottom: 0; }
-    .row-link { font-weight: 600; }
-    .status { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 3px 7px; }
-    .status::before { content: ""; width: 7px; height: 7px; border: 1px solid currentColor; border-radius: 50%; }
-    .status.dark { background: var(--dark); color: white; border-color: var(--dark); }
-    .status.pattern { border-style: dashed; }
-    .banner { background: var(--surface); border: 1px dashed var(--line-strong); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 14px; display: flex; gap: 12px; align-items: flex-start; }
-    .banner strong { display: block; margin-bottom: 2px; }
-    .banner .symbol { width: 24px; height: 24px; border: 1px solid var(--line-strong); border-radius: 50%; display: grid; place-items: center; flex: none; }
-    .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 14px; overflow: auto; }
-    .tab { padding: 9px 11px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); white-space: nowrap; }
-    .tab.active { color: var(--text); border-bottom-color: var(--dark); }
-    .split { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(310px, .6fr); gap: 14px; align-items: start; }
-    .stack { display: grid; gap: 10px; }
-    .item { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 11px 12px; }
-    .item.selected { border-color: var(--dark); box-shadow: inset 3px 0 0 var(--dark); }
-    .item-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-    .item-title { font-weight: 650; }
-    .source-ref { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
-    .chip { font-size: 11px; padding: 3px 7px; }
-    .chip.dashed { border-style: dashed; }
-    .timeline { display: grid; gap: 0; }
-    .step { display: grid; grid-template-columns: 28px minmax(0,1fr); gap: 10px; position: relative; padding-bottom: 16px; }
-    .step:not(:last-child)::before { content: ""; position: absolute; left: 13px; top: 25px; bottom: 0; border-left: 1px solid var(--line-strong); }
-    .step-mark { width: 27px; height: 27px; border: 1px solid var(--line-strong); border-radius: 50%; display: grid; place-items: center; background: var(--surface); z-index: 1; font-size: 11px; }
-    .step.done .step-mark { background: var(--dark); color: white; }
-    .step-content strong { display: block; margin: 3px 0; }
-    .kv { display: grid; grid-template-columns: minmax(110px, .4fr) minmax(0, 1fr); gap: 8px 12px; }
-    .kv dt { color: var(--muted); }
-    .kv dd { margin: 0; overflow-wrap: anywhere; }
-    .list-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
-    .list-line:last-child { border-bottom: 0; }
-    .frame-note { margin-top: 22px; padding: 12px 14px; border: 1px dashed var(--line-strong); color: var(--muted); border-radius: var(--radius); background: var(--surface-2); }
-    .screen-picker { display: none; }
-    .two-col-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .placeholder { min-height: 88px; border: 1px dashed var(--line-strong); border-radius: 8px; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 12px; }
-    .callout-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
-    @media (max-width: 1100px) {
-      .app { grid-template-columns: 74px minmax(0, 1fr); }
-      .sidebar { padding: 14px 8px; }
-      .brand strong, .brand small, .nav-group, .nav-btn span { display: none; }
-      .nav-btn { justify-content: center; padding: 10px; }
-      .grid.cols-4 { grid-template-columns: repeat(2,minmax(0,1fr)); }
-      .split { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 760px) {
-      .app { display: block; }
-      .sidebar { display: none; }
-      .topbar { padding: 0 14px; }
-      .screen-picker { display: block; margin: 12px 14px 0; }
-      .page { padding: 14px; }
-      .page-head { flex-direction: column; }
-      .grid.cols-2, .grid.cols-3, .grid.cols-4, .two-col-form, .callout-grid { grid-template-columns: 1fr; }
-      .contextbar { align-items: stretch; }
-      .field { min-width: 100%; }
-      .principal span { display: none; }
-    }
+    :root { --bg:#f5f5f3; --panel:#fff; --ink:#171717; --muted:#666; --line:#cfcfca; --soft:#e9e9e5; --dark:#2b2b2b; }
+    * { box-sizing:border-box; }
+    body { margin:0; font:14px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:var(--bg); color:var(--ink); }
+    button,select,input { font:inherit; }
+    .app { min-height:100vh; display:grid; grid-template-columns:245px 1fr; }
+    aside { background:#ededeb; border-right:1px solid var(--line); padding:18px 14px; position:sticky; top:0; height:100vh; overflow:auto; }
+    .brand { font-weight:800; font-size:18px; padding:4px 8px 16px; }
+    .stage { font-size:11px; color:var(--muted); padding:0 8px 16px; }
+    .group { margin:15px 8px 5px; font-size:10px; font-weight:800; letter-spacing:.09em; color:#777; }
+    .nav { width:100%; text-align:left; border:0; background:transparent; padding:8px 10px; border-radius:6px; color:#333; cursor:pointer; }
+    .nav:hover,.nav.active { background:#d9d9d5; color:#000; }
+    .nav.sub { padding-left:26px; font-size:13px; }
+    main { min-width:0; }
+    header { min-height:62px; border-bottom:1px solid var(--line); background:var(--panel); display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 24px; position:sticky; top:0; z-index:3; }
+    .contexts { display:flex; gap:10px; flex-wrap:wrap; }
+    .context { border:1px solid var(--line); border-radius:6px; padding:7px 10px; background:#fafafa; }
+    .user { color:var(--muted); }
+    .content { padding:24px; max-width:1500px; margin:auto; }
+    .screen { display:none; }
+    .screen.active { display:block; }
+    .eyebrow { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.08em; }
+    h1 { margin:5px 0 4px; font-size:28px; }
+    h2 { font-size:17px; margin:0 0 12px; }
+    h3 { font-size:14px; margin:0 0 8px; }
+    .lead { margin:0 0 18px; color:var(--muted); max-width:900px; }
+    .toolbar { display:flex; justify-content:space-between; gap:12px; align-items:center; margin:16px 0; flex-wrap:wrap; }
+    .cluster { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .control,.btn { border:1px solid #aaa; background:#fff; border-radius:5px; padding:7px 10px; }
+    .btn { cursor:pointer; }
+    .btn.primary { background:var(--dark); color:#fff; border-color:var(--dark); }
+    .btn.danger { border-style:dashed; }
+    .btn[disabled] { color:#999; background:#eee; cursor:not-allowed; }
+    .grid { display:grid; gap:12px; }
+    .grid.kpi { grid-template-columns:repeat(4,minmax(0,1fr)); }
+    .grid.two { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .grid.three { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:7px; padding:15px; min-width:0; }
+    .kpi-value { font-size:25px; font-weight:750; margin:4px 0; }
+    .small { font-size:12px; color:var(--muted); }
+    .owner { display:inline-block; font-size:10px; font-weight:700; border:1px solid #aaa; padding:2px 5px; border-radius:9px; margin-top:5px; }
+    .state { display:inline-block; font-size:11px; border:1px solid #aaa; border-radius:10px; padding:2px 6px; white-space:nowrap; }
+    .state.partial { border-style:dashed; }
+    .state.unknown { background:#eee; }
+    .state.warn { border:2px double #777; }
+    .notice { background:#eee; border-left:4px solid #555; padding:10px 12px; margin:12px 0; }
+    .notice strong { display:block; margin-bottom:2px; }
+    table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); }
+    th,td { padding:9px 10px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top; }
+    th { background:#ececea; font-size:12px; }
+    tbody tr:hover { background:#f4f4f1; }
+    .row-select { cursor:pointer; }
+    code { font:12px ui-monospace,SFMono-Regular,Consolas,monospace; background:#ececea; padding:1px 4px; border-radius:3px; }
+    .tabs { display:flex; gap:4px; border-bottom:1px solid var(--line); margin:14px 0; }
+    .tab { padding:8px 12px; border:0; background:transparent; border-bottom:3px solid transparent; }
+    .tab.active { border-color:#222; font-weight:700; }
+    .split { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(300px,.7fr); gap:12px; }
+    .timeline { border-left:2px solid #aaa; padding-left:16px; margin-left:5px; }
+    .event { margin:0 0 15px; }
+    .event:before { content:""; width:8px; height:8px; background:#777; border-radius:50%; display:block; position:absolute; transform:translate(-21px,5px); }
+    .wire { min-height:80px; border:1px dashed #999; background:#f8f8f6; padding:12px; }
+    .bar { height:12px; background:#d7d7d3; border-radius:3px; margin:7px 0; }
+    .bar.w70 { width:70%; } .bar.w45 { width:45%; } .bar.w25 { width:25%; }
+    .formula { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; background:#eee; padding:10px; border:1px solid var(--line); }
+    .footer-note { margin-top:25px; font-size:11px; color:#777; border-top:1px solid var(--line); padding-top:10px; }
+    @media (max-width:1000px) { .app{grid-template-columns:78px 1fr;} aside{padding:12px 6px;} .brand{font-size:12px;padding:6px;} .stage,.group{display:none;} .nav{font-size:11px;padding:8px 5px;} .nav.sub{padding-left:10px;} .grid.kpi,.grid.three{grid-template-columns:repeat(2,1fr);} .split{grid-template-columns:1fr;} }
+    @media (max-width:680px) { .app{display:block;} aside{height:auto;position:static;border-right:0;border-bottom:1px solid var(--line);display:flex;gap:4px;overflow:auto;} .brand{min-width:120px;} .nav{min-width:110px;} header{position:static;padding:10px 14px;} .content{padding:15px;} .grid.kpi,.grid.two,.grid.three{grid-template-columns:1fr;} h1{font-size:23px;} }
   </style>
 </head>
 <body>
-  <div class="app">
-    <aside class="sidebar" aria-label="Wireframe primary navigation">
-      <div class="brand">
-        <strong>Marketplace Central</strong>
-        <small>D6 low-fidelity proof</small>
+<div class="app">
+  <aside aria-label="Navegação do protótipo">
+    <div class="brand">Marketplace Central</div>
+    <div class="stage">D6-B1 · wireframe low-fi · dados ilustrativos</div>
+    <button class="nav active" data-target="overview">Visão geral</button>
+    <div class="group">Operações</div>
+    <button class="nav" data-target="readiness">Preparação</button>
+    <button class="nav" data-target="listing">Publicações</button>
+    <button class="nav" data-target="availability">Disponibilidade</button>
+    <button class="nav" data-target="sale">Vendas</button>
+    <button class="nav" data-target="fulfillment">Expedição</button>
+    <div class="group">Estratégia e inteligência</div>
+    <button class="nav" data-target="performance-summary">Performance</button>
+    <button class="nav sub" data-target="performance-summary">Resumo</button>
+    <button class="nav sub" data-target="performance-listings">Publicações</button>
+    <button class="nav sub" data-target="performance-media">Mídia</button>
+    <button class="nav" data-target="economics">Economia</button>
+    <div class="group">Controle</div>
+    <button class="nav" data-target="work">Trabalho</button>
+    <button class="nav" data-target="access">Aprovações</button>
+    <div class="group">Configurações</div>
+    <button class="nav" data-target="channels">Canais</button>
+    <button class="nav" data-target="access">Acesso</button>
+  </aside>
+
+  <main>
+    <header>
+      <div class="contexts">
+        <div class="context"><span class="small">Organização</span><br><strong>Organização Exemplo</strong> ▾</div>
+        <div class="context" id="installation-context"><span class="small">Conta / canal</span><br><strong>Mercado Livre · Loja principal</strong> ▾</div>
       </div>
-      <button class="nav-btn active" data-screen-target="overview"><i class="nav-dot"></i><span>Overview</span></button>
-      <div class="nav-group">Operations</div>
-      <button class="nav-btn" data-screen-target="readiness"><i class="nav-dot"></i><span>Readiness</span></button>
-      <button class="nav-btn" data-screen-target="listing"><i class="nav-dot"></i><span>Listings</span></button>
-      <button class="nav-btn" data-screen-target="availability"><i class="nav-dot"></i><span>Availability</span></button>
-      <button class="nav-btn" data-screen-target="sale"><i class="nav-dot"></i><span>Sales</span></button>
-      <button class="nav-btn" data-screen-target="fulfillment"><i class="nav-dot"></i><span>Fulfillment</span></button>
-      <button class="nav-btn disabled" title="Represented contextually in Sale detail"><i class="nav-dot"></i><span>Post-sale</span></button>
-      <div class="nav-group">Intelligence</div>
-      <button class="nav-btn disabled" title="Represented contextually in Listing/Economics proof"><i class="nav-dot"></i><span>Market</span></button>
-      <button class="nav-btn" data-screen-target="economics"><i class="nav-dot"></i><span>Economics</span></button>
-      <div class="nav-group">Control</div>
-      <button class="nav-btn" data-screen-target="work"><i class="nav-dot"></i><span>Work</span></button>
-      <button class="nav-btn disabled" title="Decision history represented in governance/settings proof"><i class="nav-dot"></i><span>Approvals</span></button>
-      <div class="nav-group">Configuration</div>
-      <button class="nav-btn" data-screen-target="channels"><i class="nav-dot"></i><span>Settings · Channels</span></button>
-      <button class="nav-btn" data-screen-target="access"><i class="nav-dot"></i><span>Settings · Access</span></button>
-    </aside>
+      <div class="user">Usuário atual · <code>H</code></div>
+    </header>
 
-    <main class="main">
-      <header class="topbar">
-        <div class="org">
-          <span class="org-label">Organization</span>
-          <button class="btn">Metal Nobre Acabamentos ▾</button>
-          <span class="tiny">scope = organization_id; label is display only</span>
+    <div class="content">
+      <section class="screen active" data-screen="overview">
+        <div class="eyebrow">Visão geral · composição somente leitura</div>
+        <h1>Hoje no Marketplace Central</h1>
+        <p class="lead">Esta tela não possui API ou autoridade própria. Cada bloco vem de um owner e de uma Permission independente.</p>
+        <div class="grid kpi">
+          <div class="card"><div class="small">Contas conectadas</div><div class="kpi-value">1</div><span class="owner">Portfolio</span></div>
+          <div class="card"><div class="small">Economia realizada · 30 dias</div><div class="kpi-value">R$ 184 mil</div><span class="owner">Economia</span></div>
+          <div class="card"><div class="small">Trabalhos abertos desta consulta</div><div class="kpi-value">12 itens</div><span class="owner">Trabalho</span><div class="small">Não é total global inferido.</div></div>
+          <div class="card"><div class="small">Performance</div><div class="kpi-value">Abrir conta</div><span class="owner">Performance</span><div class="small">Resultados permanecem por Installation.</div></div>
         </div>
-        <div class="principal"><div class="avatar">LC</div><span>Leandro · Administrator ▾</span></div>
-      </header>
-
-      <div class="screen-picker">
-        <select id="mobilePicker" class="control" aria-label="Select wireframe state">
-          <option value="overview">01 · Shell + Overview</option>
-          <option value="readiness">02 · Readiness</option>
-          <option value="listing">03 · ListingIntent editor</option>
-          <option value="availability">04 · Availability</option>
-          <option value="sale">05 · Sale detail</option>
-          <option value="fulfillment">06 · Fulfillment execution</option>
-          <option value="work">07 · Work inbox/detail</option>
-          <option value="channels">08 · Channels settings</option>
-          <option value="economics">09 · Economics/reconciliation</option>
-          <option value="access">10 · Access/Governance settings</option>
-        </select>
-      </div>
-
-      <!-- 01 SHELL + OVERVIEW -->
-      <section class="screen active" id="screen-overview">
-        <div class="page">
-          <div class="wire-label">Wireframe 01 · read-only composition</div>
-          <div class="page-head">
-            <div><h1>Overview</h1><p>Organization-wide orientation. Each panel remains owned by its Product query; the page itself owns no business truth.</p></div>
-            <div class="head-actions"><button class="btn">Reload view</button></div>
-          </div>
-          <div class="banner"><div class="symbol">i</div><div><strong>No dashboard authority</strong><span class="muted">Illustrative content below uses existing owner reads only. Reloading the view is not a marketplace “sync now” command.</span></div></div>
-          <div class="grid cols-3">
-            <div class="card">
-              <div class="card-head"><h2>Marketplace accounts</h2><span class="tiny">portfolio.read</span></div>
-              <div class="card-body">
-                <div class="list-line"><div><strong>Mercado Livre · Loja Principal</strong><div class="tiny">MarketplaceInstallation · active</div></div><span class="status dark">bound</span></div>
-                <div class="list-line"><div><strong>Mercado Livre · Outlet</strong><div class="tiny">MarketplaceInstallation · active</div></div><span class="status pattern">authorization required</span></div>
-                <div class="tiny" style="margin-top:10px">Source: ListMarketplaceInstallations. No provider account becomes Organization identity.</div>
-              </div>
-            </div>
-            <div class="card">
-              <div class="card-head"><h2>Economic performance</h2><span class="tiny">economics.read</span></div>
-              <div class="card-body">
-                <div class="tiny">Illustrative selected period</div><div class="metric">R$ —</div>
-                <div class="muted">Current Product summary is shown only when the owner can establish it for the selected period.</div>
-                <div class="divider"></div><span class="status pattern">partial evidence example</span>
-              </div>
-            </div>
-            <div class="card">
-              <div class="card-head"><h2>Open work preview</h2><span class="tiny">work.read</span></div>
-              <div class="card-body">
-                <div class="list-line"><span>Listing evidence unavailable</span><span class="chip">unassigned</span></div>
-                <div class="list-line"><span>Sale attribution unresolved</span><span class="chip">assigned</span></div>
-                <div class="tiny" style="margin-top:10px">This is a first-page preview, not an authoritative global count.</div>
-              </div>
-            </div>
-          </div>
-          <div class="frame-note">Falsifier shown: permission-conditioned panels can disappear, but server authorization remains authoritative. No card derives a write, retry, count or cross-owner status.</div>
-        </div>
+        <div class="notice"><strong>Sem “dashboard authority”</strong>Visão geral compõe leituras existentes; não existe <code>/dashboard</code>, contagem escondida nem KPI cross-provider inventado.</div>
       </section>
 
-      <!-- 02 READINESS -->
-      <section class="screen" id="screen-readiness">
-        <div class="page">
-          <div class="wire-label">Wireframe 02 · exact channel + source-qualified product</div>
-          <div class="page-head"><div><h1>Product readiness</h1><p>Find an authoritative source Product for one exact marketplace account, then inspect linkage and requirements.</p></div><div class="head-actions"><button class="btn" disabled>Create product</button></div></div>
-          <div class="contextbar"><strong>Marketplace account</strong><select class="control"><option>Mercado Livre · Loja Principal</option></select><span class="tiny">exact MarketplaceInstallation required</span></div>
-          <div class="split">
-            <div class="card">
-              <div class="card-head"><h2>Search source products</h2><span class="tiny">readiness.read</span></div>
-              <div class="card-body">
-                <div class="grid cols-2">
-                  <div class="field" style="grid-column:1/-1"><label>Search</label><input class="control" value="porcelanato 90x90" /></div>
-                </div>
-                <div class="tiny" style="margin:8px 0 12px">No hidden SourceInstance default. Omitted source filter means bounded multi-source search; every result keeps its source identity.</div>
-                <div class="stack">
-                  <div class="item selected"><div class="item-top"><div><div class="item-title">Porcelanato Cement 90x90</div><div class="muted">SKU 12345</div></div><span class="status dark">known</span></div><div class="source-ref"><span class="chip">Source: Sankhya Produção</span><span class="chip">source_instance_id: …A7</span><span class="chip">native_product_key: 12345</span></div></div>
-                  <div class="item"><div class="item-top"><div><div class="item-title">Porcelanato Cement 90x90 — secondary source</div><div class="muted">SKU 7712</div></div><span class="status pattern">partial</span></div><div class="source-ref"><span class="chip">Source: Sankhya Sandbox</span><span class="chip">source_instance_id: …T2</span></div></div>
-                  <div class="item"><div class="item-top"><div><div class="item-title">Source temporarily unavailable</div><div class="muted">Do not render as “no products found”.</div></div><span class="status pattern">unavailable</span></div></div>
-                </div>
-              </div>
-            </div>
-            <div class="stack">
-              <div class="card"><div class="card-head"><h2>Readiness</h2><span class="tiny">GetProductChannelReadiness</span></div><div class="card-body"><dl class="kv"><dt>Source product</dt><dd>Sankhya Produção / 12345</dd><dt>Correspondence</dt><dd><span class="status pattern">unresolved</span></dd><dt>Readiness</dt><dd><span class="status pattern">blocked</span></dd><dt>Evaluated</dt><dd>owner time · illustrative</dd></dl><div class="divider"></div><div class="head-actions"><button class="btn primary">Resolve correspondence</button><button class="btn">Clear</button></div><div class="tiny" style="margin-top:8px">Actions require readiness.manage + current correspondence etag.</div></div></div>
-              <div class="card"><div class="card-head"><h2>Publication requirements</h2><span class="tiny">readiness.read</span></div><div class="card-body"><div class="list-line"><span>Title</span><span class="status dark">known</span></div><div class="list-line"><span>Brand</span><span class="status pattern">unknown</span></div><div class="list-line"><span>Media</span><span class="status pattern">unavailable</span></div></div></div>
-            </div>
-          </div>
-          <div class="frame-note">Forbidden UX demonstrated: no Product master CRUD, no Source Registry requirement, no “sync products”, and no default SourceInstance hidden in React.</div>
-        </div>
+      <section class="screen" data-screen="readiness">
+        <div class="eyebrow">Operações · Preparação · Installation exata</div>
+        <h1>Preparar produto para o canal</h1>
+        <p class="lead">A busca não exige uma fonte pré-selecionada. Cada resultado continua explicitamente qualificado por SourceInstance.</p>
+        <div class="toolbar"><input class="control" value="torneira monocomando" aria-label="Busca ilustrativa"><button class="btn primary">Buscar</button></div>
+        <table><thead><tr><th>Produto da fonte</th><th>Origem canônica</th><th>Preparação</th><th>Ação</th></tr></thead><tbody>
+          <tr><td>Torneira monocomando alta</td><td><code>SANKHYA-PROD · 42664</code></td><td><span class="state">Pronto</span></td><td><button class="btn">Abrir</button></td></tr>
+          <tr><td>Cuba inox 50 cm</td><td><code>SANKHYA-PROD · 15723</code></td><td><span class="state partial">Parcial</span><div class="small">Falta correspondência de categoria.</div></td><td><button class="btn">Resolver</button></td></tr>
+        </tbody></table>
+        <div class="notice"><strong>Fonte omitida ≠ fonte default</strong>O frontend nunca escolhe “a primeira fonte”. A API retorna evidência source-qualified.</div>
       </section>
 
-      <!-- 03 LISTING INTENT -->
-      <section class="screen" id="screen-listing">
-        <div class="page">
-          <div class="wire-label">Wireframe 03 · owner boundaries inside one authoring flow</div>
-          <div class="page-head"><div><h1>Listing draft</h1><p>Representation authoring stays Offering-owned. Price, Availability and Economics are adjacent but remain independent authorities.</p></div><div class="head-actions"><button class="btn danger">Discard draft</button><button class="btn primary">Submit listing intent</button></div></div>
-          <div class="banner"><div class="symbol">!</div><div><strong>Current revision required</strong><span class="muted">Illustrative etag “rev-42”. A stale conflict reloads current owner state; the UI never silently overwrites.</span></div></div>
-          <div class="tabs"><button class="tab active">Listing content</button><button class="tab">Requirements</button><button class="tab">Media</button><button class="tab">History</button></div>
-          <div class="grid cols-2">
-            <div class="card"><div class="card-head"><h2>Representation</h2><span class="tiny">Offering · listing.manage</span></div><div class="card-body"><div class="field"><label>Title resolution</label><select class="control"><option>FOLLOW_SOURCE</option><option>EXPLICIT_OVERRIDE</option></select></div><div class="field" style="margin-top:10px"><label>Desired lifecycle</label><select class="control"><option>active</option><option>paused</option><option>closed</option></select></div><div class="placeholder" style="margin-top:12px">Requirement-resolution rows / authored media ordering</div></div></div>
-            <div class="stack">
-              <div class="card"><div class="card-head"><h2>Price</h2><span class="tiny">separate PriceIntent · price.manage</span></div><div class="card-body"><div class="item-top"><div><strong>R$ 229,90</strong><div class="tiny">pending PriceIntent PI-…</div></div><button class="btn">Create new price intent</button></div><div class="tiny" style="margin-top:8px">Price is never a ListingIntent field.</div></div></div>
-              <div class="card"><div class="card-head"><h2>Availability</h2><span class="tiny">Availability · read only here</span></div><div class="card-body"><dl class="kv"><dt>Desired</dt><dd>12</dd><dt>Provider</dt><dd><span class="status pattern">unknown</span></dd><dt>Convergence</dt><dd><span class="status pattern">pending</span></dd></dl><div class="tiny" style="margin-top:8px">No “set quantity” control.</div></div></div>
-              <div class="card"><div class="card-head"><h2>Economics scenario</h2><span class="tiny">economics.read</span></div><div class="card-body"><div class="two-col-form"><div class="field"><label>Scenario price</label><input class="control" value="229.90" /></div><div class="field"><label>Result</label><div class="control">insufficient evidence</div></div></div><button class="btn" style="margin-top:10px">Evaluate scenario</button></div></div>
-            </div>
+      <section class="screen" data-screen="listing">
+        <div class="eyebrow">Operações · Publicações</div>
+        <h1>Intenção de publicação</h1>
+        <p class="lead">ListingIntent, PriceIntent, Disponibilidade e Economia aparecem juntos no fluxo, mas continuam authorities distintos.</p>
+        <div class="tabs"><button class="tab active">Operação</button><button class="tab" data-jump="performance-listings">Performance</button></div>
+        <div class="split">
+          <div class="card">
+            <h2>Representação desejada</h2>
+            <label>Título<br><input class="control" style="width:100%" value="Torneira Monocomando Alta Cromada"></label><br><br>
+            <label>Categoria<br><select class="control"><option>Metais para cozinha</option></select></label>
+            <div class="wire" style="margin-top:12px">Mídia da intenção · ordem/seleção ilustrativa</div>
+            <div class="small" style="margin-top:8px">Revisão atual: <code>etag-listing-17</code></div>
           </div>
-          <div class="grid cols-3" style="margin-top:14px"><div class="card"><div class="card-body"><span class="tiny">Submission</span><div><span class="status dark">accepted</span></div></div></div><div class="card"><div class="card-body"><span class="tiny">External effect</span><div><span class="status pattern">ambiguous example</span></div></div></div><div class="card"><div class="card-body"><span class="tiny">Convergence</span><div><span class="status pattern">pending</span></div></div></div></div>
-          <div class="frame-note">When an external effect is ambiguous, the wireframe deliberately offers no generic “Retry publish” button. Reconciliation/current owner state controls the next action.</div>
+          <div class="grid">
+            <div class="card"><h3>Preço</h3><strong>R$ 389,90</strong><br><span class="owner">PriceIntent · Offering</span><p class="small">Não é campo do ListingIntent.</p></div>
+            <div class="card"><h3>Disponibilidade</h3><strong>24 un.</strong><br><span class="owner">Availability</span></div>
+            <div class="card"><h3>Economia esperada</h3><strong>Margem 21,4%</strong><br><span class="owner">Economia</span></div>
+          </div>
         </div>
+        <div class="toolbar"><div class="small">Submission aceita não significa aplicada/convergida.</div><button class="btn primary">Submeter intenção</button></div>
       </section>
 
-      <!-- 04 AVAILABILITY -->
-      <section class="screen" id="screen-availability">
-        <div class="page">
-          <div class="wire-label">Wireframe 04 · all-or-exact channel read</div>
-          <div class="page-head"><div><h1>Availability</h1><p>Observe owner-derived sellable quantity and provider evidence. Configuration lives in Settings.</p></div><div class="head-actions"><button class="btn">Inventory sources</button><button class="btn">Allocation policy</button></div></div>
-          <div class="contextbar"><strong>Marketplace account</strong><select class="control"><option>All accounts</option><option>Mercado Livre · Loja Principal</option></select><span class="tiny">ListSellableAvailability admits optional Installation scope</span></div>
-          <div class="card"><div class="table-wrap"><table><thead><tr><th>Subject</th><th>Account</th><th>Desired</th><th>Provider evidence</th><th>Convergence</th><th>Evaluated</th></tr></thead><tbody>
-            <tr><td><span class="row-link">Listing MLB…01</span></td><td>Loja Principal</td><td>12</td><td>12 · observed</td><td><span class="status dark">converged</span></td><td>10:32 source/owner time</td></tr>
-            <tr><td><span class="row-link">Draft LI-…22</span></td><td>Loja Principal</td><td>8</td><td><span class="status pattern">unavailable</span></td><td><span class="status pattern">unknown</span></td><td>—</td></tr>
-            <tr><td><span class="row-link">Listing MLB…73</span></td><td>Outlet</td><td><span class="status pattern">unknown</span></td><td>4 · observed</td><td><span class="status pattern">divergent</span></td><td>09:48 source/owner time</td></tr>
-          </tbody></table></div></div>
-          <div class="banner" style="margin-top:14px"><div class="symbol">×</div><div><strong>No manual quantity mutation</strong><span class="muted">Product 1.0 has no public SetAvailableQuantity/SyncAvailability operation. Normal synchronization is owner/runtime behavior, not a React command.</span></div></div>
+      <section class="screen" data-screen="performance-summary">
+        <div class="eyebrow">Estratégia e inteligência · Performance · Resumo</div>
+        <h1>Performance da conta</h1>
+        <p class="lead">Uma Installation exata, período explícito e comparação semanticamente validada pelo Product. Dados abaixo são apenas exemplos de layout.</p>
+        <div class="toolbar">
+          <div class="cluster"><button class="btn">Últimos 30 dias ▾</button><span class="small">01/07–31/07 × 01/06–30/06</span></div>
+          <span class="state">Conta exata</span>
         </div>
+        <div class="grid kpi">
+          <div class="card"><div class="small">Visitas</div><div class="kpi-value">15.842</div><strong>+12,4%</strong><br><span class="state">Completo</span><span class="owner">Performance</span></div>
+          <div class="card"><div class="small">Vendas</div><div class="kpi-value">428</div><strong>+4,1%</strong><br><span class="state">Completo</span><span class="owner">Performance / Sales evidence</span></div>
+          <div class="card"><div class="small">ROAS informado pelo provider</div><div class="kpi-value">6,37×</div><strong>+0,62×</strong><br><span class="state partial">Parcial</span><span class="owner">Performance</span></div>
+          <div class="card"><div class="small">Margem realizada</div><div class="kpi-value">18,4%</div><strong>−1,8 p.p.</strong><br><span class="owner">Economia · leitura separada</span></div>
+        </div>
+        <div class="grid two" style="margin-top:12px">
+          <div class="card"><h2>O que mudou</h2><p>Visitas cresceram mais rápido que vendas.</p><p>A cobertura de mídia está <strong>parcial</strong> para 3 dias do período.</p><p>O Product marcou a comparação de ROAS como <strong>comparável</strong> apenas no período coberto.</p></div>
+          <div class="card"><h2>Sinais para investigar</h2><p><strong>Porcelanato A:</strong> visitas ↑, vendas ↓, preço comparável acima.</p><p><strong>Cuba B:</strong> ROAS alto e perda de impressão por orçamento.</p><p class="small">Sinais não afirmam causalidade e não recomendam execução automática.</p></div>
+        </div>
+        <div class="notice"><strong>Measurement basis explícito</strong>ROAS/CVR do provider não são reconstruídos pelo navegador. Evidência histórica preservada mantém a autoridade original do marketplace.</div>
       </section>
 
-      <!-- 05 SALE DETAIL -->
-      <section class="screen" id="screen-sale">
-        <div class="page">
-          <div class="wire-label">Wireframe 05 · read-only cross-owner lifecycle composition</div>
-          <div class="page-head"><div><h1>Sale #2000012345</h1><p>Source-qualified sale under Mercado Livre · Loja Principal. Tabs compose owners but never create a global workflow write authority.</p></div><div class="head-actions"><span class="chip">Installation …ML1</span><span class="chip">native_sale_key 2000012345</span></div></div>
-          <div class="tabs"><button class="tab active">Sale</button><button class="tab">Economics</button><button class="tab">ERP order</button><button class="tab">Fulfillment</button><button class="tab">Post-sale</button></div>
-          <div class="grid cols-3">
-            <div class="card"><div class="card-head"><h2>Marketplace Sale</h2><span class="tiny">MarketplaceSales</span></div><div class="card-body"><dl class="kv"><dt>Observed lifecycle</dt><dd>paid</dd><dt>Selling entity</dt><dd><span class="status pattern">unresolved</span></dd><dt>Observed at</dt><dd>source time</dd></dl><button class="btn" style="margin-top:12px">Resolve selling entity</button></div></div>
-            <div class="card"><div class="card-head"><h2>Economics</h2><span class="tiny">CommercialEconomics</span></div><div class="card-body"><dl class="kv"><dt>Conclusion</dt><dd><span class="status pattern">insufficient evidence</span></dd><dt>Settlement</dt><dd>unknown</dd></dl><div class="tiny" style="margin-top:10px">No Sale-owned profitability calculation.</div></div></div>
-            <div class="card"><div class="card-head"><h2>Materialization</h2><span class="tiny">BusinessSystemMaterialization</span></div><div class="card-body"><dl class="kv"><dt>BusinessOrderIntent</dt><dd>BOI-…</dd><dt>Party resolution</dt><dd><span class="status pattern">requires resolution</span></dd><dt>Destination</dt><dd>known</dd><dt>Invoicing</dt><dd>pending</dd></dl><button class="btn" style="margin-top:12px">Resolve party</button></div></div>
+      <section class="screen" data-screen="performance-listings">
+        <div class="eyebrow">Estratégia e inteligência · Performance · Publicações</div>
+        <h1>Performance por publicação</h1>
+        <p class="lead">Todas as Listings conhecidas continuam na população, inclusive quando a evidência de Performance é desconhecida ou indisponível.</p>
+        <div class="split">
+          <div>
+            <table><thead><tr><th>Publicação</th><th>Visitas</th><th>Vendas</th><th>ROAS</th><th>Cobertura</th></tr></thead><tbody>
+              <tr class="row-select"><td>Torneira alta<br><code>MLB123</code></td><td>4.820<br><span class="small">+22%</span></td><td>146<br><span class="small">−9%</span></td><td>5,8×</td><td><span class="state">Completo</span></td></tr>
+              <tr class="row-select"><td>Cuba inox<br><code>MLB456</code></td><td>3.111</td><td>129</td><td>11,4×</td><td><span class="state partial">Parcial</span></td></tr>
+              <tr class="row-select"><td>Porcelanato 90×90<br><code>MLB789</code></td><td>—</td><td>—</td><td>—</td><td><span class="state unknown">Indisponível</span><br><span class="small">histórico não recuperável</span></td></tr>
+            </tbody></table>
           </div>
-          <div class="grid cols-2" style="margin-top:14px">
-            <div class="card"><div class="card-head"><h2>Fulfillment</h2><span class="tiny">Fulfillment</span></div><div class="card-body"><div class="list-line"><span>Execution FE-…</span><span class="status pattern">waiting conference</span></div><div class="list-line"><span>Shipment</span><span class="muted">not yet observed</span></div></div></div>
-            <div class="card"><div class="card-head"><h2>Post-sale</h2><span class="tiny">PostSaleResolution</span></div><div class="card-body"><div class="muted">No active resolution.</div><button class="btn" style="margin-top:12px">Create scoped resolution</button></div></div>
-          </div>
-          <div class="frame-note">Forbidden: client-computed “overall stage” may be displayed only as non-authoritative orientation and cannot authorize invoicing, fulfillment, retry, closure or post-sale effects.</div>
-        </div>
-      </section>
-
-      <!-- 06 FULFILLMENT -->
-      <section class="screen" id="screen-fulfillment">
-        <div class="page">
-          <div class="wire-label">Wireframe 06 · physical evidence + revision/idempotency</div>
-          <div class="page-head"><div><h1>Fulfillment execution FE-…72</h1><p>Physical checkpoints are owner capabilities, not writable status fields.</p></div><div class="head-actions"><span class="chip">current etag “ful-19”</span></div></div>
-          <div class="banner"><div class="symbol">!</div><div><strong>Stalled: provider handoff prerequisite unavailable</strong><span class="muted">Unavailable is not complete/false. The exception remains visible while authoritative evidence is recovered.</span></div></div>
-          <div class="split">
-            <div class="card"><div class="card-head"><h2>Execution checkpoints</h2><span class="tiny">fulfillment.execute</span></div><div class="card-body"><div class="timeline">
-              <div class="step done"><div class="step-mark">✓</div><div class="step-content"><strong>Separation</strong><span class="muted">Recorded by human Principal · owner time</span></div></div>
-              <div class="step"><div class="step-mark">2</div><div class="step-content"><strong>Physical conference</strong><span class="muted">Requires H or currently-qualified S. Caller-controlled device claims are ignored.</span><div style="margin-top:8px"><button class="btn primary">Record conference</button></div></div></div>
-              <div class="step"><div class="step-mark">3</div><div class="step-content"><strong>Packing</strong><span class="muted">Blocked until owner prerequisites are satisfied.</span><div style="margin-top:8px"><button class="btn" disabled>Record packing</button></div></div></div>
-              <div class="step"><div class="step-mark">4</div><div class="step-content"><strong>Dispatch handoff</strong><span class="muted">Requires H or currently-qualified S.</span><div style="margin-top:8px"><button class="btn" disabled>Record handoff</button></div></div></div>
-            </div></div></div>
-            <div class="stack">
-              <div class="card"><div class="card-head"><h2>Artifacts</h2><span class="tiny">fulfillment.execute read</span></div><div class="card-body"><div class="list-line"><span>Shipping label</span><button class="btn">Open</button></div><div class="list-line"><span>Handoff document</span><button class="btn">Open</button></div><div class="tiny" style="margin-top:8px">Artifact visibility is intentionally not widened to fulfillment.read.</div></div></div>
-              <div class="card"><div class="card-head"><h2>Retry safety</h2></div><div class="card-body"><div class="tiny">Checkpoint actions preserve the same Idempotency-Key on a lost-response retry of the same semantic intake. A changed action/revision gets a new key.</div></div></div>
-              <div class="card"><div class="card-head"><h2>Related Work</h2></div><div class="card-body"><a href="#" class="row-link">Provider prerequisite unavailable → Work W-…</a><div class="tiny" style="margin-top:8px">Work can coordinate responsibility; it does not declare the Fulfillment condition resolved.</div></div></div>
-            </div>
+          <div class="card">
+            <div class="eyebrow">Publicação selecionada</div><h2>Torneira alta</h2><code>Mercado Livre · MLB123</code>
+            <hr><p><strong>Visitas:</strong> 4.820</p><p><strong>Vendas:</strong> 146</p><p><strong>Mídia atribuível ao Listing:</strong> ROAS 5,8×</p>
+            <div class="notice"><strong>Performance ≠ Listing owner</strong>Configuração e lifecycle continuam em Offering.</div>
+            <button class="btn" data-jump="listing">Abrir operação da publicação</button>
           </div>
         </div>
       </section>
 
-      <!-- 07 WORK -->
-      <section class="screen" id="screen-work">
-        <div class="page">
-          <div class="wire-label">Wireframe 07 · Work lifecycle without source-truth capture</div>
-          <div class="page-head"><div><h1>Operational Work</h1><p>Responsibility, assignment and escalation only. Source owners still decide whether the underlying condition is resolved.</p></div><div class="head-actions"><button class="btn" disabled>Create task</button><button class="btn" disabled>Close work</button></div></div>
-          <div class="contextbar"><div class="field"><label>Lifecycle</label><select class="control"><option>open</option><option>on_hold</option><option>closed</option></select></div><div class="field"><label>Assignment</label><select class="control"><option>all</option><option>assigned</option><option>unassigned</option></select></div><div class="field"><label>Origin</label><select class="control"><option>all origins</option><option>listing_intent</option><option>marketplace_sale</option><option>fulfillment_execution</option></select></div></div>
-          <div class="split">
-            <div class="card"><div class="table-wrap"><table><thead><tr><th>Work</th><th>Origin</th><th>Responsibility</th><th>Assignment</th><th>State</th></tr></thead><tbody>
-              <tr><td><span class="row-link">Provider evidence unavailable</span></td><td>fulfillment_execution</td><td>Dispatch operator</td><td>Leandro</td><td><span class="status dark">open</span></td></tr>
-              <tr><td><span class="row-link">Sale attribution unresolved</span></td><td>marketplace_sale</td><td>Marketplace ops</td><td>unassigned</td><td><span class="status dark">open</span></td></tr>
-              <tr><td><span class="row-link">Listing divergence</span></td><td>listing_intent</td><td>Marketplace ops</td><td>Ana</td><td><span class="status pattern">on hold</span></td></tr>
-            </tbody></table></div></div>
-            <div class="card"><div class="card-head"><h2>Work detail</h2><span class="chip">W-…301</span></div><div class="card-body"><dl class="kv"><dt>Source condition</dt><dd>Fulfillment execution FE-…72</dd><dt>Responsibility</dt><dd>Dispatch operator</dd><dt>Assigned</dt><dd>Leandro</dd><dt>State</dt><dd>open</dd><dt>Evidence</dt><dd>Provider prerequisite unavailable</dd></dl><div class="divider"></div><div class="head-actions"><button class="btn">Clear assignment</button><button class="btn">Hold</button><button class="btn">Escalate</button></div><div class="banner" style="margin:14px 0 0"><div class="symbol">i</div><div><strong>No direct close</strong><span class="muted">Closing Work alone cannot make the originating Fulfillment condition true.</span></div></div></div></div>
-          </div>
+      <section class="screen" data-screen="performance-media">
+        <div class="eyebrow">Estratégia e inteligência · Performance · Mídia</div>
+        <h1>Performance de mídia</h1>
+        <p class="lead">Somente análise. Scopes do marketplace continuam explícitos e não são forçados a uma Listing.</p>
+        <div class="notice"><strong>Não é Ads Manager</strong>Não existem controles para criar campanha, mudar orçamento/bid, pausar, segmentar ou otimizar automaticamente.</div>
+        <table><thead><tr><th>Scope</th><th>Identidade provider</th><th>Impressões</th><th>Cliques / CTR</th><th>Gasto</th><th>ROAS</th><th>Base</th></tr></thead><tbody>
+          <tr><td><span class="state">Campanha</span><br>Performance Geral</td><td><code>CAMP-001</code></td><td>184.200</td><td>3.980 · 2,16%</td><td>R$ 4.900</td><td>6,37×</td><td>provider_reported<br><span class="small">atribuição definida pelo provider</span></td></tr>
+          <tr><td><span class="state">Listing</span><br>Cuba inox</td><td><code>MLB456</code></td><td>22.480</td><td>780 · 3,47%</td><td>R$ 660</td><td>11,4×</td><td>provider_reported</td></tr>
+          <tr><td><span class="state">Family</span><br>Família torneiras</td><td><code>FAM-77</code></td><td>61.020</td><td>1.040 · 1,70%</td><td>R$ 1.240</td><td>5,1×</td><td>provider_reported<br><strong>não atribuir a uma única Listing</strong></td></tr>
+          <tr><td><span class="state">Catalog group</span></td><td><code>CAT-42</code></td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="state unknown">Configuração necessária</span></td></tr>
+        </tbody></table>
+      </section>
+
+      <section class="screen" data-screen="availability">
+        <div class="eyebrow">Operações · Disponibilidade</div>
+        <h1>Disponibilidade vendável</h1>
+        <p class="lead">Estado desejado, evidência do provider e convergência continuam distintos. Não há botão “definir quantidade”.</p>
+        <table><thead><tr><th>Target</th><th>Valor efetivo</th><th>Origem</th><th>Provider</th><th>Conhecimento</th></tr></thead><tbody>
+          <tr><td>MLB123</td><td>24</td><td>Regra + fonte de estoque</td><td>24</td><td><span class="state">Convergido</span></td></tr>
+          <tr><td>MLB456</td><td>8</td><td>Regra + fonte de estoque</td><td>—</td><td><span class="state unknown">Indisponível</span></td></tr>
+        </tbody></table>
+        <div class="toolbar"><span class="small">Configuração fica em Configurações / Disponibilidade.</span><button class="btn" disabled>Definir quantidade — não existe</button></div>
+      </section>
+
+      <section class="screen" data-screen="sale">
+        <div class="eyebrow">Operações · Vendas · detalhe composto</div>
+        <h1>Venda ML-200184</h1><p class="lead">A tela agrega contexto, mas cada ação permanece no owner correspondente.</p>
+        <div class="grid three">
+          <div class="card"><h3>Venda</h3><p>Pagamento aprovado</p><span class="owner">Sales</span></div>
+          <div class="card"><h3>Pedido ERP</h3><p>Materializado · Sankhya 98122</p><span class="owner">Materialization</span></div>
+          <div class="card"><h3>Economia</h3><p>Margem realizada 17,9%</p><span class="owner">Economia</span></div>
+          <div class="card"><h3>Expedição</h3><p>Aguardando conferência física</p><button class="btn" data-jump="fulfillment">Abrir execução</button><br><span class="owner">Fulfillment</span></div>
+          <div class="card"><h3>Pós-venda</h3><p>Nenhuma resolução aberta</p><span class="owner">PostSale</span></div>
+          <div class="card"><h3>Destino</h3><p>Evidência conhecida</p><span class="owner">Materialization</span></div>
+        </div>
+        <div class="notice"><strong>Não existe workflow owner desta tela</strong>Nenhum botão cria pedido/fatura diretamente no Sankhya e nenhum retry genérico de efeito externo é oferecido.</div>
+      </section>
+
+      <section class="screen" data-screen="fulfillment">
+        <div class="eyebrow">Operações · Expedição</div>
+        <h1>Execução de expedição #FE-1029</h1>
+        <div class="split">
+          <div class="card"><h2>Checkpoints físicos</h2><div class="timeline">
+            <div class="event"><strong>Separação</strong><br><span class="small">Registrada por Principal H · 09:42</span></div>
+            <div class="event"><strong>Conferência física</strong><br><span class="state warn">Pendente</span></div>
+            <div class="event"><strong>Embalagem</strong><br><span class="small">Aguardando conferência.</span></div>
+            <div class="event"><strong>Handoff de despacho</strong><br><span class="small">Ainda não elegível.</span></div>
+          </div></div>
+          <div class="card"><h2>Ação atual</h2><p>O servidor revalida Permission, Principal kind, qualificação física e revisão.</p><button class="btn primary">Registrar conferência</button><p class="small">Idempotency-Key + ETag preservados para retry seguro da mesma intake.</p></div>
         </div>
       </section>
 
-      <!-- 08 CHANNELS -->
-      <section class="screen" id="screen-channels">
-        <div class="page">
-          <div class="wire-label">Wireframe 08 · available kind ≠ connected Installation</div>
-          <div class="page-head"><div><h1>Settings · Channels</h1><p>Low-frequency marketplace participation and authorization setup stays outside routine operations.</p></div><div class="head-actions"><button class="btn primary">Add channel</button></div></div>
-          <div class="grid cols-2">
-            <div class="card"><div class="card-head"><h2>Connected accounts</h2><span class="tiny">Marketplace Portfolio</span></div><div class="card-body">
-              <div class="item selected"><div class="item-top"><div><div class="item-title">Mercado Livre · Loja Principal</div><div class="muted">active MarketplaceInstallation</div></div><span class="status dark">bound</span></div><div class="source-ref"><span class="chip">eligible entity: Metal Nobre</span></div></div>
-              <div class="item" style="margin-top:10px"><div class="item-top"><div><div class="item-title">Mercado Livre · Outlet</div><div class="muted">active MarketplaceInstallation</div></div><span class="status pattern">authorization required</span></div><div style="margin-top:10px"><button class="btn">Authorize account</button></div><div class="tiny" style="margin-top:6px">This starts D5 Technical Ingress OAuth for the exact Installation; it is not a Product ConnectMarketplace mutation.</div></div>
-            </div></div>
-            <div class="card"><div class="card-head"><h2>Add channel</h2><span class="tiny">currently admitted kinds</span></div><div class="card-body"><div class="item"><div class="item-top"><div><div class="item-title">Mercado Livre</div><div class="muted">Supported for Product 1.0</div></div><button class="btn primary">Add</button></div></div><div class="divider"></div><div class="placeholder">No Amazon / Shopee “coming soon” cards. Future providers appear here only after their responsible architecture/API support is admitted.</div></div></div>
-          </div>
-          <div class="card" style="margin-top:14px"><div class="card-head"><h2>Selected Installation configuration</h2><span class="tiny">current ETag required for update</span></div><div class="card-body"><div class="two-col-form"><div class="field"><label>Display name</label><input class="control" value="Mercado Livre · Loja Principal" /></div><div class="field"><label>Eligible Selling Entity</label><select class="control"><option>Metal Nobre Acabamentos</option></select></div></div><div class="head-actions" style="margin-top:12px"><button class="btn">Save configuration</button><button class="btn danger">Deactivate Installation</button><button class="btn" disabled>Reactivate</button></div><div class="tiny" style="margin-top:8px">Explicit reactivation remains deferred; no UI is invented by symmetry.</div></div></div>
+      <section class="screen" data-screen="work">
+        <div class="eyebrow">Controle · Trabalho</div>
+        <h1>Trabalho operacional</h1><p class="lead">Work coordena responsabilidade; não substitui a verdade do domínio que originou a obrigação.</p>
+        <table><thead><tr><th>Origem</th><th>Descrição</th><th>Responsabilidade</th><th>Estado</th><th>Ação Work</th></tr></thead><tbody>
+          <tr><td>readiness</td><td>Correspondência ambígua em produto 42664</td><td>Marketplace Ops</td><td>Aberto</td><td><button class="btn">Atribuir</button></td></tr>
+          <tr><td>economic_attribution</td><td>Movimento sem atribuição suficiente</td><td>Comercial</td><td>Em espera</td><td><button class="btn">Retomar</button></td></tr>
+        </tbody></table>
+        <div class="toolbar"><span class="small">A resolução real acontece no owner de origem.</span><button class="btn" disabled>Fechar trabalho — não existe</button></div>
+      </section>
+
+      <section class="screen" data-screen="channels">
+        <div class="eyebrow">Configurações · Canais</div>
+        <h1>Canais e contas</h1>
+        <div class="toolbar"><p class="lead">Mercado Livre é o único marketplace atualmente admitido como conectável.</p><button class="btn primary">Adicionar Mercado Livre</button></div>
+        <div class="card"><div class="split"><div><h2>Mercado Livre · Loja principal</h2><p><span class="state">Ativa</span> <span class="state">OAuth vinculado</span></p><code>installation: MI-001</code></div><div><h3>Performance de mídia</h3><p><span class="state partial">Namespace não configurado</span></p><button class="btn">Configurar leitura de mídia</button><p class="small">Cerimônia técnica sob <code>portfolio.manage</code>; advertiser_id não vira identidade Product.</p></div></div></div>
+        <div class="notice"><strong>Sem catálogo especulativo</strong>Amazon e Shopee não aparecem nem como “em breve” enquanto não houver autoridade D4/D5 correspondente.</div>
+      </section>
+
+      <section class="screen" data-screen="economics">
+        <div class="eyebrow">Estratégia e inteligência · Economia</div>
+        <h1>Economia e reconciliação</h1><p class="lead">Performance de mídia pode ser evidência; significado de custo, margem e lucro continua exclusivamente em Commercial Economics.</p>
+        <div class="grid three"><div class="card"><h3>Economia esperada</h3><div class="kpi-value">21,4%</div><span class="owner">Economia</span></div><div class="card"><h3>Economia realizada</h3><div class="kpi-value">18,4%</div><span class="owner">Economia</span></div><div class="card"><h3>Atribuições pendentes</h3><div class="kpi-value">4</div><span class="owner">Economia</span></div></div>
+        <table style="margin-top:12px"><thead><tr><th>Evidência</th><th>Interpretação</th><th>Estado</th><th>Ação</th></tr></thead><tbody><tr><td>Fee marketplace #MOV-91</td><td>Taxa de venda · Venda ML-200184</td><td>Exata</td><td>—</td></tr><tr><td>Movimento #MOV-96</td><td>Sem correlação suficiente</td><td><span class="state partial">Ambígua</span></td><td><button class="btn">Resolver atribuição</button></td></tr></tbody></table>
+      </section>
+
+      <section class="screen" data-screen="access">
+        <div class="eyebrow">Configurações · Acesso / Controle · Aprovações</div>
+        <h1>Acesso e autorização são coisas diferentes</h1>
+        <div class="grid two">
+          <div class="card"><h2>Membro: Analista de Performance</h2><p>Permissions:</p><p><code>performance.read</code><br><code>market.read</code><br><code>economics.read</code><br><code>offering.read</code></p><p class="small">Sem price.manage, listing.manage ou governance.decide.</p><button class="btn">Atribuir papel</button></div>
+          <div class="card"><h2>Aprovação pendente</h2><p>PriceIntent PI-22 acima do limite de política.</p><p><span class="state">Aguardando decisão</span></p><button class="btn primary">Registrar decisão</button><p class="small">Governance autoriza; não executa PriceIntent e não concede price.manage.</p></div>
         </div>
       </section>
 
-      <!-- 09 ECONOMICS -->
-      <section class="screen" id="screen-economics">
-        <div class="page">
-          <div class="wire-label">Wireframe 09 · expected ≠ realized ≠ attribution</div>
-          <div class="page-head"><div><h1>Economics</h1><p>Analysis, realized evidence and reconciliation stay distinguishable. Scenario evaluation is stateless and does not write price.</p></div></div>
-          <div class="contextbar"><strong>Marketplace account</strong><select class="control"><option>All accounts</option><option>Mercado Livre · Loja Principal</option></select><span class="tiny">where supported by the selected Economics query</span></div>
-          <div class="tabs"><button class="tab active">Expected</button><button class="tab">Realized</button><button class="tab">Reconciliation</button></div>
-          <div class="grid cols-3">
-            <div class="card"><div class="card-head"><h2>Expected Economics</h2></div><div class="card-body"><div class="list-line"><span>Listing MLB…01</span><span class="status dark">acceptable</span></div><div class="list-line"><span>Draft LI-…22</span><span class="status pattern">insufficient evidence</span></div><div class="tiny" style="margin-top:8px">Conclusions remain owner-derived.</div></div></div>
-            <div class="card"><div class="card-head"><h2>Price scenario</h2><span class="tiny">side-effect-free</span></div><div class="card-body"><div class="field"><label>Scenario price</label><input class="control" value="239.90" /></div><button class="btn" style="margin-top:10px">Evaluate</button><div class="divider"></div><div class="muted">Evaluation output does not become PriceIntent until the user explicitly invokes Offering's CreatePriceIntent.</div></div></div>
-            <div class="card"><div class="card-head"><h2>Attribution requiring review</h2></div><div class="card-body"><div class="item"><div class="item-top"><div><div class="item-title">Settlement movement …88</div><div class="muted">attribution state: ambiguous</div></div><span class="status pattern">ambiguous</span></div><div style="margin-top:10px"><button class="btn">Resolve attribution</button></div></div></div></div>
-          </div>
-          <div class="banner" style="margin-top:14px"><div class="symbol">i</div><div><strong>Provenance remains visible</strong><span class="muted">Observed/configured/modeled/derived evidence is not flattened into one generic “fee” or “profit” field.</span></div></div>
-        </div>
-      </section>
-
-      <!-- 10 ACCESS / GOVERNANCE -->
-      <section class="screen" id="screen-access">
-        <div class="page">
-          <div class="wire-label">Wireframe 10 · presentation identity + bounded governance</div>
-          <div class="page-head"><div><h1>Settings · Access & Governance</h1><p>Human-readable labels improve operability but never replace Principal/Organization/role keys. Governance remains separate from ordinary access.</p></div></div>
-          <div class="tabs"><button class="tab active">Members</button><button class="tab">Access roles</button><button class="tab">Authorization delegations</button><button class="tab">Decision history</button></div>
-          <div class="grid cols-2">
-            <div class="card"><div class="card-head"><h2>Organization members</h2><span class="tiny">access.read</span></div><div class="table-wrap"><table><thead><tr><th>Person</th><th>Principal kind</th><th>Roles</th><th></th></tr></thead><tbody>
-              <tr><td><strong>Leandro Andrade</strong><div class="tiny">principal_id: …A1</div></td><td>human</td><td>Administrator</td><td><button class="btn">Manage roles</button></td></tr>
-              <tr><td><strong>Ana Silva</strong><div class="tiny">principal_id: …F2</div></td><td>human</td><td>Marketplace Operator</td><td><button class="btn">Manage roles</button></td></tr>
-            </tbody></table></div><div class="card-body"><div class="tiny">Two equal display names would still remain distinct by principal_id. No email invitation baseline.</div></div></div>
-            <div class="card"><div class="card-head"><h2>Standing authorization delegations</h2><span class="tiny">governance.manage · human only</span></div><div class="card-body"><div class="item"><div class="item-top"><div><div class="item-title">Commercial manager → price action class</div><div class="muted">scope snapshot / current standing authority</div></div><button class="btn">Edit</button></div></div><div class="head-actions" style="margin-top:10px"><button class="btn">Establish delegation</button><button class="btn danger">Revoke</button></div><div class="tiny" style="margin-top:8px">Delegation does not grant target-domain price.manage or execute the target action.</div></div></div>
-          </div>
-          <div class="grid cols-2" style="margin-top:14px">
-            <div class="card"><div class="card-head"><h2>Access roles</h2></div><div class="card-body"><div class="list-line"><div><strong>Marketplace Operator</strong><div class="tiny">role_key: marketplace_operator</div></div><span class="chip">product-defined</span></div><div class="list-line"><div><strong>Fulfillment Operator</strong><div class="tiny">role_key: fulfillment_operator</div></div><span class="chip">product-defined</span></div><button class="btn" disabled style="margin-top:10px">Create custom role</button></div></div>
-            <div class="card"><div class="card-head"><h2>Authorization decisions</h2><span class="tiny">history / contextual decisions</span></div><div class="card-body"><div class="list-line"><span>PriceIntent PI-…88</span><span class="status dark">approved</span></div><div class="list-line"><span>ListingIntent LI-…44</span><span class="status pattern">rejected</span></div><div class="tiny" style="margin-top:8px">New decisions originate from an exact target/revision context; this history does not become a generic approval workflow engine.</div></div></div>
-          </div>
-          <div class="frame-note">Disabled examples are deliberate negative controls: no custom-role designer, no invitation workflow, no IdP-role business authority, and no Governance shortcut around target-domain Permissions.</div>
-        </div>
-      </section>
-
-    </main>
-  </div>
-
-  <script>
-    // Wireframe navigation only. No Product data, auth, router, cache or runtime behavior is implemented here.
-    const buttons = [...document.querySelectorAll('[data-screen-target]')];
-    const screens = [...document.querySelectorAll('.screen')];
-    const picker = document.getElementById('mobilePicker');
-
-    function showScreen(name) {
-      screens.forEach((screen) => screen.classList.toggle('active', screen.id === `screen-${name}`));
-      buttons.forEach((button) => button.classList.toggle('active', button.dataset.screenTarget === name));
-      if (picker) picker.value = name;
-      window.scrollTo({ top: 0, behavior: 'instant' });
-    }
-
-    buttons.forEach((button) => {
-      if (!button.classList.contains('disabled')) button.addEventListener('click', () => showScreen(button.dataset.screenTarget));
-    });
-    if (picker) picker.addEventListener('change', (event) => showScreen(event.target.value));
-  </script>
+      <div class="footer-note">Qualification artifact D6-B1 · Dados, IDs e valores são ilustrativos. Este HTML não prova runtime, integração, persistência, provider behavior ou design visual final. Product implementation continua bloqueada até D9.</div>
+    </div>
+  </main>
+</div>
+<script>
+  const screens = [...document.querySelectorAll('[data-screen]')];
+  const nav = [...document.querySelectorAll('[data-target]')];
+  function show(id) {
+    if (!screens.some(s => s.dataset.screen === id)) id = 'overview';
+    screens.forEach(s => s.classList.toggle('active', s.dataset.screen === id));
+    nav.forEach(n => n.classList.toggle('active', n.dataset.target === id));
+    const exact = ['readiness','listing','performance-summary','performance-listings','performance-media','sale','channels'].includes(id);
+    document.getElementById('installation-context').style.opacity = exact ? '1' : '.68';
+    history.replaceState(null, '', '#' + id);
+    window.scrollTo({top:0, behavior:'instant'});
+  }
+  nav.forEach(n => n.addEventListener('click', () => show(n.dataset.target)));
+  document.querySelectorAll('[data-jump]').forEach(n => n.addEventListener('click', () => show(n.dataset.jump)));
+  show(location.hash.slice(1) || 'overview');
+</script>
 </body>
 </html>
