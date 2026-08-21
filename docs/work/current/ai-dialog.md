@@ -1,11 +1,12 @@
 # D6-R1 Marketplace Performance Intelligence — Independent Fable Review
 
-> Review branch only: `review/d6-fable`
+> Review branch only: `review/d6r1-fable`
+> Review PR: #56 — `docs(d6): independent Fable performance intelligence review`
 > Candidate branch: `stage/d6-frontend`
-> Candidate HEAD at handoff: `43bd8b2b9d126931ac488a11ebc311ef0f12b0eb`
+> Candidate HEAD at handoff: `48abb857791769e21971a9049af3d9fc943617f5`
 > Candidate PR: #54 — `docs(d6): open frontend authority stage`
 > Base `main` at handoff: `9d2c81e175bc39ac388c9d8924ddad21f2a86480`
-> Current Product candidate: 99 Product operations / 30 ordinary Permissions / Principal kinds H-A-S only
+> Product candidate: 99 Product operations / 30 ordinary Permissions / Principal kinds H-A-S only
 > Active runtime baseline: NONE
 > D7–D9: BLOCKED
 > Product implementation: BLOCKED UNTIL D9
@@ -16,7 +17,7 @@ This is a **material independent architecture / Product-contract / frontend-cohe
 
 Do **not** optimize for agreement with GPT, the operator, prior chat reasoning, CodeRabbit, prior Fable reviews, or the current candidate. Reconstruct the reasoning independently from repository authority, executable evidence, current primary external evidence and the canonical DevelopmentConexus Method.
 
-Reviewer output is **Evidence, not authority**. Do not change the candidate branch. Write only below `## Fable response` in this file on `review/d6-fable`.
+Reviewer output is **Evidence, not authority**. Do not change the candidate branch. Write only below `## Fable response` in this file on `review/d6r1-fable`.
 
 Before analysis, revalidate:
 
@@ -24,9 +25,11 @@ Before analysis, revalidate:
 2. `stage/d6-frontend` exact HEAD;
 3. PR #54 base/head/state/changed files;
 4. CI on the exact candidate;
-5. that this review branch differs from the candidate by **only** `docs/work/current/ai-dialog.md`.
+5. PR #56 and that this review branch differs from the exact candidate by **only** `docs/work/current/ai-dialog.md`.
 
-If the candidate moved from the SHA above, stop reviewing the stale SHA and record the new exact candidate SHA first.
+If the candidate moved from `48abb857791769e21971a9049af3d9fc943617f5`, stop reviewing the stale SHA and record the new exact candidate SHA first.
+
+The bounded candidate change from the previously proved `43bd8b2...` to `48abb857...` is **repository review infrastructure only**: `scripts/gate.ps1` restores the already-ratified `review/*` isolation property after PR #55 exposed that it had been lost. It does not alter Product/Performance semantics.
 
 ## Reading discipline
 
@@ -38,16 +41,14 @@ Start strictly:
 4. `docs/engineering/rebaseline/D6-R1-MARKETPLACE-PERFORMANCE-INTELLIGENCE.md`
 5. `ARCHITECTURE.md`
 
-Then switch **bounded packs** as concrete questions require them. Do not recursively ingest the entire rebaseline at once.
-
-Recommended review sequence:
+Then switch bounded packs as concrete questions require them. Do not recursively ingest the whole rebaseline at once.
 
 ### Product / boundary pack
 
 - `docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md`
 - `docs/engineering/rebaseline/D1-DOMAINS-BOUNDARIES.md`
 
-### Identity / historical-evidence / communication pack
+### Identity / historical evidence / communication pack
 
 - `docs/engineering/rebaseline/D2-IDENTITY-TENANT-DATA-OWNERSHIP.md`
 - `docs/engineering/rebaseline/D3-COMMUNICATION-EVENTS.md`
@@ -55,15 +56,17 @@ Recommended review sequence:
 ### External evidence pack
 
 - `docs/engineering/rebaseline/D4-EXTERNAL-INTEGRATIONS.md`
-- only the concrete current provider evidence needed to adjudicate Mercado Livre Visits / Product Ads / advertiser binding / retention / attribution / contractual admissibility
+- only concrete current provider evidence needed to adjudicate Mercado Livre Visits / Product Ads / advertiser binding / retention / attribution / contractual admissibility
 
 ### Product API pack
 
-- canonical `contracts/api/product/openapi.yaml`
+- `contracts/api/product/openapi.yaml`
 - `contracts/api/product/paths-access-performance.yaml`
 - `contracts/api/product/paths-performance.yaml`
-- switch to D5 W1/W2/W3/W4 narrative authority only if the OAD cannot answer a concrete semantic question
-- inspect `scripts/verify-product-oad.mjs`, `scripts/verify-product-oad-baseline.mjs` and `scripts/gate.ps1` when challenging proof quality
+- D5 W1/W2/W3/W4 narrative authority only when a concrete OAD question requires it
+- `scripts/verify-product-oad.mjs`
+- `scripts/verify-product-oad-baseline.mjs`
+- `scripts/gate.ps1`
 
 ### Frontend-consumption pack
 
@@ -71,23 +74,23 @@ Recommended review sequence:
 - `docs/engineering/rebaseline/D6-B1-INTERACTION-MAP.md`
 - `qualification/d6-wireframes/index.html`
 
-For method / evidence discipline use:
+For method/evidence discipline use:
 
-- `docs/development/evidence-grounded-production-engineering-for-llm-agents.md` (derived, non-authoritative);
-- canonical `developmentconexus-ops/conexus-methodology/METHOD.md`;
-- canonical `developmentconexus-ops/conexus-methodology/REPOSITORY-STANDARD.md`.
+- `docs/development/evidence-grounded-production-engineering-for-llm-agents.md` — derived, non-authoritative;
+- `developmentconexus-ops/conexus-methodology/METHOD.md` — canonical;
+- `developmentconexus-ops/conexus-methodology/REPOSITORY-STANDARD.md` — canonical.
 
 Repository authority outranks this handoff. If this file conflicts with current routed authority, follow the repository and report the conflict.
 
 ---
 
-## Candidate under review
+# Candidate under review
 
-D6 frontend falsification exposed a material gap: the accepted 95-operation / 29-Permission Product could operate listings, price, availability, sales, fulfillment, market comparison and economics, but it could not honestly support the strategy team's first-party marketplace-performance questions without the frontend inventing analytics authority.
+D6 frontend falsification exposed a material gap: the accepted 95-operation / 29-Permission Product could operate listings, price, availability, sales, fulfillment, competitive market analysis and economics, but could not honestly support a strategy team's first-party marketplace-performance questions without the frontend inventing analytics authority.
 
-The operator approved a bounded D0→D5 repair, now mechanically represented in the current candidate.
+The operator approved a bounded D0→D5 repair, mechanically represented in the current candidate.
 
-### Intended semantic change
+## Intended semantic change
 
 Add one read/derive business boundary:
 
@@ -95,13 +98,13 @@ Add one read/derive business boundary:
 
 Its intended question is:
 
-> **How is our own participation in an exact marketplace installation performing over an explicit period, with enough evidence semantics to support human investigation without stealing authority from the domains that own listing, price, availability, sales, competitive market meaning or economics?**
+> **How is our own participation in an exact marketplace installation performing over an explicit period, with enough evidence semantics to support human investigation without stealing authority from the domains that own Listing, Price, Availability, Sales, competitive Market meaning or Economics?**
 
 Performance may interpret:
 
 - first-party exposure / traffic;
 - engagement;
-- provider-defined conversion evidence where semantically available;
+- provider-defined conversion evidence when semantically available;
 - retail-media performance and efficiency;
 - period-over-period performance when measurement bases are comparable;
 - evidence sufficiency, coverage, freshness and provenance;
@@ -110,7 +113,7 @@ Performance may interpret:
 Performance must **not** own:
 
 - Listing / ListingIntent / PriceIntent → Offering;
-- sellable availability → Availability;
+- Sellable Availability → Availability;
 - canonical Sale truth → Marketplace Sales;
 - competitive comparability / market position → Market Intelligence;
 - profitability / margin / economic attribution → Commercial Economics;
@@ -120,9 +123,9 @@ Performance must **not** own:
 - campaign/bid/budget/targeting/creative execution → deferred;
 - AI/MCP → future mechanism only, not current business authority.
 
-The strategy workspace in D6 is intended to remain a read-only composition, **not** a `Strategy` business domain or `/dashboard` / `/analytics` Product API.
+The D6 Strategy Workspace must remain a read-only composition, not a `Strategy` business domain or `/dashboard` / `/analytics` Product API.
 
-### Intended D2 historical-evidence rule
+## Intended D2 historical-evidence rule
 
 Provider retention must not silently become MPC historical retention.
 
@@ -130,17 +133,17 @@ Where external performance evidence can expire but is materially required for fu
 
 This custody must not convert provider-reported evidence into MPC-authored external fact, create a generic Metric/Data Lake/Data Warehouse business authority, or justify indefinite raw-provider payload retention by default.
 
-### Intended D3 communication rule
+## Intended D3 communication rule
 
 Baseline is Q/P-oriented:
 
 - Performance consumes current/public meanings from Portfolio, Offering, Sales, Availability, Market Intelligence and Commercial Economics as needed;
-- frontend Strategy Workspace is a read composition;
+- Strategy Workspace is read composition;
 - no KPI event bus (`CtrDropped`, `RoasChanged`, etc.);
 - no automatic Work generation merely because a metric changed;
 - no Performance capability request that mutates another owner.
 
-### Intended D4 Mercado Livre proof lane
+## Intended D4 Mercado Livre proof lane
 
 Current admitted first-provider evidence is bounded to current official surfaces sufficient for Product 1.0 Performance, especially:
 
@@ -152,11 +155,11 @@ Current admitted first-provider evidence is bounded to current official surfaces
 
 Advertiser identity must not be equated with Marketplace Installation/seller identity by name, position or convenience. Multi-candidate binding must fail closed until an exact current candidate is explicitly selected/revalidated under the accepted technical ceremony.
 
-Technical API access must not be confused with contractual permission to derive/publish every statistic. Review the current Mercado Livre developer terms / official documentation and decide whether the candidate's `contract_restricted` / capability-gate treatment is sufficient at architecture stage.
+Technical API access must not be confused with contractual permission to derive/publish every statistic. Review current Mercado Livre developer terms / official documentation and decide whether the candidate's contractual/capability-gate treatment is sufficient at architecture stage.
 
 Do not introduce Ads management.
 
-### Intended D5 Product surface
+## Intended D5 Product surface
 
 Current candidate adds exactly four H/A/S Q operations under one new ordinary Permission `performance.read`:
 
@@ -183,9 +186,9 @@ Knowledge/coverage must preserve distinctions such as `complete`, `partial`, `un
 
 Historical reads may be satisfied by preserved evidence and are not required to be live passthroughs of the provider.
 
-### Intended frontend result
+## Intended frontend result
 
-Primary navigation remains task-oriented. The strategic group is now:
+Primary navigation remains task-oriented. The strategic group is:
 
 ```text
 ESTRATÉGIA E INTELIGÊNCIA
@@ -206,13 +209,13 @@ The revised interaction map claims:
 - 12 user flows;
 - 32 negative frontend falsifiers.
 
-The revised HTML proof is `pt-BR` and includes Performance Resumo / Publicações / Mídia plus Mercado and Economia. It is low-fidelity structural evidence, not final design or browser/runtime proof.
+The HTML proof is `pt-BR` and includes Performance Resumo / Publicações / Mídia plus Mercado and Economia. It is low-fidelity structural evidence, not final design or browser/runtime proof.
 
 ---
 
-## Current executable evidence at handoff
+# Current executable evidence at handoff
 
-Exact candidate `43bd8b2b9d126931ac488a11ebc311ef0f12b0eb` has current `gate:full` PASS.
+Exact candidate `48abb857791769e21971a9049af3d9fc943617f5` has current `gate:full` PASS and `pr-title` PASS.
 
 The proof deliberately runs the accepted D5 baseline first and the D6-R1 repair second.
 
@@ -242,16 +245,17 @@ The proof deliberately runs the accepted D5 baseline first and the D6-R1 repair 
 
 ### Repository gate
 
-- bootstrap 18825 / 20480 bytes;
-- durable docs reachable 43;
-- machine route files/selectors 0;
-- legacy runtime population 0;
-- repository negative controls 5/5;
-- exact base...candidate diff has 14 files;
-- gate PASS;
-- PR title check PASS.
+The current candidate also restores the review-isolation gate property:
 
-Do **not** accept these claims merely because CI is green. Challenge whether each proof is capable of falsifying the property it reports and whether preserving the 95/29 baseline verifier actually guards regressions rather than merely replaying a detached fixture.
+- candidate/main may contain no `docs/work/**`;
+- a `review/*` branch may contain only `docs/work/current/ai-dialog.md` under that root;
+- review candidate ref must exist;
+- exact candidate tree must be free of review material;
+- candidate→review diff must be exactly the one admitted dialogue file;
+- `docs/work/**` is temporary, not durable routed authority;
+- repository negative controls are now 6/6, including review isolation.
+
+Do **not** accept any claim merely because CI is green. Challenge whether each proof can falsify the property it reports.
 
 ---
 
@@ -259,31 +263,29 @@ Do **not** accept these claims merely because CI is green. Challenge whether eac
 
 ## 1. Global Product / platform coherence
 
-Review D6-R1 against the already accepted Marketplace Central product direction, not in isolation.
+Review D6-R1 against already accepted Marketplace Central direction, not in isolation.
 
 Explicitly answer:
 
 - Does Performance Intelligence materially belong in `Marketplace Central = Marketplace Operations Control Plane + Commercial Intelligence`, or has scope drift occurred?
-- Is a **13th semantic boundary** genuinely justified by independent meaning/lifecycle, or should the meaning live in Market Intelligence / Commercial Economics / a read projection instead?
-- Does the candidate preserve the distinction between own-participation Performance, competitive Market Intelligence and Commercial Economics?
-- Does the strategy workspace remain frontend composition rather than a disguised new `Strategy` authority?
-- Has the repair accidentally contradicted any accepted D0–D5 invariant, Product non-goal or authority edge?
-- Is the bounded reopen truly the **smallest responsible reopen**, or did the candidate spread changes too widely?
+- Is a **13th semantic boundary** justified by independent meaning/lifecycle, or should the meaning live in Market Intelligence / Commercial Economics / a read projection instead?
+- Does the candidate preserve own-participation Performance vs competitive Market Intelligence vs Commercial Economics?
+- Does Strategy Workspace remain frontend composition rather than disguised `Strategy` authority?
+- Has the repair contradicted any accepted D0–D5 invariant/non-goal/authority edge?
+- Is the bounded reopen the **smallest responsible reopen**, or did it spread too widely?
 
-If a contradiction exists, identify the **smallest owning authority** that must reopen. Do not call for a general rebaseline by preference.
+If contradiction exists, identify the smallest owning authority that must reopen. Do not request a general rebaseline by preference.
 
 ## 2. DevelopmentConexus Method / Root Cause / Global Maximum / YAGNI
 
-Perform an explicit method review.
-
-Challenge whether the sequence actually follows:
+Challenge whether the sequence truly follows:
 
 `evidence → user need → invariant → alternatives → falsifier → decision → executable proof`
 
-Review the rejected alternatives, especially:
+Review rejected alternatives:
 
 - expand Market Intelligence into generic analytics;
-- frontend-only dashboard composition over raw provider data;
+- frontend-only dashboard over raw provider data;
 - generic Analytics/Metric API;
 - generic Metric entity/store;
 - Strategy domain/API;
@@ -294,95 +296,77 @@ Review the rejected alternatives, especially:
 - `signals[]` / recommendation API now;
 - AI/MCP now.
 
-Decide whether the selected solution is the **global maximum under current evidence** rather than simply a locally convenient compromise.
+Classify any issue as UNDER-ENGINEERED, PROPORTIONATE/YAGNI, OVER-ENGINEERED or SPECULATIVE FUTURE ABSTRACTION.
 
-Explicitly classify any issue as:
-
-- UNDER-ENGINEERED;
-- PROPORTIONATE / YAGNI;
-- OVER-ENGINEERED;
-- SPECULATIVE FUTURE ABSTRACTION.
-
-Do not suggest extra layers/tools merely because they are common in analytics systems.
+Do not recommend extra layers/tools merely because analytics products commonly have them.
 
 ## 3. D1 semantic-boundary review
 
-Attack `Marketplace Performance Intelligence` as a boundary.
-
-Use concrete counterexamples:
+Attack `Marketplace Performance Intelligence` using concrete counterexamples:
 
 - visits up, sales down;
 - ROAS up, profitability down;
 - ads active while availability is low;
 - competitive price worsens while traffic rises;
 - FAMILY/CATALOG media evidence with multiple Listings;
-- a provider metric definition changes between periods;
+- provider metric definition changes between periods;
 - future Amazon `sessions` vs Mercado Livre `visits`.
 
-Determine whether ownership remains singular and whether Performance avoids recomputing producer-owned facts/meaning.
+Determine whether ownership stays singular and Performance avoids recomputing producer-owned meaning.
 
-## 4. D2 ownership / historical evidence / storage review
+## 4. D2 historical evidence / storage review
 
-This is a material area and must receive a first-principles pass.
+Challenge D2-R2 first-principles:
 
-Challenge whether D2-R2 creates any accidental second authority or generic analytics store.
-
-Review at least:
-
-- why provider expiration makes durable custody necessary;
-- minimum sufficient granularity / provenance / measurement basis;
+- why provider expiration makes custody necessary;
+- minimum sufficient granularity/provenance/measurement basis;
 - source qualification;
-- historical-vs-current authority;
-- retention without raw payload hoarding;
-- PII/data-minimization impact;
-- whether preserved evidence can honestly answer later periods after provider expiry;
-- whether basis changes invalidate comparisons;
-- whether the contract leaves D7 enough freedom to choose physical storage without under-specifying correctness.
+- historical vs current authority;
+- retention without raw-payload hoarding;
+- PII/data minimization;
+- whether preserved evidence can answer later periods after provider expiry;
+- measurement-basis changes and comparison validity;
+- whether D7 retains physical-storage freedom without correctness becoming underspecified.
 
-Explicitly decide whether the statement **“MPC has memory, not an indiscriminate API dump”** is actually preserved by the authority and OAD.
+Explicitly decide whether the authority truly preserves **“MPC has memory, not an indiscriminate API dump.”**
 
 Do not select Postgres schema, warehouse, ClickHouse, Snowflake, BigQuery, event store, Kafka or another D7 mechanism.
 
 ## 5. D3 communication review
 
-Challenge Q/P-only baseline.
+Challenge the Q/P-only baseline.
 
-Determine whether any real Product 1.0 correctness requirement actually demands:
+Determine whether any Product 1.0 correctness need actually requires a Performance event, autonomous Work creation, another owner reaction or durable occurrence communication beyond preserved Performance evidence.
 
-- a committed Performance event;
-- autonomous Work creation;
-- another owner reaction;
-- durable occurrence communication beyond preserved Performance evidence.
+If no real consumer exists, confirm that no KPI event bus is the correct YAGNI decision.
 
-If no real consumer exists, confirm that no KPI event bus is the correct YAGNI choice.
+## 6. D4 Mercado Livre / Retail Media review
 
-## 6. D4 provider / Retail Media review
-
-Independently verify current official primary evidence, with publication/update dates where possible.
+Independently verify current official primary evidence, including dates/update status when material.
 
 Challenge:
 
-- Mercado Livre Visits semantics and coverage;
+- Mercado Livre Visits semantics/coverage;
 - Product Ads current API topology and 2026 migrations/deprecations;
-- metric semantics (`prints`/impressions, clicks, CTR, CPC, CVR, ROAS, ACOS, TACOS, SOV, impression-share variants, organic/direct/indirect evidence where actually current);
+- current metric semantics (prints/impressions, clicks, CTR, CPC, CVR, ROAS, ACOS, TACOS, SOV, impression-share variants, organic/direct/indirect evidence where actually current);
 - provider retention horizon;
 - refresh/update timing;
 - attribution window;
 - `ITEM` / `CATALOG` / `FAMILY` or current equivalent scope semantics;
-- advertiser discovery and whether `advertiser_id` can ever safely be inferred from seller/Installation;
+- advertiser discovery and whether `advertiser_id` can safely be inferred from seller/Installation;
 - contractual terms around derived/performance statistics and whether architecture needs another gate.
 
-Use official Mercado Livre developer documentation/terms as primary authority. Secondary sources may only supplement.
+Use official Mercado Livre developer documentation/terms as primary authority.
 
-Also use current Amazon primary API documentation only as a **falsifier of false cross-provider equivalence**, not as a provider we are admitting now.
+Use current Amazon primary API documentation only as a **falsifier of false cross-provider equivalence**, not as a provider being admitted now.
 
-Explicitly decide whether the current seam makes a later Amazon/Shopee integration easier **without** pretending those providers are currently supported or creating a universal marketplace analytics interface.
+Explicitly decide whether the seam makes later Amazon/Shopee integration easier **without** pretending they are currently supported or creating a universal marketplace analytics interface.
 
-## 7. D5 operation / Permission / wire-contract review
+## 7. D5 operation / Permission / wire review
 
-Challenge whether exactly four Qs and one Permission are the smallest sufficient Product API.
+Challenge whether exactly four Qs + one Permission are the smallest sufficient Product API.
 
-For each operation decide whether its consumer and meaning are real:
+For each operation assess its real consumer/meaning:
 
 - `GetMarketplacePerformanceSummary`;
 - `ListMarketplaceListingPerformance`;
@@ -394,18 +378,18 @@ Attack alternatives:
 - 3 operations only;
 - one giant `GetMarketplacePerformance`;
 - `/dashboard` / `GetStrategyWorkspace`;
-- N+1 listing-point reads instead of list summary;
-- forcing Retail Media through Listing performance.
+- N+1 point reads instead of Listing-performance list;
+- forcing Retail Media through Listing Performance.
 
-Review path grammar, exact Installation scoping, period semantics, comparison constraints, coverage unions, list population, retail-media scope union and absence of caller-controlled metric/sort/group DSL.
+Review path grammar, exact Installation scoping, reporting periods, comparison constraints, coverage unions, list population, Retail Media scope union and absence of caller metric/sort/group DSL.
 
-Check whether `performance.read` is the correct access boundary and whether `portfolio.manage` remains the correct authority for the **Technical Non-Product** advertiser-binding ceremony without inventing `performance.manage`.
+Check `performance.read` access boundary and whether `portfolio.manage` remains correct for **Technical Non-Product** advertiser binding without inventing `performance.manage`.
 
-Explicitly inspect the Product access views to confirm all clients can actually receive the new Permission while the accepted baseline 29-Permission proof remains meaningful.
+Inspect Product access views to confirm clients can receive the new Permission while the 29-Permission baseline proof remains meaningful.
 
 ## 8. OAD / executable-proof quality
 
-Review the current 99/30 proof as a falsifier, not a test-count ceremony.
+Review 99/30 proof as a falsifier, not test-count ceremony.
 
 Challenge at least:
 
@@ -413,28 +397,29 @@ Challenge at least:
 - exact 30 Permission vocabulary;
 - no fourth Principal kind;
 - exact four Performance Qs / owner / Permission / H-A-S mapping;
-- exact Installation-scoped paths;
-- period parameters required on all four reads;
+- Installation-scoped paths;
+- periods required on all four reads;
 - comparison all-or-none semantics;
-- collection paging + explicit semantic query repetition;
+- collection paging + semantic query repetition;
 - no Performance POST/PATCH/PUT/DELETE;
 - no generic analytics/metrics/strategy paths;
 - no metric-selector/group-by/sort DSL;
-- no baseline time-series or `signals[]`;
+- no time-series baseline or `signals[]`;
 - no Ads mutations;
-- retail-media scope branches remain closed/typed;
-- exact-listing Performance cannot silently absorb FAMILY/CATALOG/CAMPAIGN evidence;
-- historical custody does not become live-provider-only passthrough;
-- generated TypeScript and Go preserve the new meaning;
-- baseline non-regression proof actually demonstrates old D5 invariants still hold after subtracting only the approved repair.
+- Retail Media scope branches remain closed/typed;
+- exact-Listing Performance cannot absorb FAMILY/CATALOG/CAMPAIGN evidence silently;
+- historical custody is not live-provider-only passthrough;
+- generated TypeScript/Go preserve meaning;
+- baseline non-regression proof really demonstrates old D5 invariants after subtracting only the approved repair;
+- restored review-isolation gate is non-vacuous and does not permit `docs/work/**` contamination in candidate/main.
 
-Identify self-referential fixtures or negative controls that can pass while the protected property is broken.
+Identify self-referential fixtures or controls that pass while the protected property is broken.
 
-Do not turn D5 generated-code proof into a claim of D7 runtime schema enforcement/router support.
+Do not turn D5 proof into a D7 runtime schema/router claim.
 
 ## 9. Frontend / IA coherence review
 
-Review the revised Portuguese D6 artifacts **only as consumers of accepted Product authority**.
+Review revised Portuguese D6 artifacts only as consumers of accepted Product authority.
 
 Explicitly decide whether:
 
@@ -448,83 +433,83 @@ ESTRATÉGIA E INTELIGÊNCIA
   Economia
 ```
 
-is understandable and coherent for a real strategy/marketplace team without exposing bounded-context jargon.
+is understandable/coherent for a real marketplace strategy team without exposing bounded-context jargon.
 
 Challenge:
 
 - exact account/channel context for Performance;
-- no misleading global cross-marketplace aggregated metric;
-- analysis of an individual Listing is discoverable;
-- Retail Media analysis is discoverable without looking like Ads management;
-- Market and Economics remain visible as distinct strategic questions;
-- known/unknown/partial/unavailable states are representable;
-- source/basis warnings are proportional rather than noisy;
-- the interface does not imply causal claims the Product cannot make;
-- Portuguese copy is suitable as the primary operator language;
-- route/button visibility is not treated as authorization;
-- the wireframe does not imply time-series/signals/recommendations not admitted by D5.
+- no misleading global cross-marketplace aggregate metric;
+- individual Listing analysis discoverability;
+- Retail Media analysis discoverable without looking like Ads management;
+- Market and Economics visibly distinct strategic questions;
+- known/unknown/partial/unavailable states representable;
+- source/basis warnings proportional rather than noisy;
+- no unsupported causal claims;
+- Portuguese as primary operator language;
+- route/button visibility not authorization;
+- wireframe does not imply time-series/signals/recommendations not admitted by D5.
 
-Do not recommend final visual design, design-system selection, router/form library or frontend package topology in this review. Those are deliberately paused pending your verdict.
+Do not select final visual design, design system, router/form library or frontend package topology. Those are intentionally paused pending this verdict.
 
 ## 10. AI/MCP future-readiness without present scope creep
 
-Review whether the accepted evidence model genuinely leaves a clean future path for AI to summarize/compare/investigate **without making AI current authority**.
+Review whether evidence structure leaves a clean future path for AI to summarize/compare/investigate **without making AI current authority**.
 
-Explicitly decide whether any current choice prematurely binds the system to MCP, agents, embeddings, vectors or model-specific schemas. Such coupling should be rejected unless already required by Product 1.0.
+Flag any premature binding to MCP, agents, embeddings, vectors or model-specific schemas.
 
 ## 11. Reconstruction / continuation decision
 
-Give an explicit answer:
+Explicitly answer:
 
-> **Is there any material reason, under current repository authority and current primary evidence, to reconstruct the Marketplace Performance Intelligence approach or reopen broader accepted architecture before continuing D6 frontend topology?**
+> **Is there any material reason, under current repository authority and current primary evidence, to reconstruct Marketplace Performance Intelligence or reopen broader accepted architecture before continuing D6 frontend topology?**
 
-Allowed evidence-backed answers:
+Allowed evidence-backed outcomes:
 
 - `NO — candidate is coherent; continue D6 after operator adjudication`;
 - `ACCEPT WITH BOUNDED FIXES`;
 - `REOPEN <smallest authority>`;
-- `RECONSTRUCT` only if a material falsifier proves the approach cannot preserve accepted Product meaning.
+- `RECONSTRUCT` only if a material falsifier proves the approach cannot preserve accepted meaning.
 
-Preference for a different analytics product, dashboard style, newer technology, warehouse or fashionable AI architecture is not a reconstruction reason.
+Preference for another analytics product, dashboard style, newer technology, warehouse or fashionable AI architecture is not a reconstruction reason.
 
 ---
 
 # Targeted falsifiers
 
-At minimum, attempt to falsify these claims:
+Attempt to falsify at minimum:
 
 1. Performance is distinct from Market Intelligence.
 2. Performance is distinct from Commercial Economics.
-3. Strategy Workspace is not a business authority.
+3. Strategy Workspace is not business authority.
 4. Performance cannot mutate Listing/Price/Availability/Ads.
 5. `performance.read` does not imply Market/Economics/write Permissions.
-6. advertiser namespace cannot be silently inferred from seller/name/first candidate.
+6. advertiser namespace cannot be silently inferred.
 7. campaign/family/catalog evidence cannot be attributed to one Listing without proof.
 8. provider CVR/ROAS semantics cannot be reconstructed/relabelled by frontend convenience.
 9. zero/empty cannot substitute for unknown/unavailable/partial.
 10. cross-provider metric names do not imply equivalence.
-11. provider retention does not erase MPC-required historical evidence.
-12. historical custody does not make MPC the source of the original external fact.
+11. provider retention does not erase MPC-required history.
+12. historical custody does not make MPC source of the original external fact.
 13. raw provider payload retention is not the default.
-14. no Data Warehouse/Data Lake is selected as architecture by anticipation.
-15. no KPI event bus exists without a concrete autonomous consumer.
-16. no automatic Work item arises merely from a metric change.
+14. no warehouse/data lake is selected by anticipation.
+15. no KPI event bus exists without autonomous consumer.
+16. no automatic Work arises merely from metric change.
 17. no generic Product Analytics/Metric/Strategy API exists.
 18. Summary does not steal Sales/Market/Economics/Availability meaning.
-19. Retail Media collection has a real consumer independent of Listing performance.
-20. four Qs are necessary and sufficient; operation #100 is not hidden by symmetry.
-21. exact periods and reporting timezone avoid ambiguous metric windows.
-22. partial coverage prevents invalid period comparison.
-23. measurement-basis change can prevent false comparison.
-24. no time-series contract is accidentally implied by the wireframe.
-25. no signals/recommendation semantics are accidentally implied by the wireframe.
+19. Retail Media collection has a real consumer independent of Listing Performance.
+20. four Qs are necessary/sufficient; no hidden operation #100 by symmetry.
+21. exact periods/reporting timezone avoid ambiguous windows.
+22. partial coverage prevents invalid comparison.
+23. measurement-basis change can block false comparison.
+24. no time-series contract is implied accidentally.
+25. no signals/recommendation semantics are implied accidentally.
 26. AI/MCP remains future mechanism, not authority.
-27. the new boundary makes a later provider easier without a generic provider analytics interface.
-28. the 95/29 baseline verifier plus 99/30 wrapper is non-vacuous.
-29. current Product implementation remains blocked until D9.
-30. no D7 server/runtime/database/storage mechanism was selected by the repair.
-31. Portuguese frontend information architecture remains task-oriented rather than domain-taxonomy-oriented.
-32. the whole repair remains proportional to the actual strategic user need.
+27. later providers become easier without generic provider-analytics interface.
+28. 95/29 baseline verifier + 99/30 repair proof is non-vacuous.
+29. Product implementation remains blocked until D9.
+30. no D7 server/runtime/database/storage mechanism was selected.
+31. Portuguese IA stays task-oriented rather than domain-taxonomy-oriented.
+32. the entire repair is proportional to the actual strategic user need.
 
 ---
 
@@ -543,20 +528,18 @@ Choose exactly one:
 
 ## 2. Executive coherence assessment
 
-In concise form answer:
+Answer concisely:
 
-- Is D6-R1 coherent with the previously accepted Marketplace Central platform?
-- Is it consistent with the DevelopmentConexus Method?
+- Is D6-R1 coherent with previously accepted Marketplace Central?
+- Is it consistent with DevelopmentConexus Method?
 - Is it proportionate/YAGNI?
 - Does it preserve future strategic/AI value without current scope creep?
 
 ## 3. Material findings
 
-Number findings highest severity first.
+Number findings highest severity first. For each provide:
 
-For each finding provide:
-
-- **classification:** `D0_FIX`, `D1_FIX`, `D2_FIX`, `D3_FIX`, `D4_FIX`, `D5_FIX`, `D6_FIX`, `D7_OBLIGATION`, `LATER_NON_BLOCKING`, `AUTHORITY_CONTRADICTION`, or `REVIEW_FALSE_POSITIVE`;
+- **classification:** `D0_FIX`, `D1_FIX`, `D2_FIX`, `D3_FIX`, `D4_FIX`, `D5_FIX`, `D6_FIX`, `REPOSITORY_FIX`, `D7_OBLIGATION`, `LATER_NON_BLOCKING`, `AUTHORITY_CONTRADICTION`, or `REVIEW_FALSE_POSITIVE`;
 - **severity:** Critical / Important / Minor;
 - exact candidate location;
 - governing repository authority;
@@ -565,15 +548,15 @@ For each finding provide:
 - smallest correction;
 - why it belongs in that exact authority/stage.
 
-If there are no material findings, state that explicitly. Do not manufacture style findings.
+If no material findings, state that explicitly. Do not manufacture style findings.
 
 ## 4. Boundary/ownership assessment
 
-Explicitly adjudicate Performance vs Market vs Economics vs frontend Strategy composition.
+Adjudicate Performance vs Market vs Economics vs frontend Strategy composition.
 
 ## 5. Historical-evidence / storage assessment
 
-Explicitly adjudicate D2-R2 and whether the design is neither lossy nor a generic analytics warehouse.
+Adjudicate D2-R2 and whether design is neither lossy nor generic analytics warehouse.
 
 ## 6. Mercado Livre / Retail Media evidence assessment
 
@@ -581,15 +564,15 @@ List current primary sources checked and conclude on Visits, Product Ads, advert
 
 ## 7. D5/OAD proof assessment
 
-State what 99/30 proof genuinely establishes, what the baseline non-regression proof establishes, and any blind spots.
+State what 99/30 proof genuinely establishes, what baseline non-regression establishes and any blind spots.
 
 ## 8. Frontend coherence assessment
 
-Explicitly conclude whether the revised Portuguese IA/wireframes are coherent enough to proceed to topology after findings are adjudicated.
+Conclude whether revised Portuguese IA/wireframes are coherent enough to proceed to topology after findings are adjudicated.
 
 ## 9. Method / YAGNI / Global Maximum assessment
 
-Explicitly classify the architecture and rejected alternatives.
+Explicitly classify the selected architecture and rejected alternatives.
 
 ## 10. Reconstruction decision
 
@@ -603,7 +586,7 @@ State exactly what must happen before D6 frontend topology/dependency work resum
 
 ## Interaction rule
 
-Fable writes **only** to this file on `review/d6-fable`. Do not edit PR #54 or candidate files. GPT will independently adjudicate every finding against repository authority and executable proof before any candidate change. No review output directly authorizes merge, phase progression, D7 work or Product implementation.
+Fable writes **only** to this file on `review/d6r1-fable`. Do not edit PR #54 or candidate files. GPT independently adjudicates every finding against repository authority and executable proof before any candidate change. No review output directly authorizes merge, phase progression, D7 work or Product implementation.
 
 Round 2 occurs only if a material contradiction survives GPT adjudication and bounded fixes.
 
