@@ -880,7 +880,7 @@ schemas:
   FulfillmentArtifact:
     type: object
     additionalProperties: false
-    required: [artifact_key, kind, content_type, recorded_at]
+    required: [artifact_key, kind, content_type, sensitivity, recorded_at]
     properties: {artifact_key: {$ref: '#/schemas/OpaqueKey'}, kind: {$ref: '#/schemas/OpaqueKey'}, content_type: {type: string, minLength: 1}, sensitivity: {type: string, enum: [ordinary, restricted]}, recorded_at: {$ref: '#/schemas/Instant'}}
   FulfillmentArtifactsCollection:
     type: object
