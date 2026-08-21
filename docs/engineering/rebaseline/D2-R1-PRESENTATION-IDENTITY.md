@@ -51,4 +51,4 @@ This clarification fails if any realization permits:
 
 ## 5. Boundary
 
-This amendment changes presentation completeness only. D2 identity/isolation semantics remain otherwise unchanged; D5 retains the same 95 Product operations and 29 ordinary Permissions; D6 remains a client of those authorities rather than becoming identity authority.
+This amendment changes presentation completeness only. D2 identity/isolation semantics remain otherwise unchanged. **D2-R1 itself admits no new Product operation, ordinary Permission, Principal kind, business domain or authorization authority.** Later bounded amendments may extend the Product surface without changing this presentation-identity rule; D6 remains a client of the resulting authorities rather than becoming identity authority.
