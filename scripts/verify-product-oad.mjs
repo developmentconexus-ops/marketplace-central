@@ -167,6 +167,10 @@ function baselineProof() {
   source = source.replaceAll('./paths-access-performance.yaml#/pathItems/', './paths-identity-portfolio-readiness.yaml#/pathItems/');
   writeFileSync(join(baselineContracts, 'openapi.yaml'), source, 'utf8');
 
+  run('git', ['init'], { cwd: baselineRoot });
+  run('git', ['add', '.'], { cwd: baselineRoot });
+  run('git', ['-c', 'user.name=Marketplace Central Baseline Proof', '-c', 'user.email=baseline-proof@local.invalid', 'commit', '-m', 'baseline proof fixture'], { cwd: baselineRoot });
+
   const result = run(process.execPath, [join(baselineScripts, 'verify-product-oad.mjs')], { cwd: baselineRoot });
   console.log('product_oad_baseline_non_regression=PASS');
   if (result.stdout?.trim()) console.log(result.stdout.trim());
