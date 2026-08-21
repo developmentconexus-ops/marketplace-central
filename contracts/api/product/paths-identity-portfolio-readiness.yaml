@@ -262,7 +262,7 @@ pathItems:
         - {$ref: './components.yaml#/parameters/SourceInstanceQuery'}
         - {$ref: './components.yaml#/parameters/NativeProductKeyQuery'}
         - {name: category_key, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueKey'}}
-        - {name: product_type_key, in: query, required: false, schema: {type: string, enum: [text, exact_decimal, boolean, option, text_list, option_list, number_unit, not_applicable]}}
+        - {name: product_type_key, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueKey'}}
       responses:
         '200': {description: Current publication requirements., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/PublicationRequirements'}}}}
         '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
