@@ -1,9 +1,9 @@
 # D6 — Frontend
 
-> **Status:** OPEN / ACTIVE — D6-B1 Frontend Interaction & Authority Model
+> **Status:** OPEN / ACTIVE — D6-B2 Frontend Topology & Dependency Adjudication
 > **Program:** Architecture Rebaseline / Technical System Design
 > **Opened:** 2026-08-21
-> **Parent authorities:** `ARCHITECTURE.md`, accepted D0–D5 semantics, proved bounded D6-R1 amendment, and canonical Product OAD at `contracts/api/product/openapi.yaml`
+> **Parent authorities:** `ARCHITECTURE.md`, accepted D0–D5 semantics, proved bounded D6-R1 amendment, ratified D6-B1 interaction authority, and canonical Product OAD at `contracts/api/product/openapi.yaml`
 > **Method:** DevelopmentConexus Engineering Method v1.0.0
 
 ## 1. Purpose and boundary
@@ -57,7 +57,7 @@ A fifth durable/global state class requires a concrete consumer and proof these 
 
 ### 3.3 YAGNI exclusions
 
-Without new evidence D6-B1 does not introduce:
+Without new evidence D6 does not introduce:
 
 - second global server-state store;
 - generic workflow/action/command frontend layer;
@@ -233,11 +233,11 @@ Settings never becomes semantic owner.
 - responsive layout never removes semantic state/qualification;
 - no permanent global right rail; page-owned drawer may show evidence/history/related Work while remaining ephemeral UI state.
 
-## 8. D6-B1 revised interaction proof — CANDIDATE / INTERNAL CHALLENGE PASS
+## 8. D6-B1 revised interaction proof — OPERATOR-RATIFIED
 
 The revised [D6-B1 Frontend Interaction Map](D6-B1-INTERACTION-MAP.md) is written in Portuguese UX language and maps all **99/99** admitted Product operations to coherent interaction homes while preserving canonical operation names.
 
-The revised low-fidelity prototype is [`qualification/d6-wireframes/index.html`](../../../qualification/d6-wireframes/index.html). It is also Portuguese and now exercises the approved shell plus:
+The revised low-fidelity prototype is [`qualification/d6-wireframes/index.html`](../../../qualification/d6-wireframes/index.html). It is also Portuguese and exercises the approved shell plus:
 
 - Preparação and ListingIntent authoring;
 - Performance / Resumo;
@@ -269,12 +269,13 @@ Internal challenge against the interaction-map falsifiers found no additional Pr
 - Governance decision acquiring target execution/Permission;
 - blind retry of ambiguous effects.
 
-This remains **interaction-level design proof**, not browser/runtime/provider/persistence proof and not D6-B1 ratification by itself.
+After independent Fable review, bounded corrections and final executable proof, the operator ratified the corrected D6-B1 interaction authority on 2026-08-21. This remains **interaction-level design authority**, not browser/runtime/provider/persistence proof.
 
 ## 9. Exact next D6 work
 
-1. operator-review/adjudicate the revised [99-operation interaction map](D6-B1-INTERACTION-MAP.md) and [Portuguese low-fidelity wireframe proof](../../../qualification/d6-wireframes/index.html);
-2. only if that interaction proof is approved, evaluate the smallest frontend feature/package topology and exact dependency needs from current official evidence rather than convention;
-3. frontend topology research must not choose D7 server/runtime/router/database/deployment mechanics;
-4. once one coherent interaction + topology candidate exists, submit it to the repository's independent milestone/final challenge path rather than using Fable/Claude as iterative co-authors;
-5. do not begin D7–D9, implement Product code, ratify D6-B1 or merge PR #54 without explicit operator authorization.
+1. D6-B1 interaction authority is operator-ratified and no longer the active decision gate;
+2. D6-B2 evaluates the smallest frontend feature/package topology and exact frontend dependency needs from current official evidence rather than convention;
+3. D6-B2 must preserve generated Product client/type authority, TanStack Query server state, explicit Organization/Installation context and the four-state-class model without creating client business authority;
+4. frontend topology research must not choose D7 server/runtime/router/database/deployment mechanics;
+5. once one coherent interaction + topology candidate exists, submit it to the repository's independent milestone/final challenge path rather than using Fable/Claude as iterative co-authors;
+6. do not begin D7–D9, implement Product code, close D6 or merge PR #54 without explicit operator authorization.
