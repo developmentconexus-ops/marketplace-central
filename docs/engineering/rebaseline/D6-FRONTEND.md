@@ -123,19 +123,21 @@ A later D6 decision may evaluate concrete frontend dependencies when an accepted
 - TanStack Query is the accepted server-state client unless materially reopened.
 - The canonical Product OAD is the Product wire authority.
 - There are 95 admitted Product operations and 29 ordinary Permissions.
-- Product implementation is blocked until D9.
+- the global App Shell / IA is operator-approved as Organization-global + task-oriented navigation + contextual Marketplace Installation + low-frequency Settings + read-only Overview composition;
+- Product 1.0 currently exposes Mercado Livre as the only connectable marketplace kind;
+- the bounded D2-R1 presentation-identity correction is proved without changing the 95/29/H-A-S surface;
+- `SearchSourceProductsForMarketplace` admits an optional operation-local SourceInstance narrowing filter while every returned Product remains source-qualified;
+- the derived [D6-B1 Frontend Interaction Map](D6-B1-INTERACTION-MAP.md) gives all 95 admitted operations a user-visible interaction home across 32 screen/route states.
 
 **Inferred**
 
-- A screen/capability map is the smallest useful artifact for proving that presentation does not create unnamed business authority.
-- Separating server, navigation, form-draft and ephemeral UI state removes the main known route for duplicate client authority without requiring another state framework.
+- separating server, navigation, form-draft and ephemeral UI state removes the main known route for duplicate client authority without requiring another state framework;
+- a small representative wireframe set can falsify the interaction model without drawing every read/detail variant as an independent application.
 
 **Unknown**
 
-- final target screen inventory and information architecture;
 - exact frontend feature/package topology;
 - exact router/form/component/design-system dependency choices, if any;
-- which concrete interactions require optimistic concurrency UX or long-running consequential-work UX;
 - exact browser/runtime realization details that depend on later implementation.
 
 **Deferred**
@@ -158,9 +160,11 @@ Before B1 ratification, the smallest proof package must be capable of falsifying
 5. a check that no frontend requirement silently demands a screen-shaped API, provider protocol shortcut or D7 mechanic;
 6. independent challenge when the resulting B1 decision materially creates or moves an authority/trust boundary, following repository review rules.
 
+The mapping/proof candidate is maintained in [D6-B1 Frontend Interaction Map](D6-B1-INTERACTION-MAP.md).
+
 Browser/component implementation evidence is not required to open or reason about D6 while Product implementation remains blocked. Claims that later depend on actual browser behavior require browser-level evidence at the stage where execution is authorized.
 
-## 3.9 First frontend coverage findings and bounded parent correction
+## 3.9 First frontend coverage findings and bounded parent corrections
 
 The first D0–D5 frontend-coverage pass deliberately attacked channel onboarding and global shell identity before screen-by-screen design.
 
@@ -187,30 +191,54 @@ Provider authorization is not a missing Product operation. The accepted D5 Techn
 
 D6 found one real bounded read-completeness gap: already-admitted human interactions cannot reliably render Organization/access context when only opaque `organization_id`, `principal_id` and `role_key` values are guaranteed.
 
-The smallest repair is the operator-approved candidate [D2-R1 Presentation Identity](D2-R1-PRESENTATION-IDENTITY.md) plus a D5 wire correction on the existing reads. It adds required human-readable `display_name` metadata for the current Principal, accessible Organizations, Organization members and AccessRoles while preserving canonical ID/key authority.
+The operator-approved [D2-R1 Presentation Identity](D2-R1-PRESENTATION-IDENTITY.md) plus D5 wire correction adds required human-readable `display_name` metadata for the current Principal, accessible Organizations, Organization members and AccessRoles while preserving canonical ID/key authority.
 
-This repair:
+This repair creates no new Product operation, Permission or Principal kind and does not make OIDC/profile/provider names canonical identity.
 
-- creates no new Product operation;
-- creates no new ordinary Permission;
-- creates no new Principal kind;
-- does not make OIDC/profile/provider names canonical identity;
-- does not authorize frontend-local aliases to become Product truth;
-- does not reopen other D0–D5 semantics.
+### SourceInstance discovery falsifier
 
-The existing full Product OAD proof must remain green, including 95 operations, 29 ordinary Permissions, H/A/S Principal kinds and generated projection compatibility, before the final App Shell/IA decision consumes this correction.
+The first Readiness user flow exposed a second bounded D5 wire gap: `SearchSourceProductsForMarketplace` originally required a `source_instance_id`, while the Product frontend intentionally has no generic SourceInstance registry/discovery operation.
+
+The operator approved the smallest correction:
+
+- keep the Product inventory at 95 operations and 29 ordinary Permissions;
+- make `source_instance_id` an **optional narrowing filter only on `SearchSourceProductsForMarketplace`**;
+- omission means bounded search across current Organization-scoped SourceInstances admitted/configured for the Readiness search context, never ambient/default-source selection;
+- every result remains explicitly `SourceInstance + native_product_key` qualified;
+- `GetProductChannelReadiness` and `GetPublicationRequirements` continue to require the exact SourceInstance selected from the result.
+
+The correction is operation-local and does not create a Source Registry screen/domain or alter D2/D4 source authority.
+
+## 3.10 App Shell / IA decision — OPERATOR APPROVED
+
+The approved target is:
+
+> **Organization-global + task-oriented primary navigation + explicit contextual Marketplace Installation where the Product contract admits that dimension + low-frequency Settings separated from routine operation + read-only Overview composition.**
+
+Binding consequences:
+
+- primary navigation groups user work, not internal D1 package names;
+- Marketplace Installation context may filter/select an exact marketplace namespace but never becomes ambient business authority;
+- `All accounts` is shown only where the admitted read honestly supports optional Installation scope;
+- independently paginated source-qualified Marketplace Listing/Sales/Shipment collections are not client-merged into a fake complete cross-account list;
+- Settings groups low-frequency configuration without becoming a new business owner;
+- Overview uses existing owner Qs only and never becomes `/dashboard` write/read authority;
+- permission-conditioned menu/button visibility is usability only;
+- contextual drawers may show evidence/history/related Work without becoming write authority;
+- responsive behavior changes layout, not business semantics.
+
+Detailed flows, routes, 32 screen states, 95-operation coverage and negative controls live in [D6-B1 Frontend Interaction Map](D6-B1-INTERACTION-MAP.md).
 
 ---
 
 ## 4. Exact next D6 work
 
-Continue only inside D6-B1 and do not resume inherited screen-by-screen design:
+Continue only inside D6-B1:
 
-1. prove the bounded D2-R1/D5 presentation-identity correction without changing the 95-operation / 29-Permission surface;
-2. finish the user mental model and Product information architecture from accepted Product capabilities;
-3. adjudicate the global App Shell: Organization context, primary navigation/grouping, channel context, subnavigation, permission-conditioned visibility, content region, contextual panels and responsive structural behavior;
-4. attack that shell/IA for hidden business authority, channel-as-super-domain mistakes and low-frequency configuration leakage into routine operations;
-5. only after App Shell / IA approval, derive user flows and screen inventory;
-6. only after those are coherent, produce low-fidelity HTML wireframes focused on layout, hierarchy, density, states and interaction rather than final visual design.
+1. produce the ten-state low-fidelity HTML wireframe proof set named by the interaction map;
+2. attack those wireframes against the interaction-map negative controls, especially hidden authority, dishonest knowledge state, unsafe retry and unsupported actions;
+3. if a wireframe exposes another material Product/API gap, stop that interaction and reopen only the smallest responsible accepted authority;
+4. after the interaction model + wireframes cohere, evaluate the smallest frontend feature/package topology and exact dependency needs supported by those accepted properties;
+5. do not select D7 runtime/router/database/deployment mechanics while doing frontend topology research.
 
 Do not begin D7–D9 or Product implementation.
