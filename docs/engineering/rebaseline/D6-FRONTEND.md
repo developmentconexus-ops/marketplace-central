@@ -233,24 +233,48 @@ Settings never becomes semantic owner.
 - responsive layout never removes semantic state/qualification;
 - no permanent global right rail; page-owned drawer may show evidence/history/related Work while remaining ephemeral UI state.
 
-## 8. D6-B1 proof strategy
+## 8. D6-B1 revised interaction proof — CANDIDATE / INTERNAL CHALLENGE PASS
 
-Before B1 ratification the proof package must establish:
+The revised [D6-B1 Frontend Interaction Map](D6-B1-INTERACTION-MAP.md) is written in Portuguese UX language and maps all **99/99** admitted Product operations to coherent interaction homes while preserving canonical operation names.
 
-1. every admitted Product operation has a coherent user-visible interaction home or explicit non-UI consumer disposition;
-2. knowledge, coverage, freshness and provenance states remain visibly distinguishable where material;
-3. consequential outcomes/idempotency/concurrency remain honest;
-4. Performance does not turn provider measurement, Strategy composition or historical custody into new authority;
-5. negative counterexamples make screen-shaped API, generic analytics vocabulary, hidden provider/source defaults and unsupported actions visibly impossible;
-6. the representative low-fidelity prototype tests hierarchy/density/state, not final branding or implementation;
-7. independent milestone/final challenge occurs only after one coherent B1 interaction + topology candidate exists.
+The revised low-fidelity prototype is [`qualification/d6-wireframes/index.html`](../../../qualification/d6-wireframes/index.html). It is also Portuguese and now exercises the approved shell plus:
 
-The previous 95-operation English interaction map/wireframe set is **superseded as current proof input by D6-R1**. It remains historical design evidence until replaced by the Portuguese 99-operation proof set.
+- Preparação and ListingIntent authoring;
+- Performance / Resumo;
+- Performance / Publicações and Listing Performance detail;
+- Performance / Mídia with campaign/listing/catalog/family scopes;
+- Mercado and Economia as distinct strategic meanings;
+- Disponibilidade;
+- Venda cross-owner composition;
+- Expedição physical checkpoints;
+- Pós-venda;
+- Trabalho;
+- Configurações / Canais, Acesso and Aprovações.
+
+Internal challenge against the interaction-map falsifiers found no additional Product/API prerequisite. Materially, the prototype makes visible or explicitly blocks:
+
+- hidden Organization/Installation/SourceInstance authority;
+- speculative current Amazon/Shopee connectability;
+- generic Dashboard/Strategy/Analytics/Metric Product API;
+- provider CVR/ROAS reconstruction in the client;
+- campaign/family/catalog evidence collapsed into one Listing;
+- partial/unknown evidence presented as complete/zero;
+- historical provider evidence presented as MPC-authored truth;
+- Ads management/optimization/AI controls;
+- Market/Economics acquiring Price write;
+- SetAvailableQuantity/Sync/Refresh shortcuts;
+- Sale composition acquiring cross-owner write authority;
+- physical checkpoint authority inferred from the button/client;
+- Work/PostSale generic close;
+- Governance decision acquiring target execution/Permission;
+- blind retry of ambiguous effects.
+
+This remains **interaction-level design proof**, not browser/runtime/provider/persistence proof and not D6-B1 ratification by itself.
 
 ## 9. Exact next D6 work
 
-1. re-derive [D6-B1 Frontend Interaction Map](D6-B1-INTERACTION-MAP.md) from the proved 99/30 Product surface, in Portuguese UX language while preserving canonical operation names;
-2. replace `qualification/d6-wireframes/index.html` with Portuguese low-fidelity states including Performance Resumo/Publicações/Mídia and Listing Performance;
-3. attack the revised proof against D6-R1 negative controls and all prior D6 safety laws;
-4. only after operator approval of that revised interaction proof, evaluate the smallest frontend feature/package topology and concrete dependency needs from current official evidence;
-5. do not begin D7–D9, implement Product code or merge PR #54 without explicit authorization.
+1. operator-review/adjudicate the revised [99-operation interaction map](D6-B1-INTERACTION-MAP.md) and [Portuguese low-fidelity wireframe proof](../../../qualification/d6-wireframes/index.html);
+2. only if that interaction proof is approved, evaluate the smallest frontend feature/package topology and exact dependency needs from current official evidence rather than convention;
+3. frontend topology research must not choose D7 server/runtime/router/database/deployment mechanics;
+4. once one coherent interaction + topology candidate exists, submit it to the repository's independent milestone/final challenge path rather than using Fable/Claude as iterative co-authors;
+5. do not begin D7–D9, implement Product code, ratify D6-B1 or merge PR #54 without explicit operator authorization.
