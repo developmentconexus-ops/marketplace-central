@@ -12,15 +12,15 @@ security:
 
 paths:
   '/access-context':
-    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/AccessContext'
+    $ref: './paths-access-performance.yaml#/pathItems/AccessContext'
   '/organizations/{organization_id}/members':
-    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/OrganizationMembers'
+    $ref: './paths-access-performance.yaml#/pathItems/OrganizationMembers'
   '/organizations/{organization_id}/access-roles':
-    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/AccessRoles'
+    $ref: './paths-access-performance.yaml#/pathItems/AccessRoles'
   '/organizations/{organization_id}/members/{principal_id}:assign-access-role':
-    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/AssignAccessRole'
+    $ref: './paths-access-performance.yaml#/pathItems/AssignAccessRole'
   '/organizations/{organization_id}/members/{principal_id}:revoke-access-role':
-    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/RevokeAccessRole'
+    $ref: './paths-access-performance.yaml#/pathItems/RevokeAccessRole'
   '/organizations/{organization_id}/marketplace-installations':
     $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/MarketplaceInstallations'
   '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}':
@@ -76,6 +76,17 @@ paths:
     $ref: './paths-offering-availability-market.yaml#/pathItems/CompetitivePosition'
   '/organizations/{organization_id}/comparable-offers':
     $ref: './paths-offering-availability-market.yaml#/pathItems/ComparableOffers'
+
+  # D6-R1 performance paths start
+  '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/performance':
+    $ref: './paths-performance.yaml#/pathItems/MarketplacePerformanceSummary'
+  '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/listing-performances':
+    $ref: './paths-performance.yaml#/pathItems/MarketplaceListingPerformances'
+  '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/listings/{native_listing_key}/performance':
+    $ref: './paths-performance.yaml#/pathItems/MarketplaceListingPerformance'
+  '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/retail-media-performance':
+    $ref: './paths-performance.yaml#/pathItems/RetailMediaPerformances'
+  # D6-R1 performance paths end
 
   '/organizations/{organization_id}/expected-economics':
     $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/ExpectedEconomics'
