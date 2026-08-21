@@ -18,16 +18,19 @@ const sourceNames = [
   'paths-fulfillment-postsale-work.yaml',
 ];
 const sourceTreeText = sourceNames.map((name) => readFileSync(join(contractDir, name), 'utf8')).join('\n');
-const componentsText = readFileSync(join(contractDir, 'components.yaml'), 'utf8');
 const w4Text = readFileSync(join(root, 'docs/engineering/rebaseline/D5-B2-W4-PERMISSION-CLIENT-CLASS-ENFORCEMENT.md'), 'utf8');
 const w2Text = readFileSync(join(root, 'docs/engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md'), 'utf8');
 const admissionText = readFileSync(join(root, 'docs/engineering/rebaseline/D5-B2-OPERATION-ADMISSION-MATRIX.md'), 'utf8');
 const temp = mkdtempSync(join(tmpdir(), 'mpc-product-oad-'));
-const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 const go = process.platform === 'win32' ? 'go.exe' : 'go';
+const npxCli = process.env.npm_execpath
+  ? resolve(dirname(process.env.npm_execpath), 'npx-cli.js')
+  : resolve(dirname(process.execPath), 'node_modules/npm/bin/npx-cli.js');
 const HTTP_METHODS = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);
 const PROBLEM_PREFIX = 'https://conexus.fun/marketplace-central/problems/product/';
 const ALLOWED_EXTENSIONS = new Set(['x-mpc-operation-class', 'x-mpc-required-permission', 'x-mpc-principal-kinds', 'x-mpc-semantic-owner', 'x-mpc-required-physical-qualification']);
+const EXPECTED_NEGATIVE_CONTROLS = 12;
+let negativeControlCount = 0;
 
 function fail(message) { throw new Error(message); }
 function assert(condition, message) { if (!condition) fail(message); }
@@ -49,6 +52,24 @@ function run(command, args, options = {}) {
     fail([`${command} ${args.join(' ')} failed with exit ${result.status}`, result.stdout?.trim(), result.stderr?.trim()].filter(Boolean).join('\n'));
   }
   return result;
+}
+function npxSpec(args) {
+  return process.platform === 'win32'
+    ? { command: process.execPath, args: [npxCli, ...args] }
+    : { command: 'npx', args };
+}
+function runNpx(args, options = {}) {
+  const spec = npxSpec(args);
+  return run(spec.command, spec.args, options);
+}
+function spawnNpx(args, options = {}) {
+  const spec = npxSpec(args);
+  return spawnSync(spec.command, spec.args, {
+    cwd: options.cwd ?? root,
+    env: { ...process.env, ...(options.env ?? {}) },
+    encoding: 'utf8',
+    shell: false,
+  });
 }
 function sha256(path) { return createHash('sha256').update(readFileSync(path)).digest('hex'); }
 function clone(value) { return structuredClone(value); }
@@ -103,10 +124,8 @@ function byId(all, id) {
 }
 function component(document, kind, name) {
   const direct = document.components?.[kind]?.[name];
-  if (direct) return resolveRef(document, direct);
-  const found = Object.entries(document.components?.[kind] ?? {}).find(([candidate]) => candidate === name || candidate.endsWith(`_${name}`) || candidate.endsWith(name));
-  assert(found, `bundled component not found: ${kind}.${name}`);
-  return resolveRef(document, found[1]);
+  assert(direct, `bundled component not found: ${kind}.${name}`);
+  return resolveRef(document, direct);
 }
 function generatedSchemaExpression(text, name, lane) {
   const match = text.match(new RegExp(`${name}:\\s*([^;]+);`));
@@ -217,6 +236,9 @@ function validate(document) {
     sameSet(op['x-mpc-principal-kinds'], expected.principalKinds, `${op.operationId} principal kinds`);
     assert(op['x-mpc-principal-kinds'].every((kind) => ['H', 'A', 'S'].includes(kind)), `${op.operationId} introduces non-H/A/S principal kind`);
     assert((op['x-mpc-required-physical-qualification'] === true) === expected.qualifiedPhysical, `${op.operationId} physical qualification mismatch`);
+    if (entry.path.startsWith('/organizations/{organization_id}/')) {
+      assert(response(document, op, '404'), `${op.operationId} must preserve privacy-protecting 404 for path-Organization non-membership/not-found`);
+    }
   }
 
   sameSet(component(document, 'schemas', 'Permission').enum ?? [], expectedPermissions, 'Permission enum');
@@ -264,6 +286,8 @@ function validate(document) {
   const unassignedBranch = assignmentBranches.find((branch) => branch.properties?.state?.const === 'unassigned');
   assert(assignedBranch && (assignedBranch.required ?? []).includes('principal_id'), 'assigned WorkAssignment must require principal_id');
   assert(unassignedBranch && !Object.hasOwn(unassignedBranch.properties ?? {}, 'principal_id'), 'unassigned WorkAssignment must not carry principal_id');
+  const fulfillmentArtifact = component(document, 'schemas', 'FulfillmentArtifact');
+  assert((fulfillmentArtifact.required ?? []).includes('sensitivity'), 'FulfillmentArtifact must carry explicit sensitivity classification');
 
   const customProblemTypes = [];
   walk(document, (node) => {
@@ -271,7 +295,6 @@ function validate(document) {
     if (typeof value === 'string' && value.startsWith(PROBLEM_PREFIX)) customProblemTypes.push(value);
   });
   sameSet(customProblemTypes, expectedProblems, 'Product Problem catalog/origin');
-  assert(/MethodNotAllowed:[\s\S]{0,1200}?Allow:/.test(componentsText), '405 MethodNotAllowed source response lacks Allow');
   for (const [name, status] of [['AboutBlank413Problem', 413], ['AboutBlank415Problem', 415]]) {
     const schema = component(document, 'schemas', name);
     assert(schema.properties?.type?.const === 'about:blank' && schema.properties?.status?.const === status, `${name} must be about:blank/${status}`);
@@ -330,6 +353,7 @@ function expectFailure(name, factory) {
   let failed = false;
   try { validate(factory()); } catch { failed = true; }
   assert(failed, `negative control unexpectedly passed: ${name}`);
+  negativeControlCount++;
 }
 function negativeSemanticControls(document) {
   expectFailure('missing operation', () => { const candidate = clone(document); delete candidate.paths['/organizations/{organization_id}/work/{work_id}:escalate']; return candidate; });
@@ -340,15 +364,17 @@ function negativeSemanticControls(document) {
   expectFailure('optional idempotency carrier', () => { const candidate = clone(document); component(candidate, 'parameters', 'IdempotencyKey').required = false; return candidate; });
   expectFailure('wrong Product Problem origin', () => { const candidate = clone(document); component(candidate, 'schemas', 'AccessDeniedProblem').properties.type.const = 'https://example.invalid/problem'; return candidate; });
   expectFailure('schema extension leakage', () => { const candidate = clone(document); component(candidate, 'schemas', 'Money')['x-enum-varnames'] = ['Money']; return candidate; });
+  expectFailure('missing Organization privacy 404', () => { const candidate = clone(document); delete byId(operations(candidate), 'GetWork').operation.responses['404']; return candidate; });
+  expectFailure('missing fulfillment artifact sensitivity', () => { const candidate = clone(document); const schema = component(candidate, 'schemas', 'FulfillmentArtifact'); schema.required = (schema.required ?? []).filter((name) => name !== 'sensitivity'); return candidate; });
 }
 
 function redoclyProof() {
-  run(npx, ['--yes', '@redocly/cli@2.45.0', 'lint', entrypoint, '--config', redoclyConfig]);
+  runNpx(['--yes', '@redocly/cli@2.45.0', 'lint', entrypoint, '--config', redoclyConfig]);
   const bundleA = join(temp, 'product-a.json');
   const bundleB = join(temp, 'product-b.json');
-  run(npx, ['--yes', '@redocly/cli@2.45.0', 'bundle', entrypoint, '--config', redoclyConfig, '-o', bundleA]);
-  run(npx, ['--yes', '@redocly/cli@2.45.0', 'bundle', entrypoint, '--config', redoclyConfig, '-o', bundleB]);
-  assert(sha256(bundleA) === sha256(bundleB), 'resolved Product bundle is not deterministic');
+  runNpx(['--yes', '@redocly/cli@2.45.0', 'bundle', entrypoint, '--config', redoclyConfig, '-o', bundleA]);
+  runNpx(['--yes', '@redocly/cli@2.45.0', 'bundle', entrypoint, '--config', redoclyConfig, '-o', bundleB]);
+  assert(sha256(bundleA) === sha256(bundleB), 'resolved Product bundle is not deterministic within one proof run');
 
   const fixtureDir = join(temp, 'broken-source');
   mkdirSync(fixtureDir, { recursive: true });
@@ -359,17 +385,37 @@ function redoclyProof() {
   const broken = original.replace('#/pathItems/AccessContext', '#/pathItems/__missing__');
   assert(broken !== original, 'unable to construct unresolved-ref negative fixture');
   writeFileSync(brokenEntry, broken, 'utf8');
-  const negative = spawnSync(npx, ['--yes', '@redocly/cli@2.45.0', 'lint', brokenEntry, '--config', join(fixtureDir, 'redocly.yaml')], { cwd: root, encoding: 'utf8', shell: false });
+  const negative = spawnNpx(['--yes', '@redocly/cli@2.45.0', 'lint', brokenEntry, '--config', join(fixtureDir, 'redocly.yaml')]);
   assert(negative.status !== 0, 'Redocly unresolved-ref negative fixture unexpectedly passed');
+  negativeControlCount++;
+
+  const methodProbeDir = join(temp, 'method-not-allowed-source-probe');
+  mkdirSync(methodProbeDir, { recursive: true });
+  for (const name of sourceNames) cpSync(join(contractDir, name), join(methodProbeDir, name));
+  cpSync(redoclyConfig, join(methodProbeDir, 'redocly.yaml'));
+  const methodProbeEntry = join(methodProbeDir, 'openapi.yaml');
+  const methodProbeOriginal = readFileSync(methodProbeEntry, 'utf8');
+  const componentMarker = '\ncomponents:\n';
+  assert(methodProbeOriginal.includes(componentMarker), 'unable to construct 405 source expressibility probe');
+  const methodProbe = methodProbeOriginal.replace(componentMarker, `\n  '/__proof-method-not-allowed':\n    get:\n      operationId: ProofMethodNotAllowed\n      responses:\n        '405': {$ref: './components.yaml#/responses/MethodNotAllowed'}\n${componentMarker}`);
+  writeFileSync(methodProbeEntry, methodProbe, 'utf8');
+  const methodProbeBundle = join(temp, 'method-not-allowed-probe.json');
+  runNpx(['--yes', '@redocly/cli@2.45.0', 'bundle', methodProbeEntry, '--config', join(methodProbeDir, 'redocly.yaml'), '-o', methodProbeBundle]);
+  const methodProbeDocument = JSON.parse(readFileSync(methodProbeBundle, 'utf8'));
+  const methodResponse = resolveRef(methodProbeDocument, methodProbeDocument.paths?.['/__proof-method-not-allowed']?.get?.responses?.['405']);
+  assert(methodResponse?.headers?.Allow, 'source OAD 405 grammar does not resolve an Allow header');
+  const methodProblem = resolveRef(methodProbeDocument, methodResponse?.content?.['application/problem+json']?.schema);
+  assert(methodProblem?.properties?.type?.const === 'about:blank' && methodProblem?.properties?.status?.const === 405, 'source OAD 405 grammar must resolve about:blank/405');
+
   return { document: JSON.parse(readFileSync(bundleA, 'utf8')), bundlePath: bundleA };
 }
 
 function typescriptProof() {
   const first = join(temp, 'product-a.d.ts');
   const second = join(temp, 'product-b.d.ts');
-  run(npx, ['--yes', 'openapi-typescript@7.13.0', entrypoint, '-o', first, '--redocly', redoclyConfig]);
-  run(npx, ['--yes', 'openapi-typescript@7.13.0', entrypoint, '-o', second, '--redocly', redoclyConfig]);
-  assert(sha256(first) === sha256(second), 'TypeScript projection is not deterministic');
+  runNpx(['--yes', 'openapi-typescript@7.13.0', entrypoint, '-o', first, '--redocly', redoclyConfig]);
+  runNpx(['--yes', 'openapi-typescript@7.13.0', entrypoint, '-o', second, '--redocly', redoclyConfig]);
+  assert(sha256(first) === sha256(second), 'TypeScript projection is not deterministic within one proof run');
   const generated = readFileSync(first, 'utf8');
   assert(generated.includes('This file was auto-generated by openapi-typescript'), 'TypeScript projection lacks generated banner');
   assert(generated.includes('GetCurrentAccessContext') && generated.includes('EscalateWork'), 'TypeScript projection lacks boundary operation IDs');
@@ -385,10 +431,10 @@ function typescriptProof() {
   const mediaResult = generatedObjectBlock(generated, 'CreateListingIntentMediaResult', 'TypeScript');
   assert(/listing_intent_etag:\s*components\["schemas"\]\["StrongETag"\];/.test(mediaResult), 'TypeScript media result lost typed parent ListingIntent validator');
   assert(generated.includes('"application/json": components["schemas"]["CreateListingIntentMediaResult"];'), 'TypeScript operation projection does not reach CreateListingIntentMedia result schema');
-  run(npx, ['--yes', '-p', 'typescript@5.9.3', 'tsc', '--noEmit', '--strict', '--skipLibCheck', first]);
+  runNpx(['--yes', '-p', 'typescript@5.9.3', 'tsc', '--noEmit', '--strict', '--skipLibCheck', first]);
 }
 
-function goProof(bundlePath) {
+function goProof(bundlePath, document) {
   const dir = join(temp, 'go-proof');
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'oapi-codegen.yaml'), [
@@ -407,7 +453,7 @@ function goProof(bundlePath) {
   const generatedPath = join(dir, 'product.gen.go');
   const firstHash = sha256(generatedPath);
   generate();
-  assert(sha256(generatedPath) === firstHash, 'Go projection is not deterministic');
+  assert(sha256(generatedPath) === firstHash, 'Go projection is not deterministic within one proof run');
   const generated = readFileSync(generatedPath, 'utf8');
   assert(generated.includes('Code generated by github.com/oapi-codegen/oapi-codegen'), 'Go projection lacks generated banner');
   assert(generated.includes('type StrictServerInterface interface'), 'Go projection lacks StrictServerInterface');
@@ -424,8 +470,13 @@ function goProof(bundlePath) {
   const goMediaResult = generatedGoStruct(generated, 'CreateListingIntentMediaResult');
   assert(/\bStrongETag\s+`json:"listing_intent_etag"`/.test(goMediaResult), 'Go media result lost typed parent ListingIntent validator');
 
+  const expectedPatterns = operations(document)
+    .map((entry) => `${entry.method.toUpperCase()} ${entry.path}`)
+    .sort();
+  const goExpectedPatterns = expectedPatterns.map((pattern) => `\t${JSON.stringify(pattern)},`).join('\n');
+
   writeFileSync(join(dir, 'go.mod'), ['module productoadproof', '', 'go 1.25.1', '', 'require github.com/oapi-codegen/runtime v1.7.0', ''].join('\n'));
-  writeFileSync(join(dir, 'colon_suffix_test.go'), `package productapi\n\nimport (\n  \"net/http\"\n  \"net/http/httptest\"\n  \"testing\"\n)\n\ntype exactSuffixMux struct { method, path string; handler http.Handler }\nfunc (m exactSuffixMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {\n  if r.Method == m.method && r.URL.Path == m.path { m.handler.ServeHTTP(w, r); return }\n  http.NotFound(w, r)\n}\nfunc TestCanonicalColonSuffixDispatch(t *testing.T) {\n  called := false\n  mux := exactSuffixMux{method: http.MethodPost, path: \"/organizations/org/listing-intents/li:submit\", handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { called = true; w.WriteHeader(http.StatusNoContent) })}\n  res := httptest.NewRecorder()\n  mux.ServeHTTP(res, httptest.NewRequest(http.MethodPost, \"/organizations/org/listing-intents/li:submit\", nil))\n  if !called || res.Code != http.StatusNoContent { t.Fatalf(\"colon-suffix dispatch failed: called=%v status=%d\", called, res.Code) }\n}\n`);
+  writeFileSync(join(dir, 'colon_suffix_test.go'), `package productapi\n\nimport (\n  \"net/http\"\n  \"net/http/httptest\"\n  \"sort\"\n  \"testing\"\n)\n\ntype captureMux struct {\n  handlers map[string]func(http.ResponseWriter, *http.Request)\n  patterns []string\n}\n\nfunc newCaptureMux() *captureMux { return &captureMux{handlers: map[string]func(http.ResponseWriter, *http.Request){}} }\nfunc (m *captureMux) HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request)) {\n  m.patterns = append(m.patterns, pattern)\n  m.handlers[pattern] = handler\n}\nfunc (m *captureMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {\n  const pattern = \"POST /organizations/{organization_id}/listing-intents/{listing_intent_id}:submit\"\n  handler, ok := m.handlers[pattern]\n  if !ok { http.NotFound(w, r); return }\n  r.SetPathValue(\"organization_id\", \"org\")\n  r.SetPathValue(\"listing_intent_id\", \"li\")\n  handler(w, r)\n}\n\ntype probeServer struct { ServerInterface }\n\nfunc TestGeneratedCanonicalRouteRegistrationAndColonSuffixDispatch(t *testing.T) {\n  mux := newCaptureMux()\n  called := false\n  middleware := func(_ http.Handler) http.Handler {\n    return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { called = true; w.WriteHeader(http.StatusNoContent) })\n  }\n  handler := HandlerWithOptions(probeServer{}, StdHTTPServerOptions{BaseRouter: mux, Middlewares: []MiddlewareFunc{middleware}})\n\n  got := append([]string(nil), mux.patterns...)\n  want := []string{\n${goExpectedPatterns}\n  }\n  sort.Strings(got)\n  sort.Strings(want)\n  if len(got) != len(want) { t.Fatalf(\"generated route count mismatch: got=%d want=%d\", len(got), len(want)) }\n  for i := range want {\n    if got[i] != want[i] { t.Fatalf(\"generated route mismatch at %d: got=%q want=%q\", i, got[i], want[i]) }\n  }\n\n  res := httptest.NewRecorder()\n  handler.ServeHTTP(res, httptest.NewRequest(http.MethodPost, \"/organizations/org/listing-intents/li:submit\", nil))\n  if !called || res.Code != http.StatusNoContent { t.Fatalf(\"generated colon-suffix dispatch failed: called=%v status=%d\", called, res.Code) }\n}\n`);
   run(go, ['mod', 'tidy'], { cwd: dir });
   const runtimeVersion = run(go, ['list', '-m', '-f', '{{.Version}}', 'github.com/oapi-codegen/runtime'], { cwd: dir }).stdout.trim();
   assert(runtimeVersion === 'v1.7.0', `unexpected oapi-codegen runtime: ${runtimeVersion}`);
@@ -457,6 +508,7 @@ function sourceTreeNegativeControls() {
   let failed = false;
   try { sourceTreeProof(quotedRemote); } catch { failed = true; }
   assert(failed, 'quoted remote-ref source fixture unexpectedly passed');
+  negativeControlCount++;
 }
 function legacyRuntimeProof() {
   const tracked = run('git', ['-C', root, 'ls-files']).stdout.split(/\r?\n/).filter(Boolean);
@@ -473,9 +525,10 @@ try {
   const result = validate(document);
   negativeSemanticControls(document);
   typescriptProof();
-  goProof(bundlePath);
+  goProof(bundlePath, document);
   const after = run('git', ['-C', root, 'status', '--porcelain=v1']).stdout;
   assert(after === before, 'Product OAD proof dirtied the repository');
+  assert(negativeControlCount === EXPECTED_NEGATIVE_CONTROLS, `negative-control execution count mismatch: ${negativeControlCount}/${EXPECTED_NEGATIVE_CONTROLS}`);
   console.log('product_oad_openapi=3.1.2');
   console.log(`product_oad_operations=${result.all.length}/95`);
   console.log(`product_oad_permissions=${expectedPermissions.length}/29`);
@@ -483,8 +536,11 @@ try {
   console.log('product_oad_stable_origin=https://conexus.fun');
   console.log(`product_oad_idempotency_carriers=${result.idempotencyOps.length}/14`);
   console.log(`product_oad_collection_operations=${result.listSearch.length}/26`);
-  console.log('product_oad_negative_controls=10/10');
+  console.log(`product_oad_negative_controls=${negativeControlCount}/${EXPECTED_NEGATIVE_CONTROLS}`);
   console.log('product_oad_generated_projection_semantics=PASS');
+  console.log('product_oad_405_allow_source_expressibility=PASS');
+  console.log('product_oad_generated_colon_suffix_dispatch=PASS');
+  console.log('product_oad_organization_privacy_404=PASS');
   console.log('product_oad_legacy_runtime_population=0');
   console.log('product_oad_runtime_schema_enforcement=NOT_CLAIMED_D7');
   console.log('product_oad_router_selection=NONE_D7');
