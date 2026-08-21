@@ -97,6 +97,7 @@ $required = @(
     'docs/engineering/rebaseline/EVIDENCE-REGISTER.md',
     'scripts/check-pr-title.ps1',
     'scripts/gate.ps1',
+    'scripts/verify-product-oad.mjs',
     'package.json',
     'package-lock.json',
     '.github/workflows/ci.yml',
@@ -340,6 +341,11 @@ if ($LASTEXITCODE -ne 0 -or $diffCheck.Count -gt 0) {
 $package = Get-Content (Join-Path $root 'package.json') -Raw | ConvertFrom-Json
 foreach ($property in @('workspaces', 'dependencies', 'devDependencies')) {
     if ($package.PSObject.Properties.Name -contains $property) { Fail "package.json contains retired property: $property" }
+}
+
+if ($Lane -eq 'full') {
+    & node (Join-Path $root 'scripts/verify-product-oad.mjs')
+    if ($LASTEXITCODE -ne 0) { Fail 'Canonical Product OAD proof failed.' }
 }
 
 $negativeControls = 0
