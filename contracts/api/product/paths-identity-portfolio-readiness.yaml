@@ -1,4 +1,8 @@
 pathItems:
+  # BASELINE NON-REGRESSION FIXTURE — access pathItems below are retained only so
+  # scripts/verify-product-oad.mjs can reconstruct the accepted 95-operation / 29-Permission
+  # D5 projection. Canonical openapi.yaml references paths-access-performance.yaml for the
+  # current access surface. Do not re-reference these access pathItems as current Product authority.
   AccessContext:
     get:
       operationId: GetCurrentAccessContext
@@ -309,6 +313,10 @@ pathItems:
         '422': {$ref: './components.yaml#/responses/ValidationError'}
         '500': {$ref: './components.yaml#/responses/InternalError'}
 
+# BASELINE NON-REGRESSION FIXTURE — the presentation/access schemas below support only
+# the retained access pathItems above for the accepted 95/29 projection. The current
+# Product access schemas live in paths-access-performance.yaml and carry the effective
+# 30-Permission vocabulary. These aliases are not a second current access authority.
 schemas:
   PresentationLabel:
     type: string
