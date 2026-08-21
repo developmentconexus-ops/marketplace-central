@@ -11,8 +11,8 @@
 | Product | **Marketplace Operations Control Plane + Commercial Intelligence** |
 | Current stage | **D6 — Frontend — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D5 ACCEPTED / CLOSED** |
-| D6-discovered bounded amendment | **D6-R1 Marketplace Performance Intelligence — OPERATOR-APPROVED / EXECUTABLE OAD PROOF PASS** |
-| Exact next action | **D6-B1 — operator-review/adjudicate the revised Portuguese 99-operation interaction map + low-fidelity wireframe proof; only if approved proceed to frontend topology/dependency adjudication** |
+| D6-discovered bounded amendment | **D6-R1 Marketplace Performance Intelligence — OPERATOR-APPROVED / FABLE ACCEPT WITH BOUNDED FIXES / FIXES ADJUDICATED IN CURRENT CANDIDATE** |
+| Exact next action | **D6-B1 — operator-review/adjudicate the corrected Portuguese 99-operation interaction map + low-fidelity wireframe proof after Fable; only if approved proceed to frontend topology/dependency adjudication** |
 | Canonical Product OAD candidate | `contracts/api/product/openapi.yaml` |
 | Product surface in current D6 candidate | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
@@ -56,12 +56,15 @@ Executable proof on the repaired OAD establishes:
 ```text
 accepted D5 baseline non-regression  PASS  95/95 ops · 29/29 Permissions · 26/26 List/Search · 12/12 negative controls
 current D6-R1 Product candidate      PASS  99/99 ops · 30/30 Permissions · 28/28 List/Search · 7/7 Performance negative controls
+Performance knowledge wire          PASS  available requires measure · unavailable forbids measure · 2/2 negative controls
 Principal kinds                      H / A / S
 TypeScript + Go projections          deterministic / compilable
 legacy runtime population            0
 runtime schema enforcement           NOT_CLAIMED_D7
 router selection                     NONE_D7
 ```
+
+Independent Fable review concluded **ACCEPT WITH BOUNDED FIXES** and found no reason to reconstruct or reopen the 13th boundary, D2-R2 custody, the four-Q surface, `performance.read` or the proof approach. GPT adjudicated F-1…F-8 as bounded corrections only: frontend proof clarity, wire knowledge precision, baseline-fixture labeling, count-independent D2-R1 wording, honest repository negative-control reporting, routing freshness, and a D7 measure-by-scope obligation. No new Product capability or mechanism was admitted by the review.
 
 The amendment is bounded; it is not permission to generally reopen D0–D5.
 
@@ -91,7 +94,7 @@ ESTRATÉGIA E INTELIGÊNCIA
   Economia
 ```
 
-The revised [interaction map](engineering/rebaseline/D6-B1-INTERACTION-MAP.md) maps all 99 Product operations and the Portuguese [low-fidelity wireframe proof](../qualification/d6-wireframes/index.html) exercises the approved shell plus the strategic Performance workspace. Internal challenge against the interaction-map falsifiers found no additional Product/API prerequisite. These artifacts remain **candidate proof**, not D6-B1 ratification, until operator review.
+The corrected [interaction map](engineering/rebaseline/D6-B1-INTERACTION-MAP.md) maps all 99 Product operations and the Portuguese [low-fidelity wireframe proof](../qualification/d6-wireframes/index.html) exercises the approved shell plus the strategic Performance workspace. Following Fable review, the wireframe no longer implies an uncontracted `signals[]` surface, does not show a delta from partial evidence, and explicitly demonstrates both `insufficient_evidence` and `not_comparable` comparison refusal states. These artifacts remain **candidate proof**, not D6-B1 ratification, until operator review.
 
 Performance requires an exact Marketplace Installation. Future multi-marketplace views may compose per-Installation results but may not add provider metrics as if their measurement bases were automatically equivalent.
 
@@ -105,6 +108,8 @@ While D6 is active:
 - do not restore retired runtime/frontend/manual SDK authority;
 - do not add Ads management, autonomous commercial optimization or AI/MCP authority;
 - reopen an accepted earlier decision only for a material falsifier and only at the smallest responsible authority.
+
+D7 inherits one explicit Performance realization obligation from Fable review: prove real Mercado Livre measure availability per exact Retail Media scope and report unsupported/unavailable honestly; do not assume campaign/item/catalog/family measurement symmetry.
 
 ## Progression law
 
