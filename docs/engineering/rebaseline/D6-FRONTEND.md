@@ -127,7 +127,8 @@ A later D6 decision may evaluate concrete frontend dependencies when an accepted
 - Product 1.0 currently exposes Mercado Livre as the only connectable marketplace kind;
 - the bounded D2-R1 presentation-identity correction is proved without changing the 95/29/H-A-S surface;
 - `SearchSourceProductsForMarketplace` admits an optional operation-local SourceInstance narrowing filter while every returned Product remains source-qualified;
-- the derived [D6-B1 Frontend Interaction Map](D6-B1-INTERACTION-MAP.md) gives all 95 admitted operations a user-visible interaction home across 32 screen/route states.
+- the derived [D6-B1 Frontend Interaction Map](D6-B1-INTERACTION-MAP.md) gives all 95 admitted operations a user-visible interaction home across 32 screen/route states;
+- the low-fidelity HTML proof set exists and has passed internal challenge against the interaction-map negative controls without exposing another Product/API gap.
 
 **Inferred**
 
@@ -229,16 +230,43 @@ Binding consequences:
 
 Detailed flows, routes, 32 screen states, 95-operation coverage and negative controls live in [D6-B1 Frontend Interaction Map](D6-B1-INTERACTION-MAP.md).
 
+## 3.11 Low-fidelity HTML proof — CANDIDATE / INTERNAL CHALLENGE PASS
+
+The self-contained wireframe prototype is [`qualification/d6-wireframes/index.html`](../../../qualification/d6-wireframes/index.html).
+
+It intentionally contains only low-fidelity evidence:
+
+- grayscale/system-font layout rather than final branding, typography, component library or design system;
+- ten representative navigable states covering the approved shell, Readiness, ListingIntent authoring, Availability, Sale composition, Fulfillment execution, Work, Channels settings, Economics/reconciliation and Access/Governance settings;
+- illustrative/static values only; no claim of Product runtime, browser integration, provider behavior or persistence;
+- responsive structural behavior sufficient to test sidebar/top-context/content stacking without choosing a router/framework.
+
+Internal adversarial review attacked the interaction-map negative controls and found no new Product/API prerequisite. The prototype explicitly demonstrates or blocks the material hazards:
+
+- no hidden/default SourceInstance or Product master;
+- no false cross-account merge for source-qualified collections;
+- no generic `ConnectMarketplace`, sync/refresh, SetPrice, SetAvailableQuantity, Work close, PostSale close or deferred reactivation action;
+- ListingIntent/Price/Availability/Economics remain distinct authorities inside one user flow;
+- Sale detail is read-only composition with owner-local actions;
+- unknown/unavailable/partial and pending/ambiguous states are visibly distinct;
+- stale revision/idempotency/retry semantics are surfaced instead of hidden;
+- physical Fulfillment evidence does not trust caller-declared qualification;
+- Work does not acquire source-truth closure;
+- Governance does not acquire target-domain Permission/execution authority;
+- presentation labels remain visibly secondary to canonical IDs/keys.
+
+This is **not browser/runtime proof** and does not ratify D6-B1 by itself. It is an interaction-level falsifier produced while Product implementation remains blocked.
+
 ---
 
 ## 4. Exact next D6 work
 
 Continue only inside D6-B1:
 
-1. produce the ten-state low-fidelity HTML wireframe proof set named by the interaction map;
-2. attack those wireframes against the interaction-map negative controls, especially hidden authority, dishonest knowledge state, unsafe retry and unsupported actions;
-3. if a wireframe exposes another material Product/API gap, stop that interaction and reopen only the smallest responsible accepted authority;
-4. after the interaction model + wireframes cohere, evaluate the smallest frontend feature/package topology and exact dependency needs supported by those accepted properties;
-5. do not select D7 runtime/router/database/deployment mechanics while doing frontend topology research.
+1. operator-review/adjudicate the [D6-B1 Frontend Interaction Map](D6-B1-INTERACTION-MAP.md) and the [low-fidelity HTML wireframe proof](../../../qualification/d6-wireframes/index.html);
+2. if the interaction model is approved, evaluate the smallest frontend feature/package topology and exact dependency needs required by those accepted properties, using current official evidence rather than convention;
+3. topology research may select frontend navigation/form/client realization details but must not choose D7 server/runtime/router/database/deployment mechanics;
+4. once one coherent D6-B1 interaction + topology candidate exists, submit it to the repository's independent milestone/final review path rather than using Fable/Claude Design as iterative co-authors;
+5. do not ratify D6-B1 or merge PR #54 without explicit operator authorization.
 
 Do not begin D7–D9 or Product implementation.
