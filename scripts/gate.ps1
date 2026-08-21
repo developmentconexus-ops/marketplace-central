@@ -46,10 +46,16 @@ function Resolve-GateBase {
     return $null
 }
 
+function Test-ReviewDiffNames([string[]]$names) {
+    $normalized = @($names | ForEach-Object { $_.Replace('\', '/') })
+    return $normalized.Count -eq 1 -and $normalized[0] -eq 'docs/work/current/ai-dialog.md'
+}
+
 function Test-DurableDocPath([string]$path) {
     $normalized = $path.Replace('\', '/')
     if ($normalized -eq 'README.md' -or $normalized -eq 'AGENTS.md' -or $normalized -eq 'ARCHITECTURE.md') { return $true }
     if (-not $normalized.StartsWith('docs/')) { return $false }
+    if ($normalized.StartsWith('docs/work/')) { return $false }
     if ($normalized.StartsWith('docs/archive/')) { return $false }
     if ($normalized.StartsWith('docs/review/')) { return $false }
     if ($normalized.StartsWith('docs/plans/')) { return $false }
@@ -76,6 +82,18 @@ Require-Command npm
 $trackedFiles = Get-TrackedFiles
 $trackedSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 foreach ($file in $trackedFiles) { [void]$trackedSet.Add($file.Replace('\', '/')) }
+
+$headRef = $env:GATE_HEAD_REF
+if ([string]::IsNullOrWhiteSpace($headRef)) { $headRef = (git branch --show-current).Trim() }
+$isReview = $headRef -like 'review/*'
+$trackedWork = @($trackedFiles | Where-Object { $_.Replace('\', '/').StartsWith('docs/work/') })
+if ($isReview) {
+    if (-not (Test-ReviewDiffNames $trackedWork)) {
+        Fail "review branch may track only docs/work/current/ai-dialog.md under docs/work/: $($trackedWork -join ', ')"
+    }
+} elseif ($trackedWork.Count -gt 0) {
+    Fail "candidate/main contains temporary docs/work material: $($trackedWork -join ', ')"
+}
 
 $requiredFiles = @(
     'README.md',
@@ -236,9 +254,35 @@ $diffRange = 'unavailable'
 if ($base) {
     git cat-file -e "$head^{commit}" 2>$null
     if ($LASTEXITCODE -ne 0) { Fail "gate head is not an available commit: $head" }
-    $diffRange = "$base...$head"
-    $changedFiles = @(git diff --name-only $diffRange)
-    if ($LASTEXITCODE -ne 0) { Fail "git diff failed for range $diffRange" }
+
+    if ($isReview) {
+        $candidateRef = $env:GATE_CANDIDATE_REF
+        if ([string]::IsNullOrWhiteSpace($candidateRef)) { $candidateRef = $env:GATE_BASE_REF }
+        if ([string]::IsNullOrWhiteSpace($candidateRef)) { Fail 'review mode requires an explicit candidate branch/ref' }
+
+        git show-ref --verify --quiet "refs/remotes/origin/$candidateRef"
+        if ($LASTEXITCODE -ne 0) {
+            git ls-remote --exit-code --heads origin $candidateRef *> $null
+            if ($LASTEXITCODE -ne 0) { Fail "review candidate ref does not exist on origin: $candidateRef" }
+        }
+
+        $candidateTree = @(git ls-tree -r --name-only $base)
+        if ($LASTEXITCODE -ne 0) { Fail "unable to inspect exact review candidate tree: $base" }
+        $candidateWork = @($candidateTree | Where-Object { $_.Replace('\', '/').StartsWith('docs/work/') })
+        if ($candidateWork.Count -gt 0) { Fail 'exact review candidate tree is contaminated by docs/work material' }
+
+        $reviewNames = @(git diff --name-only "$base..$head")
+        if ($LASTEXITCODE -ne 0) { Fail "git diff failed for review range $base..$head" }
+        if (-not (Test-ReviewDiffNames $reviewNames)) {
+            Fail "review branch must differ from exact candidate only by docs/work/current/ai-dialog.md: $($reviewNames -join ', ')"
+        }
+        $diffRange = "$base..$head"
+        $changedFiles = $reviewNames
+    } else {
+        $diffRange = "$base...$head"
+        $changedFiles = @(git diff --name-only $diffRange)
+        if ($LASTEXITCODE -ne 0) { Fail "git diff failed for range $diffRange" }
+    }
 }
 
 $forbiddenDiffPatterns = @(
@@ -285,8 +329,11 @@ Expect-Failure 'bootstrap overflow' {
     if (-not (($bootstrapLimit + 1) -gt $bootstrapLimit)) { return }
     throw 'caught'
 }
+Expect-Failure 'review isolation' {
+    if ((Test-ReviewDiffNames @('docs/work/current/ai-dialog.md')) -and -not (Test-ReviewDiffNames @('docs/work/current/ai-dialog.md', 'README.md'))) { throw 'caught' }
+}
 
-if ($negativeControls -ne 5) { Fail "repository negative-control count mismatch: $negativeControls/5" }
+if ($negativeControls -ne 6) { Fail "repository negative-control count mismatch: $negativeControls/6" }
 
 $productProof = & node 'scripts/verify-product-oad.mjs' 2>&1
 if ($LASTEXITCODE -ne 0) {
@@ -303,7 +350,7 @@ Write-Host "docs_index_relative_links: $(@($docLinks['docs/index.md']).Count)"
 Write-Host "durable_docs_reachable: $($reachable.Count)"
 Write-Host "machine_route_files: $($machineRouteFiles.Count) selectors: $machineRouteSelectors"
 Write-Host "diff_range: $diffRange changed_files: $($changedFiles.Count)"
-Write-Host "review_mode: False"
+Write-Host "review_mode: $isReview"
 Write-Host "legacy_runtime_population: 0"
-Write-Host "negative_controls: $negativeControls/5"
+Write-Host "negative_controls: $negativeControls/6"
 Write-Host 'gate: PASS'
