@@ -1,6 +1,6 @@
 # D6-R1 — Marketplace Performance Intelligence
 
-> **Status:** OPERATOR-APPROVED SEMANTICS / CANONICALIZATION IN PROGRESS
+> **Status:** OPERATOR-APPROVED SEMANTICS / INDEPENDENT FABLE REVIEW: ACCEPT WITH BOUNDED FIXES
 > **Trigger:** D6 frontend falsifier — the accepted 95-operation surface could operate listings, price, availability, sales and economics but could not answer the strategy team's first-party marketplace-performance questions without frontend-created analytics authority.
 > **Scope:** bounded amendment to D0/D1/D2/D3/D4/D5 discovered by D6; D7–D9 and Product implementation remain blocked.
 > **Method:** DevelopmentConexus Engineering Method v1.0.0
@@ -131,6 +131,18 @@ Technical API access does not imply contractual permission to expose/derive ever
 
 Listing-quality evidence is not added to the baseline until a concrete applicable source contract is proven for the selected operating categories.
 
+### D7 realization obligation — measure-by-scope proof
+
+The Product schema deliberately permits only the measures actually known for a concrete evidence item; **D7 must prove the exact Mercado Livre measure availability for every acquired Retail Media scope rather than assume symmetry across campaign, Listing/item, catalog grouping or family grouping.**
+
+Binding realization constraints:
+
+- a metric documented at campaign-detail scope is not inferred to exist at item/catalog/family scope;
+- the owner-local Product field `lost_impression_share_by_rank` is a deliberate semantic rename of Mercado Livre's provider field `lost_impression_share_by_ad_rank` only when that provider measure is actually available for the exact acquired scope;
+- catalog/family-group performance remains `unsupported` or `unavailable` until a real provider acquisition surface proves those measurements at that scope; grouping identity alone is not measurement evidence;
+- provider refresh windows, historical query bounds and attribution/basis changes must be reflected in coverage/freshness/measurement-basis rather than synthesized into values;
+- this obligation selects no runtime, worker, persistence, scheduler, database or provider-client mechanism and adds no Product operation.
+
 ## 7. D5 operation/permission amendment
 
 Add one ordinary Permission:
@@ -197,6 +209,8 @@ unsupported
 ```
 
 `partial` carries explicit covered periods. `unknown` and `unavailable` use closed reasons. Known zero/empty remains distinct from unknown/unavailable.
+
+Available evidence (`complete|partial`) structurally requires the owner-local measure it claims to know; unavailable evidence (`unknown|unavailable|unsupported`) structurally forbids that measure. This prevents a contract-valid “complete but absent” value from collapsing known zero into unknown.
 
 Retail-media unavailable reasons include only bounded Product meanings such as configuration required, provider access unavailable, source unavailable or contract restricted. Those are valid 200 response semantics, not ordinary authorization failures.
 
@@ -298,10 +312,13 @@ Performance requires an exact Marketplace Installation. Future `Todas as contas`
 5. Prove Redocly bundle/lint plus TypeScript and Go generation against the repaired full OAD.
 6. Route this repair through `docs/index.md`, `D6-FRONTEND.md` and `roadmap.md`.
 7. Re-derive the D6 interaction map and low-fidelity wireframes in Portuguese after OAD proof.
-8. Keep PR #54 Draft; do not merge without explicit operator authorization.
+8. Independently challenge the full repair with Fable; adjudicate only evidence-backed findings before frontend topology resumes.
+9. Keep PR #54 Draft; do not merge without explicit operator authorization.
 
 ## 14. Evidence used for the bounded reopen
 
 Current external evidence was revalidated on 2026-08-21 from official/current sources, including Mercado Livre Visits, current Product Ads Campaign/Ad Group performance documentation and Developer Program Terms. Amazon Sales & Traffic / Brand Analytics and current commerce-intelligence benchmarks were used only as portability/UX evidence, never to fabricate current connectability or provider equivalence.
+
+Independent Fable review concluded **ACCEPT WITH BOUNDED FIXES** and found no reason to reopen the 13th boundary, D2-R2 custody, the four-Q surface, `performance.read`, or the overall proof approach. Accepted review residue is limited to contract precision, frontend proof clarity, repository hygiene and the D7 measure-by-scope obligation above.
 
 Repository current authority remains stronger than research/chat. A provider contract change reopens only the smallest affected D4/D5 meaning.
