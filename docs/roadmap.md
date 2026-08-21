@@ -11,7 +11,7 @@
 | Product | **Marketplace Operations Control Plane + Commercial Intelligence** |
 | Current stage | **D6 — Frontend — OPEN / ACTIVE** |
 | Accepted through | **D0–D5**, including the canonical Product OpenAPI Description and executable proof |
-| Exact next action | **D6-B1 — Frontend Interaction & Authority Model — derive and falsify the smallest Product 1.0 screen/interaction → semantic owner → Product capability/Permission map before frontend topology selection** |
+| Exact next action | **D6-B1 — prove the bounded D2-R1/D5 presentation-identity correction, then adjudicate the global App Shell / information architecture before flows or screens** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **95 Product operations · 29 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
@@ -77,6 +77,18 @@ Current D6 boundary:
 - frontend dependency/package topology is selected only after a concrete D6 property requires it and evidence supports the smallest fit.
 
 D6 opening does **not** authorize Product implementation.
+
+## D6-B1 first coverage result
+
+The first frontend-coverage pass produced two negative findings and one bounded parent clarification:
+
+- **Available channels:** no generic Integration/Channel Catalog Product operation is added. Product 1.0 remains Mercado Livre-only for connectability; D6 may establish a stable Add-channel UX architecture that expands only after future providers are explicitly admitted by the responsible architecture/API stages.
+- **Marketplace authorization:** no Product operation is missing. Existing D5 Technical Ingress owns the Product-authorized human begin/provider callback ceremony for an exact Marketplace Installation; D6 must not turn it into a fake Product `ConnectMarketplace` capability.
+- **Presentation identity:** the operator approved a bounded candidate clarification, [D2-R1 Presentation Identity](engineering/rebaseline/D2-R1-PRESENTATION-IDENTITY.md), plus an additive D5 wire correction so existing human access reads carry non-authoritative `display_name` metadata while canonical Organization/Principal/AccessRole IDs/keys remain authority.
+
+This is **not** a general D2 or D5 stage reopen. The correction is limited to presentation completeness exposed by D6, must preserve exactly 95 Product operations / 29 ordinary Permissions / H-A-S Principal kinds, and must pass the existing canonical OAD proof before D6 consumes it as settled input.
+
+After that proof, D6-B1 proceeds to user mental models, information architecture and global App Shell adjudication. Individual screen inventory and wireframes remain later B1 work.
 
 ## D6 blocked/deferred boundary
 
