@@ -32,7 +32,7 @@ The Product operation count is contract scope, not a handler/screen count.
 | D4 — External Integrations | ACCEPTED / CLOSED; bounded Mercado Livre Performance evidence amendment approved in current candidate |
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
 | D5 — API | ACCEPTED / CLOSED; bounded D6-R1 99/30 wire amendment proved in current candidate |
-| D6 — Frontend | **OPEN / ACTIVE** |
+| D6 — Frontend | OPEN / ACTIVE |
 | D7 — Runtime / Jobs / Transactions | BLOCKED |
 | D8 — Golden Flows | BLOCKED |
 | D9 — Adversarial Architecture Review | BLOCKED |
