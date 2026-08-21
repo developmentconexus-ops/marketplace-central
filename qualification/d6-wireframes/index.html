@@ -35,7 +35,6 @@
     .control,.btn { border:1px solid #aaa; background:#fff; border-radius:5px; padding:7px 10px; }
     .btn { cursor:pointer; }
     .btn.primary { background:var(--dark); color:#fff; border-color:var(--dark); }
-    .btn.danger { border-style:dashed; }
     .btn[disabled] { color:#999; background:#eee; cursor:not-allowed; }
     .grid { display:grid; gap:12px; }
     .grid.kpi { grid-template-columns:repeat(4,minmax(0,1fr)); }
@@ -62,12 +61,9 @@
     .tab.active { border-color:#222; font-weight:700; }
     .split { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(300px,.7fr); gap:12px; }
     .timeline { border-left:2px solid #aaa; padding-left:16px; margin-left:5px; }
-    .event { margin:0 0 15px; }
+    .event { margin:0 0 15px; position:relative; }
     .event:before { content:""; width:8px; height:8px; background:#777; border-radius:50%; display:block; position:absolute; transform:translate(-21px,5px); }
     .wire { min-height:80px; border:1px dashed #999; background:#f8f8f6; padding:12px; }
-    .bar { height:12px; background:#d7d7d3; border-radius:3px; margin:7px 0; }
-    .bar.w70 { width:70%; } .bar.w45 { width:45%; } .bar.w25 { width:25%; }
-    .formula { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; background:#eee; padding:10px; border:1px solid var(--line); }
     .footer-note { margin-top:25px; font-size:11px; color:#777; border-top:1px solid var(--line); padding-top:10px; }
     @media (max-width:1000px) { .app{grid-template-columns:78px 1fr;} aside{padding:12px 6px;} .brand{font-size:12px;padding:6px;} .stage,.group{display:none;} .nav{font-size:11px;padding:8px 5px;} .nav.sub{padding-left:10px;} .grid.kpi,.grid.three{grid-template-columns:repeat(2,1fr);} .split{grid-template-columns:1fr;} }
     @media (max-width:680px) { .app{display:block;} aside{height:auto;position:static;border-right:0;border-bottom:1px solid var(--line);display:flex;gap:4px;overflow:auto;} .brand{min-width:120px;} .nav{min-width:110px;} header{position:static;padding:10px 14px;} .content{padding:15px;} .grid.kpi,.grid.two,.grid.three{grid-template-columns:1fr;} h1{font-size:23px;} }
@@ -85,11 +81,13 @@
     <button class="nav" data-target="availability">Disponibilidade</button>
     <button class="nav" data-target="sale">Vendas</button>
     <button class="nav" data-target="fulfillment">Expedição</button>
+    <button class="nav" data-target="post-sale">Pós-venda</button>
     <div class="group">Estratégia e inteligência</div>
     <button class="nav" data-target="performance-summary">Performance</button>
     <button class="nav sub" data-target="performance-summary">Resumo</button>
     <button class="nav sub" data-target="performance-listings">Publicações</button>
     <button class="nav sub" data-target="performance-media">Mídia</button>
+    <button class="nav" data-target="market">Mercado</button>
     <button class="nav" data-target="economics">Economia</button>
     <div class="group">Controle</div>
     <button class="nav" data-target="work">Trabalho</button>
@@ -116,14 +114,14 @@
         <div class="grid kpi">
           <div class="card"><div class="small">Contas conectadas</div><div class="kpi-value">1</div><span class="owner">Portfolio</span></div>
           <div class="card"><div class="small">Economia realizada · 30 dias</div><div class="kpi-value">R$ 184 mil</div><span class="owner">Economia</span></div>
-          <div class="card"><div class="small">Trabalhos abertos desta consulta</div><div class="kpi-value">12 itens</div><span class="owner">Trabalho</span><div class="small">Não é total global inferido.</div></div>
-          <div class="card"><div class="small">Performance</div><div class="kpi-value">Abrir conta</div><span class="owner">Performance</span><div class="small">Resultados permanecem por Installation.</div></div>
+          <div class="card"><div class="small">Trabalhos desta consulta</div><div class="kpi-value">12 itens</div><span class="owner">Trabalho</span><div class="small">Não é total global inferido.</div></div>
+          <div class="card"><div class="small">Performance</div><div class="kpi-value">Abrir conta</div><span class="owner">Performance</span><div class="small">Resultados permanecem por conta.</div></div>
         </div>
         <div class="notice"><strong>Sem “dashboard authority”</strong>Visão geral compõe leituras existentes; não existe <code>/dashboard</code>, contagem escondida nem KPI cross-provider inventado.</div>
       </section>
 
       <section class="screen" data-screen="readiness">
-        <div class="eyebrow">Operações · Preparação · Installation exata</div>
+        <div class="eyebrow">Operações · Preparação · conta exata</div>
         <h1>Preparar produto para o canal</h1>
         <p class="lead">A busca não exige uma fonte pré-selecionada. Cada resultado continua explicitamente qualificado por SourceInstance.</p>
         <div class="toolbar"><input class="control" value="torneira monocomando" aria-label="Busca ilustrativa"><button class="btn primary">Buscar</button></div>
@@ -137,7 +135,7 @@
       <section class="screen" data-screen="listing">
         <div class="eyebrow">Operações · Publicações</div>
         <h1>Intenção de publicação</h1>
-        <p class="lead">ListingIntent, PriceIntent, Disponibilidade e Economia aparecem juntos no fluxo, mas continuam authorities distintos.</p>
+        <p class="lead">ListingIntent, PriceIntent, Disponibilidade e Economia aparecem juntos no fluxo, mas continuam autoridades distintas.</p>
         <div class="tabs"><button class="tab active">Operação</button><button class="tab" data-jump="performance-listings">Performance</button></div>
         <div class="split">
           <div class="card">
@@ -149,32 +147,29 @@
           </div>
           <div class="grid">
             <div class="card"><h3>Preço</h3><strong>R$ 389,90</strong><br><span class="owner">PriceIntent · Offering</span><p class="small">Não é campo do ListingIntent.</p></div>
-            <div class="card"><h3>Disponibilidade</h3><strong>24 un.</strong><br><span class="owner">Availability</span></div>
+            <div class="card"><h3>Disponibilidade</h3><strong>24 un.</strong><br><span class="owner">Disponibilidade</span></div>
             <div class="card"><h3>Economia esperada</h3><strong>Margem 21,4%</strong><br><span class="owner">Economia</span></div>
           </div>
         </div>
-        <div class="toolbar"><div class="small">Submission aceita não significa aplicada/convergida.</div><button class="btn primary">Submeter intenção</button></div>
+        <div class="toolbar"><div class="small">Submissão aceita não significa aplicada/convergida.</div><button class="btn primary">Submeter intenção</button></div>
       </section>
 
       <section class="screen" data-screen="performance-summary">
         <div class="eyebrow">Estratégia e inteligência · Performance · Resumo</div>
         <h1>Performance da conta</h1>
-        <p class="lead">Uma Installation exata, período explícito e comparação semanticamente validada pelo Product. Dados abaixo são apenas exemplos de layout.</p>
-        <div class="toolbar">
-          <div class="cluster"><button class="btn">Últimos 30 dias ▾</button><span class="small">01/07–31/07 × 01/06–30/06</span></div>
-          <span class="state">Conta exata</span>
-        </div>
+        <p class="lead">Uma conta exata, período explícito e comparação semanticamente validada pelo Product. Dados abaixo são apenas exemplos de layout.</p>
+        <div class="toolbar"><div class="cluster"><button class="btn">Últimos 30 dias ▾</button><span class="small">01/07–31/07 × 01/06–30/06</span></div><span class="state">Conta exata</span></div>
         <div class="grid kpi">
           <div class="card"><div class="small">Visitas</div><div class="kpi-value">15.842</div><strong>+12,4%</strong><br><span class="state">Completo</span><span class="owner">Performance</span></div>
-          <div class="card"><div class="small">Vendas</div><div class="kpi-value">428</div><strong>+4,1%</strong><br><span class="state">Completo</span><span class="owner">Performance / Sales evidence</span></div>
-          <div class="card"><div class="small">ROAS informado pelo provider</div><div class="kpi-value">6,37×</div><strong>+0,62×</strong><br><span class="state partial">Parcial</span><span class="owner">Performance</span></div>
+          <div class="card"><div class="small">Vendas</div><div class="kpi-value">428</div><strong>+4,1%</strong><br><span class="state">Completo</span><span class="owner">Performance · evidência de Vendas</span></div>
+          <div class="card"><div class="small">ROAS informado pelo marketplace</div><div class="kpi-value">6,37×</div><strong>+0,62×</strong><br><span class="state partial">Parcial</span><span class="owner">Performance</span></div>
           <div class="card"><div class="small">Margem realizada</div><div class="kpi-value">18,4%</div><strong>−1,8 p.p.</strong><br><span class="owner">Economia · leitura separada</span></div>
         </div>
         <div class="grid two" style="margin-top:12px">
           <div class="card"><h2>O que mudou</h2><p>Visitas cresceram mais rápido que vendas.</p><p>A cobertura de mídia está <strong>parcial</strong> para 3 dias do período.</p><p>O Product marcou a comparação de ROAS como <strong>comparável</strong> apenas no período coberto.</p></div>
           <div class="card"><h2>Sinais para investigar</h2><p><strong>Porcelanato A:</strong> visitas ↑, vendas ↓, preço comparável acima.</p><p><strong>Cuba B:</strong> ROAS alto e perda de impressão por orçamento.</p><p class="small">Sinais não afirmam causalidade e não recomendam execução automática.</p></div>
         </div>
-        <div class="notice"><strong>Measurement basis explícito</strong>ROAS/CVR do provider não são reconstruídos pelo navegador. Evidência histórica preservada mantém a autoridade original do marketplace.</div>
+        <div class="notice"><strong>Base de medição explícita</strong>ROAS/CVR do marketplace não são reconstruídos pelo navegador. Evidência histórica preservada mantém a autoridade original do marketplace.</div>
       </section>
 
       <section class="screen" data-screen="performance-listings">
@@ -182,40 +177,42 @@
         <h1>Performance por publicação</h1>
         <p class="lead">Todas as Listings conhecidas continuam na população, inclusive quando a evidência de Performance é desconhecida ou indisponível.</p>
         <div class="split">
-          <div>
-            <table><thead><tr><th>Publicação</th><th>Visitas</th><th>Vendas</th><th>ROAS</th><th>Cobertura</th></tr></thead><tbody>
-              <tr class="row-select"><td>Torneira alta<br><code>MLB123</code></td><td>4.820<br><span class="small">+22%</span></td><td>146<br><span class="small">−9%</span></td><td>5,8×</td><td><span class="state">Completo</span></td></tr>
-              <tr class="row-select"><td>Cuba inox<br><code>MLB456</code></td><td>3.111</td><td>129</td><td>11,4×</td><td><span class="state partial">Parcial</span></td></tr>
-              <tr class="row-select"><td>Porcelanato 90×90<br><code>MLB789</code></td><td>—</td><td>—</td><td>—</td><td><span class="state unknown">Indisponível</span><br><span class="small">histórico não recuperável</span></td></tr>
-            </tbody></table>
-          </div>
-          <div class="card">
-            <div class="eyebrow">Publicação selecionada</div><h2>Torneira alta</h2><code>Mercado Livre · MLB123</code>
-            <hr><p><strong>Visitas:</strong> 4.820</p><p><strong>Vendas:</strong> 146</p><p><strong>Mídia atribuível ao Listing:</strong> ROAS 5,8×</p>
-            <div class="notice"><strong>Performance ≠ Listing owner</strong>Configuração e lifecycle continuam em Offering.</div>
-            <button class="btn" data-jump="listing">Abrir operação da publicação</button>
-          </div>
+          <div><table><thead><tr><th>Publicação</th><th>Visitas</th><th>Vendas</th><th>ROAS</th><th>Cobertura</th></tr></thead><tbody>
+            <tr class="row-select"><td>Torneira alta<br><code>MLB123</code></td><td>4.820<br><span class="small">+22%</span></td><td>146<br><span class="small">−9%</span></td><td>5,8×</td><td><span class="state">Completo</span></td></tr>
+            <tr class="row-select"><td>Cuba inox<br><code>MLB456</code></td><td>3.111</td><td>129</td><td>11,4×</td><td><span class="state partial">Parcial</span></td></tr>
+            <tr class="row-select"><td>Porcelanato 90×90<br><code>MLB789</code></td><td>—</td><td>—</td><td>—</td><td><span class="state unknown">Indisponível</span><br><span class="small">histórico não recuperável</span></td></tr>
+          </tbody></table></div>
+          <div class="card"><div class="eyebrow">Publicação selecionada</div><h2>Torneira alta</h2><code>Mercado Livre · MLB123</code><hr><p><strong>Visitas:</strong> 4.820</p><p><strong>Vendas:</strong> 146</p><p><strong>Mídia atribuível à publicação:</strong> ROAS 5,8×</p><div class="notice"><strong>Performance ≠ owner da publicação</strong>Configuração e lifecycle continuam em Offering.</div><button class="btn" data-jump="listing">Abrir operação da publicação</button></div>
         </div>
       </section>
 
       <section class="screen" data-screen="performance-media">
         <div class="eyebrow">Estratégia e inteligência · Performance · Mídia</div>
         <h1>Performance de mídia</h1>
-        <p class="lead">Somente análise. Scopes do marketplace continuam explícitos e não são forçados a uma Listing.</p>
-        <div class="notice"><strong>Não é Ads Manager</strong>Não existem controles para criar campanha, mudar orçamento/bid, pausar, segmentar ou otimizar automaticamente.</div>
-        <table><thead><tr><th>Scope</th><th>Identidade provider</th><th>Impressões</th><th>Cliques / CTR</th><th>Gasto</th><th>ROAS</th><th>Base</th></tr></thead><tbody>
-          <tr><td><span class="state">Campanha</span><br>Performance Geral</td><td><code>CAMP-001</code></td><td>184.200</td><td>3.980 · 2,16%</td><td>R$ 4.900</td><td>6,37×</td><td>provider_reported<br><span class="small">atribuição definida pelo provider</span></td></tr>
-          <tr><td><span class="state">Listing</span><br>Cuba inox</td><td><code>MLB456</code></td><td>22.480</td><td>780 · 3,47%</td><td>R$ 660</td><td>11,4×</td><td>provider_reported</td></tr>
-          <tr><td><span class="state">Family</span><br>Família torneiras</td><td><code>FAM-77</code></td><td>61.020</td><td>1.040 · 1,70%</td><td>R$ 1.240</td><td>5,1×</td><td>provider_reported<br><strong>não atribuir a uma única Listing</strong></td></tr>
-          <tr><td><span class="state">Catalog group</span></td><td><code>CAT-42</code></td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="state unknown">Configuração necessária</span></td></tr>
+        <p class="lead">Somente análise. Escopos do marketplace continuam explícitos e não são forçados a uma publicação.</p>
+        <div class="notice"><strong>Não é gerenciador de anúncios</strong>Não existem controles para criar campanha, mudar orçamento/lance, pausar, segmentar ou otimizar automaticamente.</div>
+        <table><thead><tr><th>Escopo</th><th>Identidade no marketplace</th><th>Impressões</th><th>Cliques / CTR</th><th>Gasto</th><th>ROAS</th><th>Base</th></tr></thead><tbody>
+          <tr><td><span class="state">Campanha</span><br>Performance Geral</td><td><code>CAMP-001</code></td><td>184.200</td><td>3.980 · 2,16%</td><td>R$ 4.900</td><td>6,37×</td><td>Informada pelo marketplace<br><span class="small">atribuição definida pelo marketplace</span></td></tr>
+          <tr><td><span class="state">Publicação</span><br>Cuba inox</td><td><code>MLB456</code></td><td>22.480</td><td>780 · 3,47%</td><td>R$ 660</td><td>11,4×</td><td>Informada pelo marketplace</td></tr>
+          <tr><td><span class="state">Família</span><br>Família torneiras</td><td><code>FAM-77</code></td><td>61.020</td><td>1.040 · 1,70%</td><td>R$ 1.240</td><td>5,1×</td><td>Informada pelo marketplace<br><strong>não atribuir a uma única publicação</strong></td></tr>
+          <tr><td><span class="state">Grupo de catálogo</span></td><td><code>CAT-42</code></td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="state unknown">Configuração necessária</span></td></tr>
         </tbody></table>
+      </section>
+
+      <section class="screen" data-screen="market">
+        <div class="eyebrow">Estratégia e inteligência · Mercado</div>
+        <h1>Inteligência de mercado</h1>
+        <p class="lead">Aqui a pergunta é competitiva: como nossa oferta se posiciona diante de ofertas comparáveis? Performance própria e economia continuam separadas.</p>
+        <div class="grid three"><div class="card"><h3>Publicação analisada</h3><strong>MLB123 · Torneira alta</strong><br><span class="owner">Offering</span></div><div class="card"><h3>Posição de preço</h3><div class="kpi-value">+8,1%</div><span class="owner">Mercado</span></div><div class="card"><h3>Cobertura comparável</h3><div class="kpi-value">7 ofertas</div><span class="state partial">Parcial</span><br><span class="owner">Mercado</span></div></div>
+        <table style="margin-top:12px"><thead><tr><th>Oferta comparável</th><th>Preço entregue</th><th>Evidência</th></tr></thead><tbody><tr><td>Comparável A</td><td>R$ 359,90</td><td><span class="state">Conhecida</span></td></tr><tr><td>Comparável B</td><td>R$ 369,00</td><td><span class="state">Conhecida</span></td></tr></tbody></table>
+        <div class="notice"><strong>Mercado não altera preço</strong>A decisão pode informar Economics/Offering, mas `market.read` não cria PriceIntent.</div>
       </section>
 
       <section class="screen" data-screen="availability">
         <div class="eyebrow">Operações · Disponibilidade</div>
         <h1>Disponibilidade vendável</h1>
-        <p class="lead">Estado desejado, evidência do provider e convergência continuam distintos. Não há botão “definir quantidade”.</p>
-        <table><thead><tr><th>Target</th><th>Valor efetivo</th><th>Origem</th><th>Provider</th><th>Conhecimento</th></tr></thead><tbody>
+        <p class="lead">Estado desejado, evidência do marketplace e convergência continuam distintos. Não há botão “definir quantidade”.</p>
+        <table><thead><tr><th>Target</th><th>Valor efetivo</th><th>Origem</th><th>Marketplace</th><th>Conhecimento</th></tr></thead><tbody>
           <tr><td>MLB123</td><td>24</td><td>Regra + fonte de estoque</td><td>24</td><td><span class="state">Convergido</span></td></tr>
           <tr><td>MLB456</td><td>8</td><td>Regra + fonte de estoque</td><td>—</td><td><span class="state unknown">Indisponível</span></td></tr>
         </tbody></table>
@@ -226,12 +223,12 @@
         <div class="eyebrow">Operações · Vendas · detalhe composto</div>
         <h1>Venda ML-200184</h1><p class="lead">A tela agrega contexto, mas cada ação permanece no owner correspondente.</p>
         <div class="grid three">
-          <div class="card"><h3>Venda</h3><p>Pagamento aprovado</p><span class="owner">Sales</span></div>
-          <div class="card"><h3>Pedido ERP</h3><p>Materializado · Sankhya 98122</p><span class="owner">Materialization</span></div>
+          <div class="card"><h3>Venda</h3><p>Pagamento aprovado</p><span class="owner">Vendas</span></div>
+          <div class="card"><h3>Pedido ERP</h3><p>Materializado · Sankhya 98122</p><span class="owner">Materialização</span></div>
           <div class="card"><h3>Economia</h3><p>Margem realizada 17,9%</p><span class="owner">Economia</span></div>
-          <div class="card"><h3>Expedição</h3><p>Aguardando conferência física</p><button class="btn" data-jump="fulfillment">Abrir execução</button><br><span class="owner">Fulfillment</span></div>
-          <div class="card"><h3>Pós-venda</h3><p>Nenhuma resolução aberta</p><span class="owner">PostSale</span></div>
-          <div class="card"><h3>Destino</h3><p>Evidência conhecida</p><span class="owner">Materialization</span></div>
+          <div class="card"><h3>Expedição</h3><p>Aguardando conferência física</p><button class="btn" data-jump="fulfillment">Abrir execução</button><br><span class="owner">Expedição</span></div>
+          <div class="card"><h3>Pós-venda</h3><p>Nenhuma resolução aberta</p><span class="owner">Pós-venda</span></div>
+          <div class="card"><h3>Destino</h3><p>Evidência conhecida</p><span class="owner">Materialização</span></div>
         </div>
         <div class="notice"><strong>Não existe workflow owner desta tela</strong>Nenhum botão cria pedido/fatura diretamente no Sankhya e nenhum retry genérico de efeito externo é oferecido.</div>
       </section>
@@ -240,23 +237,23 @@
         <div class="eyebrow">Operações · Expedição</div>
         <h1>Execução de expedição #FE-1029</h1>
         <div class="split">
-          <div class="card"><h2>Checkpoints físicos</h2><div class="timeline">
-            <div class="event"><strong>Separação</strong><br><span class="small">Registrada por Principal H · 09:42</span></div>
-            <div class="event"><strong>Conferência física</strong><br><span class="state warn">Pendente</span></div>
-            <div class="event"><strong>Embalagem</strong><br><span class="small">Aguardando conferência.</span></div>
-            <div class="event"><strong>Handoff de despacho</strong><br><span class="small">Ainda não elegível.</span></div>
-          </div></div>
+          <div class="card"><h2>Checkpoints físicos</h2><div class="timeline"><div class="event"><strong>Separação</strong><br><span class="small">Registrada por Principal H · 09:42</span></div><div class="event"><strong>Conferência física</strong><br><span class="state warn">Pendente</span></div><div class="event"><strong>Embalagem</strong><br><span class="small">Aguardando conferência.</span></div><div class="event"><strong>Handoff de despacho</strong><br><span class="small">Ainda não elegível.</span></div></div></div>
           <div class="card"><h2>Ação atual</h2><p>O servidor revalida Permission, Principal kind, qualificação física e revisão.</p><button class="btn primary">Registrar conferência</button><p class="small">Idempotency-Key + ETag preservados para retry seguro da mesma intake.</p></div>
         </div>
+      </section>
+
+      <section class="screen" data-screen="post-sale">
+        <div class="eyebrow">Operações · Pós-venda</div>
+        <h1>Resoluções pós-venda</h1>
+        <p class="lead">Uma resolução coordena consequências; não vira atalho para cancelar venda, reembolsar ou fechar tudo por status.</p>
+        <table><thead><tr><th>Venda</th><th>Escopo</th><th>Estado</th><th>Evidências pendentes</th><th>Ação</th></tr></thead><tbody><tr><td><code>ML-200184</code></td><td>1 item · 1 un.</td><td><span class="state partial">Aberta</span></td><td>reembolso + efeito econômico</td><td><button class="btn">Abrir resolução</button></td></tr></tbody></table>
+        <div class="toolbar"><button class="btn primary">Criar resolução</button><button class="btn" disabled>Fechar resolução — não existe</button></div>
       </section>
 
       <section class="screen" data-screen="work">
         <div class="eyebrow">Controle · Trabalho</div>
         <h1>Trabalho operacional</h1><p class="lead">Work coordena responsabilidade; não substitui a verdade do domínio que originou a obrigação.</p>
-        <table><thead><tr><th>Origem</th><th>Descrição</th><th>Responsabilidade</th><th>Estado</th><th>Ação Work</th></tr></thead><tbody>
-          <tr><td>readiness</td><td>Correspondência ambígua em produto 42664</td><td>Marketplace Ops</td><td>Aberto</td><td><button class="btn">Atribuir</button></td></tr>
-          <tr><td>economic_attribution</td><td>Movimento sem atribuição suficiente</td><td>Comercial</td><td>Em espera</td><td><button class="btn">Retomar</button></td></tr>
-        </tbody></table>
+        <table><thead><tr><th>Origem</th><th>Descrição</th><th>Responsabilidade</th><th>Estado</th><th>Ação Work</th></tr></thead><tbody><tr><td>readiness</td><td>Correspondência ambígua em produto 42664</td><td>Marketplace Ops</td><td>Aberto</td><td><button class="btn">Atribuir</button></td></tr><tr><td>economic_attribution</td><td>Movimento sem atribuição suficiente</td><td>Comercial</td><td>Em espera</td><td><button class="btn">Retomar</button></td></tr></tbody></table>
         <div class="toolbar"><span class="small">A resolução real acontece no owner de origem.</span><button class="btn" disabled>Fechar trabalho — não existe</button></div>
       </section>
 
@@ -272,7 +269,7 @@
         <div class="eyebrow">Estratégia e inteligência · Economia</div>
         <h1>Economia e reconciliação</h1><p class="lead">Performance de mídia pode ser evidência; significado de custo, margem e lucro continua exclusivamente em Commercial Economics.</p>
         <div class="grid three"><div class="card"><h3>Economia esperada</h3><div class="kpi-value">21,4%</div><span class="owner">Economia</span></div><div class="card"><h3>Economia realizada</h3><div class="kpi-value">18,4%</div><span class="owner">Economia</span></div><div class="card"><h3>Atribuições pendentes</h3><div class="kpi-value">4</div><span class="owner">Economia</span></div></div>
-        <table style="margin-top:12px"><thead><tr><th>Evidência</th><th>Interpretação</th><th>Estado</th><th>Ação</th></tr></thead><tbody><tr><td>Fee marketplace #MOV-91</td><td>Taxa de venda · Venda ML-200184</td><td>Exata</td><td>—</td></tr><tr><td>Movimento #MOV-96</td><td>Sem correlação suficiente</td><td><span class="state partial">Ambígua</span></td><td><button class="btn">Resolver atribuição</button></td></tr></tbody></table>
+        <table style="margin-top:12px"><thead><tr><th>Evidência</th><th>Interpretação</th><th>Estado</th><th>Ação</th></tr></thead><tbody><tr><td>Taxa marketplace #MOV-91</td><td>Taxa de venda · Venda ML-200184</td><td>Exata</td><td>—</td></tr><tr><td>Movimento #MOV-96</td><td>Sem correlação suficiente</td><td><span class="state partial">Ambígua</span></td><td><button class="btn">Resolver atribuição</button></td></tr></tbody></table>
       </section>
 
       <section class="screen" data-screen="access">
@@ -284,7 +281,7 @@
         </div>
       </section>
 
-      <div class="footer-note">Qualification artifact D6-B1 · Dados, IDs e valores são ilustrativos. Este HTML não prova runtime, integração, persistência, provider behavior ou design visual final. Product implementation continua bloqueada até D9.</div>
+      <div class="footer-note">Artefato de qualificação D6-B1 · Dados, IDs e valores são ilustrativos. Este HTML não prova runtime, integração, persistência, comportamento do marketplace ou design visual final. Product implementation continua bloqueada até D9.</div>
     </div>
   </main>
 </div>
@@ -295,7 +292,7 @@
     if (!screens.some(s => s.dataset.screen === id)) id = 'overview';
     screens.forEach(s => s.classList.toggle('active', s.dataset.screen === id));
     nav.forEach(n => n.classList.toggle('active', n.dataset.target === id));
-    const exact = ['readiness','listing','performance-summary','performance-listings','performance-media','sale','channels'].includes(id);
+    const exact = ['readiness','listing','performance-summary','performance-listings','performance-media','market','sale','channels'].includes(id);
     document.getElementById('installation-context').style.opacity = exact ? '1' : '.68';
     history.replaceState(null, '', '#' + id);
     window.scrollTo({top:0, behavior:'instant'});
