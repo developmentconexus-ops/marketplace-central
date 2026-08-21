@@ -277,7 +277,12 @@ function validate(document) {
     assert(schema.properties?.type?.const === 'about:blank' && schema.properties?.status?.const === status, `${name} must be about:blank/${status}`);
   }
 
-  const idempotencyOps = all.filter((entry) => parameters(document, entry).some((parameter) => parameter.in === 'header' && parameter.name.toLowerCase() === 'idempotency-key')).map((entry) => entry.operation.operationId);
+  const idempotencyOps = all.flatMap((entry) => {
+    const carriers = parameters(document, entry).filter((parameter) => parameter.in === 'header' && parameter.name.toLowerCase() === 'idempotency-key');
+    if (carriers.length === 0) return [];
+    assert(carriers.length === 1 && carriers[0].required === true, `${entry.operation.operationId} must have exactly one required Idempotency-Key header`);
+    return [entry.operation.operationId];
+  });
   sameSet(idempotencyOps, expectedIdempotency, 'Idempotency-Key carrier set');
 
   const ifMatchExpected = ['UpdateMarketplaceInstallationConfiguration', 'UpdateListingIntentDraft', 'UpdateInventorySource', 'UpdateAvailabilityAllocationScopePolicy', 'UpdateCommercialPolicy', 'UpdateAuthorizationDelegation', 'UpdateFulfillmentNode', 'UpdateFulfillmentOperatingTargets'];
@@ -332,6 +337,7 @@ function negativeSemanticControls(document) {
   expectFailure('technical path leakage', () => { const candidate = clone(document); candidate.paths['/organizations/{organization_id}/webhooks'] = clone(candidate.paths['/organizations/{organization_id}/work']); return candidate; });
   expectFailure('fourth principal kind', () => { const candidate = clone(document); byId(operations(candidate), 'GetCurrentAccessContext').operation['x-mpc-principal-kinds'].push('X'); return candidate; });
   expectFailure('missing idempotency carrier', () => { const candidate = clone(document); const entry = byId(operations(candidate), 'CreateInventorySource'); entry.operation.parameters = (entry.operation.parameters ?? []).filter((raw) => resolveRef(candidate, raw)?.name !== 'Idempotency-Key'); return candidate; });
+  expectFailure('optional idempotency carrier', () => { const candidate = clone(document); component(candidate, 'parameters', 'IdempotencyKey').required = false; return candidate; });
   expectFailure('wrong Product Problem origin', () => { const candidate = clone(document); component(candidate, 'schemas', 'AccessDeniedProblem').properties.type.const = 'https://example.invalid/problem'; return candidate; });
   expectFailure('schema extension leakage', () => { const candidate = clone(document); component(candidate, 'schemas', 'Money')['x-enum-varnames'] = ['Money']; return candidate; });
 }
@@ -431,16 +437,26 @@ function goProof(bundlePath) {
   console.log(`go_current=${run(go, ['version'], { cwd: dir }).stdout.trim()}`);
 }
 
-function sourceTreeProof() {
-  assert(!sourceTreeText.includes('ngrok-free.dev'), 'preview ngrok origin leaked into Product source tree');
-  assert(!sourceTreeText.includes('x-go-'), 'forbidden x-go-* override leaked into Product source tree');
-  assert(!sourceTreeText.includes('problems/technical/'), 'technical Problem namespace leaked into Product source tree');
-  assert(!/(^|\n)\s*servers\s*:/m.test(sourceTreeText), 'servers leaked into Product source tree');
-  const sourceExtensions = [...sourceTreeText.matchAll(/(?:^|[\s,{])(x-[A-Za-z0-9_-]+)\s*:/gm)].map((match) => match[1]);
+function sourceRefs(text) {
+  return [...text.matchAll(/(?:["']?\$ref["']?)\s*:\s*['"]?([^'"}\s]+)['"]?/g)].map((match) => match[1]);
+}
+function sourceTreeProof(text = sourceTreeText) {
+  assert(!text.includes('ngrok-free.dev'), 'preview ngrok origin leaked into Product source tree');
+  assert(!text.includes('x-go-'), 'forbidden x-go-* override leaked into Product source tree');
+  assert(!text.includes('problems/technical/'), 'technical Problem namespace leaked into Product source tree');
+  assert(!/(^|\n)\s*servers\s*:/m.test(text), 'servers leaked into Product source tree');
+  const sourceExtensions = [...text.matchAll(/(?:^|[\s,{])(x-[A-Za-z0-9_-]+)\s*:/gm)].map((match) => match[1]);
   for (const key of sourceExtensions) assert(ALLOWED_EXTENSIONS.has(key), `Product source tree contains non-allowlisted extension ${key}`);
-  const refs = [...sourceTreeText.matchAll(/\$ref:\s*['"]?([^'"}\s]+)['"]?/g)].map((match) => match[1]);
+  const refs = sourceRefs(text);
   assert(refs.length > 0, 'Product source tree contains no refs');
   assert(refs.every((ref) => ref.startsWith('./') || ref.startsWith('#/')), `remote/non-local Product source ref found: ${refs.find((ref) => !ref.startsWith('./') && !ref.startsWith('#/'))}`);
+}
+function sourceTreeNegativeControls() {
+  const quotedRemote = sourceTreeText.replace("$ref: './paths-identity-portfolio-readiness.yaml#/pathItems/AccessContext'", '"$ref": "https://example.invalid/product.yaml"');
+  assert(quotedRemote !== sourceTreeText, 'unable to construct quoted remote-ref source fixture');
+  let failed = false;
+  try { sourceTreeProof(quotedRemote); } catch { failed = true; }
+  assert(failed, 'quoted remote-ref source fixture unexpectedly passed');
 }
 function legacyRuntimeProof() {
   const tracked = run('git', ['-C', root, 'ls-files']).stdout.split(/\r?\n/).filter(Boolean);
@@ -451,6 +467,7 @@ function legacyRuntimeProof() {
 try {
   const before = run('git', ['-C', root, 'status', '--porcelain=v1']).stdout;
   sourceTreeProof();
+  sourceTreeNegativeControls();
   legacyRuntimeProof();
   const { document, bundlePath } = redoclyProof();
   const result = validate(document);
@@ -466,7 +483,7 @@ try {
   console.log('product_oad_stable_origin=https://conexus.fun');
   console.log(`product_oad_idempotency_carriers=${result.idempotencyOps.length}/14`);
   console.log(`product_oad_collection_operations=${result.listSearch.length}/26`);
-  console.log('product_oad_negative_controls=8/8');
+  console.log('product_oad_negative_controls=10/10');
   console.log('product_oad_generated_projection_semantics=PASS');
   console.log('product_oad_legacy_runtime_population=0');
   console.log('product_oad_runtime_schema_enforcement=NOT_CLAIMED_D7');
