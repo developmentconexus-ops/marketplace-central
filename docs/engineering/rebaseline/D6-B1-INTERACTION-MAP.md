@@ -1,6 +1,6 @@
 # D6-B1 — Mapa de Interações do Frontend
 
-> **Status:** OPERATOR-RATIFIED — mapa corrigido após D6-R1 / OAD 99 operações · 30 Permissions
+> **Status:** CANDIDATO DERIVADO — App Shell aprovado; mapa rederivado após D6-R1 / OAD 99 operações · 30 Permissions; ainda não é ratificação de D6-B1
 > **Pai:** `D6-FRONTEND.md`
 > **Autoridade de wire:** `contracts/api/product/openapi.yaml`
 > **Escopo:** frontend Product 1.0; sem mecânicas D7 e sem implementação Product
@@ -220,153 +220,257 @@ Sem `SetAvailableQuantity`, `SyncAvailability` ou AvailabilityIntent manual.
 ```text
 Vendas / Installation exata
   → ListMarketplaceSales
-  → selecionar Sale source-qualified
   → GetMarketplaceSale
-  → GetSaleEconomics quando permitido
-  → ListBusinessOrderIntents / GetBusinessOrderIntent
-  → CreateBusinessOrderIntent quando requerido pelo owner
-  → observar PartyResolution e DestinationRealization
-  → resolver somente pelas operações Product admitidas
-  → observar InvoicingIntent / FulfillmentExecution sem inventar sync/manual close
+  → ResolveSaleSellingEntityAttribution quando necessário
+
+Detalhe da venda — composição read-only
+  → GetSaleEconomics
+  → List/GetBusinessOrderIntent
+  → Get/ResolveBusinessSystemPartyResolution
+  → GetDestinationRealization
+  → List/GetInvoicingIntent
+  → List/GetFulfillmentExecution
+  → List/GetPostSaleResolution
 ```
 
-A tela pode compor Sales, Economics, Materialization e Fulfillment; nenhum deles transfere sua write authority para a tela ou para outro owner.
+Nenhum comando Sankhya, `CreateBusinessOrderIntent`, `CreateInvoicingIntent` ou retry genérico nasce da tela.
 
-### F9 — Executar expedição preservando autoridade física
+### F9 — Executar expedição física e observar Shipment
 
 ```text
-Expedição
-  → List/GetFulfillmentExecution
-  → List/GetFulfillmentNode
+Expedição / Execuções
+  → ListFulfillmentExecutions
+  → GetFulfillmentExecution
   → RecordSeparation
   → RecordPhysicalConference
   → RecordPacking
   → RecordDispatchHandoff
-  → List/Get artifacts
-  → List/Get Shipment quando houver Installation
+  → List/GetFulfillmentArtifacts quando permitido
+
+Expedição / Envios / Installation exata
+  → ListShipments
+  → GetShipment
 ```
 
-Botão visível nunca prova capacidade física. O servidor revalida Principal kind, Permission, qualificação física quando requerida e revisão atual.
+Visibility de botão não substitui Principal-kind nem qualificação física server-owned.
 
-### F10 — Operar Pós-venda
+### F10 — Coordenar pós-venda
 
 ```text
 Pós-venda
-  → List/GetPostSaleResolution
-  → CreatePostSaleResolution
-  → UpdatePostSaleResolution
+  → ListPostSaleResolutions
+  → GetPostSaleResolution
+  → CreatePostSaleResolution [Idempotency-Key]
 ```
 
-Não existe ação genérica de fechar resolução; lifecycle permanece conforme Product authority.
+Sem close/refund/cancel genérico; closure depende de evidência dos owners responsáveis.
 
-### F11 — Operar Trabalho
+### F11 — Tratar Trabalho operacional
 
 ```text
 Trabalho
-  → List/GetWork
-  → AssignWork
-  → ClearWorkAssignment
-  → HoldWork
-  → ResumeWork
-  → EscalateWork
+  → ListWork
+  → GetWork
+  → AssignWork / ClearWorkAssignment
+  → HoldWork / ResumeWork / EscalateWork
 ```
 
-Não existe `CloseWork`. O frontend não cria um workflow engine paralelo.
+Work não cria nem fecha source truth e não vira command bus.
 
-### F12 — Governança / Aprovações
+### F12 — Aprovar e administrar acesso/configuração
+
+Governance:
 
 ```text
 Aprovações
-  → List/GetAuthorizationDecision
-  → CreateAuthorizationDecision
-  → DecideAuthorizationDecision
-  → List/GetAuthorizationDelegation
-  → Establish/Update/RevokeAuthorizationDelegation
+  → List/Get/CreateAuthorizationDecision
+
+Configurações / Delegações
+  → List/Establish/Update/RevokeAuthorizationDelegation
 ```
 
-Uma decisão autoriza segundo Governance; ela não executa automaticamente a operação alvo nem concede a Permission ausente.
+Acesso:
 
-## 5. Estados de tela essenciais
+```text
+Shell → GetCurrentAccessContext
+Configurações / Acesso
+  → ListOrganizationMembers
+  → ListAccessRoles
+  → AssignAccessRole
+  → RevokeAccessRole
+```
 
-A implementação visual pode variar; estes estados semânticos não.
+Governance não concede Permission do target e AccessRole não vira IdP/provider role.
 
-| Tela/área | Estado essencial |
-| --- | --- |
-| Visão Geral | loading / empty / partial / ready / access-limited |
-| Preparação | source selection / readiness incomplete / ready / provider unavailable |
-| Publicações | draft / submitted / accepted / pending / rejected / ambiguous |
-| Disponibilidade | known / unknown / unavailable / policy/configuration state |
-| Performance Resumo | complete / partial / unknown / unavailable / unsupported; comparable / insufficient / not-comparable |
-| Performance Publicações | known Listing population even when performance evidence unavailable |
-| Performance Mídia | available population distinct from unavailable/unsupported access/evidence |
-| Mercado | comparable position present / unavailable / insufficient comparability |
-| Economia | expected / actual / attribution unresolved / reconciled where Product admits |
-| Vendas | sale observed / attribution unresolved / materialization pending / fulfillment state |
-| Expedição | physical checkpoint progression + qualification/precondition failures |
-| Pós-venda | active Product lifecycle only; no client-created close state |
-| Trabalho | assignment/hold/escalation states only as Product exposes |
-| Aprovações | pending / decided / expired/inapplicable only where Product exposes |
-| Configurações | permission-limited / provider capability unavailable / technical ingress required |
+## 5. Inventário de estados de tela/rota
 
-## 6. Cobertura por grupo de operações
+| ID | Tela / estado | Contexto de canal | Owners | Home de operações Product | Permission(s) |
+| --- | --- | --- | --- | --- | --- |
+| S00 | Shell / acesso atual | organization-wide | IdentityAccess | `GetCurrentAccessContext` | authenticated |
+| S01 | Visão geral | organization-wide | composição Portfolio/Economics/Work | reads independentes conforme Permission | independentes |
+| S10 | Preparação | exact-required | ProductChannelReadiness | 5 operações Readiness | `readiness.read/manage` |
+| S20 | Publicações | exact-required | Offering | `ListMarketplaceListings` | `offering.read` |
+| S21 | Publicação / Operação | exact-required | Offering | `GetMarketplaceListing` + painéis opcionais owner-local | `offering.read` + painéis |
+| S22 | Publicação / Performance | exact-required | MarketplacePerformanceIntelligence | `GetMarketplaceListingPerformance` | `performance.read` |
+| S23 | Intenções de publicação | all-or-exact | Offering | `ListListingIntents` | `offering.read` |
+| S24 | Editor / detalhe de ListingIntent | target-explicit | Offering + reads contextuais | Get/Create/Update/Discard/Submit/Media | `offering.read`, `listing.manage` + reads |
+| S25 | Intenções de preço | all-or-exact | Offering | List/Get/CreatePriceIntent | `offering.read`, `price.manage` |
+| S30 | Disponibilidade | all-or-exact | Availability | List/GetSellableAvailability | `availability.read` |
+| S40 | Performance / Resumo | exact-required | MarketplacePerformanceIntelligence | `GetMarketplacePerformanceSummary` | `performance.read` |
+| S41 | Performance / Publicações | exact-required | MarketplacePerformanceIntelligence | `ListMarketplaceListingPerformance` | `performance.read` |
+| S42 | Performance / Mídia | exact-required | MarketplacePerformanceIntelligence | `ListRetailMediaPerformance` | `performance.read` |
+| S50 | Mercado | all-or-exact / subject-explicit | MarketIntelligence | List/GetCompetitivePosition, ListComparableOffers | `market.read` |
+| S60 | Economia / Prevista | all-or-exact | CommercialEconomics | List/GetExpectedEconomics, EvaluatePriceScenario | `economics.read` |
+| S61 | Economia / Realizada | all-or-exact | CommercialEconomics | List/GetSaleEconomics, GetEconomicPerformanceSummary | `economics.read` |
+| S62 | Economia / Reconciliação | organization-wide | CommercialEconomics | List/Get/ResolveEconomicAttribution | `economics.read/reconcile` |
+| S70 | Vendas | exact-required | MarketplaceSales | `ListMarketplaceSales` | `sales.read` |
+| S71 | Venda / detalhe composto | exact subject | Sales + owners relacionados | `GetMarketplaceSale`, resolve attribution + reads owner-local | component Permissions |
+| S72 | Pedidos ERP / materialização | organization-wide/contextual | BusinessSystemMaterialization | 5 operações BusinessOrder/Party/Destination | `materialization.read/resolve` |
+| S73 | Faturamento | organization-wide/contextual | BusinessSystemMaterialization | List/GetInvoicingIntent | `materialization.read` |
+| S80 | Expedição / Execuções | all-or-exact contextual | Fulfillment | `ListFulfillmentExecutions` | `fulfillment.read` |
+| S81 | Execução de expedição | execution-explicit | Fulfillment | Get + 4 checkpoints + 2 artifact reads | `fulfillment.read/execute` |
+| S82 | Envios | exact-required | Fulfillment | `ListShipments` | `fulfillment.read` |
+| S83 | Envio / detalhe | exact-required | Fulfillment | `GetShipment` | `fulfillment.read` |
+| S90 | Pós-venda | all-or-exact contextual | PostSaleResolution | List/CreatePostSaleResolution | `post_sale.read/manage` |
+| S91 | Resolução pós-venda | ID + Sale qualificada | PostSaleResolution | `GetPostSaleResolution` | `post_sale.read` |
+| S100 | Trabalho | organization-wide | OperationalWork | `ListWork` | `work.read` |
+| S101 | Trabalho / detalhe | Work ID | OperationalWork | Get + 5 capabilities de coordenação | `work.read/manage` |
+| S110 | Aprovações | organization-wide | ControlledActionGovernance | `ListAuthorizationDecisions` | `governance.read` |
+| S111 | Decisão / contexto de aprovação | target/revision-explicit | ControlledActionGovernance | Get/CreateAuthorizationDecision | `governance.read/decide` |
+| S120 | Configurações / Canais | organization-wide | MarketplacePortfolio | List/CreateMarketplaceInstallation + Technical Ingress | `portfolio.read/manage` |
+| S121 | Configurações / Conta | exact Installation | MarketplacePortfolio | Get/Update/DeactivateMarketplaceInstallation | `portfolio.read/manage` |
+| S122 | Configurações / Entidades vendedoras | organization-wide | MarketplacePortfolio | `ListSellingEntities` | `portfolio.read` |
+| S123 | Configurações / Acesso | organization-wide | IdentityAccess | member/role lists + assign/revoke | `access.read/manage` |
+| S124 | Configurações / Disponibilidade | organization-wide | Availability | 5 InventorySource + 2 policy ops | `availability.read/manage` |
+| S125 | Configurações / Expedição | organization-wide | Fulfillment | 5 FulfillmentNode + 2 target ops | `fulfillment.read/manage` |
+| S126 | Configurações / Política comercial | organization-wide | CommercialEconomics | Get/UpdateCommercialPolicy | `economics.read`, `economics.policy.manage` |
+| S127 | Configurações / Delegações | organization-wide | ControlledActionGovernance | 4 AuthorizationDelegation ops | `governance.manage` |
 
-| Grupo | Operações cobertas |
-| --- | ---: |
-| Identity / access | 5 |
-| Portfolio | 6 |
-| Readiness | 5 |
-| Offering | 12 |
-| Availability | 9 |
-| Market | 3 |
-| Performance | 4 |
-| Economics | 11 |
-| Governance | 7 |
-| Sales | 3 |
-| Materialization | 7 |
-| Fulfillment + artifacts + Shipment | 17 |
-| Post-Sale | 3 |
-| Work | 7 |
-| **Total** | **99** |
+**Total derivado:** 40 estados de tela/rota (`S00`–`S127` não contíguos) para 99 operações; número de estados não é meta de implementação.
 
-## 7. Falsificadores frontend
+## 6. Cobertura exata das 99 operações
 
-O desenho para e volta ao owner apropriado se qualquer implementação exigir um destes atalhos:
+| Authority / grupo | Quantidade | Home principal |
+| --- | ---: | --- |
+| Identity / access | 5 | S00, S123 |
+| Marketplace Portfolio | 6 | S120–S122 |
+| Product & Channel Readiness | 5 | S10 |
+| Offering (Listing + ListingIntent + PriceIntent) | 12 | S20–S25 |
+| Availability | 9 | S30, S124 |
+| Market Intelligence | 3 | S50 |
+| **Marketplace Performance Intelligence** | **4** | **S22, S40–S42** |
+| Commercial Economics | 11 | S60–S62, S126 |
+| Controlled Action Governance | 7 | S110–S111, S127 |
+| Marketplace Sales | 3 | S70–S71 |
+| Business-System Materialization | 7 | S72–S73 |
+| Fulfillment + artifacts + Shipment | 17 | S80–S83, S125 |
+| Post-Sale | 3 | S90–S91 |
+| Operational Work | 7 | S100–S101 |
+| **Total** | **99** | **100% mapeado** |
 
-1. inferir Organization atual sem `GetCurrentAccessContext`/contexto explícito;
-2. somar métricas entre Installations/providers como equivalentes sem prova;
-3. mostrar Amazon/Shopee como conectáveis sem D4 evidence atual;
-4. criar Dashboard/Strategy/Analytics como Product authority;
-5. tratar menu oculto como autorização;
-6. reconstruir CVR/ROAS/provider metrics no browser;
-7. colapsar campaign/family/catalog/listing scope em uma identidade genérica;
-8. transformar `partial` em completo ou unknown/unavailable em zero;
-9. chamar evidência provider-preserved de MPC-authored fact;
-10. permitir Ads writes/optimization sob Performance;
-11. criar time-series/granularity/Metric DSL não admitido;
-12. criar `signals[]`, recommendations, opportunity score ou AI explanation como Product truth;
-13. mover Price write para Market/Economics/Performance;
-14. criar direct Sankhya/Oracle access no frontend;
-15. usar Work como generic workflow engine;
-16. fazer Governance Decision executar a operação alvo;
-17. tratar visibilidade de botão como Permission/physical qualification;
-18. inferir total de uma coleção paginada sem total contractual;
-19. tratar `412`/ETag stale como erro genérico e sobrescrever silenciosamente;
-20. retry automático de efeito potencialmente aceito/ambíguo;
-21. transformar Settings em owner;
-22. apagar estado semântico no mobile/responsive;
-23. vazar DTO/provider endpoint/advertiser id como Product identity;
-24. assumir source instance default em Readiness;
-25. inferir Marketplace Installation pelo primeiro disponível;
-26. gerar publicação/listing a partir de dados incompletos sem owner semantics;
-27. transformar OAuth callback/provider connect em Product operation;
-28. permitir A/S usar ação H-only apenas porque possui Permission;
-29. atribuir physical fact a S sem qualificação current server-owned;
-30. atribuir Retail Media family/catalog/campaign a Listing sem evidence exata;
-31. exibir delta quando comparação é `insufficient_evidence`/`not_comparable`;
-32. esconder `unavailable/unsupported` como coleção vazia normal.
+Nenhuma nova operação existe apenas para uma tela. `Strategy Workspace`, Overview e Sale detail permanecem composições client-side de Qs owner-native.
 
-## 8. Resultado
+## 7. Leis de estado/segurança por interação
 
-D6-B1 prova que as 99 operações atuais possuem homes de interação coerentes sem criar telas/owners artificiais. O App Shell, o mapa de interação corrigido e os low-fi wireframes foram operator-ratified após revisão independente e bounded fixes.
+### 7.1 Conhecimento
 
-Qualquer implementação deve continuar preservando as leis acima; esta ratificação não seleciona runtime, router de servidor, banco, worker, deployment ou implementação Product.
+A UI deve distinguir quando alcançável:
+
+```text
+complete / partial / unknown / unavailable / unsupported
+known-zero / known-empty
+stale / current quando a autoridade expõe isso
+```
+
+`partial` mostra a limitação do período/coverage; não recebe KPI estilizado como período completo.
+
+### 7.2 Comparação de Performance
+
+- presets de período são estado de navegação;
+- requests enviam datas explícitas;
+- frontend só mostra delta numérico quando o Product retorna `comparable`;
+- `insufficient_evidence` e `not_comparable` são estados visíveis, não zero/delta inventado;
+- provider measurement basis e custody histórica permanecem explicáveis.
+
+### 7.3 Mutações consequenciais
+
+- Idempotency-Key permanece estável somente para retry seguro da mesma intake;
+- stale precondition não é business rejection;
+- ambiguous external effect não ganha botão genérico de “tentar novamente”;
+- hidden button não é autorização.
+
+### 7.4 Retail Media
+
+- `advertiser_id` nunca é identidade Product/Installation;
+- campaign/catalog/family não vira Listing;
+- technical binding não requer `performance.manage` inexistente;
+- ausência de binding/provider access/contract admissibility aparece como conhecimento indisponível, não 403 se `performance.read` existe;
+- Ads analysis não ganha write controls.
+
+## 8. Falsificadores de frontend
+
+O proof revisado deve tornar visivelmente inválido, entre outros:
+
+1. Organization inferida de marketplace/account/browser;
+2. seleção de canal usada como autoridade sem request explícito;
+3. “Todos os canais” fundindo collections source-qualified independentes;
+4. Amazon/Shopee exibidos como conectáveis hoje;
+5. `ConnectMarketplace` Product inventado;
+6. SourceInstance default/hardcoded;
+7. Product master MPC inventado;
+8. screen-shaped `/dashboard`, `/strategy`, `/analytics` ou `/metrics`;
+9. `performance.read` implicando Market/Economics/Offering/Sales/Availability;
+10. frontend recalculando provider CVR/ROAS como verdade canônica;
+11. métrica de FAMILY/CATALOG/CAMPAIGN atribuída a Listing sem prova;
+12. evidência parcial exibida como período completo;
+13. known-zero confundido com unknown;
+14. historical preserved evidence apresentada como MPC-authored source fact;
+15. comparação incompatível produzindo delta;
+16. Ads management/optimization controls aparecendo;
+17. time-series/granularity ou opportunity score inventado sem contrato;
+18. IA/MCP aparecendo como autoridade ou operação atual;
+19. Market/Economics ganhando Price write;
+20. `SetAvailableQuantity` ou Sync/Refresh Product inventado;
+21. Sale detail ganhando workflow/write authority cross-owner;
+22. comando direto Sankhya/Product materialization inventado;
+23. Fulfillment físico confiando em qualificação declarada no cliente;
+24. Work close resolvendo source truth;
+25. Governance approval executando ação target;
+26. route/button visibility virando autorização;
+27. uma página paginada virando `total_count` global;
+28. stale ETag tratado como erro genérico;
+29. ambiguous external effect recebendo blind retry;
+30. Settings tornando-se owner;
+31. responsive mobile removendo estado/qualificação material;
+32. provider DTO/status/AdGroup vazando como ontology Product.
+
+## 9. Conjunto de wireframes representativos
+
+O HTML low-fi revisado deve testar pelo menos:
+
+1. Shell + Visão geral;
+2. Preparação;
+3. Editor de ListingIntent;
+4. **Performance / Resumo**;
+5. **Performance / Publicações + detalhe Performance do Listing**;
+6. **Performance / Mídia**;
+7. Disponibilidade;
+8. Venda / composição cross-owner;
+9. Expedição física;
+10. Trabalho;
+11. Configurações / Canais;
+12. Economia / Reconciliação;
+13. Configurações / Acesso e Aprovações.
+
+Os valores são ilustrativos e o HTML é prova de hierarquia/estado, não runtime/browser/provider.
+
+## 10. Próximo gate
+
+Após substituir o HTML em português:
+
+1. atacar os 32 falsificadores acima;
+2. confirmar que nenhuma tela exige nova operação/Permission;
+3. confirmar cobertura 99/99 e 30-Permission semantics;
+4. submeter interaction map + wireframe revisados ao operador;
+5. somente após aprovação, abrir adjudicação de frontend topology/dependencies;
+6. não iniciar D7–D9 nem Product implementation.
