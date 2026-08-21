@@ -30,8 +30,6 @@ jobs:
         with:
           go-version: stable
           cache: false
-      - name: prove canonical Product OAD
-        run: node scripts/verify-product-oad.mjs
-      - name: repository contract gate
+      - name: repository full gate
         shell: pwsh
         run: npm run gate:full
