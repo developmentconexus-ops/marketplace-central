@@ -12,7 +12,8 @@
 | Current stage | **D6 — Frontend — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D5 ACCEPTED / CLOSED** |
 | D6-discovered bounded amendment | **D6-R1 Marketplace Performance Intelligence — OPERATOR-APPROVED / FABLE ACCEPT WITH BOUNDED FIXES / FIXES ADJUDICATED IN CURRENT CANDIDATE** |
-| Exact next action | **D6-B1 — operator-review/adjudicate the corrected Portuguese 99-operation interaction map + low-fidelity wireframe proof after Fable; only if approved proceed to frontend topology/dependency adjudication** |
+| D6-B1 interaction proof | **OPERATOR-RATIFIED — corrected Portuguese 99-operation interaction map + low-fidelity wireframes accepted** |
+| Exact next action | **D6-B2 — adjudicate the smallest frontend feature/package topology and exact dependency needs from current official evidence; do not select D7 server/runtime/database/deployment mechanics** |
 | Canonical Product OAD candidate | `contracts/api/product/openapi.yaml` |
 | Product surface in current D6 candidate | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
@@ -32,7 +33,7 @@ The Product operation count is contract scope, not a handler/screen count.
 | D4 — External Integrations | ACCEPTED / CLOSED; bounded Mercado Livre Performance evidence amendment approved in current candidate |
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
 | D5 — API | ACCEPTED / CLOSED; bounded D6-R1 99/30 wire amendment proved in current candidate |
-| D6 — Frontend | OPEN / ACTIVE |
+| D6 — Frontend | OPEN / ACTIVE; D6-B1 OPERATOR-RATIFIED; D6-B2 NEXT / ACTIVE DECISION |
 | D7 — Runtime / Jobs / Transactions | BLOCKED |
 | D8 — Golden Flows | BLOCKED |
 | D9 — Adversarial Architecture Review | BLOCKED |
@@ -68,9 +69,9 @@ Independent Fable review concluded **ACCEPT WITH BOUNDED FIXES** and found no re
 
 The amendment is bounded; it is not permission to generally reopen D0–D5.
 
-## D6-B1 current authority
+## D6-B1 ratified interaction authority
 
-[D6 Frontend](engineering/rebaseline/D6-FRONTEND.md) remains the active frontend authority. Binding shell decisions already approved:
+[D6 Frontend](engineering/rebaseline/D6-FRONTEND.md) remains the active frontend authority. Binding shell decisions:
 
 - Organization is the global workspace/isolation context;
 - primary navigation is task-oriented, not D1 package taxonomy;
@@ -94,9 +95,22 @@ ESTRATÉGIA E INTELIGÊNCIA
   Economia
 ```
 
-The corrected [interaction map](engineering/rebaseline/D6-B1-INTERACTION-MAP.md) maps all 99 Product operations and the Portuguese [low-fidelity wireframe proof](../qualification/d6-wireframes/index.html) exercises the approved shell plus the strategic Performance workspace. Following Fable review, the wireframe no longer implies an uncontracted `signals[]` surface, does not show a delta from partial evidence, and explicitly demonstrates both `insufficient_evidence` and `not_comparable` comparison refusal states. These artifacts remain **candidate proof**, not D6-B1 ratification, until operator review.
+The corrected [interaction map](engineering/rebaseline/D6-B1-INTERACTION-MAP.md) maps all 99 Product operations and the Portuguese [low-fidelity wireframe proof](../qualification/d6-wireframes/index.html) exercises the approved shell plus the strategic Performance workspace. Following Fable review, the wireframe no longer implies an uncontracted `signals[]` surface, does not show a delta from partial evidence, and explicitly demonstrates both `insufficient_evidence` and `not_comparable` comparison refusal states. The operator ratified this corrected D6-B1 proof on 2026-08-21.
 
 Performance requires an exact Marketplace Installation. Future multi-marketplace views may compose per-Installation results but may not add provider metrics as if their measurement bases were automatically equivalent.
+
+## D6-B2 decision boundary
+
+D6-B2 may decide only the smallest frontend realization contract required to implement the ratified interaction model later, including feature/package boundaries and concrete frontend-only dependency needs when current evidence proves them necessary.
+
+D6-B2 must preserve:
+
+- canonical generated Product client/types rather than hand-written API DTO duplication;
+- TanStack Query as server-state owner unless material evidence reopens it;
+- URL/navigation, form draft and ephemeral UI as distinct state classes;
+- task-oriented UX while package boundaries remain semantic/feature-oriented and independently understandable;
+- no generic action/workflow/client-domain framework;
+- no microfrontends, offline-first, websocket/event-stream, universal design-system platform, generic analytics layer or AI-specific frontend architecture without a proven consumer.
 
 ## D6 blocked/deferred boundary
 
