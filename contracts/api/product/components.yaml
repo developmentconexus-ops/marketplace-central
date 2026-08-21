@@ -86,8 +86,9 @@ responses:
 schemas:
   OpaqueId: {type: string, minLength: 1, description: Opaque MPC-owned identifier with no promised physical encoding.}
   OpaqueKey: {type: string, minLength: 1, description: Opaque source-qualified or owner-local key.}
-  StrongETag: {type: string, minLength: 3, description: Strong opaque HTTP entity tag issued by MPC.}
+  StrongETag: {type: string, pattern: '^"[\u0021\u0023-\u007E\u0080-\u00FF]*"$', description: Strong opaque HTTP entity tag issued by MPC; weak validators are not accepted.}
   ExactDecimalString: {type: string, pattern: '^-?[0-9]+(?:\.[0-9]+)?$', description: Exact base-10 value; exponent notation is forbidden.}
+  NonNegativeExactDecimalString: {type: string, pattern: '^[0-9]+(?:\.[0-9]+)?$', description: Exact non-negative base-10 value; exponent notation is forbidden.}
   CurrencyCode: {type: string, pattern: '^[A-Z]{3}$'}
   Instant: {type: string, format: date-time}
   DurationString: {type: string, format: duration}
@@ -453,7 +454,7 @@ schemas:
   AvailabilityPreCreationTarget: {type: object, additionalProperties: false, required: [kind, listing_intent_id], properties: {kind: {const: pre_creation_listing_intent}, listing_intent_id: {$ref: '#/schemas/OpaqueId'}}}
   AvailabilityExistingTarget: {type: object, additionalProperties: false, required: [kind, listing], properties: {kind: {const: existing_listing}, listing: {$ref: '#/schemas/MarketplaceListingRef'}}}
   AvailabilityTarget: {oneOf: [{$ref: '#/schemas/AvailabilityPreCreationTarget'}, {$ref: '#/schemas/AvailabilityExistingTarget'}]}
-  DesiredQuantityKnown: {type: object, additionalProperties: false, required: [state, quantity], properties: {state: {const: known}, quantity: {$ref: '#/schemas/ExactDecimalString'}, inventory_source_ids: {type: array, uniqueItems: true, items: {$ref: '#/schemas/OpaqueId'}}}}
+  DesiredQuantityKnown: {type: object, additionalProperties: false, required: [state, quantity], properties: {state: {const: known}, quantity: {$ref: '#/schemas/NonNegativeExactDecimalString'}, inventory_source_ids: {type: array, uniqueItems: true, items: {$ref: '#/schemas/OpaqueId'}}}}
   DesiredQuantityUnknown: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unknown}}}
   DesiredQuantityUnavailable: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unavailable}}}
   DesiredQuantity: {oneOf: [{$ref: '#/schemas/DesiredQuantityKnown'}, {$ref: '#/schemas/DesiredQuantityUnknown'}, {$ref: '#/schemas/DesiredQuantityUnavailable'}]}
@@ -939,11 +940,18 @@ schemas:
   WorkOriginAuthorizationDecision: {type: object, additionalProperties: false, required: [kind, authorization_decision_id], properties: {kind: {const: authorization_decision}, authorization_decision_id: {$ref: '#/schemas/OpaqueId'}}}
   WorkOrigin:
     oneOf: [{$ref: '#/schemas/WorkOriginReadiness'}, {$ref: '#/schemas/WorkOriginListingIntent'}, {$ref: '#/schemas/WorkOriginPriceIntent'}, {$ref: '#/schemas/WorkOriginMarketplaceSale'}, {$ref: '#/schemas/WorkOriginBusinessOrder'}, {$ref: '#/schemas/WorkOriginFulfillment'}, {$ref: '#/schemas/WorkOriginShipment'}, {$ref: '#/schemas/WorkOriginPostSale'}, {$ref: '#/schemas/WorkOriginEconomicAttribution'}, {$ref: '#/schemas/WorkOriginAuthorizationDecision'}]
-  WorkAssignment:
+  WorkAssignmentAssigned:
+    type: object
+    additionalProperties: false
+    required: [state, principal_id]
+    properties: {state: {const: assigned}, principal_id: {$ref: '#/schemas/OpaqueId'}}
+  WorkAssignmentUnassigned:
     type: object
     additionalProperties: false
     required: [state]
-    properties: {state: {type: string, enum: [assigned, unassigned]}, principal_id: {$ref: '#/schemas/OpaqueId'}}
+    properties: {state: {const: unassigned}}
+  WorkAssignment:
+    oneOf: [{$ref: '#/schemas/WorkAssignmentAssigned'}, {$ref: '#/schemas/WorkAssignmentUnassigned'}]
   Work:
     type: object
     additionalProperties: false
