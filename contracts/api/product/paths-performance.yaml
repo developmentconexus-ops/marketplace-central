@@ -311,46 +311,96 @@ schemas:
     properties: {state: {const: not_comparable}}
 
   TrafficPerformance:
+    oneOf:
+      - {$ref: '#/schemas/TrafficPerformanceAvailable'}
+      - {$ref: '#/schemas/TrafficPerformanceUnavailable'}
+  TrafficPerformanceAvailable:
+    type: object
+    additionalProperties: false
+    required: [coverage, visits, provenance]
+    properties:
+      coverage: {$ref: '#/schemas/AvailablePerformanceEvidenceCoverage'}
+      visits: {$ref: '#/schemas/NonNegativeCountString'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+      comparison: {$ref: '#/schemas/TrafficPerformanceComparison'}
+  TrafficPerformanceUnavailable:
     type: object
     additionalProperties: false
     required: [coverage, provenance]
     properties:
-      coverage: {$ref: '#/schemas/PerformanceEvidenceCoverage'}
-      visits: {$ref: '#/schemas/NonNegativeCountString'}
+      coverage: {$ref: '#/schemas/UnavailablePerformanceEvidenceCoverage'}
       provenance: {$ref: '#/schemas/PerformanceProvenance'}
       comparison: {$ref: '#/schemas/TrafficPerformanceComparison'}
+
   TrafficPerformanceComparison:
+    oneOf:
+      - {$ref: '#/schemas/TrafficPerformanceComparisonAvailable'}
+      - {$ref: '#/schemas/TrafficPerformanceComparisonUnavailable'}
+  TrafficPerformanceComparisonAvailable:
+    type: object
+    additionalProperties: false
+    required: [period, coverage, visits, provenance]
+    properties:
+      period: {$ref: '#/schemas/PerformancePeriod'}
+      coverage: {$ref: '#/schemas/AvailablePerformanceEvidenceCoverage'}
+      visits: {$ref: '#/schemas/NonNegativeCountString'}
+      visits_change: {$ref: '#/schemas/CountChange'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+  TrafficPerformanceComparisonUnavailable:
     type: object
     additionalProperties: false
     required: [period, coverage, provenance]
     properties:
       period: {$ref: '#/schemas/PerformancePeriod'}
-      coverage: {$ref: '#/schemas/PerformanceEvidenceCoverage'}
-      visits: {$ref: '#/schemas/NonNegativeCountString'}
-      visits_change: {$ref: '#/schemas/CountChange'}
+      coverage: {$ref: '#/schemas/UnavailablePerformanceEvidenceCoverage'}
       provenance: {$ref: '#/schemas/PerformanceProvenance'}
 
   SalesActivityPerformance:
+    oneOf:
+      - {$ref: '#/schemas/SalesActivityPerformanceAvailable'}
+      - {$ref: '#/schemas/SalesActivityPerformanceUnavailable'}
+  SalesActivityPerformanceAvailable:
     type: object
     additionalProperties: false
-    required: [coverage, provenance]
+    required: [coverage, sales_count, units_count, provenance]
     properties:
-      coverage: {$ref: '#/schemas/PerformanceEvidenceCoverage'}
+      coverage: {$ref: '#/schemas/AvailablePerformanceEvidenceCoverage'}
       sales_count: {$ref: '#/schemas/NonNegativeCountString'}
       units_count: {$ref: '#/schemas/NonNegativeCountString'}
       provenance: {$ref: '#/schemas/PerformanceProvenance'}
       comparison: {$ref: '#/schemas/SalesActivityPerformanceComparison'}
+  SalesActivityPerformanceUnavailable:
+    type: object
+    additionalProperties: false
+    required: [coverage, provenance]
+    properties:
+      coverage: {$ref: '#/schemas/UnavailablePerformanceEvidenceCoverage'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+      comparison: {$ref: '#/schemas/SalesActivityPerformanceComparison'}
+
   SalesActivityPerformanceComparison:
+    oneOf:
+      - {$ref: '#/schemas/SalesActivityPerformanceComparisonAvailable'}
+      - {$ref: '#/schemas/SalesActivityPerformanceComparisonUnavailable'}
+  SalesActivityPerformanceComparisonAvailable:
+    type: object
+    additionalProperties: false
+    required: [period, coverage, sales_count, units_count, provenance]
+    properties:
+      period: {$ref: '#/schemas/PerformancePeriod'}
+      coverage: {$ref: '#/schemas/AvailablePerformanceEvidenceCoverage'}
+      sales_count: {$ref: '#/schemas/NonNegativeCountString'}
+      units_count: {$ref: '#/schemas/NonNegativeCountString'}
+      sales_count_change: {$ref: '#/schemas/CountChange'}
+      units_count_change: {$ref: '#/schemas/CountChange'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+  SalesActivityPerformanceComparisonUnavailable:
     type: object
     additionalProperties: false
     required: [period, coverage, provenance]
     properties:
       period: {$ref: '#/schemas/PerformancePeriod'}
-      coverage: {$ref: '#/schemas/PerformanceEvidenceCoverage'}
-      sales_count: {$ref: '#/schemas/NonNegativeCountString'}
-      units_count: {$ref: '#/schemas/NonNegativeCountString'}
-      sales_count_change: {$ref: '#/schemas/CountChange'}
-      units_count_change: {$ref: '#/schemas/CountChange'}
+      coverage: {$ref: '#/schemas/UnavailablePerformanceEvidenceCoverage'}
       provenance: {$ref: '#/schemas/PerformanceProvenance'}
 
   RetailMediaExposureMeasures:
@@ -362,7 +412,9 @@ schemas:
       impression_share: {$ref: '#/schemas/PercentageValue'}
       top_impression_share: {$ref: '#/schemas/PercentageValue'}
       lost_impression_share_by_budget: {$ref: '#/schemas/PercentageValue'}
-      lost_impression_share_by_rank: {$ref: '#/schemas/PercentageValue'}
+      lost_impression_share_by_rank:
+        allOf: [{$ref: '#/schemas/PercentageValue'}]
+        description: Owner-local Product name deliberately mapped from Mercado Livre provider metric lost_impression_share_by_ad_rank when that campaign-detail metric is available; not assumed at other scopes.
   RetailMediaEngagementMeasures:
     type: object
     additionalProperties: false
@@ -449,7 +501,7 @@ schemas:
     minProperties: 1
     properties:
       organic_units: {$ref: '#/schemas/CountChange'}
-      organic_sales_amount: {$ref: '#/schemas/MoneyChange'}
+      organic_sales_amount: {$ref: './components.yaml#/schemas/MoneyChange'}
   RetailMediaMeasureChanges:
     type: object
     additionalProperties: false
@@ -462,49 +514,109 @@ schemas:
       organic_related: {$ref: '#/schemas/RetailMediaOrganicChanges'}
 
   RetailMediaPerformance:
+    oneOf:
+      - {$ref: '#/schemas/RetailMediaPerformanceAvailable'}
+      - {$ref: '#/schemas/RetailMediaPerformanceUnavailable'}
+  RetailMediaPerformanceAvailable:
     type: object
     additionalProperties: false
-    required: [coverage, measurement_basis, provenance]
+    required: [coverage, measures, measurement_basis, provenance]
     properties:
-      coverage: {$ref: '#/schemas/PerformanceEvidenceCoverage'}
+      coverage: {$ref: '#/schemas/AvailablePerformanceEvidenceCoverage'}
       measures: {$ref: '#/schemas/RetailMediaMeasures'}
       measurement_basis: {$ref: '#/schemas/ProviderMeasurementBasis'}
       provenance: {$ref: '#/schemas/PerformanceProvenance'}
       comparison: {$ref: '#/schemas/RetailMediaPerformanceComparison'}
+  RetailMediaPerformanceUnavailable:
+    type: object
+    additionalProperties: false
+    required: [coverage, measurement_basis, provenance]
+    properties:
+      coverage: {$ref: '#/schemas/UnavailablePerformanceEvidenceCoverage'}
+      measurement_basis: {$ref: '#/schemas/ProviderMeasurementBasis'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+      comparison: {$ref: '#/schemas/RetailMediaPerformanceComparison'}
+
   RetailMediaPerformanceComparison:
+    oneOf:
+      - {$ref: '#/schemas/RetailMediaPerformanceComparisonAvailable'}
+      - {$ref: '#/schemas/RetailMediaPerformanceComparisonUnavailable'}
+  RetailMediaPerformanceComparisonAvailable:
+    type: object
+    additionalProperties: false
+    required: [period, coverage, measures, measurement_basis, provenance]
+    properties:
+      period: {$ref: '#/schemas/PerformancePeriod'}
+      coverage: {$ref: '#/schemas/AvailablePerformanceEvidenceCoverage'}
+      measures: {$ref: '#/schemas/RetailMediaMeasures'}
+      changes: {$ref: '#/schemas/RetailMediaMeasureChanges'}
+      measurement_basis: {$ref: '#/schemas/ProviderMeasurementBasis'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+  RetailMediaPerformanceComparisonUnavailable:
     type: object
     additionalProperties: false
     required: [period, coverage, measurement_basis, provenance]
     properties:
       period: {$ref: '#/schemas/PerformancePeriod'}
-      coverage: {$ref: '#/schemas/PerformanceEvidenceCoverage'}
-      measures: {$ref: '#/schemas/RetailMediaMeasures'}
-      changes: {$ref: '#/schemas/RetailMediaMeasureChanges'}
+      coverage: {$ref: '#/schemas/UnavailablePerformanceEvidenceCoverage'}
       measurement_basis: {$ref: '#/schemas/ProviderMeasurementBasis'}
       provenance: {$ref: '#/schemas/PerformanceProvenance'}
 
   RetailMediaSummary:
+    oneOf:
+      - {$ref: '#/schemas/RetailMediaSummaryAvailable'}
+      - {$ref: '#/schemas/RetailMediaSummaryUnavailable'}
+  RetailMediaSummaryAvailable:
     type: object
     additionalProperties: false
     required: [coverage, measurement_basis, provenance]
+    anyOf:
+      - {required: [spend]}
+      - {required: [return_on_ad_spend]}
     properties:
-      coverage: {$ref: '#/schemas/PerformanceEvidenceCoverage'}
+      coverage: {$ref: '#/schemas/AvailablePerformanceEvidenceCoverage'}
       spend: {$ref: './components.yaml#/schemas/Money'}
       return_on_ad_spend: {$ref: '#/schemas/MultipleValue'}
       measurement_basis: {$ref: '#/schemas/ProviderMeasurementBasis'}
       provenance: {$ref: '#/schemas/PerformanceProvenance'}
       comparison: {$ref: '#/schemas/RetailMediaSummaryComparison'}
+  RetailMediaSummaryUnavailable:
+    type: object
+    additionalProperties: false
+    required: [coverage, measurement_basis, provenance]
+    properties:
+      coverage: {$ref: '#/schemas/UnavailablePerformanceEvidenceCoverage'}
+      measurement_basis: {$ref: '#/schemas/ProviderMeasurementBasis'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+      comparison: {$ref: '#/schemas/RetailMediaSummaryComparison'}
+
   RetailMediaSummaryComparison:
+    oneOf:
+      - {$ref: '#/schemas/RetailMediaSummaryComparisonAvailable'}
+      - {$ref: '#/schemas/RetailMediaSummaryComparisonUnavailable'}
+  RetailMediaSummaryComparisonAvailable:
+    type: object
+    additionalProperties: false
+    required: [period, coverage, measurement_basis, provenance]
+    anyOf:
+      - {required: [spend]}
+      - {required: [return_on_ad_spend]}
+    properties:
+      period: {$ref: '#/schemas/PerformancePeriod'}
+      coverage: {$ref: '#/schemas/AvailablePerformanceEvidenceCoverage'}
+      spend: {$ref: './components.yaml#/schemas/Money'}
+      return_on_ad_spend: {$ref: '#/schemas/MultipleValue'}
+      spend_change: {$ref: '#/schemas/MoneyChange'}
+      return_on_ad_spend_change: {$ref: '#/schemas/MultipleChange'}
+      measurement_basis: {$ref: '#/schemas/ProviderMeasurementBasis'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+  RetailMediaSummaryComparisonUnavailable:
     type: object
     additionalProperties: false
     required: [period, coverage, measurement_basis, provenance]
     properties:
       period: {$ref: '#/schemas/PerformancePeriod'}
-      coverage: {$ref: '#/schemas/PerformanceEvidenceCoverage'}
-      spend: {$ref: './components.yaml#/schemas/Money'}
-      return_on_ad_spend: {$ref: '#/schemas/MultipleValue'}
-      spend_change: {$ref: '#/schemas/MoneyChange'}
-      return_on_ad_spend_change: {$ref: '#/schemas/MultipleChange'}
+      coverage: {$ref: '#/schemas/UnavailablePerformanceEvidenceCoverage'}
       measurement_basis: {$ref: '#/schemas/ProviderMeasurementBasis'}
       provenance: {$ref: '#/schemas/PerformanceProvenance'}
 
