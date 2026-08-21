@@ -299,6 +299,9 @@ foreach ($file in $changedFiles) {
     }
 }
 
+# Repository negative-control reporting is intentionally limited to controls that exercise
+# a reusable enforcement predicate. The other repository invariants above remain direct guards,
+# but are not counted as falsifiers merely because a literal fixture can be made to fail.
 $negativeControls = 0
 function Expect-Failure([string]$name, [scriptblock]$body) {
     $failed = $false
@@ -307,33 +310,11 @@ function Expect-Failure([string]$name, [scriptblock]$body) {
     $script:negativeControls++
 }
 
-Expect-Failure 'legacy runtime root' {
-    if (-not ('apps/example/main.go' -match '^apps/')) { return }
-    throw 'caught'
-}
-Expect-Failure 'second Product OAD entrypoint' {
-    $fixture = @('contracts/api/product/openapi.yaml', 'docs/openapi.yaml')
-    if ($fixture.Count -eq 1) { return }
-    throw 'caught'
-}
-Expect-Failure 'duplicate mutable status' {
-    $fixture = 'D6 — Frontend — OPEN / ACTIVE'
-    if (-not $fixture.Contains('D6 — Frontend — OPEN / ACTIVE')) { return }
-    throw 'caught'
-}
-Expect-Failure 'forbidden superpowers docs' {
-    if (-not ('docs/superpowers/specs/x.md' -match '^docs/superpowers/')) { return }
-    throw 'caught'
-}
-Expect-Failure 'bootstrap overflow' {
-    if (-not (($bootstrapLimit + 1) -gt $bootstrapLimit)) { return }
-    throw 'caught'
-}
 Expect-Failure 'review isolation' {
     if ((Test-ReviewDiffNames @('docs/work/current/ai-dialog.md')) -and -not (Test-ReviewDiffNames @('docs/work/current/ai-dialog.md', 'README.md'))) { throw 'caught' }
 }
 
-if ($negativeControls -ne 6) { Fail "repository negative-control count mismatch: $negativeControls/6" }
+if ($negativeControls -ne 1) { Fail "repository negative-control count mismatch: $negativeControls/1" }
 
 $productProof = & node 'scripts/verify-product-oad.mjs' 2>&1
 if ($LASTEXITCODE -ne 0) {
@@ -352,5 +333,5 @@ Write-Host "machine_route_files: $($machineRouteFiles.Count) selectors: $machine
 Write-Host "diff_range: $diffRange changed_files: $($changedFiles.Count)"
 Write-Host "review_mode: $isReview"
 Write-Host "legacy_runtime_population: 0"
-Write-Host "negative_controls: $negativeControls/6"
+Write-Host "negative_controls: $negativeControls/1"
 Write-Host 'gate: PASS'
