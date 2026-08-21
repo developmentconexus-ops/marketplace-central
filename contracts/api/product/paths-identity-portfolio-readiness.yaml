@@ -201,14 +201,28 @@ pathItems:
     get:
       operationId: SearchSourceProductsForMarketplace
       summary: Search source products for marketplace
-      description: Bounded search only; never an unfiltered Product-master listing operation.
+      description: >-
+        Bounded marketplace-operating search only; never an unfiltered Product-master listing operation.
+        source_instance_id is an optional narrowing filter. When omitted, Readiness searches the
+        Organization-scoped SourceInstances currently admitted/configured for this search context.
+        Every returned product remains explicitly source-qualified; omission never selects an ambient
+        or default SourceInstance.
       x-mpc-operation-class: Q
       x-mpc-required-permission: readiness.read
       x-mpc-principal-kinds: [H, A, S]
       x-mpc-semantic-owner: ProductChannelReadiness
-      parameters: [{$ref: './components.yaml#/parameters/MarketplaceInstallationQuery'}, {$ref: './components.yaml#/parameters/SourceInstanceQuery'}, {$ref: './components.yaml#/parameters/SearchQuery'}, {$ref: './components.yaml#/parameters/Limit'}, {$ref: './components.yaml#/parameters/Cursor'}]
+      parameters:
+        - {$ref: './components.yaml#/parameters/MarketplaceInstallationQuery'}
+        - name: source_instance_id
+          in: query
+          required: false
+          description: Optional exact SourceInstance narrowing filter; omission is multi-source search scope, never default-source selection.
+          schema: {$ref: './components.yaml#/schemas/OpaqueId'}
+        - {$ref: './components.yaml#/parameters/SearchQuery'}
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
       responses:
-        '200': {description: Source-product search evidence., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/SourceProductsSearchCollection'}}}}
+        '200': {description: Source-qualified Product search evidence., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/SourceProductsSearchCollection'}}}}
         '400': {$ref: './components.yaml#/responses/BadRequest'}
         '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
         '403': {$ref: './components.yaml#/responses/AccessDenied'}
@@ -248,7 +262,7 @@ pathItems:
         - {$ref: './components.yaml#/parameters/SourceInstanceQuery'}
         - {$ref: './components.yaml#/parameters/NativeProductKeyQuery'}
         - {name: category_key, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueKey'}}
-        - {name: product_type_key, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueKey'}}
+        - {name: product_type_key, in: query, required: false, schema: {type: string, enum: [text, exact_decimal, boolean, option, text_list, option_list, number_unit, not_applicable]}}
       responses:
         '200': {description: Current publication requirements., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/PublicationRequirements'}}}}
         '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
