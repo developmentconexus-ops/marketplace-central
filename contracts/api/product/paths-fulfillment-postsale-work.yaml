@@ -1,0 +1,518 @@
+pathItems:
+  FulfillmentExecutions:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListFulfillmentExecutions
+      summary: List fulfillment executions
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: fulfillment.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: Fulfillment
+      parameters:
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+        - {name: sale_marketplace_installation_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+        - {name: sale_native_key, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueKey'}}
+        - {name: fulfillment_node_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+      responses:
+        '200': {description: Fulfillment executions., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/FulfillmentExecutionsCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  FulfillmentExecution:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/FulfillmentExecutionId'}]
+    get:
+      operationId: GetFulfillmentExecution
+      summary: Get fulfillment execution
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: fulfillment.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: Fulfillment
+      responses:
+        '200': {$ref: './components.yaml#/responses/FulfillmentExecutionOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  FulfillmentNodes:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListFulfillmentNodes
+      summary: List fulfillment nodes
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: fulfillment.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: Fulfillment
+      parameters: [{$ref: './components.yaml#/parameters/Limit'}, {$ref: './components.yaml#/parameters/Cursor'}]
+      responses:
+        '200': {description: Fulfillment nodes., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/FulfillmentNodesCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+    post:
+      operationId: CreateFulfillmentNode
+      summary: Create fulfillment node
+      x-mpc-operation-class: C
+      x-mpc-required-permission: fulfillment.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: Fulfillment
+      parameters: [{$ref: './components.yaml#/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/CreateFulfillmentNodeRequest'}}}}
+      responses:
+        '201': {$ref: './components.yaml#/responses/FulfillmentNodeCreated'}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  FulfillmentNode:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/FulfillmentNodeId'}]
+    get:
+      operationId: GetFulfillmentNode
+      summary: Get fulfillment node
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: fulfillment.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: Fulfillment
+      responses:
+        '200': {$ref: './components.yaml#/responses/FulfillmentNodeOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+    patch:
+      operationId: UpdateFulfillmentNode
+      summary: Update fulfillment node
+      x-mpc-operation-class: C
+      x-mpc-required-permission: fulfillment.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: Fulfillment
+      parameters: [{$ref: './components.yaml#/parameters/IfMatch'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/UpdateFulfillmentNodeRequest'}}}}
+      responses:
+        '200': {$ref: './components.yaml#/responses/FulfillmentNodeOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '412': {$ref: './components.yaml#/responses/PreconditionFailed'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '428': {$ref: './components.yaml#/responses/PreconditionRequired'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  DeactivateFulfillmentNode:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/FulfillmentNodeId'}]
+    post:
+      operationId: DeactivateFulfillmentNode
+      summary: Deactivate fulfillment node
+      x-mpc-operation-class: C
+      x-mpc-required-permission: fulfillment.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: Fulfillment
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EtagOnlyRequest'}}}}
+      responses:
+        '200': {description: Deactivated fulfillment node and current validator., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/FulfillmentNodeMutationResult'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  FulfillmentOperatingTargets:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: GetFulfillmentOperatingTargets
+      summary: Get fulfillment operating targets
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: fulfillment.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: Fulfillment
+      responses:
+        '200': {$ref: './components.yaml#/responses/FulfillmentOperatingTargetsOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+    patch:
+      operationId: UpdateFulfillmentOperatingTargets
+      summary: Update fulfillment operating targets
+      x-mpc-operation-class: C
+      x-mpc-required-permission: fulfillment.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: Fulfillment
+      parameters: [{$ref: './components.yaml#/parameters/IfMatch'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/UpdateFulfillmentOperatingTargetsRequest'}}}}
+      responses:
+        '200': {$ref: './components.yaml#/responses/FulfillmentOperatingTargetsOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '412': {$ref: './components.yaml#/responses/PreconditionFailed'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '428': {$ref: './components.yaml#/responses/PreconditionRequired'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  RecordSeparation:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/FulfillmentExecutionId'}]
+    post:
+      operationId: RecordSeparation
+      summary: Record separation
+      x-mpc-operation-class: C
+      x-mpc-required-permission: fulfillment.execute
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: Fulfillment
+      parameters: [{$ref: './components.yaml#/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EtagOnlyRequest'}}}}
+      responses:
+        '200': {description: Current fulfillment execution and validator., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/FulfillmentExecutionMutationResult'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  RecordPhysicalConference:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/FulfillmentExecutionId'}]
+    post:
+      operationId: RecordPhysicalConference
+      summary: Record physical conference
+      x-mpc-operation-class: C
+      x-mpc-required-permission: fulfillment.execute
+      x-mpc-principal-kinds: [H, S]
+      x-mpc-semantic-owner: Fulfillment
+      x-mpc-required-physical-qualification: true
+      parameters: [{$ref: './components.yaml#/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/RecordPhysicalConferenceRequest'}}}}
+      responses:
+        '200': {description: Current fulfillment execution and validator., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/FulfillmentExecutionMutationResult'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  RecordPacking:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/FulfillmentExecutionId'}]
+    post:
+      operationId: RecordPacking
+      summary: Record packing
+      x-mpc-operation-class: C
+      x-mpc-required-permission: fulfillment.execute
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: Fulfillment
+      parameters: [{$ref: './components.yaml#/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EtagOnlyRequest'}}}}
+      responses:
+        '200': {description: Current fulfillment execution and validator., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/FulfillmentExecutionMutationResult'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  RecordDispatchHandoff:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/FulfillmentExecutionId'}]
+    post:
+      operationId: RecordDispatchHandoff
+      summary: Record dispatch handoff
+      x-mpc-operation-class: C
+      x-mpc-required-permission: fulfillment.execute
+      x-mpc-principal-kinds: [H, S]
+      x-mpc-semantic-owner: Fulfillment
+      x-mpc-required-physical-qualification: true
+      parameters: [{$ref: './components.yaml#/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EtagOnlyRequest'}}}}
+      responses:
+        '200': {description: Current fulfillment execution and validator., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/FulfillmentExecutionMutationResult'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  FulfillmentArtifacts:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/FulfillmentExecutionId'}]
+    get:
+      operationId: ListFulfillmentArtifacts
+      summary: List fulfillment artifacts
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: fulfillment.execute
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: Fulfillment
+      parameters: [{$ref: './components.yaml#/parameters/Limit'}, {$ref: './components.yaml#/parameters/Cursor'}]
+      responses:
+        '200': {description: Fulfillment artifacts., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/FulfillmentArtifactsCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  FulfillmentArtifact:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/FulfillmentExecutionId'}, {$ref: './components.yaml#/parameters/ArtifactKey'}]
+    get:
+      operationId: GetFulfillmentArtifact
+      summary: Get fulfillment artifact
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: fulfillment.execute
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: Fulfillment
+      responses:
+        '200': {description: Fulfillment artifact descriptor., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/FulfillmentArtifact'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  Shipments:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/MarketplaceInstallationId'}]
+    get:
+      operationId: ListShipments
+      summary: List shipments
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: fulfillment.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: Fulfillment
+      parameters:
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+        - {name: native_sale_key, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueKey'}}
+      responses:
+        '200': {description: Shipments., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/ShipmentsCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  Shipment:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/MarketplaceInstallationId'}, {$ref: './components.yaml#/parameters/NativeShipmentKey'}]
+    get:
+      operationId: GetShipment
+      summary: Get shipment
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: fulfillment.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: Fulfillment
+      responses:
+        '200': {description: Shipment observation., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/Shipment'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  PostSaleResolutions:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListPostSaleResolutions
+      summary: List post-sale resolutions
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: post_sale.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: PostSaleResolution
+      parameters:
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+        - {name: sale_marketplace_installation_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+        - {name: sale_native_key, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueKey'}}
+        - {name: lifecycle, in: query, required: false, schema: {type: string, enum: [open, closed]}}
+      responses:
+        '200': {description: Post-sale resolutions., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/PostSaleResolutionsCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+    post:
+      operationId: CreatePostSaleResolution
+      summary: Create post-sale resolution
+      x-mpc-operation-class: C
+      x-mpc-required-permission: post_sale.manage
+      x-mpc-principal-kinds: [H, A]
+      x-mpc-semantic-owner: PostSaleResolution
+      parameters: [{$ref: './components.yaml#/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/CreatePostSaleResolutionRequest'}}}}
+      responses:
+        '201': {$ref: './components.yaml#/responses/PostSaleResolutionCreated'}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  PostSaleResolution:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/PostSaleResolutionId'}]
+    get:
+      operationId: GetPostSaleResolution
+      summary: Get post-sale resolution
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: post_sale.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: PostSaleResolution
+      responses:
+        '200': {description: Post-sale resolution., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/PostSaleResolution'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  Work:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListWork
+      summary: List operational work
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: work.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: OperationalWork
+      parameters:
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+        - {name: lifecycle, in: query, required: false, schema: {type: string, enum: [open, on_hold, closed]}}
+        - {name: responsibility_role_key, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueKey'}}
+        - {name: assigned_principal_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+        - {name: assignment_state, in: query, required: false, schema: {type: string, enum: [assigned, unassigned]}}
+        - {name: origin_kind, in: query, required: false, schema: {type: string, enum: [readiness, listing_intent, price_intent, marketplace_sale, business_order_intent, fulfillment_execution, shipment, post_sale_resolution, economic_attribution, authorization_decision]}}
+      responses:
+        '200': {description: Operational work., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/WorkCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  WorkItem:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/WorkId'}]
+    get:
+      operationId: GetWork
+      summary: Get operational work
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: work.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: OperationalWork
+      responses:
+        '200': {$ref: './components.yaml#/responses/WorkOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  AssignWork:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/WorkId'}]
+    post:
+      operationId: AssignWork
+      summary: Assign work
+      x-mpc-operation-class: C
+      x-mpc-required-permission: work.manage
+      x-mpc-principal-kinds: [H, A]
+      x-mpc-semantic-owner: OperationalWork
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/AssignWorkRequest'}}}}
+      responses:
+        '200': {description: Current work and validator., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/WorkMutationResult'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  ClearWorkAssignment:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/WorkId'}]
+    post:
+      operationId: ClearWorkAssignment
+      summary: Clear work assignment
+      x-mpc-operation-class: C
+      x-mpc-required-permission: work.manage
+      x-mpc-principal-kinds: [H, A]
+      x-mpc-semantic-owner: OperationalWork
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EtagOnlyRequest'}}}}
+      responses:
+        '200': {description: Current work and validator., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/WorkMutationResult'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  HoldWork:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/WorkId'}]
+    post:
+      operationId: HoldWork
+      summary: Hold work
+      x-mpc-operation-class: C
+      x-mpc-required-permission: work.manage
+      x-mpc-principal-kinds: [H, A]
+      x-mpc-semantic-owner: OperationalWork
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EtagOnlyRequest'}}}}
+      responses:
+        '200': {description: Current work and validator., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/WorkMutationResult'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  ResumeWork:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/WorkId'}]
+    post:
+      operationId: ResumeWork
+      summary: Resume work
+      x-mpc-operation-class: C
+      x-mpc-required-permission: work.manage
+      x-mpc-principal-kinds: [H, A]
+      x-mpc-semantic-owner: OperationalWork
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EtagOnlyRequest'}}}}
+      responses:
+        '200': {description: Current work and validator., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/WorkMutationResult'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  EscalateWork:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/WorkId'}]
+    post:
+      operationId: EscalateWork
+      summary: Escalate work
+      x-mpc-operation-class: C
+      x-mpc-required-permission: work.manage
+      x-mpc-principal-kinds: [H, A]
+      x-mpc-semantic-owner: OperationalWork
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EscalateWorkRequest'}}}}
+      responses:
+        '200': {description: Current work and validator., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/WorkMutationResult'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}

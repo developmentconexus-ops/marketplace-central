@@ -1,0 +1,296 @@
+pathItems:
+  AccessContext:
+    get:
+      operationId: GetCurrentAccessContext
+      summary: Get current access context
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: authenticated
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: IdentityAccess
+      responses:
+        '200': {description: Current access context., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/AccessContext'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  OrganizationMembers:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListOrganizationMembers
+      summary: List organization members
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: access.read
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: IdentityAccess
+      parameters: [{$ref: './components.yaml#/parameters/Limit'}, {$ref: './components.yaml#/parameters/Cursor'}]
+      responses:
+        '200': {description: Organization members., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/OrganizationMembersCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  AccessRoles:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListAccessRoles
+      summary: List access roles
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: access.read
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: IdentityAccess
+      parameters: [{$ref: './components.yaml#/parameters/Limit'}, {$ref: './components.yaml#/parameters/Cursor'}]
+      responses:
+        '200': {description: Access roles., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/AccessRolesCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  AssignAccessRole:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/PrincipalId'}]
+    post:
+      operationId: AssignAccessRole
+      summary: Assign access role
+      x-mpc-operation-class: C
+      x-mpc-required-permission: access.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: IdentityAccess
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/RoleMutationRequest'}}}}
+      responses:
+        '200': {description: Current member access relation., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/OrganizationMember'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  RevokeAccessRole:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/PrincipalId'}]
+    post:
+      operationId: RevokeAccessRole
+      summary: Revoke access role
+      x-mpc-operation-class: C
+      x-mpc-required-permission: access.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: IdentityAccess
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/RoleMutationRequest'}}}}
+      responses:
+        '200': {description: Current member access relation., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/OrganizationMember'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  MarketplaceInstallations:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListMarketplaceInstallations
+      summary: List marketplace installations
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: portfolio.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: MarketplacePortfolio
+      parameters: [{$ref: './components.yaml#/parameters/Limit'}, {$ref: './components.yaml#/parameters/Cursor'}]
+      responses:
+        '200': {description: Marketplace installations., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/MarketplaceInstallationsCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+    post:
+      operationId: CreateMarketplaceInstallation
+      summary: Create marketplace installation
+      x-mpc-operation-class: C
+      x-mpc-required-permission: portfolio.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: MarketplacePortfolio
+      parameters: [{$ref: './components.yaml#/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/CreateMarketplaceInstallationRequest'}}}}
+      responses:
+        '201': {$ref: './components.yaml#/responses/MarketplaceInstallationCreated'}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  MarketplaceInstallation:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/MarketplaceInstallationId'}]
+    get:
+      operationId: GetMarketplaceInstallation
+      summary: Get marketplace installation
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: portfolio.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: MarketplacePortfolio
+      responses:
+        '200': {$ref: './components.yaml#/responses/MarketplaceInstallationOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+    patch:
+      operationId: UpdateMarketplaceInstallationConfiguration
+      summary: Update marketplace installation configuration
+      x-mpc-operation-class: C
+      x-mpc-required-permission: portfolio.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: MarketplacePortfolio
+      parameters: [{$ref: './components.yaml#/parameters/IfMatch'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/UpdateMarketplaceInstallationRequest'}}}}
+      responses:
+        '200': {$ref: './components.yaml#/responses/MarketplaceInstallationOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '412': {$ref: './components.yaml#/responses/PreconditionFailed'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '428': {$ref: './components.yaml#/responses/PreconditionRequired'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  DeactivateMarketplaceInstallation:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/MarketplaceInstallationId'}]
+    post:
+      operationId: DeactivateMarketplaceInstallation
+      summary: Deactivate marketplace installation
+      x-mpc-operation-class: C
+      x-mpc-required-permission: portfolio.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: MarketplacePortfolio
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EtagOnlyRequest'}}}}
+      responses:
+        '200': {description: Deactivated installation and current validator., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/MarketplaceInstallationMutationResult'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  SellingEntities:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListSellingEntities
+      summary: List selling entities
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: portfolio.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: MarketplacePortfolio
+      parameters: [{$ref: './components.yaml#/parameters/Limit'}, {$ref: './components.yaml#/parameters/Cursor'}]
+      responses:
+        '200': {description: Selling entities., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/SellingEntitiesCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  SourceProductsSearch:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: SearchSourceProductsForMarketplace
+      summary: Search source products for marketplace
+      description: Bounded search only; never an unfiltered Product-master listing operation.
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: readiness.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: ProductChannelReadiness
+      parameters: [{$ref: './components.yaml#/parameters/MarketplaceInstallationQuery'}, {$ref: './components.yaml#/parameters/SourceInstanceQuery'}, {$ref: './components.yaml#/parameters/SearchQuery'}, {$ref: './components.yaml#/parameters/Limit'}, {$ref: './components.yaml#/parameters/Cursor'}]
+      responses:
+        '200': {description: Source-product search evidence., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/SourceProductsSearchCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  ProductChannelReadiness:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: GetProductChannelReadiness
+      summary: Get product channel readiness
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: readiness.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: ProductChannelReadiness
+      parameters: [{$ref: './components.yaml#/parameters/MarketplaceInstallationQuery'}, {$ref: './components.yaml#/parameters/SourceInstanceQuery'}, {$ref: './components.yaml#/parameters/NativeProductKeyQuery'}]
+      responses:
+        '200': {description: Current product channel readiness., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/ProductChannelReadiness'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  PublicationRequirements:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: GetPublicationRequirements
+      summary: Get publication requirements
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: readiness.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: ProductChannelReadiness
+      parameters:
+        - {$ref: './components.yaml#/parameters/MarketplaceInstallationQuery'}
+        - {$ref: './components.yaml#/parameters/SourceInstanceQuery'}
+        - {$ref: './components.yaml#/parameters/NativeProductKeyQuery'}
+        - {name: category_key, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueKey'}}
+        - {name: product_type_key, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueKey'}}
+      responses:
+        '200': {description: Current publication requirements., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/PublicationRequirements'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  ResolveProductChannelCorrespondence:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    post:
+      operationId: ResolveProductChannelCorrespondence
+      summary: Resolve product channel correspondence
+      x-mpc-operation-class: C
+      x-mpc-required-permission: readiness.manage
+      x-mpc-principal-kinds: [H, A]
+      x-mpc-semantic-owner: ProductChannelReadiness
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/ResolveCorrespondenceRequest'}}}}
+      responses:
+        '200': {description: Current product channel readiness., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/ProductChannelReadiness'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  ClearProductChannelCorrespondence:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    post:
+      operationId: ClearProductChannelCorrespondence
+      summary: Clear product channel correspondence
+      x-mpc-operation-class: C
+      x-mpc-required-permission: readiness.manage
+      x-mpc-principal-kinds: [H, A]
+      x-mpc-semantic-owner: ProductChannelReadiness
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/ClearCorrespondenceRequest'}}}}
+      responses:
+        '200': {description: Current product channel readiness., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/ProductChannelReadiness'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}

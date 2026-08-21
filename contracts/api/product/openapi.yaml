@@ -1,0 +1,183 @@
+openapi: 3.1.2
+jsonSchemaDialect: https://spec.openapis.org/oas/3.1/dialect/base
+info:
+  title: Marketplace Central Product API
+  version: 1.0.0-d5
+  description: >-
+    Canonical Product API wire description derived from the accepted D5 Product contract.
+    This document defines Product wire shape only. Active runtime is NONE and implementation
+    remains blocked until D9.
+security:
+  - MpcBearerAuth: []
+
+paths:
+  '/access-context':
+    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/AccessContext'
+  '/organizations/{organization_id}/members':
+    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/OrganizationMembers'
+  '/organizations/{organization_id}/access-roles':
+    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/AccessRoles'
+  '/organizations/{organization_id}/members/{principal_id}:assign-access-role':
+    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/AssignAccessRole'
+  '/organizations/{organization_id}/members/{principal_id}:revoke-access-role':
+    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/RevokeAccessRole'
+  '/organizations/{organization_id}/marketplace-installations':
+    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/MarketplaceInstallations'
+  '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}':
+    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/MarketplaceInstallation'
+  '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}:deactivate':
+    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/DeactivateMarketplaceInstallation'
+  '/organizations/{organization_id}/selling-entities':
+    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/SellingEntities'
+  '/organizations/{organization_id}/source-products':
+    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/SourceProductsSearch'
+  '/organizations/{organization_id}/product-channel-readiness':
+    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/ProductChannelReadiness'
+  '/organizations/{organization_id}/publication-requirements':
+    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/PublicationRequirements'
+  '/organizations/{organization_id}/product-channel-readiness:resolve-correspondence':
+    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/ResolveProductChannelCorrespondence'
+  '/organizations/{organization_id}/product-channel-readiness:clear-correspondence':
+    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/ClearProductChannelCorrespondence'
+
+  '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/listings':
+    $ref: './paths-offering-availability-market.yaml#/pathItems/MarketplaceListings'
+  '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/listings/{native_listing_key}':
+    $ref: './paths-offering-availability-market.yaml#/pathItems/MarketplaceListing'
+  '/organizations/{organization_id}/listing-intents':
+    $ref: './paths-offering-availability-market.yaml#/pathItems/ListingIntents'
+  '/organizations/{organization_id}/listing-intents/{listing_intent_id}':
+    $ref: './paths-offering-availability-market.yaml#/pathItems/ListingIntent'
+  '/organizations/{organization_id}/listing-intents/{listing_intent_id}:discard':
+    $ref: './paths-offering-availability-market.yaml#/pathItems/DiscardListingIntent'
+  '/organizations/{organization_id}/listing-intents/{listing_intent_id}:submit':
+    $ref: './paths-offering-availability-market.yaml#/pathItems/SubmitListingIntent'
+  '/organizations/{organization_id}/listing-intents/{listing_intent_id}:create-media':
+    $ref: './paths-offering-availability-market.yaml#/pathItems/CreateListingIntentMedia'
+  '/organizations/{organization_id}/price-intents':
+    $ref: './paths-offering-availability-market.yaml#/pathItems/PriceIntents'
+  '/organizations/{organization_id}/price-intents/{price_intent_id}':
+    $ref: './paths-offering-availability-market.yaml#/pathItems/PriceIntent'
+  '/organizations/{organization_id}/sellable-availability':
+    $ref: './paths-offering-availability-market.yaml#/pathItems/SellableAvailability'
+  '/organizations/{organization_id}/sellable-availability/current':
+    $ref: './paths-offering-availability-market.yaml#/pathItems/SellableAvailabilityCurrent'
+  '/organizations/{organization_id}/inventory-sources':
+    $ref: './paths-offering-availability-market.yaml#/pathItems/InventorySources'
+  '/organizations/{organization_id}/inventory-sources/{inventory_source_id}':
+    $ref: './paths-offering-availability-market.yaml#/pathItems/InventorySource'
+  '/organizations/{organization_id}/inventory-sources/{inventory_source_id}:deactivate':
+    $ref: './paths-offering-availability-market.yaml#/pathItems/DeactivateInventorySource'
+  '/organizations/{organization_id}/availability-allocation-scope-policy':
+    $ref: './paths-offering-availability-market.yaml#/pathItems/AvailabilityAllocationScopePolicy'
+  '/organizations/{organization_id}/competitive-positions':
+    $ref: './paths-offering-availability-market.yaml#/pathItems/CompetitivePositions'
+  '/organizations/{organization_id}/competitive-position':
+    $ref: './paths-offering-availability-market.yaml#/pathItems/CompetitivePosition'
+  '/organizations/{organization_id}/comparable-offers':
+    $ref: './paths-offering-availability-market.yaml#/pathItems/ComparableOffers'
+
+  '/organizations/{organization_id}/expected-economics':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/ExpectedEconomics'
+  '/organizations/{organization_id}/expected-economics/current':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/ExpectedEconomicsCurrent'
+  '/organizations/{organization_id}/expected-economics:evaluate-price-scenario':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/EvaluatePriceScenario'
+  '/organizations/{organization_id}/sale-economics':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/SaleEconomics'
+  '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/sales/{native_sale_key}/economics':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/SaleEconomicsItem'
+  '/organizations/{organization_id}/economic-performance-summary':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/EconomicPerformanceSummary'
+  '/organizations/{organization_id}/commercial-policy':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/CommercialPolicy'
+  '/organizations/{organization_id}/economic-attributions':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/EconomicAttributions'
+  '/organizations/{organization_id}/economic-attributions/{economic_attribution_id}':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/EconomicAttribution'
+  '/organizations/{organization_id}/economic-attributions/{economic_attribution_id}:resolve':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/ResolveEconomicAttribution'
+  '/organizations/{organization_id}/authorization-decisions':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/AuthorizationDecisions'
+  '/organizations/{organization_id}/authorization-decisions/{authorization_decision_id}':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/AuthorizationDecision'
+  '/organizations/{organization_id}/authorization-delegations':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/AuthorizationDelegations'
+  '/organizations/{organization_id}/authorization-delegations/{authorization_delegation_id}':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/AuthorizationDelegation'
+  '/organizations/{organization_id}/authorization-delegations/{authorization_delegation_id}:revoke':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/RevokeAuthorizationDelegation'
+  '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/sales':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/MarketplaceSales'
+  '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/sales/{native_sale_key}':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/MarketplaceSale'
+  '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/sales/{native_sale_key}:resolve-selling-entity-attribution':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/ResolveSaleSellingEntityAttribution'
+  '/organizations/{organization_id}/business-order-intents':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/BusinessOrderIntents'
+  '/organizations/{organization_id}/business-order-intents/{business_order_intent_id}':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/BusinessOrderIntent'
+  '/organizations/{organization_id}/business-order-intents/{business_order_intent_id}/party-resolution':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/PartyResolution'
+  '/organizations/{organization_id}/business-order-intents/{business_order_intent_id}/party-resolution:resolve':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/ResolvePartyResolution'
+  '/organizations/{organization_id}/business-order-intents/{business_order_intent_id}/destination-realization':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/DestinationRealization'
+  '/organizations/{organization_id}/invoicing-intents':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/InvoicingIntents'
+  '/organizations/{organization_id}/invoicing-intents/{invoicing_intent_id}':
+    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/InvoicingIntent'
+
+  '/organizations/{organization_id}/fulfillment-executions':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/FulfillmentExecutions'
+  '/organizations/{organization_id}/fulfillment-executions/{fulfillment_execution_id}':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/FulfillmentExecution'
+  '/organizations/{organization_id}/fulfillment-nodes':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/FulfillmentNodes'
+  '/organizations/{organization_id}/fulfillment-nodes/{fulfillment_node_id}':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/FulfillmentNode'
+  '/organizations/{organization_id}/fulfillment-nodes/{fulfillment_node_id}:deactivate':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/DeactivateFulfillmentNode'
+  '/organizations/{organization_id}/fulfillment-operating-targets':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/FulfillmentOperatingTargets'
+  '/organizations/{organization_id}/fulfillment-executions/{fulfillment_execution_id}:record-separation':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/RecordSeparation'
+  '/organizations/{organization_id}/fulfillment-executions/{fulfillment_execution_id}:record-physical-conference':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/RecordPhysicalConference'
+  '/organizations/{organization_id}/fulfillment-executions/{fulfillment_execution_id}:record-packing':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/RecordPacking'
+  '/organizations/{organization_id}/fulfillment-executions/{fulfillment_execution_id}:record-dispatch-handoff':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/RecordDispatchHandoff'
+  '/organizations/{organization_id}/fulfillment-executions/{fulfillment_execution_id}/artifacts':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/FulfillmentArtifacts'
+  '/organizations/{organization_id}/fulfillment-executions/{fulfillment_execution_id}/artifacts/{artifact_key}':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/FulfillmentArtifact'
+  '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/shipments':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/Shipments'
+  '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/shipments/{native_shipment_key}':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/Shipment'
+  '/organizations/{organization_id}/post-sale-resolutions':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/PostSaleResolutions'
+  '/organizations/{organization_id}/post-sale-resolutions/{post_sale_resolution_id}':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/PostSaleResolution'
+  '/organizations/{organization_id}/work':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/Work'
+  '/organizations/{organization_id}/work/{work_id}':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/WorkItem'
+  '/organizations/{organization_id}/work/{work_id}:assign':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/AssignWork'
+  '/organizations/{organization_id}/work/{work_id}:clear-assignment':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/ClearWorkAssignment'
+  '/organizations/{organization_id}/work/{work_id}:hold':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/HoldWork'
+  '/organizations/{organization_id}/work/{work_id}:resume':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/ResumeWork'
+  '/organizations/{organization_id}/work/{work_id}:escalate':
+    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/EscalateWork'
+
+components:
+  securitySchemes:
+    MpcBearerAuth:
+      type: http
+      scheme: bearer
+      description: Accepted external bearer credential; Product authorization remains MPC-owned current authority.

@@ -1,0 +1,1011 @@
+parameters:
+  OrganizationId: {name: organization_id, in: path, required: true, schema: {$ref: '#/schemas/OpaqueId'}}
+  PrincipalId: {name: principal_id, in: path, required: true, schema: {$ref: '#/schemas/OpaqueId'}}
+  MarketplaceInstallationId: {name: marketplace_installation_id, in: path, required: true, schema: {$ref: '#/schemas/OpaqueId'}}
+  NativeListingKey: {name: native_listing_key, in: path, required: true, schema: {$ref: '#/schemas/OpaqueKey'}}
+  ListingIntentId: {name: listing_intent_id, in: path, required: true, schema: {$ref: '#/schemas/OpaqueId'}}
+  PriceIntentId: {name: price_intent_id, in: path, required: true, schema: {$ref: '#/schemas/OpaqueId'}}
+  InventorySourceId: {name: inventory_source_id, in: path, required: true, schema: {$ref: '#/schemas/OpaqueId'}}
+  EconomicAttributionId: {name: economic_attribution_id, in: path, required: true, schema: {$ref: '#/schemas/OpaqueId'}}
+  AuthorizationDecisionId: {name: authorization_decision_id, in: path, required: true, schema: {$ref: '#/schemas/OpaqueId'}}
+  AuthorizationDelegationId: {name: authorization_delegation_id, in: path, required: true, schema: {$ref: '#/schemas/OpaqueId'}}
+  NativeSaleKey: {name: native_sale_key, in: path, required: true, schema: {$ref: '#/schemas/OpaqueKey'}}
+  BusinessOrderIntentId: {name: business_order_intent_id, in: path, required: true, schema: {$ref: '#/schemas/OpaqueId'}}
+  InvoicingIntentId: {name: invoicing_intent_id, in: path, required: true, schema: {$ref: '#/schemas/OpaqueId'}}
+  FulfillmentExecutionId: {name: fulfillment_execution_id, in: path, required: true, schema: {$ref: '#/schemas/OpaqueId'}}
+  FulfillmentNodeId: {name: fulfillment_node_id, in: path, required: true, schema: {$ref: '#/schemas/OpaqueId'}}
+  ArtifactKey: {name: artifact_key, in: path, required: true, schema: {$ref: '#/schemas/OpaqueKey'}}
+  NativeShipmentKey: {name: native_shipment_key, in: path, required: true, schema: {$ref: '#/schemas/OpaqueKey'}}
+  PostSaleResolutionId: {name: post_sale_resolution_id, in: path, required: true, schema: {$ref: '#/schemas/OpaqueId'}}
+  WorkId: {name: work_id, in: path, required: true, schema: {$ref: '#/schemas/OpaqueId'}}
+  Limit:
+    name: limit
+    in: query
+    required: false
+    description: Requested maximum members; values above the explicit maximum are rejected rather than clamped.
+    schema: {type: integer, minimum: 1, maximum: 100, default: 50}
+  Cursor: {name: cursor, in: query, required: false, schema: {type: string, minLength: 1}}
+  IdempotencyKey: {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 1}}
+  IfMatch: {name: If-Match, in: header, required: true, schema: {$ref: '#/schemas/StrongETag'}}
+  MarketplaceInstallationQuery: {name: marketplace_installation_id, in: query, required: true, schema: {$ref: '#/schemas/OpaqueId'}}
+  SourceInstanceQuery: {name: source_instance_id, in: query, required: true, schema: {$ref: '#/schemas/OpaqueId'}}
+  NativeProductKeyQuery: {name: native_product_key, in: query, required: true, schema: {$ref: '#/schemas/OpaqueKey'}}
+  SearchQuery: {name: query, in: query, required: true, schema: {type: string, minLength: 1}}
+  MarketSubjectKind: {name: subject_kind, in: query, required: true, schema: {type: string, enum: [existing_listing, source_product_marketplace_context]}}
+  EconomicsSubjectKind: {name: subject_kind, in: query, required: true, schema: {type: string, enum: [existing_listing, source_product_marketplace_context]}}
+  SubjectMarketplaceInstallationId: {name: marketplace_installation_id, in: query, required: false, schema: {$ref: '#/schemas/OpaqueId'}}
+  SubjectNativeListingKey: {name: native_listing_key, in: query, required: false, schema: {$ref: '#/schemas/OpaqueKey'}}
+  SubjectSourceInstanceId: {name: source_instance_id, in: query, required: false, schema: {$ref: '#/schemas/OpaqueId'}}
+  SubjectNativeProductKey: {name: native_product_key, in: query, required: false, schema: {$ref: '#/schemas/OpaqueKey'}}
+
+headers:
+  Location: {description: URI of the created canonical Product resource or occurrence., schema: {type: string, format: uri-reference}}
+  ETag: {description: Strong opaque validator for the represented current Product resource., schema: {$ref: '#/schemas/StrongETag'}}
+  Allow: {description: Current methods allowed for the request target., schema: {type: string, minLength: 1}}
+
+responses:
+  BadRequest: {description: "Malformed request, missing required idempotency identity, or invalid/expired cursor.", content: {'application/problem+json': {schema: {$ref: '#/schemas/BadRequestProblemBody'}}}}
+  AuthenticationRequired: {description: Authentication is required., content: {'application/problem+json': {schema: {$ref: '#/schemas/AuthenticationRequiredProblem'}}}}
+  AccessDenied: {description: Current Product access is denied., content: {'application/problem+json': {schema: {$ref: '#/schemas/AccessDeniedProblem'}}}}
+  ResourceNotFound: {description: Resource is not visible or not found., content: {'application/problem+json': {schema: {$ref: '#/schemas/ResourceNotFoundProblem'}}}}
+  Conflict: {description: "Current revision, state, or idempotent intake conflicts with this request.", content: {'application/problem+json': {schema: {$ref: '#/schemas/ConflictProblemBody'}}}}
+  PreconditionFailed: {description: If-Match does not match the current resource., content: {'application/problem+json': {schema: {$ref: '#/schemas/PreconditionFailedProblem'}}}}
+  ContentTooLarge: {description: Request body exceeds the enforced bound., content: {'application/problem+json': {schema: {$ref: '#/schemas/AboutBlank413Problem'}}}}
+  UnsupportedMediaType: {description: Request representation is unsupported., content: {'application/problem+json': {schema: {$ref: '#/schemas/AboutBlank415Problem'}}}}
+  ValidationError: {description: Request validation failed or an idempotency key was reused for a materially different request., content: {'application/problem+json': {schema: {$ref: '#/schemas/UnprocessableProblemBody'}}}}
+  PreconditionRequired: {description: If-Match is required., content: {'application/problem+json': {schema: {$ref: '#/schemas/PreconditionRequiredProblem'}}}}
+  InternalError: {description: Unexpected Product server failure., content: {'application/problem+json': {schema: {$ref: '#/schemas/InternalErrorProblem'}}}}
+  MethodNotAllowed:
+    description: Standard method-not-allowed response.
+    headers: {Allow: {$ref: '#/headers/Allow'}}
+    content: {'application/problem+json': {schema: {$ref: '#/schemas/AboutBlank405Problem'}}}
+
+  MarketplaceInstallationOk: {description: Current marketplace installation., headers: {ETag: {$ref: '#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/MarketplaceInstallation'}}}}
+  MarketplaceInstallationCreated: {description: Marketplace installation created., headers: {Location: {$ref: '#/headers/Location'}, ETag: {$ref: '#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/MarketplaceInstallation'}}}}
+  ListingIntentOk: {description: Current listing intent., headers: {ETag: {$ref: '#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/ListingIntent'}}}}
+  ListingIntentCreated: {description: Listing intent created., headers: {Location: {$ref: '#/headers/Location'}, ETag: {$ref: '#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/ListingIntent'}}}}
+  PriceIntentOk: {description: Current price intent., headers: {ETag: {$ref: '#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/PriceIntent'}}}}
+  PriceIntentCreated: {description: Price intent created., headers: {Location: {$ref: '#/headers/Location'}, ETag: {$ref: '#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/PriceIntent'}}}}
+  InventorySourceOk: {description: Current inventory source., headers: {ETag: {$ref: '#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/InventorySource'}}}}
+  InventorySourceCreated: {description: Inventory source created., headers: {Location: {$ref: '#/headers/Location'}, ETag: {$ref: '#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/InventorySource'}}}}
+  AvailabilityPolicyOk: {description: Current availability allocation scope policy., headers: {ETag: {$ref: '#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/AvailabilityAllocationScopePolicy'}}}}
+  CommercialPolicyOk: {description: Current commercial policy., headers: {ETag: {$ref: '#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/CommercialPolicy'}}}}
+  EconomicAttributionOk: {description: Current economic attribution., headers: {ETag: {$ref: '#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/EconomicAttribution'}}}}
+  AuthorizationDecisionCreated: {description: Authorization decision created., headers: {Location: {$ref: '#/headers/Location'}}, content: {'application/json': {schema: {$ref: '#/schemas/AuthorizationDecision'}}}}
+  AuthorizationDelegationOk: {description: Current authorization delegation., headers: {ETag: {$ref: '#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/AuthorizationDelegation'}}}}
+  AuthorizationDelegationCreated: {description: Authorization delegation created., headers: {Location: {$ref: '#/headers/Location'}, ETag: {$ref: '#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/AuthorizationDelegation'}}}}
+  MarketplaceSaleOk: {description: Current marketplace sale interpretation., headers: {ETag: {$ref: '#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/MarketplaceSale'}}}}
+  PartyResolutionOk: {description: Current business-system party resolution., headers: {ETag: {$ref: '#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/PartyResolution'}}}}
+  FulfillmentExecutionOk: {description: Current fulfillment execution., headers: {ETag: {$ref: '#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/FulfillmentExecution'}}}}
+  FulfillmentNodeOk: {description: Current fulfillment node., headers: {ETag: {$ref: '#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/FulfillmentNode'}}}}
+  FulfillmentNodeCreated: {description: Fulfillment node created., headers: {Location: {$ref: '#/headers/Location'}, ETag: {$ref: '#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/FulfillmentNode'}}}}
+  FulfillmentOperatingTargetsOk: {description: Current fulfillment operating targets., headers: {ETag: {$ref: '#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/FulfillmentOperatingTargets'}}}}
+  PostSaleResolutionCreated: {description: Post-sale resolution created., headers: {Location: {$ref: '#/headers/Location'}}, content: {'application/json': {schema: {$ref: '#/schemas/PostSaleResolution'}}}}
+  WorkOk: {description: Current operational work., headers: {ETag: {$ref: '#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/Work'}}}}
+
+schemas:
+  OpaqueId: {type: string, minLength: 1, description: Opaque MPC-owned identifier with no promised physical encoding.}
+  OpaqueKey: {type: string, minLength: 1, description: Opaque source-qualified or owner-local key.}
+  StrongETag: {type: string, pattern: '^"[\u0021\u0023-\u007E\u0080-\u00FF]*"$', description: Strong opaque HTTP entity tag issued by MPC; weak validators are not accepted.}
+  ExactDecimalString: {type: string, pattern: '^-?[0-9]+(?:\.[0-9]+)?$', description: Exact base-10 value; exponent notation is forbidden.}
+  NonNegativeExactDecimalString: {type: string, pattern: '^[0-9]+(?:\.[0-9]+)?$', description: Exact non-negative base-10 value; exponent notation is forbidden.}
+  CurrencyCode: {type: string, pattern: '^[A-Z]{3}$'}
+  Instant: {type: string, format: date-time}
+  DurationString: {type: string, format: duration}
+  Permission:
+    type: string
+    enum: [access.read, access.manage, portfolio.read, portfolio.manage, readiness.read, readiness.manage, offering.read, listing.manage, price.manage, availability.read, availability.manage, market.read, economics.read, economics.policy.manage, economics.reconcile, governance.read, governance.decide, governance.manage, sales.read, sales.manage, materialization.read, materialization.resolve, fulfillment.read, fulfillment.execute, fulfillment.manage, post_sale.read, post_sale.manage, work.read, work.manage]
+  PrincipalKind: {type: string, enum: [human, automation, system]}
+  Money:
+    type: object
+    additionalProperties: false
+    required: [amount, currency]
+    properties: {amount: {$ref: '#/schemas/ExactDecimalString'}, currency: {$ref: '#/schemas/CurrencyCode'}}
+  EtagOnlyRequest:
+    type: object
+    additionalProperties: false
+    required: [etag]
+    properties: {etag: {$ref: '#/schemas/StrongETag'}}
+
+  AccessContext:
+    type: object
+    additionalProperties: false
+    required: [principal_id, principal_kind, organizations]
+    properties:
+      principal_id: {$ref: '#/schemas/OpaqueId'}
+      principal_kind: {$ref: '#/schemas/PrincipalKind'}
+      organizations: {type: array, items: {$ref: '#/schemas/OrganizationAccess'}}
+  OrganizationAccess:
+    type: object
+    additionalProperties: false
+    required: [organization_id, role_keys, permissions]
+    properties:
+      organization_id: {$ref: '#/schemas/OpaqueId'}
+      role_keys: {type: array, uniqueItems: true, items: {$ref: '#/schemas/OpaqueKey'}}
+      permissions: {type: array, uniqueItems: true, items: {$ref: '#/schemas/Permission'}}
+  OrganizationMember:
+    type: object
+    additionalProperties: false
+    required: [principal_id, principal_kind, role_keys]
+    properties:
+      principal_id: {$ref: '#/schemas/OpaqueId'}
+      principal_kind: {$ref: '#/schemas/PrincipalKind'}
+      role_keys: {type: array, uniqueItems: true, items: {$ref: '#/schemas/OpaqueKey'}}
+  AccessRole:
+    type: object
+    additionalProperties: false
+    required: [role_key, permissions]
+    properties:
+      role_key: {$ref: '#/schemas/OpaqueKey'}
+      display_name: {type: string, minLength: 1}
+      permissions: {type: array, uniqueItems: true, items: {$ref: '#/schemas/Permission'}}
+  RoleMutationRequest:
+    type: object
+    additionalProperties: false
+    required: [role_key]
+    properties: {role_key: {$ref: '#/schemas/OpaqueKey'}}
+  OrganizationMembersCollection: {$ref: '#/schemas/OrganizationMemberCollectionBase'}
+  OrganizationMemberCollectionBase:
+    type: object
+    additionalProperties: false
+    required: [members]
+    properties: {members: {type: array, items: {$ref: '#/schemas/OrganizationMember'}}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  AccessRolesCollection:
+    type: object
+    additionalProperties: false
+    required: [access_roles]
+    properties: {access_roles: {type: array, items: {$ref: '#/schemas/AccessRole'}}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+
+  MarketplaceInstallation:
+    type: object
+    additionalProperties: false
+    required: [marketplace_installation_id, marketplace_kind, display_name, lifecycle, eligible_selling_entity_ids, created_at, updated_at]
+    properties:
+      marketplace_installation_id: {$ref: '#/schemas/OpaqueId'}
+      marketplace_kind: {type: string, enum: [mercado_livre]}
+      display_name: {type: string, minLength: 1}
+      lifecycle: {type: string, enum: [active, inactive]}
+      eligible_selling_entity_ids: {type: array, uniqueItems: true, items: {$ref: '#/schemas/OpaqueId'}}
+      account_posture: {type: string, enum: [bound, authorization_required, unavailable]}
+      created_at: {$ref: '#/schemas/Instant'}
+      updated_at: {$ref: '#/schemas/Instant'}
+  CreateMarketplaceInstallationRequest:
+    type: object
+    additionalProperties: false
+    required: [marketplace_kind, display_name, eligible_selling_entity_ids]
+    properties:
+      marketplace_kind: {type: string, enum: [mercado_livre]}
+      display_name: {type: string, minLength: 1}
+      eligible_selling_entity_ids: {type: array, minItems: 1, uniqueItems: true, items: {$ref: '#/schemas/OpaqueId'}}
+  UpdateMarketplaceInstallationRequest:
+    type: object
+    additionalProperties: false
+    minProperties: 1
+    properties:
+      display_name: {type: string, minLength: 1}
+      eligible_selling_entity_ids: {type: array, minItems: 1, uniqueItems: true, items: {$ref: '#/schemas/OpaqueId'}}
+  MarketplaceInstallationMutationResult:
+    type: object
+    additionalProperties: false
+    required: [marketplace_installation, marketplace_installation_etag]
+    properties: {marketplace_installation: {$ref: '#/schemas/MarketplaceInstallation'}, marketplace_installation_etag: {$ref: '#/schemas/StrongETag'}}
+  MarketplaceInstallationsCollection:
+    type: object
+    additionalProperties: false
+    required: [marketplace_installations]
+    properties: {marketplace_installations: {type: array, items: {$ref: '#/schemas/MarketplaceInstallation'}}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  SellingEntity:
+    type: object
+    additionalProperties: false
+    required: [selling_entity_id, display_name]
+    properties: {selling_entity_id: {$ref: '#/schemas/OpaqueId'}, display_name: {type: string, minLength: 1}, legal_name: {type: string, minLength: 1}}
+  SellingEntitiesCollection:
+    type: object
+    additionalProperties: false
+    required: [selling_entities]
+    properties: {selling_entities: {type: array, items: {$ref: '#/schemas/SellingEntity'}}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+
+  SourceProductRef:
+    type: object
+    additionalProperties: false
+    required: [source_instance_id, native_product_key]
+    properties: {source_instance_id: {$ref: '#/schemas/OpaqueId'}, native_product_key: {$ref: '#/schemas/OpaqueKey'}}
+  SourceProductSearchHit:
+    type: object
+    additionalProperties: false
+    required: [source_product, display_name]
+    properties: {source_product: {$ref: '#/schemas/SourceProductRef'}, display_name: {type: string, minLength: 1}, sku: {type: string}, gtin: {type: string}, observed_at: {$ref: '#/schemas/Instant'}}
+  SourceProductsSearchCollection:
+    type: object
+    additionalProperties: false
+    required: [source_products, coverage]
+    properties: {source_products: {type: array, items: {$ref: '#/schemas/SourceProductSearchHit'}}, coverage: {type: string, enum: [complete_for_declared_source_scope, partial, unknown, unavailable]}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  ProductChannelReadinessSubject:
+    type: object
+    additionalProperties: false
+    required: [source_product, marketplace_installation_id]
+    properties: {source_product: {$ref: '#/schemas/SourceProductRef'}, marketplace_installation_id: {$ref: '#/schemas/OpaqueId'}}
+  CorrespondenceResolved:
+    type: object
+    additionalProperties: false
+    required: [state, candidate_key]
+    properties: {state: {const: resolved}, candidate_key: {$ref: '#/schemas/OpaqueKey'}}
+  CorrespondenceUnresolved: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unresolved}}}
+  CorrespondenceConflicting:
+    type: object
+    additionalProperties: false
+    required: [state, candidate_keys]
+    properties: {state: {const: conflicting}, candidate_keys: {type: array, minItems: 2, uniqueItems: true, items: {$ref: '#/schemas/OpaqueKey'}}}
+  CorrespondenceUnknown: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unknown}}}
+  CorrespondenceUnavailable: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unavailable}}}
+  ProductChannelCorrespondence:
+    oneOf: [{$ref: '#/schemas/CorrespondenceResolved'}, {$ref: '#/schemas/CorrespondenceUnresolved'}, {$ref: '#/schemas/CorrespondenceConflicting'}, {$ref: '#/schemas/CorrespondenceUnknown'}, {$ref: '#/schemas/CorrespondenceUnavailable'}]
+  ProductChannelReadiness:
+    type: object
+    additionalProperties: false
+    required: [subject, correspondence, correspondence_etag, readiness, blockers, evaluated_at]
+    properties:
+      subject: {$ref: '#/schemas/ProductChannelReadinessSubject'}
+      correspondence: {$ref: '#/schemas/ProductChannelCorrespondence'}
+      correspondence_etag: {$ref: '#/schemas/StrongETag'}
+      readiness: {type: string, enum: [ready, blocked, unknown, unavailable]}
+      blockers: {type: array, items: {type: string}}
+      requirements_revision: {$ref: '#/schemas/OpaqueKey'}
+      evaluated_at: {$ref: '#/schemas/Instant'}
+  ResolveCorrespondenceRequest:
+    type: object
+    additionalProperties: false
+    required: [subject, correspondence_etag, candidate_key]
+    properties: {subject: {$ref: '#/schemas/ProductChannelReadinessSubject'}, correspondence_etag: {$ref: '#/schemas/StrongETag'}, candidate_key: {$ref: '#/schemas/OpaqueKey'}}
+  ClearCorrespondenceRequest:
+    type: object
+    additionalProperties: false
+    required: [subject, correspondence_etag]
+    properties: {subject: {$ref: '#/schemas/ProductChannelReadinessSubject'}, correspondence_etag: {$ref: '#/schemas/StrongETag'}}
+  PublicationTextValue: {type: object, additionalProperties: false, required: [kind, value], properties: {kind: {const: text}, value: {type: string}}}
+  PublicationExactDecimalValue: {type: object, additionalProperties: false, required: [kind, value], properties: {kind: {const: exact_decimal}, value: {$ref: '#/schemas/ExactDecimalString'}}}
+  PublicationBooleanValue: {type: object, additionalProperties: false, required: [kind, value], properties: {kind: {const: boolean}, value: {type: boolean}}}
+  PublicationOptionValue: {type: object, additionalProperties: false, required: [kind, option_key], properties: {kind: {const: option}, option_key: {$ref: '#/schemas/OpaqueKey'}}}
+  PublicationTextListValue: {type: object, additionalProperties: false, required: [kind, values], properties: {kind: {const: text_list}, values: {type: array, items: {type: string}}}}
+  PublicationOptionListValue: {type: object, additionalProperties: false, required: [kind, option_keys], properties: {kind: {const: option_list}, option_keys: {type: array, items: {$ref: '#/schemas/OpaqueKey'}}}}
+  PublicationNumberUnitValue: {type: object, additionalProperties: false, required: [kind, value, unit_key], properties: {kind: {const: number_unit}, value: {$ref: '#/schemas/ExactDecimalString'}, unit_key: {$ref: '#/schemas/OpaqueKey'}}}
+  PublicationNotApplicableValue: {type: object, additionalProperties: false, required: [kind], properties: {kind: {const: not_applicable}}}
+  PublicationValue:
+    oneOf: [{$ref: '#/schemas/PublicationTextValue'}, {$ref: '#/schemas/PublicationExactDecimalValue'}, {$ref: '#/schemas/PublicationBooleanValue'}, {$ref: '#/schemas/PublicationOptionValue'}, {$ref: '#/schemas/PublicationTextListValue'}, {$ref: '#/schemas/PublicationOptionListValue'}, {$ref: '#/schemas/PublicationNumberUnitValue'}, {$ref: '#/schemas/PublicationNotApplicableValue'}]
+  PublicationSourceCandidate:
+    type: object
+    additionalProperties: false
+    required: [candidate_key, state]
+    properties: {candidate_key: {$ref: '#/schemas/OpaqueKey'}, state: {type: string, enum: [known, unknown, unavailable]}, value: {$ref: '#/schemas/PublicationValue'}}
+  PublicationRequirement:
+    type: object
+    additionalProperties: false
+    required: [requirement_key, value_kind, applicability, required, not_applicable_allowed, source_candidates]
+    properties:
+      requirement_key: {$ref: '#/schemas/OpaqueKey'}
+      value_kind: {type: string, enum: [text, exact_decimal, boolean, option, text_list, option_list, number_unit, not_applicable]}
+      applicability: {type: string, enum: [current, draft_dependent]}
+      required: {type: boolean}
+      not_applicable_allowed: {type: boolean}
+      option_keys: {type: array, uniqueItems: true, items: {$ref: '#/schemas/OpaqueKey'}}
+      unit_keys: {type: array, uniqueItems: true, items: {$ref: '#/schemas/OpaqueKey'}}
+      source_candidates: {type: array, items: {$ref: '#/schemas/PublicationSourceCandidate'}}
+  SourceMediaCandidate:
+    type: object
+    additionalProperties: false
+    required: [source_media_candidate_key, content_type]
+    properties: {source_media_candidate_key: {$ref: '#/schemas/OpaqueKey'}, content_type: {type: string, minLength: 1}}
+  PublicationRequirements:
+    type: object
+    additionalProperties: false
+    required: [subject, requirements_revision, requirements, source_media_candidates, evaluated_at]
+    properties: {subject: {$ref: '#/schemas/ProductChannelReadinessSubject'}, requirements_revision: {$ref: '#/schemas/OpaqueKey'}, requirements: {type: array, items: {$ref: '#/schemas/PublicationRequirement'}}, source_media_candidates: {type: array, items: {$ref: '#/schemas/SourceMediaCandidate'}}, evaluated_at: {$ref: '#/schemas/Instant'}}
+
+  MarketplaceListingRef:
+    type: object
+    additionalProperties: false
+    required: [marketplace_installation_id, native_listing_key]
+    properties: {marketplace_installation_id: {$ref: '#/schemas/OpaqueId'}, native_listing_key: {$ref: '#/schemas/OpaqueKey'}}
+  ListingObservedField:
+    type: object
+    additionalProperties: false
+    required: [requirement_key, state]
+    properties: {requirement_key: {$ref: '#/schemas/OpaqueKey'}, state: {type: string, enum: [known, unknown, unavailable, not_applicable]}, value: {$ref: '#/schemas/PublicationValue'}}
+  MarketplaceListing:
+    type: object
+    additionalProperties: false
+    required: [listing, lifecycle, observed_fields, observed_at]
+    properties: {listing: {$ref: '#/schemas/MarketplaceListingRef'}, lifecycle: {type: string, enum: [active, paused, closed, unknown]}, observed_fields: {type: array, items: {$ref: '#/schemas/ListingObservedField'}}, observed_price: {$ref: '#/schemas/Money'}, observed_at: {$ref: '#/schemas/Instant'}}
+  MarketplaceListingListItem:
+    type: object
+    additionalProperties: false
+    required: [listing, lifecycle, observed_at]
+    properties: {listing: {$ref: '#/schemas/MarketplaceListingRef'}, lifecycle: {type: string, enum: [active, paused, closed, unknown]}, observed_at: {$ref: '#/schemas/Instant'}}
+  MarketplaceListingsCollection:
+    type: object
+    additionalProperties: false
+    required: [marketplace_listings, coverage]
+    properties: {marketplace_listings: {type: array, items: {$ref: '#/schemas/MarketplaceListingListItem'}}, coverage: {type: string, enum: [complete_for_declared_source_scope, partial, unknown, unavailable]}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  ListingIntentNewTarget:
+    type: object
+    additionalProperties: false
+    required: [kind, marketplace_installation_id]
+    properties: {kind: {const: new_listing}, marketplace_installation_id: {$ref: '#/schemas/OpaqueId'}}
+  ListingIntentExistingTarget:
+    type: object
+    additionalProperties: false
+    required: [kind, listing]
+    properties: {kind: {const: existing_listing}, listing: {$ref: '#/schemas/MarketplaceListingRef'}}
+  ListingIntentTarget: {oneOf: [{$ref: '#/schemas/ListingIntentNewTarget'}, {$ref: '#/schemas/ListingIntentExistingTarget'}]}
+  FollowSourceResolution:
+    type: object
+    additionalProperties: false
+    required: [kind, requirement_key, source_candidate_key]
+    properties: {kind: {const: follow_source}, requirement_key: {$ref: '#/schemas/OpaqueKey'}, source_candidate_key: {$ref: '#/schemas/OpaqueKey'}}
+  ExplicitOverrideResolution:
+    type: object
+    additionalProperties: false
+    required: [kind, requirement_key, value]
+    properties: {kind: {const: explicit_override}, requirement_key: {$ref: '#/schemas/OpaqueKey'}, value: {$ref: '#/schemas/PublicationValue'}}
+  RequirementResolution: {oneOf: [{$ref: '#/schemas/FollowSourceResolution'}, {$ref: '#/schemas/ExplicitOverrideResolution'}]}
+  SourceMediaSelection:
+    type: object
+    additionalProperties: false
+    required: [kind, source_media_candidate_key]
+    properties: {kind: {const: source_media}, source_media_candidate_key: {$ref: '#/schemas/OpaqueKey'}}
+  AuthoredMediaSelection:
+    type: object
+    additionalProperties: false
+    required: [kind, listing_intent_media_id]
+    properties: {kind: {const: authored_media}, listing_intent_media_id: {$ref: '#/schemas/OpaqueId'}}
+  MediaSelection: {oneOf: [{$ref: '#/schemas/SourceMediaSelection'}, {$ref: '#/schemas/AuthoredMediaSelection'}]}
+  ListingIntentDesired:
+    type: object
+    additionalProperties: false
+    required: [lifecycle, requirement_resolutions, media_selection]
+    properties: {lifecycle: {type: string, enum: [active, paused, closed]}, requirement_resolutions: {type: array, items: {$ref: '#/schemas/RequirementResolution'}}, media_selection: {type: array, items: {$ref: '#/schemas/MediaSelection'}}}
+  ListingIntentMediaDescriptor:
+    type: object
+    additionalProperties: false
+    required: [listing_intent_media_id, content_type, byte_length, authored_at]
+    properties: {listing_intent_media_id: {$ref: '#/schemas/OpaqueId'}, content_type: {type: string, minLength: 1}, byte_length: {type: integer, minimum: 0}, authored_at: {$ref: '#/schemas/Instant'}}
+  ListingIntent:
+    type: object
+    additionalProperties: false
+    required: [listing_intent_id, source_product, target, desired, lifecycle, authored_media, dispatchability, created_at, updated_at]
+    properties:
+      listing_intent_id: {$ref: '#/schemas/OpaqueId'}
+      source_product: {$ref: '#/schemas/SourceProductRef'}
+      target: {$ref: '#/schemas/ListingIntentTarget'}
+      desired: {$ref: '#/schemas/ListingIntentDesired'}
+      lifecycle: {type: string, enum: [draft, submitted, discarded]}
+      requirements_revision: {$ref: '#/schemas/OpaqueKey'}
+      authored_media: {type: array, items: {$ref: '#/schemas/ListingIntentMediaDescriptor'}}
+      dispatchability: {type: string, enum: [dispatchable, blocked, unknown, unavailable]}
+      external_effect_state: {type: string, enum: [not_attempted, pending, accepted, rejected, ambiguous]}
+      convergence: {type: string, enum: [pending, converged, divergent, unknown, not_applicable]}
+      created_at: {$ref: '#/schemas/Instant'}
+      updated_at: {$ref: '#/schemas/Instant'}
+  ListingIntentListItem:
+    type: object
+    additionalProperties: false
+    required: [listing_intent_id, source_product, target, lifecycle, dispatchability, created_at]
+    properties: {listing_intent_id: {$ref: '#/schemas/OpaqueId'}, source_product: {$ref: '#/schemas/SourceProductRef'}, target: {$ref: '#/schemas/ListingIntentTarget'}, lifecycle: {type: string, enum: [draft, submitted, discarded]}, dispatchability: {type: string, enum: [dispatchable, blocked, unknown, unavailable]}, created_at: {$ref: '#/schemas/Instant'}}
+  ListingIntentsCollection:
+    type: object
+    additionalProperties: false
+    required: [listing_intents]
+    properties: {listing_intents: {type: array, items: {$ref: '#/schemas/ListingIntentListItem'}}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  CreateListingIntentDraftRequest:
+    type: object
+    additionalProperties: false
+    required: [source_product, target, desired]
+    properties: {source_product: {$ref: '#/schemas/SourceProductRef'}, target: {$ref: '#/schemas/ListingIntentTarget'}, desired: {$ref: '#/schemas/ListingIntentDesired'}, requirements_revision: {$ref: '#/schemas/OpaqueKey'}}
+  UpdateListingIntentRequest:
+    type: object
+    additionalProperties: false
+    minProperties: 1
+    properties: {desired: {$ref: '#/schemas/ListingIntentDesired'}, requirements_revision: {$ref: '#/schemas/OpaqueKey'}}
+  ListingIntentMutationResult:
+    type: object
+    additionalProperties: false
+    required: [listing_intent, listing_intent_etag]
+    properties: {listing_intent: {$ref: '#/schemas/ListingIntent'}, listing_intent_etag: {$ref: '#/schemas/StrongETag'}}
+  CreateListingIntentMediaMultipart:
+    type: object
+    additionalProperties: false
+    required: [file, etag]
+    properties: {file: {}, etag: {$ref: '#/schemas/StrongETag'}}
+  CreateListingIntentMediaResult:
+    type: object
+    additionalProperties: false
+    required: [media, listing_intent_etag]
+    properties: {media: {$ref: '#/schemas/ListingIntentMediaDescriptor'}, listing_intent_etag: {$ref: '#/schemas/StrongETag'}}
+
+  PriceIntentExistingTarget: {type: object, additionalProperties: false, required: [kind, listing], properties: {kind: {const: existing_listing}, listing: {$ref: '#/schemas/MarketplaceListingRef'}}}
+  PriceIntentPreCreationTarget: {type: object, additionalProperties: false, required: [kind, listing_intent_id], properties: {kind: {const: pre_creation_listing_intent}, listing_intent_id: {$ref: '#/schemas/OpaqueId'}}}
+  PriceIntentTarget: {oneOf: [{$ref: '#/schemas/PriceIntentExistingTarget'}, {$ref: '#/schemas/PriceIntentPreCreationTarget'}]}
+  SupersededPriceIntentRef:
+    type: object
+    additionalProperties: false
+    required: [price_intent_id, etag]
+    properties: {price_intent_id: {$ref: '#/schemas/OpaqueId'}, etag: {$ref: '#/schemas/StrongETag'}}
+  PriceIntent:
+    type: object
+    additionalProperties: false
+    required: [price_intent_id, target, desired_price, state, created_at]
+    properties: {price_intent_id: {$ref: '#/schemas/OpaqueId'}, target: {$ref: '#/schemas/PriceIntentTarget'}, desired_price: {$ref: '#/schemas/Money'}, state: {type: string, enum: [pending, applied, rejected, ambiguous, superseded]}, supersedes_price_intent_id: {$ref: '#/schemas/OpaqueId'}, convergence: {type: string, enum: [pending, converged, divergent, unknown, not_applicable]}, created_at: {$ref: '#/schemas/Instant'}}
+  PriceIntentListItem:
+    type: object
+    additionalProperties: false
+    required: [price_intent_id, target, desired_price, state, created_at]
+    properties: {price_intent_id: {$ref: '#/schemas/OpaqueId'}, target: {$ref: '#/schemas/PriceIntentTarget'}, desired_price: {$ref: '#/schemas/Money'}, state: {type: string, enum: [pending, applied, rejected, ambiguous, superseded]}, created_at: {$ref: '#/schemas/Instant'}}
+  PriceIntentsCollection:
+    type: object
+    additionalProperties: false
+    required: [price_intents]
+    properties: {price_intents: {type: array, items: {$ref: '#/schemas/PriceIntentListItem'}}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  CreatePriceIntentRequest:
+    type: object
+    additionalProperties: false
+    required: [target, desired_price]
+    properties: {target: {$ref: '#/schemas/PriceIntentTarget'}, desired_price: {$ref: '#/schemas/Money'}, supersedes: {$ref: '#/schemas/SupersededPriceIntentRef'}}
+
+  AvailabilityPreCreationTarget: {type: object, additionalProperties: false, required: [kind, listing_intent_id], properties: {kind: {const: pre_creation_listing_intent}, listing_intent_id: {$ref: '#/schemas/OpaqueId'}}}
+  AvailabilityExistingTarget: {type: object, additionalProperties: false, required: [kind, listing], properties: {kind: {const: existing_listing}, listing: {$ref: '#/schemas/MarketplaceListingRef'}}}
+  AvailabilityTarget: {oneOf: [{$ref: '#/schemas/AvailabilityPreCreationTarget'}, {$ref: '#/schemas/AvailabilityExistingTarget'}]}
+  DesiredQuantityKnown: {type: object, additionalProperties: false, required: [state, quantity], properties: {state: {const: known}, quantity: {$ref: '#/schemas/NonNegativeExactDecimalString'}, inventory_source_ids: {type: array, uniqueItems: true, items: {$ref: '#/schemas/OpaqueId'}}}}
+  DesiredQuantityUnknown: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unknown}}}
+  DesiredQuantityUnavailable: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unavailable}}}
+  DesiredQuantity: {oneOf: [{$ref: '#/schemas/DesiredQuantityKnown'}, {$ref: '#/schemas/DesiredQuantityUnknown'}, {$ref: '#/schemas/DesiredQuantityUnavailable'}]}
+  ProviderQuantityKnown: {type: object, additionalProperties: false, required: [state, quantity, observed_at], properties: {state: {const: known}, quantity: {$ref: '#/schemas/ExactDecimalString'}, observed_at: {$ref: '#/schemas/Instant'}}}
+  ProviderQuantityUnknown: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unknown}}}
+  ProviderQuantityUnavailable: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unavailable}}}
+  ProviderQuantityNotApplicable: {type: object, additionalProperties: false, required: [state], properties: {state: {const: not_applicable}}}
+  ProviderQuantity: {oneOf: [{$ref: '#/schemas/ProviderQuantityKnown'}, {$ref: '#/schemas/ProviderQuantityUnknown'}, {$ref: '#/schemas/ProviderQuantityUnavailable'}, {$ref: '#/schemas/ProviderQuantityNotApplicable'}]}
+  SellableAvailability:
+    type: object
+    additionalProperties: false
+    required: [target, control, desired_quantity, provider_quantity, convergence, evaluated_at]
+    properties: {target: {$ref: '#/schemas/AvailabilityTarget'}, control: {type: string, enum: [mpc_managed, external_required, unsupported]}, desired_quantity: {$ref: '#/schemas/DesiredQuantity'}, provider_quantity: {$ref: '#/schemas/ProviderQuantity'}, convergence: {type: string, enum: [pending, converged, divergent, unknown, not_applicable]}, evaluated_at: {$ref: '#/schemas/Instant'}}
+  SellableAvailabilityCollection:
+    type: object
+    additionalProperties: false
+    required: [sellable_availability]
+    properties: {sellable_availability: {type: array, items: {$ref: '#/schemas/SellableAvailability'}}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  SourceInventoryScope:
+    type: object
+    additionalProperties: false
+    required: [source_instance_id, native_inventory_scope_key]
+    properties: {source_instance_id: {$ref: '#/schemas/OpaqueId'}, native_inventory_scope_key: {$ref: '#/schemas/OpaqueKey'}}
+  InventorySource:
+    type: object
+    additionalProperties: false
+    required: [inventory_source_id, display_name, lifecycle, source_inventory_scopes, created_at, updated_at]
+    properties: {inventory_source_id: {$ref: '#/schemas/OpaqueId'}, display_name: {type: string, minLength: 1}, lifecycle: {type: string, enum: [active, inactive]}, source_inventory_scopes: {type: array, minItems: 1, items: {$ref: '#/schemas/SourceInventoryScope'}}, created_at: {$ref: '#/schemas/Instant'}, updated_at: {$ref: '#/schemas/Instant'}}
+  CreateInventorySourceRequest:
+    type: object
+    additionalProperties: false
+    required: [display_name, source_inventory_scopes]
+    properties: {display_name: {type: string, minLength: 1}, source_inventory_scopes: {type: array, minItems: 1, items: {$ref: '#/schemas/SourceInventoryScope'}}}
+  UpdateInventorySourceRequest:
+    type: object
+    additionalProperties: false
+    minProperties: 1
+    properties: {display_name: {type: string, minLength: 1}, source_inventory_scopes: {type: array, minItems: 1, items: {$ref: '#/schemas/SourceInventoryScope'}}}
+  InventorySourceMutationResult:
+    type: object
+    additionalProperties: false
+    required: [inventory_source, inventory_source_etag]
+    properties: {inventory_source: {$ref: '#/schemas/InventorySource'}, inventory_source_etag: {$ref: '#/schemas/StrongETag'}}
+  InventorySourcesCollection:
+    type: object
+    additionalProperties: false
+    required: [inventory_sources]
+    properties: {inventory_sources: {type: array, items: {$ref: '#/schemas/InventorySource'}}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  AvailabilityAllocationScopeValue:
+    type: object
+    additionalProperties: false
+    required: [inventory_source_ids]
+    properties: {inventory_source_ids: {type: array, minItems: 1, uniqueItems: true, items: {$ref: '#/schemas/OpaqueId'}}}
+  AvailabilityScopeInherit: {type: object, additionalProperties: false, required: [kind], properties: {kind: {const: inherit}}}
+  AvailabilityScopeOverride: {type: object, additionalProperties: false, required: [kind, value], properties: {kind: {const: override}, value: {$ref: '#/schemas/AvailabilityAllocationScopeValue'}}}
+  AvailabilityScopeConfigured: {oneOf: [{$ref: '#/schemas/AvailabilityScopeInherit'}, {$ref: '#/schemas/AvailabilityScopeOverride'}]}
+  AvailabilityAllocationScopePolicy:
+    type: object
+    additionalProperties: false
+    required: [configured, effective, effective_source]
+    properties: {configured: {$ref: '#/schemas/AvailabilityScopeConfigured'}, effective: {$ref: '#/schemas/AvailabilityAllocationScopeValue'}, effective_source: {type: string, enum: [default, inherited, explicit_override]}}
+  UpdateAvailabilityPolicyRequest:
+    type: object
+    additionalProperties: false
+    required: [configured]
+    properties: {configured: {$ref: '#/schemas/AvailabilityScopeConfigured'}}
+
+  MarketExistingListingSubject: {type: object, additionalProperties: false, required: [kind, listing], properties: {kind: {const: existing_listing}, listing: {$ref: '#/schemas/MarketplaceListingRef'}}}
+  MarketSourceProductSubject: {type: object, additionalProperties: false, required: [kind, source_product, marketplace_installation_id], properties: {kind: {const: source_product_marketplace_context}, source_product: {$ref: '#/schemas/SourceProductRef'}, marketplace_installation_id: {$ref: '#/schemas/OpaqueId'}}}
+  MarketSubject: {oneOf: [{$ref: '#/schemas/MarketExistingListingSubject'}, {$ref: '#/schemas/MarketSourceProductSubject'}]}
+  CompetitivePosition:
+    type: object
+    additionalProperties: false
+    required: [subject, coverage, evidence_sufficiency, relation, evaluated_at]
+    properties: {subject: {$ref: '#/schemas/MarketSubject'}, coverage: {type: string, enum: [complete_for_declared_source_scope, partial, unknown, unavailable]}, evidence_sufficiency: {type: string, enum: [sufficient, insufficient, unavailable]}, relation: {type: string, enum: [ahead, equal, behind, unknown]}, delivered_price_gap: {$ref: '#/schemas/Money'}, evaluated_at: {$ref: '#/schemas/Instant'}}
+  CompetitivePositionListItem:
+    type: object
+    additionalProperties: false
+    required: [subject, relation, evaluated_at]
+    properties: {subject: {$ref: '#/schemas/MarketSubject'}, relation: {type: string, enum: [ahead, equal, behind, unknown]}, evaluated_at: {$ref: '#/schemas/Instant'}}
+  CompetitivePositionsCollection:
+    type: object
+    additionalProperties: false
+    required: [competitive_positions]
+    properties: {competitive_positions: {type: array, items: {$ref: '#/schemas/CompetitivePositionListItem'}}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  ComparableOffer:
+    type: object
+    additionalProperties: false
+    required: [delivered_price, observed_at]
+    properties: {native_offer_key: {$ref: '#/schemas/OpaqueKey'}, offer_price: {$ref: '#/schemas/Money'}, shipping: {$ref: '#/schemas/Money'}, delivered_price: {$ref: '#/schemas/Money'}, observed_at: {$ref: '#/schemas/Instant'}}
+  ComparableOffersCollection:
+    type: object
+    additionalProperties: false
+    required: [subject, comparable_offers, coverage, evaluated_at]
+    properties: {subject: {$ref: '#/schemas/MarketSubject'}, comparable_offers: {type: array, items: {$ref: '#/schemas/ComparableOffer'}}, coverage: {type: string, enum: [complete_for_declared_source_scope, partial, unknown, unavailable]}, evaluated_at: {$ref: '#/schemas/Instant'}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+
+  EconomicsExistingListingSubject: {type: object, additionalProperties: false, required: [kind, listing], properties: {kind: {const: existing_listing}, listing: {$ref: '#/schemas/MarketplaceListingRef'}}}
+  EconomicsSourceProductSubject: {type: object, additionalProperties: false, required: [kind, source_product, marketplace_installation_id], properties: {kind: {const: source_product_marketplace_context}, source_product: {$ref: '#/schemas/SourceProductRef'}, marketplace_installation_id: {$ref: '#/schemas/OpaqueId'}}}
+  EconomicsSubject: {oneOf: [{$ref: '#/schemas/EconomicsExistingListingSubject'}, {$ref: '#/schemas/EconomicsSourceProductSubject'}]}
+  EconomicMoneyKnown: {type: object, additionalProperties: false, required: [state, value, provenance], properties: {state: {const: known}, value: {$ref: '#/schemas/Money'}, provenance: {type: string, enum: [observed, modeled, configured, derived]}}}
+  EconomicMoneyUnknown: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unknown}}}
+  EconomicMoneyUnavailable: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unavailable}}}
+  EconomicMoneyComponent: {oneOf: [{$ref: '#/schemas/EconomicMoneyKnown'}, {$ref: '#/schemas/EconomicMoneyUnknown'}, {$ref: '#/schemas/EconomicMoneyUnavailable'}]}
+  EconomicsComponents:
+    type: object
+    additionalProperties: false
+    required: [sale_price, cost, tax, marketplace_fee, seller_borne_shipping, promotion]
+    properties: {sale_price: {$ref: '#/schemas/EconomicMoneyComponent'}, cost: {$ref: '#/schemas/EconomicMoneyComponent'}, tax: {$ref: '#/schemas/EconomicMoneyComponent'}, marketplace_fee: {$ref: '#/schemas/EconomicMoneyComponent'}, seller_borne_shipping: {$ref: '#/schemas/EconomicMoneyComponent'}, promotion: {$ref: '#/schemas/EconomicMoneyComponent'}}
+  EconomicsConclusionKnown: {type: object, additionalProperties: false, required: [state, contribution], properties: {state: {const: known}, contribution: {$ref: '#/schemas/Money'}, contribution_margin_rate: {$ref: '#/schemas/ExactDecimalString'}, profitability: {type: string, enum: [acceptable, below_policy]}}}
+  EconomicsConclusionInsufficient: {type: object, additionalProperties: false, required: [state], properties: {state: {const: insufficient_evidence}}}
+  EconomicsConclusionUnavailable: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unavailable}}}
+  EconomicsConclusion: {oneOf: [{$ref: '#/schemas/EconomicsConclusionKnown'}, {$ref: '#/schemas/EconomicsConclusionInsufficient'}, {$ref: '#/schemas/EconomicsConclusionUnavailable'}]}
+  ExpectedEconomics:
+    type: object
+    additionalProperties: false
+    required: [subject, components, conclusion, evaluated_at]
+    properties: {subject: {$ref: '#/schemas/EconomicsSubject'}, components: {$ref: '#/schemas/EconomicsComponents'}, conclusion: {$ref: '#/schemas/EconomicsConclusion'}, evaluated_at: {$ref: '#/schemas/Instant'}}
+  ExpectedEconomicsListItem:
+    type: object
+    additionalProperties: false
+    required: [subject, conclusion, evaluated_at]
+    properties: {subject: {$ref: '#/schemas/EconomicsSubject'}, conclusion: {$ref: '#/schemas/EconomicsConclusion'}, evaluated_at: {$ref: '#/schemas/Instant'}}
+  ExpectedEconomicsCollection:
+    type: object
+    additionalProperties: false
+    required: [expected_economics]
+    properties: {expected_economics: {type: array, items: {$ref: '#/schemas/ExpectedEconomicsListItem'}}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  EvaluatePriceScenarioRequest:
+    type: object
+    additionalProperties: false
+    required: [subject, candidate_price]
+    properties: {subject: {$ref: '#/schemas/EconomicsSubject'}, candidate_price: {$ref: '#/schemas/Money'}, quantity: {$ref: '#/schemas/ExactDecimalString'}}
+  PriceScenarioEvaluation:
+    type: object
+    additionalProperties: false
+    required: [subject, candidate_price, components, conclusion, evaluated_at]
+    properties: {subject: {$ref: '#/schemas/EconomicsSubject'}, candidate_price: {$ref: '#/schemas/Money'}, components: {$ref: '#/schemas/EconomicsComponents'}, conclusion: {$ref: '#/schemas/EconomicsConclusion'}, evaluated_at: {$ref: '#/schemas/Instant'}}
+  MarketplaceSaleRef:
+    type: object
+    additionalProperties: false
+    required: [marketplace_installation_id, native_sale_key]
+    properties: {marketplace_installation_id: {$ref: '#/schemas/OpaqueId'}, native_sale_key: {$ref: '#/schemas/OpaqueKey'}}
+  SaleEconomics:
+    type: object
+    additionalProperties: false
+    required: [sale, expected_basis, order_economics, realized_economics, reconciliation, coverage, evaluated_at]
+    properties: {sale: {$ref: '#/schemas/MarketplaceSaleRef'}, expected_basis: {$ref: '#/schemas/EconomicsConclusion'}, order_economics: {$ref: '#/schemas/EconomicsConclusion'}, realized_economics: {$ref: '#/schemas/EconomicsConclusion'}, reconciliation: {type: string, enum: [reconciled, divergent, pending, insufficient_evidence]}, coverage: {type: string, enum: [complete, partial, unknown, unavailable]}, evaluated_at: {$ref: '#/schemas/Instant'}}
+  SaleEconomicsListItem:
+    type: object
+    additionalProperties: false
+    required: [sale, reconciliation, evaluated_at]
+    properties: {sale: {$ref: '#/schemas/MarketplaceSaleRef'}, sale_occurred_at: {$ref: '#/schemas/Instant'}, reconciliation: {type: string, enum: [reconciled, divergent, pending, insufficient_evidence]}, evaluated_at: {$ref: '#/schemas/Instant'}}
+  SaleEconomicsCollection:
+    type: object
+    additionalProperties: false
+    required: [sale_economics]
+    properties: {sale_economics: {type: array, items: {$ref: '#/schemas/SaleEconomicsListItem'}}, coverage: {type: string, enum: [complete, partial, unknown, unavailable]}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  EconomicPerformanceSummary:
+    type: object
+    additionalProperties: false
+    required: [period_from, period_before, coverage, sale_count, gross_sales, realized_contribution, evaluated_at]
+    properties: {period_from: {$ref: '#/schemas/Instant'}, period_before: {$ref: '#/schemas/Instant'}, marketplace_installation_id: {$ref: '#/schemas/OpaqueId'}, coverage: {type: string, enum: [complete, partial, unknown, unavailable]}, sale_count: {type: integer, minimum: 0}, gross_sales: {$ref: '#/schemas/Money'}, realized_contribution: {$ref: '#/schemas/Money'}, evaluated_at: {$ref: '#/schemas/Instant'}}
+  CommercialPolicy:
+    type: object
+    additionalProperties: false
+    required: [minimum_contribution_margin_rate, updated_at]
+    properties: {minimum_contribution_margin_rate: {$ref: '#/schemas/ExactDecimalString'}, updated_at: {$ref: '#/schemas/Instant'}}
+  UpdateCommercialPolicyRequest:
+    type: object
+    additionalProperties: false
+    minProperties: 1
+    properties: {minimum_contribution_margin_rate: {$ref: '#/schemas/ExactDecimalString'}}
+  EconomicAttributionSaleSubject: {type: object, additionalProperties: false, required: [kind, sale], properties: {kind: {const: marketplace_sale}, sale: {$ref: '#/schemas/MarketplaceSaleRef'}}}
+  EconomicAttributionPostSaleSubject: {type: object, additionalProperties: false, required: [kind, post_sale_resolution_id], properties: {kind: {const: post_sale_resolution}, post_sale_resolution_id: {$ref: '#/schemas/OpaqueId'}}}
+  EconomicAttributionInstallationSubject: {type: object, additionalProperties: false, required: [kind, marketplace_installation_id], properties: {kind: {const: marketplace_installation}, marketplace_installation_id: {$ref: '#/schemas/OpaqueId'}}}
+  EconomicAttributionSubject: {oneOf: [{$ref: '#/schemas/EconomicAttributionSaleSubject'}, {$ref: '#/schemas/EconomicAttributionPostSaleSubject'}, {$ref: '#/schemas/EconomicAttributionInstallationSubject'}]}
+  EconomicAttribution:
+    type: object
+    additionalProperties: false
+    required: [economic_attribution_id, subject, state, unresolved_remainder, candidate_resolution_keys, updated_at]
+    properties: {economic_attribution_id: {$ref: '#/schemas/OpaqueId'}, subject: {$ref: '#/schemas/EconomicAttributionSubject'}, state: {type: string, enum: [exact, partial, ambiguous, unresolved]}, attributed_amount: {$ref: '#/schemas/Money'}, unresolved_remainder: {$ref: '#/schemas/Money'}, candidate_resolution_keys: {type: array, uniqueItems: true, items: {$ref: '#/schemas/OpaqueKey'}}, updated_at: {$ref: '#/schemas/Instant'}}
+  EconomicAttributionListItem:
+    type: object
+    additionalProperties: false
+    required: [economic_attribution_id, subject, state, updated_at]
+    properties: {economic_attribution_id: {$ref: '#/schemas/OpaqueId'}, subject: {$ref: '#/schemas/EconomicAttributionSubject'}, state: {type: string, enum: [exact, partial, ambiguous, unresolved]}, updated_at: {$ref: '#/schemas/Instant'}}
+  EconomicAttributionsCollection:
+    type: object
+    additionalProperties: false
+    required: [economic_attributions]
+    properties: {economic_attributions: {type: array, items: {$ref: '#/schemas/EconomicAttributionListItem'}}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  ResolveEconomicAttributionRequest:
+    type: object
+    additionalProperties: false
+    required: [etag, resolution_key]
+    properties: {etag: {$ref: '#/schemas/StrongETag'}, resolution_key: {$ref: '#/schemas/OpaqueKey'}}
+  EconomicAttributionMutationResult:
+    type: object
+    additionalProperties: false
+    required: [economic_attribution, economic_attribution_etag]
+    properties: {economic_attribution: {$ref: '#/schemas/EconomicAttribution'}, economic_attribution_etag: {$ref: '#/schemas/StrongETag'}}
+
+  AuthorizationListingIntentTarget: {type: object, additionalProperties: false, required: [kind, listing_intent_id, etag], properties: {kind: {const: listing_intent}, listing_intent_id: {$ref: '#/schemas/OpaqueId'}, etag: {$ref: '#/schemas/StrongETag'}}}
+  AuthorizationPriceIntentTarget: {type: object, additionalProperties: false, required: [kind, price_intent_id, etag], properties: {kind: {const: price_intent}, price_intent_id: {$ref: '#/schemas/OpaqueId'}, etag: {$ref: '#/schemas/StrongETag'}}}
+  AuthorizationBusinessOrderTarget: {type: object, additionalProperties: false, required: [kind, business_order_intent_id, etag], properties: {kind: {const: business_order_intent}, business_order_intent_id: {$ref: '#/schemas/OpaqueId'}, etag: {$ref: '#/schemas/StrongETag'}}}
+  AuthorizationInvoicingTarget: {type: object, additionalProperties: false, required: [kind, invoicing_intent_id, etag], properties: {kind: {const: invoicing_intent}, invoicing_intent_id: {$ref: '#/schemas/OpaqueId'}, etag: {$ref: '#/schemas/StrongETag'}}}
+  AuthorizationTarget: {oneOf: [{$ref: '#/schemas/AuthorizationListingIntentTarget'}, {$ref: '#/schemas/AuthorizationPriceIntentTarget'}, {$ref: '#/schemas/AuthorizationBusinessOrderTarget'}, {$ref: '#/schemas/AuthorizationInvoicingTarget'}]}
+  AuthorizationDecision:
+    type: object
+    additionalProperties: false
+    required: [authorization_decision_id, target, outcome, decided_by_principal_id, decided_at]
+    properties: {authorization_decision_id: {$ref: '#/schemas/OpaqueId'}, target: {$ref: '#/schemas/AuthorizationTarget'}, outcome: {type: string, enum: [authorize, reject]}, decided_by_principal_id: {$ref: '#/schemas/OpaqueId'}, decided_at: {$ref: '#/schemas/Instant'}}
+  AuthorizationDecisionListItem:
+    type: object
+    additionalProperties: false
+    required: [authorization_decision_id, target, outcome, decided_at]
+    properties: {authorization_decision_id: {$ref: '#/schemas/OpaqueId'}, target: {$ref: '#/schemas/AuthorizationTarget'}, outcome: {type: string, enum: [authorize, reject]}, decided_at: {$ref: '#/schemas/Instant'}}
+  AuthorizationDecisionsCollection:
+    type: object
+    additionalProperties: false
+    required: [authorization_decisions]
+    properties: {authorization_decisions: {type: array, items: {$ref: '#/schemas/AuthorizationDecisionListItem'}}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  CreateAuthorizationDecisionRequest:
+    type: object
+    additionalProperties: false
+    required: [target, outcome]
+    properties: {target: {$ref: '#/schemas/AuthorizationTarget'}, outcome: {type: string, enum: [authorize, reject]}}
+  GovernanceActionKey: {type: string, enum: [listing_intent, price_intent, business_order_intent, invoicing_intent]}
+  DelegationOrganizationScope: {type: object, additionalProperties: false, required: [kind], properties: {kind: {const: organization}}}
+  DelegationInstallationScope: {type: object, additionalProperties: false, required: [kind, marketplace_installation_id], properties: {kind: {const: marketplace_installation}, marketplace_installation_id: {$ref: '#/schemas/OpaqueId'}}}
+  DelegationScope: {oneOf: [{$ref: '#/schemas/DelegationOrganizationScope'}, {$ref: '#/schemas/DelegationInstallationScope'}]}
+  AuthorizationDelegation:
+    type: object
+    additionalProperties: false
+    required: [authorization_delegation_id, delegate_principal_id, action, scope, lifecycle, established_at]
+    properties: {authorization_delegation_id: {$ref: '#/schemas/OpaqueId'}, delegate_principal_id: {$ref: '#/schemas/OpaqueId'}, action: {$ref: '#/schemas/GovernanceActionKey'}, scope: {$ref: '#/schemas/DelegationScope'}, lifecycle: {type: string, enum: [active, revoked]}, established_at: {$ref: '#/schemas/Instant'}, updated_at: {$ref: '#/schemas/Instant'}}
+  AuthorizationDelegationListItem:
+    type: object
+    additionalProperties: false
+    required: [authorization_delegation_id, delegate_principal_id, action, scope, lifecycle, etag]
+    properties: {authorization_delegation_id: {$ref: '#/schemas/OpaqueId'}, delegate_principal_id: {$ref: '#/schemas/OpaqueId'}, action: {$ref: '#/schemas/GovernanceActionKey'}, scope: {$ref: '#/schemas/DelegationScope'}, lifecycle: {type: string, enum: [active, revoked]}, etag: {$ref: '#/schemas/StrongETag'}}
+  AuthorizationDelegationsCollection:
+    type: object
+    additionalProperties: false
+    required: [authorization_delegations]
+    properties: {authorization_delegations: {type: array, items: {$ref: '#/schemas/AuthorizationDelegationListItem'}}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  EstablishAuthorizationDelegationRequest:
+    type: object
+    additionalProperties: false
+    required: [delegate_principal_id, action, scope]
+    properties: {delegate_principal_id: {$ref: '#/schemas/OpaqueId'}, action: {$ref: '#/schemas/GovernanceActionKey'}, scope: {$ref: '#/schemas/DelegationScope'}}
+  UpdateAuthorizationDelegationRequest:
+    type: object
+    additionalProperties: false
+    minProperties: 1
+    properties: {delegate_principal_id: {$ref: '#/schemas/OpaqueId'}, action: {$ref: '#/schemas/GovernanceActionKey'}, scope: {$ref: '#/schemas/DelegationScope'}}
+
+  SellingEntityAttributionResolved: {type: object, additionalProperties: false, required: [state, selling_entity_id], properties: {state: {const: resolved}, selling_entity_id: {$ref: '#/schemas/OpaqueId'}}}
+  SellingEntityAttributionUnresolved: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unresolved}}}
+  SellingEntityAttributionAmbiguous: {type: object, additionalProperties: false, required: [state, candidate_selling_entity_ids], properties: {state: {const: ambiguous}, candidate_selling_entity_ids: {type: array, minItems: 2, uniqueItems: true, items: {$ref: '#/schemas/OpaqueId'}}}}
+  SellingEntityAttributionUnavailable: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unavailable}}}
+  SellingEntityAttribution: {oneOf: [{$ref: '#/schemas/SellingEntityAttributionResolved'}, {$ref: '#/schemas/SellingEntityAttributionUnresolved'}, {$ref: '#/schemas/SellingEntityAttributionAmbiguous'}, {$ref: '#/schemas/SellingEntityAttributionUnavailable'}]}
+  MarketplaceSaleLine:
+    type: object
+    additionalProperties: false
+    required: [sale_line_key, source_product, quantity]
+    properties: {sale_line_key: {$ref: '#/schemas/OpaqueKey'}, source_product: {$ref: '#/schemas/SourceProductRef'}, quantity: {$ref: '#/schemas/ExactDecimalString'}, line_total: {$ref: '#/schemas/Money'}}
+  MarketplaceSale:
+    type: object
+    additionalProperties: false
+    required: [sale, sale_occurred_at, selling_entity_attribution, lines, observed_at]
+    properties: {sale: {$ref: '#/schemas/MarketplaceSaleRef'}, sale_occurred_at: {$ref: '#/schemas/Instant'}, selling_entity_attribution: {$ref: '#/schemas/SellingEntityAttribution'}, lines: {type: array, minItems: 1, items: {$ref: '#/schemas/MarketplaceSaleLine'}}, observed_at: {$ref: '#/schemas/Instant'}}
+  MarketplaceSaleListItem:
+    type: object
+    additionalProperties: false
+    required: [sale, sale_occurred_at, selling_entity_attribution]
+    properties: {sale: {$ref: '#/schemas/MarketplaceSaleRef'}, sale_occurred_at: {$ref: '#/schemas/Instant'}, selling_entity_attribution: {$ref: '#/schemas/SellingEntityAttribution'}}
+  MarketplaceSalesCollection:
+    type: object
+    additionalProperties: false
+    required: [marketplace_sales, coverage]
+    properties: {marketplace_sales: {type: array, items: {$ref: '#/schemas/MarketplaceSaleListItem'}}, coverage: {type: string, enum: [complete_for_declared_source_scope, partial, unknown, unavailable]}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  ResolveSaleSellingEntityAttributionRequest:
+    type: object
+    additionalProperties: false
+    required: [etag, selling_entity_id]
+    properties: {etag: {$ref: '#/schemas/StrongETag'}, selling_entity_id: {$ref: '#/schemas/OpaqueId'}}
+  MarketplaceSaleMutationResult:
+    type: object
+    additionalProperties: false
+    required: [marketplace_sale, marketplace_sale_etag]
+    properties: {marketplace_sale: {$ref: '#/schemas/MarketplaceSale'}, marketplace_sale_etag: {$ref: '#/schemas/StrongETag'}}
+
+  PartyCandidate:
+    type: object
+    additionalProperties: false
+    required: [candidate_key, display_hint]
+    properties: {candidate_key: {$ref: '#/schemas/OpaqueKey'}, display_hint: {type: string, minLength: 1}}
+  PartyResolutionUnresolved: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unresolved}}}
+  PartyResolutionAmbiguous: {type: object, additionalProperties: false, required: [state, candidates], properties: {state: {const: ambiguous}, candidates: {type: array, minItems: 2, items: {$ref: '#/schemas/PartyCandidate'}}}}
+  PartyResolutionExisting: {type: object, additionalProperties: false, required: [state, native_party_key], properties: {state: {const: resolved_existing}, native_party_key: {$ref: '#/schemas/OpaqueKey'}}}
+  PartyResolutionNew: {type: object, additionalProperties: false, required: [state, native_party_key], properties: {state: {const: resolved_new}, native_party_key: {$ref: '#/schemas/OpaqueKey'}}}
+  PartyResolutionUnavailable: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unavailable}}}
+  PartyResolution: {oneOf: [{$ref: '#/schemas/PartyResolutionUnresolved'}, {$ref: '#/schemas/PartyResolutionAmbiguous'}, {$ref: '#/schemas/PartyResolutionExisting'}, {$ref: '#/schemas/PartyResolutionNew'}, {$ref: '#/schemas/PartyResolutionUnavailable'}]}
+  DestinationRealized: {type: object, additionalProperties: false, required: [state, native_destination_key], properties: {state: {const: realized}, native_destination_key: {$ref: '#/schemas/OpaqueKey'}}}
+  DestinationExternalRequired: {type: object, additionalProperties: false, required: [state], properties: {state: {const: external_required}}}
+  DestinationUnsupported: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unsupported}}}
+  DestinationAmbiguous: {type: object, additionalProperties: false, required: [state], properties: {state: {const: ambiguous}}}
+  DestinationUnknown: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unknown}}}
+  DestinationUnavailable: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unavailable}}}
+  DestinationRealization: {oneOf: [{$ref: '#/schemas/DestinationRealized'}, {$ref: '#/schemas/DestinationExternalRequired'}, {$ref: '#/schemas/DestinationUnsupported'}, {$ref: '#/schemas/DestinationAmbiguous'}, {$ref: '#/schemas/DestinationUnknown'}, {$ref: '#/schemas/DestinationUnavailable'}]}
+  BusinessOrderIntent:
+    type: object
+    additionalProperties: false
+    required: [business_order_intent_id, sale, target_source_instance_id, party_resolution, destination_realization, external_effect_state, convergence, created_at]
+    properties: {business_order_intent_id: {$ref: '#/schemas/OpaqueId'}, sale: {$ref: '#/schemas/MarketplaceSaleRef'}, target_source_instance_id: {$ref: '#/schemas/OpaqueId'}, party_resolution: {$ref: '#/schemas/PartyResolution'}, destination_realization: {$ref: '#/schemas/DestinationRealization'}, external_effect_state: {type: string, enum: [not_attempted, pending, accepted, rejected, ambiguous]}, native_business_order_key: {$ref: '#/schemas/OpaqueKey'}, convergence: {type: string, enum: [pending, converged, divergent, unknown, not_applicable]}, created_at: {$ref: '#/schemas/Instant'}}
+  BusinessOrderIntentListItem:
+    type: object
+    additionalProperties: false
+    required: [business_order_intent_id, sale, target_source_instance_id, external_effect_state, created_at]
+    properties: {business_order_intent_id: {$ref: '#/schemas/OpaqueId'}, sale: {$ref: '#/schemas/MarketplaceSaleRef'}, target_source_instance_id: {$ref: '#/schemas/OpaqueId'}, external_effect_state: {type: string, enum: [not_attempted, pending, accepted, rejected, ambiguous]}, created_at: {$ref: '#/schemas/Instant'}}
+  BusinessOrderIntentsCollection:
+    type: object
+    additionalProperties: false
+    required: [business_order_intents]
+    properties: {business_order_intents: {type: array, items: {$ref: '#/schemas/BusinessOrderIntentListItem'}}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  UseExistingPartyChoice: {type: object, additionalProperties: false, required: [kind, candidate_key], properties: {kind: {const: use_existing}, candidate_key: {$ref: '#/schemas/OpaqueKey'}}}
+  EstablishPartyFromSaleChoice: {type: object, additionalProperties: false, required: [kind], properties: {kind: {const: establish_new_from_current_sale_identity}}}
+  PartyResolutionChoice: {oneOf: [{$ref: '#/schemas/UseExistingPartyChoice'}, {$ref: '#/schemas/EstablishPartyFromSaleChoice'}]}
+  ResolvePartyResolutionRequest:
+    type: object
+    additionalProperties: false
+    required: [etag, choice]
+    properties: {etag: {$ref: '#/schemas/StrongETag'}, choice: {$ref: '#/schemas/PartyResolutionChoice'}}
+  PartyResolutionMutationResult:
+    type: object
+    additionalProperties: false
+    required: [party_resolution, party_resolution_etag]
+    properties: {party_resolution: {$ref: '#/schemas/PartyResolution'}, party_resolution_etag: {$ref: '#/schemas/StrongETag'}}
+  InvoicingIntent:
+    type: object
+    additionalProperties: false
+    required: [invoicing_intent_id, business_order_intent_id, external_effect_state, convergence, created_at]
+    properties: {invoicing_intent_id: {$ref: '#/schemas/OpaqueId'}, business_order_intent_id: {$ref: '#/schemas/OpaqueId'}, fulfillment_execution_id: {$ref: '#/schemas/OpaqueId'}, external_effect_state: {type: string, enum: [not_attempted, pending, accepted, rejected, ambiguous]}, native_fiscal_document_key: {$ref: '#/schemas/OpaqueKey'}, convergence: {type: string, enum: [pending, converged, divergent, unknown, not_applicable]}, created_at: {$ref: '#/schemas/Instant'}}
+  InvoicingIntentListItem:
+    type: object
+    additionalProperties: false
+    required: [invoicing_intent_id, business_order_intent_id, external_effect_state, created_at]
+    properties: {invoicing_intent_id: {$ref: '#/schemas/OpaqueId'}, business_order_intent_id: {$ref: '#/schemas/OpaqueId'}, external_effect_state: {type: string, enum: [not_attempted, pending, accepted, rejected, ambiguous]}, created_at: {$ref: '#/schemas/Instant'}}
+  InvoicingIntentsCollection:
+    type: object
+    additionalProperties: false
+    required: [invoicing_intents]
+    properties: {invoicing_intents: {type: array, items: {$ref: '#/schemas/InvoicingIntentListItem'}}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+
+  SaleLineScopeItem:
+    type: object
+    additionalProperties: false
+    required: [sale_line_key, quantity]
+    properties: {sale_line_key: {$ref: '#/schemas/OpaqueKey'}, quantity: {$ref: '#/schemas/ExactDecimalString'}}
+  FulfillmentWholeSaleScope: {type: object, additionalProperties: false, required: [kind], properties: {kind: {const: whole_sale}}}
+  FulfillmentSaleLinesScope: {type: object, additionalProperties: false, required: [kind, sale_lines], properties: {kind: {const: sale_lines}, sale_lines: {type: array, minItems: 1, items: {$ref: '#/schemas/SaleLineScopeItem'}}}}
+  FulfillmentScope: {oneOf: [{$ref: '#/schemas/FulfillmentWholeSaleScope'}, {$ref: '#/schemas/FulfillmentSaleLinesScope'}]}
+  CheckpointPending: {type: object, additionalProperties: false, required: [state], properties: {state: {const: pending}}}
+  CheckpointRecorded: {type: object, additionalProperties: false, required: [state, recorded_by_principal_id, recorded_at], properties: {state: {const: recorded}, recorded_by_principal_id: {$ref: '#/schemas/OpaqueId'}, recorded_at: {$ref: '#/schemas/Instant'}, result: {type: string, enum: [confirmed, discrepancy]}}}
+  FulfillmentCheckpoint: {oneOf: [{$ref: '#/schemas/CheckpointPending'}, {$ref: '#/schemas/CheckpointRecorded'}]}
+  MarketplaceShipmentRef:
+    type: object
+    additionalProperties: false
+    required: [marketplace_installation_id, native_shipment_key]
+    properties: {marketplace_installation_id: {$ref: '#/schemas/OpaqueId'}, native_shipment_key: {$ref: '#/schemas/OpaqueKey'}}
+  FulfillmentExecution:
+    type: object
+    additionalProperties: false
+    required: [fulfillment_execution_id, sale, scope, separation, physical_conference, packing, dispatch_handoff, physical_readiness, created_at]
+    properties: {fulfillment_execution_id: {$ref: '#/schemas/OpaqueId'}, sale: {$ref: '#/schemas/MarketplaceSaleRef'}, scope: {$ref: '#/schemas/FulfillmentScope'}, fulfillment_node_id: {$ref: '#/schemas/OpaqueId'}, separation: {$ref: '#/schemas/FulfillmentCheckpoint'}, physical_conference: {$ref: '#/schemas/FulfillmentCheckpoint'}, packing: {$ref: '#/schemas/FulfillmentCheckpoint'}, dispatch_handoff: {$ref: '#/schemas/FulfillmentCheckpoint'}, physical_readiness: {type: string, enum: [ready, blocked, unknown]}, shipment_refs: {type: array, items: {$ref: '#/schemas/MarketplaceShipmentRef'}}, provider_dispatch_deadline: {$ref: '#/schemas/Instant'}, created_at: {$ref: '#/schemas/Instant'}}
+  FulfillmentExecutionListItem:
+    type: object
+    additionalProperties: false
+    required: [fulfillment_execution_id, sale, scope, physical_readiness, created_at]
+    properties: {fulfillment_execution_id: {$ref: '#/schemas/OpaqueId'}, sale: {$ref: '#/schemas/MarketplaceSaleRef'}, scope: {$ref: '#/schemas/FulfillmentScope'}, fulfillment_node_id: {$ref: '#/schemas/OpaqueId'}, physical_readiness: {type: string, enum: [ready, blocked, unknown]}, created_at: {$ref: '#/schemas/Instant'}}
+  FulfillmentExecutionsCollection:
+    type: object
+    additionalProperties: false
+    required: [fulfillment_executions]
+    properties: {fulfillment_executions: {type: array, items: {$ref: '#/schemas/FulfillmentExecutionListItem'}}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  FulfillmentNode:
+    type: object
+    additionalProperties: false
+    required: [fulfillment_node_id, display_name, lifecycle, created_at, updated_at]
+    properties: {fulfillment_node_id: {$ref: '#/schemas/OpaqueId'}, display_name: {type: string, minLength: 1}, lifecycle: {type: string, enum: [active, inactive]}, created_at: {$ref: '#/schemas/Instant'}, updated_at: {$ref: '#/schemas/Instant'}}
+  CreateFulfillmentNodeRequest: {type: object, additionalProperties: false, required: [display_name], properties: {display_name: {type: string, minLength: 1}}}
+  UpdateFulfillmentNodeRequest: {type: object, additionalProperties: false, minProperties: 1, properties: {display_name: {type: string, minLength: 1}}}
+  FulfillmentNodeMutationResult: {type: object, additionalProperties: false, required: [fulfillment_node, fulfillment_node_etag], properties: {fulfillment_node: {$ref: '#/schemas/FulfillmentNode'}, fulfillment_node_etag: {$ref: '#/schemas/StrongETag'}}}
+  FulfillmentNodesCollection:
+    type: object
+    additionalProperties: false
+    required: [fulfillment_nodes]
+    properties: {fulfillment_nodes: {type: array, items: {$ref: '#/schemas/FulfillmentNode'}}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  FulfillmentTargetInherit: {type: object, additionalProperties: false, required: [kind], properties: {kind: {const: inherit}}}
+  FulfillmentTargetOverride: {type: object, additionalProperties: false, required: [kind, value], properties: {kind: {const: override}, value: {$ref: '#/schemas/DurationString'}}}
+  FulfillmentTargetConfigured: {oneOf: [{$ref: '#/schemas/FulfillmentTargetInherit'}, {$ref: '#/schemas/FulfillmentTargetOverride'}]}
+  FulfillmentOperatingTargets:
+    type: object
+    additionalProperties: false
+    required: [configured_dispatch_handoff_lead_time_before_provider_deadline, effective_dispatch_handoff_lead_time_before_provider_deadline, effective_source]
+    properties: {configured_dispatch_handoff_lead_time_before_provider_deadline: {$ref: '#/schemas/FulfillmentTargetConfigured'}, effective_dispatch_handoff_lead_time_before_provider_deadline: {$ref: '#/schemas/DurationString'}, effective_source: {type: string, enum: [default, inherited, explicit_override]}}
+  UpdateFulfillmentOperatingTargetsRequest:
+    type: object
+    additionalProperties: false
+    required: [configured_dispatch_handoff_lead_time_before_provider_deadline]
+    properties: {configured_dispatch_handoff_lead_time_before_provider_deadline: {$ref: '#/schemas/FulfillmentTargetConfigured'}}
+  RecordPhysicalConferenceRequest:
+    type: object
+    additionalProperties: false
+    required: [etag, result]
+    properties: {etag: {$ref: '#/schemas/StrongETag'}, result: {type: string, enum: [confirmed, discrepancy]}, discrepancy_note: {type: string, minLength: 1}}
+  FulfillmentExecutionMutationResult:
+    type: object
+    additionalProperties: false
+    required: [fulfillment_execution, fulfillment_execution_etag]
+    properties: {fulfillment_execution: {$ref: '#/schemas/FulfillmentExecution'}, fulfillment_execution_etag: {$ref: '#/schemas/StrongETag'}}
+  FulfillmentArtifact:
+    type: object
+    additionalProperties: false
+    required: [artifact_key, kind, content_type, sensitivity, recorded_at]
+    properties: {artifact_key: {$ref: '#/schemas/OpaqueKey'}, kind: {$ref: '#/schemas/OpaqueKey'}, content_type: {type: string, minLength: 1}, sensitivity: {type: string, enum: [ordinary, restricted]}, recorded_at: {$ref: '#/schemas/Instant'}}
+  FulfillmentArtifactsCollection:
+    type: object
+    additionalProperties: false
+    required: [fulfillment_artifacts]
+    properties: {fulfillment_artifacts: {type: array, items: {$ref: '#/schemas/FulfillmentArtifact'}}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  Shipment:
+    type: object
+    additionalProperties: false
+    required: [shipment, state, observed_at]
+    properties: {shipment: {$ref: '#/schemas/MarketplaceShipmentRef'}, sale: {$ref: '#/schemas/MarketplaceSaleRef'}, state: {type: string, enum: [pending, ready, dispatched, delivered, exception, unknown]}, dispatch_deadline: {$ref: '#/schemas/Instant'}, observed_at: {$ref: '#/schemas/Instant'}}
+  ShipmentListItem:
+    type: object
+    additionalProperties: false
+    required: [shipment, state, observed_at]
+    properties: {shipment: {$ref: '#/schemas/MarketplaceShipmentRef'}, state: {type: string, enum: [pending, ready, dispatched, delivered, exception, unknown]}, observed_at: {$ref: '#/schemas/Instant'}}
+  ShipmentsCollection:
+    type: object
+    additionalProperties: false
+    required: [shipments, coverage]
+    properties: {shipments: {type: array, items: {$ref: '#/schemas/ShipmentListItem'}}, coverage: {type: string, enum: [complete_for_declared_source_scope, partial, unknown, unavailable]}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+
+  PostSaleWholeSaleScope: {type: object, additionalProperties: false, required: [kind], properties: {kind: {const: whole_sale}}}
+  PostSaleLinesScope: {type: object, additionalProperties: false, required: [kind, sale_lines], properties: {kind: {const: sale_lines}, sale_lines: {type: array, minItems: 1, items: {$ref: '#/schemas/SaleLineScopeItem'}}}}
+  PostSaleScope: {oneOf: [{$ref: '#/schemas/PostSaleWholeSaleScope'}, {$ref: '#/schemas/PostSaleLinesScope'}]}
+  ConsequenceTrack: {type: string, enum: [pending, established, unknown, unavailable, not_applicable]}
+  PostSaleResolution:
+    type: object
+    additionalProperties: false
+    required: [post_sale_resolution_id, sale, scope, concerns, lifecycle, sales_cancellation, physical_return, refund_payment, business_system_fiscal, economic_consequence, created_at]
+    properties: {post_sale_resolution_id: {$ref: '#/schemas/OpaqueId'}, sale: {$ref: '#/schemas/MarketplaceSaleRef'}, scope: {$ref: '#/schemas/PostSaleScope'}, concerns: {type: array, minItems: 1, uniqueItems: true, items: {type: string, enum: [cancellation, return, refund]}}, lifecycle: {type: string, enum: [open, closed]}, sales_cancellation: {$ref: '#/schemas/ConsequenceTrack'}, physical_return: {$ref: '#/schemas/ConsequenceTrack'}, refund_payment: {$ref: '#/schemas/ConsequenceTrack'}, business_system_fiscal: {$ref: '#/schemas/ConsequenceTrack'}, economic_consequence: {$ref: '#/schemas/ConsequenceTrack'}, created_at: {$ref: '#/schemas/Instant'}}
+  PostSaleResolutionListItem:
+    type: object
+    additionalProperties: false
+    required: [post_sale_resolution_id, sale, scope, concerns, lifecycle, created_at]
+    properties: {post_sale_resolution_id: {$ref: '#/schemas/OpaqueId'}, sale: {$ref: '#/schemas/MarketplaceSaleRef'}, scope: {$ref: '#/schemas/PostSaleScope'}, concerns: {type: array, items: {type: string, enum: [cancellation, return, refund]}}, lifecycle: {type: string, enum: [open, closed]}, created_at: {$ref: '#/schemas/Instant'}}
+  PostSaleResolutionsCollection:
+    type: object
+    additionalProperties: false
+    required: [post_sale_resolutions]
+    properties: {post_sale_resolutions: {type: array, items: {$ref: '#/schemas/PostSaleResolutionListItem'}}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  CreatePostSaleResolutionRequest:
+    type: object
+    additionalProperties: false
+    required: [sale, scope, concerns]
+    properties: {sale: {$ref: '#/schemas/MarketplaceSaleRef'}, scope: {$ref: '#/schemas/PostSaleScope'}, concerns: {type: array, minItems: 1, uniqueItems: true, items: {type: string, enum: [cancellation, return, refund]}}}
+
+  WorkOriginReadiness: {type: object, additionalProperties: false, required: [kind, source_product, marketplace_installation_id], properties: {kind: {const: readiness}, source_product: {$ref: '#/schemas/SourceProductRef'}, marketplace_installation_id: {$ref: '#/schemas/OpaqueId'}}}
+  WorkOriginListingIntent: {type: object, additionalProperties: false, required: [kind, listing_intent_id], properties: {kind: {const: listing_intent}, listing_intent_id: {$ref: '#/schemas/OpaqueId'}}}
+  WorkOriginPriceIntent: {type: object, additionalProperties: false, required: [kind, price_intent_id], properties: {kind: {const: price_intent}, price_intent_id: {$ref: '#/schemas/OpaqueId'}}}
+  WorkOriginMarketplaceSale: {type: object, additionalProperties: false, required: [kind, sale], properties: {kind: {const: marketplace_sale}, sale: {$ref: '#/schemas/MarketplaceSaleRef'}}}
+  WorkOriginBusinessOrder: {type: object, additionalProperties: false, required: [kind, business_order_intent_id], properties: {kind: {const: business_order_intent}, business_order_intent_id: {$ref: '#/schemas/OpaqueId'}}}
+  WorkOriginFulfillment: {type: object, additionalProperties: false, required: [kind, fulfillment_execution_id], properties: {kind: {const: fulfillment_execution}, fulfillment_execution_id: {$ref: '#/schemas/OpaqueId'}}}
+  WorkOriginShipment: {type: object, additionalProperties: false, required: [kind, shipment], properties: {kind: {const: shipment}, shipment: {$ref: '#/schemas/MarketplaceShipmentRef'}}}
+  WorkOriginPostSale: {type: object, additionalProperties: false, required: [kind, post_sale_resolution_id], properties: {kind: {const: post_sale_resolution}, post_sale_resolution_id: {$ref: '#/schemas/OpaqueId'}}}
+  WorkOriginEconomicAttribution: {type: object, additionalProperties: false, required: [kind, economic_attribution_id], properties: {kind: {const: economic_attribution}, economic_attribution_id: {$ref: '#/schemas/OpaqueId'}}}
+  WorkOriginAuthorizationDecision: {type: object, additionalProperties: false, required: [kind, authorization_decision_id], properties: {kind: {const: authorization_decision}, authorization_decision_id: {$ref: '#/schemas/OpaqueId'}}}
+  WorkOrigin:
+    oneOf: [{$ref: '#/schemas/WorkOriginReadiness'}, {$ref: '#/schemas/WorkOriginListingIntent'}, {$ref: '#/schemas/WorkOriginPriceIntent'}, {$ref: '#/schemas/WorkOriginMarketplaceSale'}, {$ref: '#/schemas/WorkOriginBusinessOrder'}, {$ref: '#/schemas/WorkOriginFulfillment'}, {$ref: '#/schemas/WorkOriginShipment'}, {$ref: '#/schemas/WorkOriginPostSale'}, {$ref: '#/schemas/WorkOriginEconomicAttribution'}, {$ref: '#/schemas/WorkOriginAuthorizationDecision'}]
+  WorkAssignmentAssigned:
+    type: object
+    additionalProperties: false
+    required: [state, principal_id]
+    properties: {state: {const: assigned}, principal_id: {$ref: '#/schemas/OpaqueId'}}
+  WorkAssignmentUnassigned:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: unassigned}}
+  WorkAssignment:
+    oneOf: [{$ref: '#/schemas/WorkAssignmentAssigned'}, {$ref: '#/schemas/WorkAssignmentUnassigned'}]
+  Work:
+    type: object
+    additionalProperties: false
+    required: [work_id, origin, responsibility_role_key, assignment, lifecycle, created_at]
+    properties: {work_id: {$ref: '#/schemas/OpaqueId'}, origin: {$ref: '#/schemas/WorkOrigin'}, responsibility_role_key: {$ref: '#/schemas/OpaqueKey'}, assignment: {$ref: '#/schemas/WorkAssignment'}, lifecycle: {type: string, enum: [open, on_hold, closed]}, escalation_responsibility_role_key: {$ref: '#/schemas/OpaqueKey'}, created_at: {$ref: '#/schemas/Instant'}, closed_at: {$ref: '#/schemas/Instant'}}
+  WorkListItem:
+    type: object
+    additionalProperties: false
+    required: [work_id, origin, responsibility_role_key, assignment, lifecycle, created_at]
+    properties: {work_id: {$ref: '#/schemas/OpaqueId'}, origin: {$ref: '#/schemas/WorkOrigin'}, responsibility_role_key: {$ref: '#/schemas/OpaqueKey'}, assignment: {$ref: '#/schemas/WorkAssignment'}, lifecycle: {type: string, enum: [open, on_hold, closed]}, created_at: {$ref: '#/schemas/Instant'}}
+  WorkCollection:
+    type: object
+    additionalProperties: false
+    required: [work]
+    properties: {work: {type: array, items: {$ref: '#/schemas/WorkListItem'}}, next_cursor: {$ref: '#/schemas/OpaqueKey'}}
+  AssignWorkRequest:
+    type: object
+    additionalProperties: false
+    required: [etag, principal_id]
+    properties: {etag: {$ref: '#/schemas/StrongETag'}, principal_id: {$ref: '#/schemas/OpaqueId'}}
+  EscalateWorkRequest:
+    type: object
+    additionalProperties: false
+    required: [etag, responsibility_role_key]
+    properties: {etag: {$ref: '#/schemas/StrongETag'}, responsibility_role_key: {$ref: '#/schemas/OpaqueKey'}}
+  WorkMutationResult:
+    type: object
+    additionalProperties: false
+    required: [work, work_etag]
+    properties: {work: {$ref: '#/schemas/Work'}, work_etag: {$ref: '#/schemas/StrongETag'}}
+
+  ValidationIssue:
+    type: object
+    additionalProperties: false
+    required: [location, detail]
+    properties: {location: {type: string, minLength: 1}, detail: {type: string, minLength: 1}}
+  MalformedRequestProblem: {type: object, additionalProperties: false, required: [type, title, status], properties: {type: {const: 'https://conexus.fun/marketplace-central/problems/product/malformed-request'}, title: {type: string}, status: {const: 400}, detail: {type: string}, instance: {type: string, format: uri-reference}}}
+  ValidationErrorProblem: {type: object, additionalProperties: false, required: [type, title, status], properties: {type: {const: 'https://conexus.fun/marketplace-central/problems/product/validation-error'}, title: {type: string}, status: {const: 422}, detail: {type: string}, instance: {type: string, format: uri-reference}, errors: {type: array, items: {$ref: '#/schemas/ValidationIssue'}}}}
+  AuthenticationRequiredProblem: {type: object, additionalProperties: false, required: [type, title, status], properties: {type: {const: 'https://conexus.fun/marketplace-central/problems/product/authentication-required'}, title: {type: string}, status: {const: 401}, detail: {type: string}, instance: {type: string, format: uri-reference}}}
+  AccessDeniedProblem: {type: object, additionalProperties: false, required: [type, title, status], properties: {type: {const: 'https://conexus.fun/marketplace-central/problems/product/access-denied'}, title: {type: string}, status: {const: 403}, detail: {type: string}, instance: {type: string, format: uri-reference}}}
+  ResourceNotFoundProblem: {type: object, additionalProperties: false, required: [type, title, status], properties: {type: {const: 'https://conexus.fun/marketplace-central/problems/product/resource-not-found'}, title: {type: string}, status: {const: 404}, detail: {type: string}, instance: {type: string, format: uri-reference}}}
+  IdempotencyKeyRequiredProblem: {type: object, additionalProperties: false, required: [type, title, status], properties: {type: {const: 'https://conexus.fun/marketplace-central/problems/product/idempotency-key-required'}, title: {type: string}, status: {const: 400}, detail: {type: string}, instance: {type: string, format: uri-reference}}}
+  IdempotencyKeyReusedProblem: {type: object, additionalProperties: false, required: [type, title, status], properties: {type: {const: 'https://conexus.fun/marketplace-central/problems/product/idempotency-key-reused'}, title: {type: string}, status: {const: 422}, detail: {type: string}, instance: {type: string, format: uri-reference}}}
+  IdempotencyRequestInProgressProblem: {type: object, additionalProperties: false, required: [type, title, status], properties: {type: {const: 'https://conexus.fun/marketplace-central/problems/product/idempotency-request-in-progress'}, title: {type: string}, status: {const: 409}, detail: {type: string}, instance: {type: string, format: uri-reference}}}
+  PreconditionRequiredProblem: {type: object, additionalProperties: false, required: [type, title, status], properties: {type: {const: 'https://conexus.fun/marketplace-central/problems/product/precondition-required'}, title: {type: string}, status: {const: 428}, detail: {type: string}, instance: {type: string, format: uri-reference}}}
+  PreconditionFailedProblem: {type: object, additionalProperties: false, required: [type, title, status], properties: {type: {const: 'https://conexus.fun/marketplace-central/problems/product/precondition-failed'}, title: {type: string}, status: {const: 412}, detail: {type: string}, instance: {type: string, format: uri-reference}}}
+  ResourceRevisionConflictProblem: {type: object, additionalProperties: false, required: [type, title, status], properties: {type: {const: 'https://conexus.fun/marketplace-central/problems/product/resource-revision-conflict'}, title: {type: string}, status: {const: 409}, detail: {type: string}, instance: {type: string, format: uri-reference}, stale_validator_location: {type: string, minLength: 1}}}
+  ResourceStateConflictProblem: {type: object, additionalProperties: false, required: [type, title, status], properties: {type: {const: 'https://conexus.fun/marketplace-central/problems/product/resource-state-conflict'}, title: {type: string}, status: {const: 409}, detail: {type: string}, instance: {type: string, format: uri-reference}}}
+  InvalidCursorProblem: {type: object, additionalProperties: false, required: [type, title, status], properties: {type: {const: 'https://conexus.fun/marketplace-central/problems/product/invalid-cursor'}, title: {type: string}, status: {const: 400}, detail: {type: string}, instance: {type: string, format: uri-reference}}}
+  CursorExpiredProblem: {type: object, additionalProperties: false, required: [type, title, status], properties: {type: {const: 'https://conexus.fun/marketplace-central/problems/product/cursor-expired'}, title: {type: string}, status: {const: 400}, detail: {type: string}, instance: {type: string, format: uri-reference}}}
+  InternalErrorProblem: {type: object, additionalProperties: false, required: [type, title, status], properties: {type: {const: 'https://conexus.fun/marketplace-central/problems/product/internal-error'}, title: {type: string}, status: {const: 500}, detail: {type: string}, instance: {type: string, format: uri-reference}}}
+  AboutBlank405Problem: {type: object, additionalProperties: false, required: [type, title, status], properties: {type: {const: 'about:blank'}, title: {type: string}, status: {const: 405}, detail: {type: string}, instance: {type: string, format: uri-reference}}}
+  AboutBlank413Problem: {type: object, additionalProperties: false, required: [type, title, status], properties: {type: {const: 'about:blank'}, title: {type: string}, status: {const: 413}, detail: {type: string}, instance: {type: string, format: uri-reference}}}
+  AboutBlank415Problem: {type: object, additionalProperties: false, required: [type, title, status], properties: {type: {const: 'about:blank'}, title: {type: string}, status: {const: 415}, detail: {type: string}, instance: {type: string, format: uri-reference}}}
+  BadRequestProblemBody: {oneOf: [{$ref: '#/schemas/MalformedRequestProblem'}, {$ref: '#/schemas/IdempotencyKeyRequiredProblem'}, {$ref: '#/schemas/InvalidCursorProblem'}, {$ref: '#/schemas/CursorExpiredProblem'}]}
+  ConflictProblemBody: {oneOf: [{$ref: '#/schemas/ResourceRevisionConflictProblem'}, {$ref: '#/schemas/ResourceStateConflictProblem'}, {$ref: '#/schemas/IdempotencyRequestInProgressProblem'}]}
+  UnprocessableProblemBody: {oneOf: [{$ref: '#/schemas/ValidationErrorProblem'}, {$ref: '#/schemas/IdempotencyKeyReusedProblem'}]}

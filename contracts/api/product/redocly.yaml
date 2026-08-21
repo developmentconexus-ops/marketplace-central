@@ -1,0 +1,14 @@
+extends:
+  - spec
+
+rules:
+  no-empty-servers: off
+  no-unresolved-refs: error
+  component-name-unique: error
+  spec-strict-refs: error
+  security-defined: error
+  operation-operationId: error
+  operation-operationId-unique: error
+  operation-operationId-url-safe: error
+  operation-2xx-response: error
+  operation-4xx-response: error

@@ -1,0 +1,461 @@
+pathItems:
+  MarketplaceListings:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/MarketplaceInstallationId'}]
+    get:
+      operationId: ListMarketplaceListings
+      summary: List marketplace listings
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: offering.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: Offering
+      parameters: [{$ref: './components.yaml#/parameters/Limit'}, {$ref: './components.yaml#/parameters/Cursor'}]
+      responses:
+        '200': {description: Marketplace listings., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/MarketplaceListingsCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  MarketplaceListing:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/MarketplaceInstallationId'}, {$ref: './components.yaml#/parameters/NativeListingKey'}]
+    get:
+      operationId: GetMarketplaceListing
+      summary: Get marketplace listing
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: offering.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: Offering
+      responses:
+        '200': {description: Marketplace listing observation., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/MarketplaceListing'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  ListingIntents:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListListingIntents
+      summary: List listing intents
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: offering.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: Offering
+      parameters:
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+        - {name: marketplace_installation_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+        - {name: lifecycle, in: query, required: false, schema: {type: string, enum: [draft, submitted, discarded]}}
+      responses:
+        '200': {description: Listing intents., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/ListingIntentsCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+    post:
+      operationId: CreateListingIntentDraft
+      summary: Create listing intent draft
+      x-mpc-operation-class: C
+      x-mpc-required-permission: listing.manage
+      x-mpc-principal-kinds: [H, A]
+      x-mpc-semantic-owner: Offering
+      parameters: [{$ref: './components.yaml#/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/CreateListingIntentDraftRequest'}}}}
+      responses:
+        '201': {$ref: './components.yaml#/responses/ListingIntentCreated'}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  ListingIntent:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/ListingIntentId'}]
+    get:
+      operationId: GetListingIntent
+      summary: Get listing intent
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: offering.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: Offering
+      responses:
+        '200': {$ref: './components.yaml#/responses/ListingIntentOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+    patch:
+      operationId: UpdateListingIntentDraft
+      summary: Update listing intent draft
+      x-mpc-operation-class: C
+      x-mpc-required-permission: listing.manage
+      x-mpc-principal-kinds: [H, A]
+      x-mpc-semantic-owner: Offering
+      parameters: [{$ref: './components.yaml#/parameters/IfMatch'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/UpdateListingIntentRequest'}}}}
+      responses:
+        '200': {$ref: './components.yaml#/responses/ListingIntentOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '412': {$ref: './components.yaml#/responses/PreconditionFailed'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '428': {$ref: './components.yaml#/responses/PreconditionRequired'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  DiscardListingIntent:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/ListingIntentId'}]
+    post:
+      operationId: DiscardListingIntentDraft
+      summary: Discard listing intent draft
+      x-mpc-operation-class: C
+      x-mpc-required-permission: listing.manage
+      x-mpc-principal-kinds: [H, A]
+      x-mpc-semantic-owner: Offering
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EtagOnlyRequest'}}}}
+      responses:
+        '200': {description: Current listing intent and validator., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/ListingIntentMutationResult'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  SubmitListingIntent:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/ListingIntentId'}]
+    post:
+      operationId: SubmitListingIntent
+      summary: Submit listing intent
+      x-mpc-operation-class: C
+      x-mpc-required-permission: listing.manage
+      x-mpc-principal-kinds: [H, A]
+      x-mpc-semantic-owner: Offering
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EtagOnlyRequest'}}}}
+      responses:
+        '200': {description: Current listing intent and validator., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/ListingIntentMutationResult'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  CreateListingIntentMedia:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/ListingIntentId'}]
+    post:
+      operationId: CreateListingIntentMedia
+      summary: Create listing intent authored media
+      x-mpc-operation-class: C
+      x-mpc-required-permission: listing.manage
+      x-mpc-principal-kinds: [H, A]
+      x-mpc-semantic-owner: Offering
+      parameters: [{$ref: './components.yaml#/parameters/IdempotencyKey'}]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: {$ref: './components.yaml#/schemas/CreateListingIntentMediaMultipart'}
+            encoding:
+              etag: {contentType: text/plain}
+      responses:
+        '200': {description: Stable authored-media descriptor and current parent validator., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/CreateListingIntentMediaResult'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '413': {$ref: './components.yaml#/responses/ContentTooLarge'}
+        '415': {$ref: './components.yaml#/responses/UnsupportedMediaType'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  PriceIntents:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListPriceIntents
+      summary: List price intents
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: offering.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: Offering
+      parameters:
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+        - {name: marketplace_installation_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+      responses:
+        '200': {description: Price intents., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/PriceIntentsCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+    post:
+      operationId: CreatePriceIntent
+      summary: Create price intent
+      x-mpc-operation-class: C
+      x-mpc-required-permission: price.manage
+      x-mpc-principal-kinds: [H, A]
+      x-mpc-semantic-owner: Offering
+      parameters: [{$ref: './components.yaml#/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/CreatePriceIntentRequest'}}}}
+      responses:
+        '201': {$ref: './components.yaml#/responses/PriceIntentCreated'}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  PriceIntent:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/PriceIntentId'}]
+    get:
+      operationId: GetPriceIntent
+      summary: Get price intent
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: offering.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: Offering
+      responses:
+        '200': {$ref: './components.yaml#/responses/PriceIntentOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  SellableAvailability:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListSellableAvailability
+      summary: List sellable availability
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: availability.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: Availability
+      parameters:
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+        - {name: marketplace_installation_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+      responses:
+        '200': {description: Current sellable availability population., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/SellableAvailabilityCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  SellableAvailabilityCurrent:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: GetSellableAvailability
+      summary: Get sellable availability
+      description: Target parameters form one typed pre-creation or existing-listing subject; invalid combinations are validation errors.
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: availability.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: Availability
+      parameters:
+        - {name: target_kind, in: query, required: true, schema: {type: string, enum: [pre_creation_listing_intent, existing_listing]}}
+        - {name: listing_intent_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+        - {name: marketplace_installation_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+        - {name: native_listing_key, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueKey'}}
+      responses:
+        '200': {description: Current sellable availability., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/SellableAvailability'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  InventorySources:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListInventorySources
+      summary: List inventory sources
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: availability.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: Availability
+      parameters: [{$ref: './components.yaml#/parameters/Limit'}, {$ref: './components.yaml#/parameters/Cursor'}]
+      responses:
+        '200': {description: Inventory sources., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/InventorySourcesCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+    post:
+      operationId: CreateInventorySource
+      summary: Create inventory source
+      x-mpc-operation-class: C
+      x-mpc-required-permission: availability.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: Availability
+      parameters: [{$ref: './components.yaml#/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/CreateInventorySourceRequest'}}}}
+      responses:
+        '201': {$ref: './components.yaml#/responses/InventorySourceCreated'}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  InventorySource:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/InventorySourceId'}]
+    get:
+      operationId: GetInventorySource
+      summary: Get inventory source
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: availability.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: Availability
+      responses:
+        '200': {$ref: './components.yaml#/responses/InventorySourceOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+    patch:
+      operationId: UpdateInventorySource
+      summary: Update inventory source
+      x-mpc-operation-class: C
+      x-mpc-required-permission: availability.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: Availability
+      parameters: [{$ref: './components.yaml#/parameters/IfMatch'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/UpdateInventorySourceRequest'}}}}
+      responses:
+        '200': {$ref: './components.yaml#/responses/InventorySourceOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '412': {$ref: './components.yaml#/responses/PreconditionFailed'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '428': {$ref: './components.yaml#/responses/PreconditionRequired'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  DeactivateInventorySource:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/InventorySourceId'}]
+    post:
+      operationId: DeactivateInventorySource
+      summary: Deactivate inventory source
+      x-mpc-operation-class: C
+      x-mpc-required-permission: availability.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: Availability
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EtagOnlyRequest'}}}}
+      responses:
+        '200': {description: Deactivated inventory source and current validator., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/InventorySourceMutationResult'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  AvailabilityAllocationScopePolicy:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: GetEffectiveAvailabilityAllocationScopePolicy
+      summary: Get effective availability allocation scope policy
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: availability.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: Availability
+      responses:
+        '200': {$ref: './components.yaml#/responses/AvailabilityPolicyOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+    patch:
+      operationId: UpdateAvailabilityAllocationScopePolicy
+      summary: Update availability allocation scope policy
+      x-mpc-operation-class: C
+      x-mpc-required-permission: availability.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: Availability
+      parameters: [{$ref: './components.yaml#/parameters/IfMatch'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/UpdateAvailabilityPolicyRequest'}}}}
+      responses:
+        '200': {$ref: './components.yaml#/responses/AvailabilityPolicyOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '412': {$ref: './components.yaml#/responses/PreconditionFailed'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '428': {$ref: './components.yaml#/responses/PreconditionRequired'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  CompetitivePositions:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListCompetitivePositions
+      summary: List competitive positions
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: market.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: MarketIntelligence
+      parameters:
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+        - {name: marketplace_installation_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+      responses:
+        '200': {description: Competitive positions., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/CompetitivePositionsCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  CompetitivePosition:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: GetCompetitivePosition
+      summary: Get competitive position
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: market.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: MarketIntelligence
+      parameters: [{$ref: './components.yaml#/parameters/MarketSubjectKind'}, {$ref: './components.yaml#/parameters/SubjectMarketplaceInstallationId'}, {$ref: './components.yaml#/parameters/SubjectNativeListingKey'}, {$ref: './components.yaml#/parameters/SubjectSourceInstanceId'}, {$ref: './components.yaml#/parameters/SubjectNativeProductKey'}]
+      responses:
+        '200': {description: Competitive position., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/CompetitivePosition'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  ComparableOffers:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListComparableOffers
+      summary: List comparable offers
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: market.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: MarketIntelligence
+      parameters: [{$ref: './components.yaml#/parameters/MarketSubjectKind'}, {$ref: './components.yaml#/parameters/SubjectMarketplaceInstallationId'}, {$ref: './components.yaml#/parameters/SubjectNativeListingKey'}, {$ref: './components.yaml#/parameters/SubjectSourceInstanceId'}, {$ref: './components.yaml#/parameters/SubjectNativeProductKey'}, {$ref: './components.yaml#/parameters/Limit'}, {$ref: './components.yaml#/parameters/Cursor'}]
+      responses:
+        '200': {description: Comparable-offer evidence., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/ComparableOffersCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
