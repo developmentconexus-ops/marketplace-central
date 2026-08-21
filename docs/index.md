@@ -27,6 +27,7 @@ Pre-standard current-status/read-order prose inside accepted D-stage, architectu
 | Mercado Livre, Sankhya, provider boundaries/effects/reconciliation | [D4 External Integrations](engineering/rebaseline/D4-EXTERNAL-INTEGRATIONS.md) | old adapters/runtime |
 | Publication input, `ListingIntent`, readiness/source-following/override | [D4-R1 Publication Input](engineering/rebaseline/D4-R1-PUBLICATION-INPUT.md) | generic PIM assumptions |
 | Product API semantic laws | [D5 API](engineering/rebaseline/D5-API.md) | D6–D9 |
+| Frontend interaction/authority model, screen→Product capability mapping, frontend topology | [D6 Frontend](engineering/rebaseline/D6-FRONTEND.md) | D7–D9 and removed frontend runtime |
 | Current decision-generation reconciliation | [Decision Reconciliation Baseline](engineering/rebaseline/DECISION-RECONCILIATION-BASELINE.md) | all phase history |
 | Stable cross-stage architecture constraints | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | all phase documents |
 | ADR disposition / retirement trigger | [ADR Registry](architecture/decisions/README.md), then only the named ADR | all ADRs |
@@ -61,6 +62,32 @@ Canonical Product OAD authoring is material and spans several accepted D5 homes.
 - [Technical Ingress](engineering/rebaseline/D5-B2-TECHNICAL-INGRESS.md).
 
 Switch subpacks as the concrete authoring question changes. Read D0–D4 only when the D5 package cannot answer a concrete contract question without reopening earlier semantics.
+
+## D6 Frontend bounded subpacks
+
+D6 must consume accepted Product/API authority without re-reading the full rebaseline. Use one subpack at a time.
+
+**Start / interaction authority — 5 files total with the bootstrap:**
+
+- [`../AGENTS.md`](../AGENTS.md);
+- this router;
+- [`roadmap.md`](roadmap.md);
+- [D6 Frontend](engineering/rebaseline/D6-FRONTEND.md);
+- [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
+
+**Screen / Product capability mapping — replace `ARCHITECTURE.md` with the machine-readable Product authority:**
+
+- [D6 Frontend](engineering/rebaseline/D6-FRONTEND.md);
+- [`../contracts/api/product/openapi.yaml`](../contracts/api/product/openapi.yaml).
+
+Use D5 narrative documents only when the canonical OAD plus D6 authority cannot answer a concrete wire-semantic question.
+
+**Frontend dependency/topology research — replace the OAD/architecture owner with the derived research guide only when a concrete technology question exists:**
+
+- [D6 Frontend](engineering/rebaseline/D6-FRONTEND.md);
+- [Evidence-Grounded Production Engineering for LLM Agents](development/evidence-grounded-production-engineering-for-llm-agents.md).
+
+Do not select D7 runtime/router/database/deployment mechanics from D6 research.
 
 ## Organizational standards
 
