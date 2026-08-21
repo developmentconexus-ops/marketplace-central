@@ -13,9 +13,9 @@
 | Accepted baseline | **D0–D5 ACCEPTED / CLOSED** |
 | D6-R1 | **Marketplace Performance Intelligence — OPERATOR-APPROVED / FABLE REVIEWED / BOUNDED FIXES ADJUDICATED** |
 | D6-B1 | **OPERATOR-RATIFIED — corrected Portuguese interaction map + wireframes** |
-| Cross-repo review | **Marketplace Central ↔ MetalDocs adjudicated by operator; bounded D5 human-browser auth correction approved** |
-| D5-R1 auth correction | **OPERATOR-APPROVED / EXECUTABLE PROOF IN PROGRESS** — [Human Browser Authentication Correction](engineering/rebaseline/D5-R1-HUMAN-BROWSER-AUTHENTICATION.md) |
-| Exact next action | **Complete the bounded D5-R1 RED→GREEN auth/OAD proof; if green, resume D6-B2 frontend topology/dependency adjudication** |
+| Cross-repo review | **Marketplace Central ↔ MetalDocs — OPERATOR-APPROVED / ADJUDICATED** |
+| D5-R1 auth correction | **OPERATOR-APPROVED / EXECUTABLE PROOF PASS** — [Human Browser Authentication Correction](engineering/rebaseline/D5-R1-HUMAN-BROWSER-AUTHENTICATION.md) |
+| Exact next action | **D6-B2 — close the smallest frontend realization topology/dependency contract from the approved cross-repo adjudication** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
@@ -32,8 +32,8 @@
 | D3 — Communication / Events | ACCEPTED / CLOSED |
 | D4 — External Integrations | ACCEPTED / CLOSED |
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
-| D5 — API | ACCEPTED / CLOSED — bounded D5-R1 human-browser auth carrier correction active in current D6 candidate |
-| D6 — Frontend | OPEN / ACTIVE — B1 ratified; B2 paused only for bounded D5-R1 proof |
+| D5 — API | ACCEPTED / CLOSED — bounded D5-R1 human-browser auth carrier correction proved in current D6 candidate |
+| D6 — Frontend | OPEN / ACTIVE — B1 ratified; B2 active decision |
 | D7 — Runtime / Jobs / Transactions | BLOCKED |
 | D8 — Golden Flows | BLOCKED |
 | D9 — Adversarial Architecture Review | BLOCKED |
@@ -41,24 +41,25 @@
 
 ## Current accepted Product authority
 
-`main @ 9d2c81e175bc39ac388c9d8924ddad21f2a86480` remains the accepted D5 closeout baseline at 95 operations / 29 Permissions. The bounded [D6-R1 Marketplace Performance Intelligence](engineering/rebaseline/D6-R1-MARKETPLACE-PERFORMANCE-INTELLIGENCE.md) repair produces the proved 99/30 Product candidate with four Performance Qs and `performance.read`.
+`main @ 9d2c81e175bc39ac388c9d8924ddad21f2a86480` remains the accepted D5 closeout baseline at 95 operations / 29 Permissions. The bounded [D6-R1 Marketplace Performance Intelligence](engineering/rebaseline/D6-R1-MARKETPLACE-PERFORMANCE-INTELLIGENCE.md) repair produces the current 99/30 Product candidate with four Performance Qs and `performance.read`.
 
-The operator-approved [D5-R1 Human Browser Authentication Correction](engineering/rebaseline/D5-R1-HUMAN-BROWSER-AUTHENTICATION.md) changes **authentication carriers only**:
+The operator-approved [D5-R1 Human Browser Authentication Correction](engineering/rebaseline/D5-R1-HUMAN-BROWSER-AUTHENTICATION.md) changes authentication carriers only:
 
 ```text
 H browser  -> server-side OIDC login -> Secure HttpOnly application session + CSRF on unsafe requests
 A / S      -> Client Credentials -> audience-bound bearer
 ```
 
-It does not add/remove operations, Permissions, Principal kinds, owners or business semantics. Keycloak remains the preferred first OIDC provider candidate; exact session/CSRF/Keycloak/runtime realization remains D7.
+It adds/removes no operation, Permission, Principal kind, owner or business semantic. Keycloak remains the preferred first OIDC provider candidate; exact session/CSRF/Keycloak/runtime realization remains D7.
 
-Executable proof must preserve:
+Fresh executable proof establishes:
 
 ```text
-accepted D5 baseline             95/95 operations · 29/29 Permissions
-pre-auth D6-R1 surface           99/99 operations · 30/30 Permissions
-current Product                  99 Product operations · 30 ordinary Permissions · H/A/S only
-Performance                      exact four Qs · performance.read
+accepted D5 baseline             95/95 operations · 29/29 Permissions · 12/12 controls
+pre-auth D6-R1 surface           99/99 operations · 30/30 Permissions · 7/7 Performance controls
+current auth profile             H session + CSRF · A/S bearer · 5/5 auth controls
+current generated projections    TypeScript + Go PASS
+Performance knowledge            2/2 controls PASS
 legacy runtime population        0
 ```
 
@@ -77,14 +78,15 @@ ESTRATÉGIA E INTELIGÊNCIA
 
 The [interaction map](engineering/rebaseline/D6-B1-INTERACTION-MAP.md) covers all 99 operations and the Portuguese [wireframes](../qualification/d6-wireframes/index.html) are operator-ratified.
 
-## D6-B2 bounded continuation
+## D6-B2 current decision boundary
 
-After D5-R1 is green, D6-B2 resumes from the operator-approved cross-repository adjudication:
+D6-B2 resumes from the operator-approved cross-repository adjudication:
 
 - React + TypeScript;
 - TanStack Query remains server-state authority;
 - TanStack Router is the current common router candidate;
 - `openapi-typescript` remains generated wire-shape authority and `openapi-fetch` is the current Marketplace low-level transport candidate;
+- human browser Product requests use the corrected D5-R1 application-session/CSRF profile; browser JavaScript does not own OIDC bearer/refresh tokens;
 - UI packages follow stable human lenses/flows while stateless Product API adapters may group reusable owner/operation-family consumption;
 - URL/navigation, form draft and ephemeral UI remain separate from server state;
 - no second global server-state store, generic workflow/action/query layer, microfrontends, SSR-by-fashion, offline-first, realtime or universal design-system platform without a proven consumer.
