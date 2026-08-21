@@ -180,5 +180,4 @@ components:
     MpcBearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: JWT
       description: Accepted external bearer credential; Product authorization remains MPC-owned current authority.
