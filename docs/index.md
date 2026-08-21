@@ -23,6 +23,7 @@ Pre-standard current-status/read-order prose inside accepted D-stage, architectu
 | Product mission, scope, actors, Product 1.0 boundary | [D0 Product/System Definition](engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md) | D1–D5 |
 | Domains, semantic owners, allowed ownership edges | [D1 Domains/Boundaries](engineering/rebaseline/D1-DOMAINS-BOUNDARIES.md) | implementation history |
 | Organization, Principal, identity, data ownership, knowledge/provenance | [D2 Identity/Tenant/Data Ownership](engineering/rebaseline/D2-IDENTITY-TENANT-DATA-OWNERSHIP.md) | provider/runtime details |
+| Human-readable Organization/Principal/AccessRole presentation identity | [D2-R1 Presentation Identity](engineering/rebaseline/D2-R1-PRESENTATION-IDENTITY.md) | profile/directory/runtime mechanics |
 | Q/C/E/P, communication, events, recovery, projections | [D3 Communication/Events](engineering/rebaseline/D3-COMMUNICATION-EVENTS.md) | D4 provider detail |
 | Mercado Livre, Sankhya, provider boundaries/effects/reconciliation | [D4 External Integrations](engineering/rebaseline/D4-EXTERNAL-INTEGRATIONS.md) | old adapters/runtime |
 | Publication input, `ListingIntent`, readiness/source-following/override | [D4-R1 Publication Input](engineering/rebaseline/D4-R1-PUBLICATION-INPUT.md) | generic PIM assumptions |
@@ -80,7 +81,7 @@ D6 must consume accepted Product/API authority without re-reading the full rebas
 - [D6 Frontend](engineering/rebaseline/D6-FRONTEND.md);
 - [`../contracts/api/product/openapi.yaml`](../contracts/api/product/openapi.yaml).
 
-Use D5 narrative documents only when the canonical OAD plus D6 authority cannot answer a concrete wire-semantic question.
+Use D5 narrative documents only when the canonical OAD plus D6 authority cannot answer a concrete wire-semantic question. For the bounded human-readable Organization/Principal/AccessRole label rule, switch to D2-R1 rather than inventing frontend-local identity.
 
 **Frontend dependency/topology research — replace the OAD/architecture owner with the derived research guide only when a concrete technology question exists:**
 
