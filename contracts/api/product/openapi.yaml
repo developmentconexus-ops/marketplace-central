@@ -8,7 +8,30 @@ info:
     This document defines Product wire shape only. Active runtime is NONE and implementation
     remains blocked until D9.
 security:
-  - MpcBearerAuth: []
+  - MpcHumanSessionAuth: []
+  - MpcMachineBearerAuth: []
+
+x-mpc-authentication-profile:
+  human:
+    principal_kind: H
+    security_scheme: MpcHumanSessionAuth
+    oidc_flow: authorization_code_server_side
+    browser_oidc_token_exposure: none
+    session_cookie:
+      name: __Host-mpc_session
+      secure: true
+      http_only: true
+      same_site: lax
+      path: /
+      domain: absent
+    csrf:
+      carrier: header
+      name: X-CSRF-Token
+      required_on_methods: [DELETE, PATCH, POST, PUT]
+  machine:
+    principal_kinds: [A, S]
+    security_scheme: MpcMachineBearerAuth
+    grant: client_credentials
 
 paths:
   '/access-context':
@@ -188,7 +211,17 @@ paths:
 
 components:
   securitySchemes:
-    MpcBearerAuth:
+    MpcHumanSessionAuth:
+      type: apiKey
+      in: cookie
+      name: __Host-mpc_session
+      description: >-
+        Opaque server-side application-session handle for the interactive human Principal.
+        External OIDC/OAuth tokens stay server-side; Product authorization remains MPC-owned current authority.
+    MpcMachineBearerAuth:
       type: http
       scheme: bearer
-      description: Accepted external bearer credential; Product authorization remains MPC-owned current authority.
+      description: >-
+        Audience-bound external OAuth access token issued to a confidential machine client through
+        Client Credentials and resolved fail-closed to one automation/system Principal. Product
+        authorization remains MPC-owned current authority.
