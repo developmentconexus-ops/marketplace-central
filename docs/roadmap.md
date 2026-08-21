@@ -9,10 +9,10 @@
 | Field | Current value |
 | --- | --- |
 | Product | **Marketplace Operations Control Plane + Commercial Intelligence** |
-| Current stage | **D5 — API — OPEN / ACTIVE** |
-| Accepted through | D0–D4, D4-R1, D5-B1, D5-B2 W1/W2/W3/W4, Technical Ingress, final Problem/media consistency, and OpenAPI authority/tooling |
-| Exact next action | **Author and prove the canonical Product OpenAPI Description** |
-| Entry document to create | `contracts/api/product/openapi.yaml` |
+| Current stage | **D5 — API — ACCEPTED / CLOSED** |
+| Accepted through | **D0–D5**, including the canonical Product OpenAPI Description and executable proof |
+| Exact next action | **D6 — Frontend — NEXT / NOT STARTED; await explicit operator authorization to open D6** |
+| Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **95 Product operations · 29 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Product Problem namespace | `https://conexus.fun/marketplace-central/problems/product/{slug}` |
@@ -33,32 +33,41 @@ The admitted Product surface is contract scope, not an instruction to build 95 r
 | D3 — Communication / Events | ACCEPTED / CLOSED |
 | D4 — External Integrations | ACCEPTED / CLOSED |
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
-| D5 — API | OPEN / ACTIVE |
-| D6 — Frontend | BLOCKED BY D5 |
+| D5 — API | ACCEPTED / CLOSED |
+| D6 — Frontend | NEXT / NOT STARTED |
 | D7 — Runtime / Jobs / Transactions | BLOCKED |
 | D8 — Golden Flows | BLOCKED |
 | D9 — Adversarial Architecture Review | BLOCKED |
 | Implementation | BLOCKED UNTIL D9 |
 
-## Current D5 work boundary
+## D5 closure
 
-The current sub-batch may:
+D5 is closed on the canonical Product OAD landed in `main` after executable proof, independent Fable challenge and review adjudication.
 
-- author `contracts/api/product/openapi.yaml` and its repository-local source closure;
-- encode exactly the accepted 95 operations and 29-Permission projection;
-- use the accepted Product Problem constants under `https://conexus.fun`;
-- add the accepted OAD-specific lint/bundle/generation proof;
-- generate/compile the accepted derived TypeScript and Go contract projections;
-- preserve zero population of the retired legacy OpenAPI/manual SDK;
-- stop and reopen only the smallest accepted authority if executable proof finds a material contradiction.
+Closure preserves:
 
-It may not:
+- exactly 95 Product operations and 29 ordinary Permissions;
+- Principal kinds H / A / S only;
+- Product Problem identity under the stable `https://conexus.fun` origin;
+- Product/Technical Ingress separation and no provider/OAuth ingress in the Product OAD;
+- generated TypeScript and Go projections as temporary derived proof artifacts, never a second authority;
+- Organization privacy-preserving `404`, required idempotency carriers, strong validators and accepted collection grammar;
+- zero population of the retired legacy runtime/OpenAPI/manual SDK;
+- no Product runtime, router, database or deployment selection.
 
-- begin D6–D9 or Product implementation;
-- add a 96th Product operation, Permission #30, or a fourth Principal kind;
-- select runtime/router/database/deployment mechanics;
-- restore the removed legacy runtime or a parallel OpenAPI/manual SDK authority;
-- place provider/OAuth ingress or authored-media delivery into the Product OAD by convenience.
+D5 proof demonstrates source/wire/generator compatibility only. Runtime schema rejection, concrete router compatibility for canonical `:verb` paths, supported Go runtime floor, persistence and transaction mechanics remain D7 obligations.
+
+## Post-D5 boundary
+
+D6 is the next stage but has **not started**. Opening D6 requires explicit operator authorization and its own bounded authority pack.
+
+Until then:
+
+- do not begin D6 work by implication from D5 closure;
+- do not begin D7–D9 or Product implementation;
+- do not select runtime/router/database/deployment mechanics;
+- do not restore retired legacy runtime/OpenAPI/manual SDK authority;
+- reopen D5 only if executable evidence exposes a material contradiction, and then reopen only the smallest implicated authority.
 
 ## Progression law
 
