@@ -9,9 +9,9 @@
 | Field | Current value |
 | --- | --- |
 | Product | **Marketplace Operations Control Plane + Commercial Intelligence** |
-| Current stage | **D5 — API — ACCEPTED / CLOSED** |
+| Current stage | **D6 — Frontend — OPEN / ACTIVE** |
 | Accepted through | **D0–D5**, including the canonical Product OpenAPI Description and executable proof |
-| Exact next action | **D6 — Frontend — NEXT / NOT STARTED; await explicit operator authorization to open D6** |
+| Exact next action | **D6-B1 — Frontend Interaction & Authority Model — derive and falsify the smallest Product 1.0 screen/interaction → semantic owner → Product capability/Permission map before frontend topology selection** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **95 Product operations · 29 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
@@ -21,7 +21,7 @@
 | Active runtime baseline | **NONE** |
 | Implementation | **BLOCKED UNTIL D9** |
 
-The admitted Product surface is contract scope, not an instruction to build 95 runtime handlers at once.
+The admitted Product surface is contract scope, not an instruction to build 95 runtime handlers or 95 frontend screens.
 
 ## Stage progression
 
@@ -34,7 +34,7 @@ The admitted Product surface is contract scope, not an instruction to build 95 r
 | D4 — External Integrations | ACCEPTED / CLOSED |
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
 | D5 — API | ACCEPTED / CLOSED |
-| D6 — Frontend | NEXT / NOT STARTED |
+| D6 — Frontend | OPEN / ACTIVE |
 | D7 — Runtime / Jobs / Transactions | BLOCKED |
 | D8 — Golden Flows | BLOCKED |
 | D9 — Adversarial Architecture Review | BLOCKED |
@@ -57,17 +57,37 @@ Closure preserves:
 
 D5 proof demonstrates source/wire/generator compatibility only. Runtime schema rejection, concrete router compatibility for canonical `:verb` paths, supported Go runtime floor, persistence and transaction mechanics remain D7 obligations.
 
-## Post-D5 boundary
+## D6 opening
 
-D6 is the next stage but has **not started**. Opening D6 requires explicit operator authorization and its own bounded authority pack.
+The operator explicitly authorized opening D6 on 2026-08-21 from the accepted D5 checkpoint.
 
-Until then:
+D6 begins with [D6-B1 — Frontend Interaction & Authority Model](engineering/rebaseline/D6-FRONTEND.md). B1 is **OPEN / ACTIVE**, not accepted merely because D6 was authorized to begin.
 
-- do not begin D6 work by implication from D5 closure;
-- do not begin D7–D9 or Product implementation;
-- do not select runtime/router/database/deployment mechanics;
-- do not restore retired legacy runtime/OpenAPI/manual SDK authority;
-- reopen D5 only if executable evidence exposes a material contradiction, and then reopen only the smallest implicated authority.
+Current D6 boundary:
+
+- React remains the accepted Product API client technology; business policy is not duplicated in React;
+- TanStack Query remains the accepted server-state client unless material evidence explicitly reopens that decision;
+- canonical Product OAD remains the wire authority; D6 does not create a screen-shaped/BFF second Product contract;
+- server state, URL/navigation state, form draft state and ephemeral UI state remain distinct unless evidence proves another class is necessary;
+- target screens/interactions must map to accepted semantic owners and explicit Product operations/queries/capabilities plus ordinary Permission where applicable;
+- known-empty / unknown / unavailable / partial / materially stale states and accepted / pending / rejected / ambiguous consequential outcomes remain honest where reachable;
+- route/button visibility is usability, never authorization;
+- consequential retry UX may not weaken idempotency, concurrency or no-blind-replay semantics;
+- provider/OAuth/technical ingress is not a Product frontend shortcut;
+- frontend dependency/package topology is selected only after a concrete D6 property requires it and evidence supports the smallest fit.
+
+D6 opening does **not** authorize Product implementation.
+
+## D6 blocked/deferred boundary
+
+While D6 is active:
+
+- do not begin D7–D9;
+- do not select server runtime/router/database/transaction/worker/deployment mechanics;
+- do not implement Product code;
+- do not restore retired runtime, frontend, OpenAPI or manual SDK authority;
+- do not reopen D0–D5 for preference, topology convenience or screen design;
+- reopen an accepted earlier decision only if executable/material evidence exposes a contradiction, and reopen only the smallest implicated authority.
 
 ## Progression law
 
