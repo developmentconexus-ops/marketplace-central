@@ -1,6 +1,6 @@
 # D6-R2 P4-R1 — Global IA / Operational Mass Reopen
 
-> **Status:** OPEN / OPERATOR-ADJUDICATED DIRECTION — IA-01 confirmed; OP-READ-01 RESOLVED; corrected B00 HTML `CANDIDATE` rendered
+> **Status:** ACCEPTED / CLOSED — IA-01 operator-ratified; OP-READ-01 RESOLVED; corrected B00 global IA `LOCKED`
 > **Parent:** [D6-R2 Complete Frontend Realization Closure](D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md)
 > **Method:** [Frontend Product Experience Planning Method v2.1](../../development/frontend-product-experience-planning-method.md)
 > **Bounded Product repair:** [D5-R2 Operational Read Projection Repair](D5-R2-OPERATIONAL-READ-PROJECTION-REPAIR.md)
@@ -19,18 +19,17 @@ post-sale execution
   Vendas · materialização/faturamento · Expedição · Pós-venda
 ```
 
-This is **material user-model evidence**, not visual preference. It falsifies only the global functional grouping that placed both masses under one `OPERAÇÕES` label.
+This was **material user-model evidence**, not visual preference. It falsified only the global functional grouping that placed both masses under one `OPERAÇÕES` label.
 
-The frontend method requires IA to follow human mental models/tasks rather than backend topology. Therefore the smallest affected authority was reopened.
+The frontend method requires IA to follow human mental models/tasks rather than backend topology. Therefore the smallest affected authority was reopened and has now been re-ratified.
 
-## 2. IA-01 — material falsifier
+## 2. IA-01 — accepted replacement
 
-**Finding:** the prior `OPERAÇÕES` mass does not express one coherent user intention.
-
-Operator-adjudicated replacement masses:
+The prior `OPERAÇÕES` mass did not express one coherent user intention. The accepted replacement is:
 
 ```text
 VISÃO GERAL
+  Visão geral
 
 OFERTA
   Preparação
@@ -57,6 +56,7 @@ CONTROLE
   Aprovações
 
 CONFIGURAÇÕES
+  Configurações
 ```
 
 Mental-model questions:
@@ -71,15 +71,15 @@ CONFIGURAÇÕES             como o funcionamento permitido está configurado?
 
 ## 3. Terminology / route disposition
 
-Operator-approved direction:
+Accepted direction:
 
 - user-facing `Publicações` becomes **Anúncios**;
-- **Preços** is a first-class destination under Oferta and remains Offering-owned `PriceIntent` execution;
+- **Preços** is first-class under Oferta and remains Offering-owned `PriceIntent` execution;
 - Market / Economics / Performance may inform a price decision but do not gain price-write authority;
 - **Vendas** remains the user-facing marketplace-sale concept; it is not renamed `Pedidos`, because `MarketplaceSale != BusinessOrderIntent`;
 - **Expedição** and **Pós-venda** remain specialist destinations under Operação;
 - **Trabalho** remains under Controle because it is cross-owner coordination, not source truth;
-- existing route identities should remain where possible to avoid non-value technical churn:
+- existing technical route identities remain where possible:
 
 ```text
 Anúncios               -> /publicacoes/*
@@ -92,23 +92,20 @@ Expedição              -> /expedicao/*
 Pós-venda              -> /pos-venda/*
 ```
 
-The only candidate new route identity is the operational landing, e.g. `/org/:organizationId/operacao`; exact route spelling remains P4/P9 navigation authority and is not Product API authority.
+The organization-wide operational landing is the only new frontend route identity candidate, e.g. `/org/:organizationId/operacao`; exact route spelling remains frontend navigation authority and is not Product API authority.
 
-## 4. Lock impact
-
-The reopen remains deliberately bounded:
+## 4. Lock disposition
 
 ```text
-B00 physical shell / Organization / Installation / responsive laws -> remain LOCKED
-B00 global grouping / nav labels                                 -> REOPENED by IA-01 / corrected HTML CANDIDATE
-B01 Overview content/state hierarchy                             -> remains LOCKED
-B01 will later inherit the corrected global nav                  -> structural shell delta only
-B10 Preparation internal P6 pattern                              -> remains valid
-B10 placement in global IA                                       -> SUSPENDED until corrected B00 nav is operator-LOCKED
-B20+                                                               -> BLOCKED
+B00 physical shell / Organization / Installation / responsive laws -> LOCKED
+B00 corrected global grouping / nav labels                          -> LOCKED
+B01 Overview content/state hierarchy                                -> LOCKED
+B10 Preparation internal P6 pattern                                 -> remains valid
+B10 global placement                                                -> OFERTA > Preparação
+B20+                                                                  -> not opened by this closeout
 ```
 
-No React/topology/Permission/owner/runtime decision is reopened by IA-01.
+The corrected executable HTML was reviewed and explicitly approved by the operator on 2026-08-22. IA-01 is closed. No React/topology/Permission/owner/runtime decision was reopened by IA-01.
 
 ## 5. Operational landing structural hypothesis
 
@@ -129,7 +126,7 @@ VISÃO OPERACIONAL
    Vendas · Expedição · Pós-venda · Trabalho
 ```
 
-A global `Nova -> Faturar -> Separar -> Conferir -> Embalar -> Enviar` Kanban is rejected because no cross-owner Product lifecycle owns those columns. GF-02 intentionally composes MarketplaceSales, BusinessSystemMaterialization, Fulfillment, Shipment, PostSale and Work without a transversal workflow owner.
+A global `Nova -> Faturar -> Separar -> Conferir -> Embalar -> Enviar` Kanban remains rejected because no cross-owner Product lifecycle owns those columns. GF-02 composes MarketplaceSales, BusinessSystemMaterialization, Fulfillment, Shipment, PostSale and Work without a transversal workflow owner.
 
 A Kanban-like representation remains a legitimate later hypothesis **inside Fulfillment/Expedição**, where one owner possesses explicit physical checkpoints.
 
@@ -188,9 +185,7 @@ owner-local filter proof PASS
 negative controls 2/2
 ```
 
-[D8-R2](D8-R2-OPERATIONAL-READ-REVALIDATION.md) confirms GF-02 choreography, owners, writes/effects, physical authority and source-qualified outcomes remain unchanged. Only read projection/filter expressibility is enriched.
-
-**OP-READ-01 is therefore RESOLVED.**
+[D8-R2](D8-R2-OPERATIONAL-READ-REVALIDATION.md) confirms GF-02 choreography, owners, writes/effects, physical authority and source-qualified outcomes remain unchanged. Only read projection/filter expressibility was enriched.
 
 ## 7. Global-Maximum / YAGNI decision law
 
@@ -206,16 +201,21 @@ accepted Product/system authority
 → no speculative capability/platform work
 ```
 
-A better screen is not sufficient reason to change Product. A proven user job requiring an already-owned truth that is not consumable may justify the smallest owner-local read repair, as OP-READ-01 demonstrated.
+A better screen is not sufficient reason to change Product. A proven user job requiring an already-owned truth that is not consumable may justify the smallest owner-local repair, as OP-READ-01 demonstrated.
 
-## 8. Corrected B00 candidate
+## 8. B00-R1 closeout
 
 **Artifact:** [`qualification/d6-r2-wireframes/b00-app-shell.html`](../../../qualification/d6-r2-wireframes/b00-app-shell.html)
 
-The rerender changes only the reopened navigation grouping/labels and adds the candidate organization-wide `Visão operacional` destination. The previously locked shell dimensions, Organization/Installation laws, access failure states and responsive transformation are intentionally preserved.
-
-The artifact remains `CANDIDATE`; IA-01 is not restored to global-frame `LOCK` until explicit post-render operator adjudication.
+```text
+rendered artifact reviewed: YES
+operator disposition:       LOCKED
+material changes requested: NONE
+physical/context shell:     LOCKED / unchanged
+corrected global IA:        LOCKED
+visual-design decisions:    NONE
+```
 
 ## 9. Exact next action
 
-Operator opens/interacts with the corrected **B00 App Shell + global IA** and adjudicates the rerendered navigation. Do not render the Visão operacional or resume B10/B20 before the corrected global IA is operator-`LOCKED`.
+Frontend progression is intentionally paused for the operator-requested **Notification architecture assessment**. Treat the MetalDocs notification direction only as comparative evidence. Do not import Notification semantics, operations, owner, event contract, realtime mechanism or UI into Marketplace Central unless current Product authority demonstrates a real gap and the resulting bounded reopen is separately operator-approved.
