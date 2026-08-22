@@ -1,7 +1,8 @@
 # D6-R2 P8 — Structural Wireframe Block Ledger
 
-> **Status:** OPEN / ACTIVE — B00 + B01 operator-`LOCKED`; B10 P6 DERIVED / P7 NOT TRIGGERED; B10 HTML `CANDIDATE` rendered
+> **Status:** OPEN / ACTIVE — B00 physical shell + B01 content operator-`LOCKED`; B00 global IA REOPENED by IA-01; B10 SUSPENDED; OP-READ-01 OPEN
 > **Parent:** [D6-R2 Complete Frontend Realization Closure](D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md)
+> **P4-R1 reopen:** [Global IA / Operational Mass Reopen](D6-R2-P4-R1-GLOBAL-IA-OPERATIONAL-MASS-REOPEN.md)
 > **P5 input:** [Complete Screen / Material-Surface Inventory](D6-R2-P5-SCREEN-SURFACE-INVENTORY.md)
 > **Method:** [Frontend Product Experience Planning Method v2.1](../../development/frontend-product-experience-planning-method.md)
 > **Product implementation:** BLOCKED UNTIL accepted D9
@@ -22,199 +23,161 @@ responsive transformation
 interaction needed to prove the block
 ```
 
-They do **not** decide final palette, typography, iconography, radius, shadows, illustration, branding polish or final component styling. Those belong to later visual-design handoff and may not silently alter locked UX structure.
+They do **not** decide final palette, typography, iconography, radius, shadows, illustration, branding polish or final component styling.
 
-The static styled image generated during the first B00 attempt is **NON-AUTHORITATIVE / DISCARDED** and is not P8 evidence.
+## 2. B00 — App Shell + global IA — PARTIAL REOPEN
 
-## 2. B00 — App Shell + global IA
+**Physical/context shell:** `LOCKED`.  
+**Global IA grouping/labels:** `REOPENED` by operator-approved finding IA-01.  
+**Artifact under correction:** [`qualification/d6-r2-wireframes/b00-app-shell.html`](../../../qualification/d6-r2-wireframes/b00-app-shell.html)
 
-**Status:** `LOCKED` — operator approved after opening/interacting with the executable HTML on 2026-08-22.  
-**Artifact:** [`qualification/d6-r2-wireframes/b00-app-shell.html`](../../../qualification/d6-r2-wireframes/b00-app-shell.html)  
-**P6/P7:** NOT TRIGGERED.
-
-Locked baseline:
+The following B00 laws remain locked:
 
 ```text
 desktop persistent sidebar ≈264 px
-+ Organization as only global workspace
-+ page header ≈64 px with page-local Installation host
-+ page-owned content ≈24 px outer padding
+Organization is the only global workspace
+page header ≈64 px with page-local Installation host
+page-owned content ≈24 px outer padding
 → tablet collapsible navigation
 → mobile drawer + stacked local context
 ```
 
-Locked IA remains:
-
-```text
-VISÃO GERAL
-  Visão geral
-OPERAÇÕES
-  Preparação
-  Publicações
-  Disponibilidade
-  Vendas
-  Expedição
-  Pós-venda
-ESTRATÉGIA E INTELIGÊNCIA
-  Performance
-    Resumo
-    Publicações
-    Mídia
-  Mercado
-  Economia
-CONTROLE
-  Trabalho
-  Aprovações
-CONFIGURAÇÕES
-  Configurações
-```
-
-Locked behavior:
+Also preserved:
 
 - Organization switching clears Marketplace Installation context;
 - organization-wide routes have no ambient marketplace account;
 - exact-required routes block until one exact Installation is selected;
-- all-or-exact routes expose `all` only where admitted;
 - no hidden/default Installation;
 - no-access/stale Organization blocks explicitly;
-- responsive transformation never changes IA/context meaning;
-- no Dashboard/Strategy/Analytics/Materialização/ERP/global search/permanent right rail.
+- responsive transformation never changes context meaning.
 
-The lock is structural only; it chooses no visual-design system.
+### 2.1 IA-01 candidate grouping — operator-approved direction
+
+```text
+VISÃO GERAL
+  Visão geral
+
+OFERTA
+  Preparação
+  Anúncios
+  Preços
+  Disponibilidade
+
+OPERAÇÃO
+  Visão operacional
+  Vendas
+  Expedição
+  Pós-venda
+
+ESTRATÉGIA E INTELIGÊNCIA
+  Performance
+    Resumo
+    Anúncios
+    Mídia
+  Mercado
+  Economia
+
+CONTROLE
+  Trabalho
+  Aprovações
+
+CONFIGURAÇÕES
+  Configurações
+```
+
+This is not yet a corrected B00 `LOCK`: the global-frame artifact must be re-rendered and separately operator-adjudicated after OP-READ-01 is dispositioned.
+
+Existing technical route identities should remain where possible; user-facing `Anúncios` may continue to use `/publicacoes/*`, and `Preços` may continue to use `/publicacoes/precos`. The only candidate new route is the operational landing.
 
 ## 3. B01 — Overview
 
-**Status:** `LOCKED` — operator approved after executable HTML review on 2026-08-22.  
-**Homes:** R01.  
-**Artifact:** [`qualification/d6-r2-wireframes/b01-overview.html`](../../../qualification/d6-r2-wireframes/b01-overview.html)  
-**P6/P7:** NOT TRIGGERED.
+**Content/state hierarchy:** `LOCKED` — operator approved after executable HTML review on 2026-08-22.  
+**Artifact:** [`qualification/d6-r2-wireframes/b01-overview.html`](../../../qualification/d6-r2-wireframes/b01-overview.html)
 
-### 3.1 A04 — operator-adjudicated contextual priority
+A04 remains locked as contextual priority:
 
 ```text
-Work known + actionable
-→ attention expands and leads
-
-Work known-empty
-→ attention collapses
-→ never implies healthy operation
-
-Work unknown/unavailable
-→ uncertainty remains visible
-→ never infers zero/empty/healthy
-
-all cases
-→ marketplace/account + Performance + Economics orientation remains visible
+Work known + actionable -> attention expands and leads
+Work known-empty        -> attention collapses; never implies health
+Work unknown/unavailable -> uncertainty remains visible
+all cases               -> marketplace/account + Performance + Economics orientation remains visible
 ```
 
-Locked B01 negative controls:
+B01 will later inherit the corrected global navigation. Its content/state lock is not reopened by IA-01.
+
+## 4. B10 — Preparation — SUSPENDED
+
+**Internal pattern:** P6 `DERIVED`; P7 NOT TRIGGERED.  
+**Rendered artifact:** [`qualification/d6-r2-wireframes/b10-preparation.html`](../../../qualification/d6-r2-wireframes/b10-preparation.html)  
+**Current disposition:** `SUSPENDED CANDIDATE` — do not operator-lock until corrected global IA is restored.
+
+The B10 internal pattern remains valid evidence:
 
 ```text
-“Tudo certo” from empty Work
-resolve/dismiss/close Work actions
-frontend-generated collector freshness
-health score
-/dashboard authority
-cross-provider aggregate KPI
-hidden global totals
-write authority acquired by composition
+search/list triage
+→ selected exact-subject detail
+→ readiness / requirements / correspondence
+→ explicit reread after consequential correspondence effect
+→ continuation only from admitted current state
 ```
 
-## 4. B10 — Preparation
+Its previous placement under `OPERAÇÕES` is superseded by the P4-R1 candidate `OFERTA > Preparação`.
 
-**Homes:** R10.  
-**Status:** `CANDIDATE` — executable HTML rendered; awaiting operator review.  
-**Artifact:** [`qualification/d6-r2-wireframes/b10-preparation.html`](../../../qualification/d6-r2-wireframes/b10-preparation.html)  
-**P6:** [DERIVED](D6-R2-P6-B10-PREPARATION-REFERENCE-STUDY.md).  
-**P7:** NOT TRIGGERED.
+## 5. Operational landing — CANDIDATE CONCEPT ONLY
 
-P6 reference evidence converged on **search/list triage → selected exact-subject detail**. Persistent split-view and full material inline expansion are rejected as baseline.
-
-### 4.1 Candidate structural modes
+Operator approved **cockpit hybrid oriented to action**, not one global Kanban:
 
 ```text
-SEARCH MODE
-├─ exact Marketplace Installation in B00 local context
-├─ search input
-├─ optional explicit SourceInstance narrowing
-└─ structured results
-   ├─ source-product presentation
-   ├─ SourceInstance + native key
-   ├─ compact readiness state
-   ├─ requirements/correspondence signal when known
-   └─ open preparation
+1. PRECISA DE ATENÇÃO
+   explicit exception / Work / ambiguity / post-sale attention
 
-SELECTED-SUBJECT MODE
-├─ back to search/results; search context is navigation state
-├─ exact SourceInstance + native key + Installation header
-├─ readiness / knowledge state
-├─ publication requirements
-├─ correspondence state
-│  └─ resolve / clear only when Product admits it
-├─ explicit re-read after consequential correspondence effect
-└─ continue to ListingIntent only when current state permits
+2. TRABALHO OPERACIONAL NORMAL
+   normal actionable execution
+
+3. ACOMPANHAMENTO
+   in-progress / dispatched / delivered without immediate action
+
+4. SPECIALIST ENTRY POINTS
+   Vendas · Expedição · Pós-venda · Trabalho
 ```
 
-The selected subject remains inside the accepted `Preparação` workspace. P9 later binds the exact URL/search carriers; B10 does not invent Product identity.
+A global `Nova -> Faturar -> Separar -> Conferir -> Embalar -> Enviar` Kanban is rejected because no cross-owner Product lifecycle owns those columns. A Kanban-like view may later be studied inside Fulfillment/Expedição only.
 
-### 4.2 Executable scenarios
+## 6. OP-READ-01 — BLOCKING FINDING
 
-The HTML candidate exposes four structural scenarios:
+The operational landing must not be rendered as a baseline while current owner-local collection contracts would force N+1 detail fan-out or frontend-authored business projection.
+
+Observed gaps:
 
 ```text
-READY
-→ requirements known/attended
-→ correspondence resolved
-→ ListingIntent continuation available
+FulfillmentExecutionListItem
+  lacks separation / physical_conference / packing / dispatch_handoff / dispatch deadline
+  ListFulfillmentExecutions lacks stage/readiness/deadline triage filters
 
-MISSING_REQUIREMENTS
-→ readiness partial/known
-→ missing requirements remain explicit
-→ continuation blocked
+BusinessOrderIntentListItem
+  has external_effect_state but omits convergence
 
-CORRESPONDENCE_NEEDED
-→ no candidate auto-selected
-→ admitted resolve/clear only
-→ after consequential effect, continuation remains blocked
-→ explicit re-read/revalidation required before assuming convergence
+InvoicingIntentListItem
+  has external_effect_state but omits convergence and richer operational correlation
 
-KNOWLEDGE_UNAVAILABLE
-→ unknown/unavailable remains explicit
-→ requirements do not become an empty list
-→ correspondence is not inferred
-→ continuation blocked
+ShipmentListItem
+  has state but omits sale + dispatch_deadline
+  ListShipments lacks state/deadline triage filters
+
+PostSale / Work
+  already have useful lifecycle/queue narrowing
 ```
 
-The results also include two different SourceInstances to visibly prove that omission of the source filter is multi-source search, not a hidden source default.
-
-### 4.3 Responsive law
-
-B10 inherits B00. On narrow widths, the result collection becomes stacked rows and selected-subject regions become one column. The interface may change arrangement but never drops Installation, SourceInstance or native-key qualification.
-
-### 4.4 B10 negative controls
+Negative controls:
 
 ```text
-hidden/default SourceInstance
-first search result silently selected
-Marketplace Installation used as ambient authority
-source product edited as MPC master data
-provider write exposed from Readiness
-frontend-invented readiness percentage/health score
-known-empty collapsed into unknown/unavailable/unsupported
-correspondence represented as generic product editing
-blind success after correspondence mutation
-bulk preparation/actions invented without authority/evidence
-permanent split-view promoted without evidence
+no /operational-dashboard Product endpoint
+no OperationalWorkflow owner
+no cross-owner synthetic lifecycle
+no global totals inferred from one paginated page
+no N+1 detail fan-out as production baseline
 ```
 
-## 5. B10 operator adjudication gate
+## 7. Exact next action
 
-B10 may become `LOCKED` only after the operator opens/interacts with the HTML candidate and explicitly adjudicates its structure.
-
-```text
-LOCKED       rendered structure approved
-CANDIDATE    changes requested / review pending
-FINDING      material contradiction discovered
-```
-
-Do not render B20 Publications core as baseline before B10 is `LOCKED` unless the operator explicitly authorizes parallel progression.
+Derive the smallest owner-local **OP-READ-01 repair candidate** and obtain operator approval before editing the canonical OAD. Preserve semantic owners and prefer enrichment of existing list projections/filters; aim to preserve the 99-operation census. After an accepted repair, rerun affected D5 proof + GF-02, then re-render corrected B00 global IA before any dependent block progresses.
