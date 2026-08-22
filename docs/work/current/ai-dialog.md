@@ -385,3 +385,137 @@ State explicitly whether any D0–D7 authority must reopen now. If yes, name the
 ## Fable response
 
 <!-- Fable: append the independent review below this line. Do not alter the prompt above. -->
+
+### 1. Verdict
+
+`ACCEPT WITH BOUNDED FIXES`
+
+### 2. Revalidation record
+
+```text
+remote main HEAD             8a9bcdb2c0333b94eecef8fb18cfa54b824b2881   (= expected)
+candidate HEAD               b3469258348289865a036bc7a946077f79d61faf   (= expected; NOT STALE)
+PR #59                       OPEN / Draft / MERGEABLE / base main / head stage/d8-golden-flows @ b3469258
+changed files vs main        3 (docs/engineering/rebaseline/D8-GOLDEN-FLOWS.md, docs/roadmap.md, scripts/gate.ps1)
+CI on candidate HEAD         required: SUCCESS; conventional-title: SUCCESS
+review ancestry              review/d8-fable @ 83d8b936; merge-base with candidate = candidate HEAD
+review isolation             candidate...review differs ONLY by docs/work/current/ai-dialog.md
+local gate (review mode)     GATE_BASE_REF=stage/d8-golden-flows -> gate: PASS, review_mode: True,
+                             changed_files: 1, legacy_runtime_population: 0, negative_controls: 1/1,
+                             bootstrap_bytes 18418/20480 (~90%)
+```
+
+### 3. Executive coherence assessment
+
+The candidate is a faithful composition of accepted D0–D7 authority, independently re-traced owner by owner:
+
+- **GF-01** reproduces D4-R1 exactly: §5.2 choreography matches the R1-G1 joint-realization diagram; acceptance properties 1–11 map 1:1 onto D4-R1 §4/§5/§9/§10/§13 plus D7-B §11 (fingerprint conflict) and D7-C §7–§9 (marker/ambiguity classes). §5.5 carries the D4-R1 §13 deferral ("D8 owns the first controlled real Mercado Livre creation/write proof") verbatim in meaning.
+- **GF-02** matches D4-B3: TOP 313 → 306 via `SelecaoDocumentoSP.faturar`, Destination Realization CONDITIONED/NOT-YET-CLAIMED (D4 §5.7), G3 "DEFER SAFELY → D8", Gateway-only/no-Direct-Oracle. The candidate's negative claim "no Product CreateBusinessOrderIntent / CreateInvoicingIntent" verifies against the canonical OAD: `business-order-intents` and `invoicing-intents` expose GET-only collection/item plus party-resolution/destination-realization reads and one `party-resolution:resolve` POST; no create/command operation exists.
+- **GF-03** reproduces D6-R1 §9–§11 with no drift: all four operationIds exist exactly as named in `paths-performance.yaml`; properties 1–10 are D6-R1 negative controls 4, 8–12 plus the W3 survivorship law and the D2-R2 custody law.
+- **SR-01** is the accepted D7-R1 §4 continuity law re-stated as a falsifier, including the F-1-accepted arming law (witness absent/unverifiable ⇒ fence arms, no manual flag), the complementary continuous-lineage release control, and the "pre-engaged fence proof is insufficient" clause. Nothing in SR-01 weakens or re-litigates D7-R1.
+- **D8-F1** characterizes D6 accurately: "39 representative route/screen states" is literal D6-B1 text (line 349: "39 estados de tela/rota (S00–S127 não contíguos) para 99 operações"), and the finding correctly claims no D6 reopen inside D8.
+
+Non-regression fence independently verified on the exact candidate: the diff touches no contract file; the bundled OAD surface remains 99 referenced operations (104 source pathItem operations minus the 5 duplicated access pathItems in `paths-identity-portfolio-readiness.yaml` that `openapi.yaml` does not reference), 30 ordinary Permissions plus the `authenticated` pseudo-requirement, Principal kinds only H/A/S (58×[H,A,S], 14×[H,A], 30×[H], 2×[H,S]), exactly 2 physically-qualified operations (`RecordPhysicalConference`, `RecordDispatchHandoff`, both [H,S] — A excluded, matching GF-02 falsifiers). Stable origin and `active runtime NONE` unchanged in roadmap.
+
+Method alignment is good: selection by defect class, not domain symmetry; proof horizons explicitly split so architecture evidence cannot masquerade as runtime conformance; YAGNI rejections are argued, not asserted. The candidate is ready for GPT adjudication after the bounded fixes below.
+
+### 4. Material findings
+
+**F-1 — D8 probe-closure law is undefined and the D4-deferred probe enumeration is a proper subset of D4's own list**
+- **classification:** `D8_FIX` · **severity:** Important
+- **location:** D8-GOLDEN-FLOWS §4.1, §5.5, §6.6, §13/§14; roadmap "D8 boundary" paragraph.
+- **governing authority:** D4 §7 ("D8 still owns the first controlled real effects…", six enumerated items) and D4 §4.7 residuals R1/R2; D4-R1 §13.
+- **counterexample:** D4 §7 enumerates six deferred probes: (1) first ML Price/Availability effect + authoritative reread; (2) selected-lane fiscal/invoice/**label** progression; (3) first irreversible 313→306; (4) first consequential native party create/update; (5) first controlled alternate-destination/contact realization; (6) any unexercised fiscal branch material to a selected flow. The candidate names (3)+(4)+(5) in §6.6 and the ML creation/write in §5.5; the standalone Price/Availability write (R1) is only obliquely covered if the creation probe is agreed to discharge it, and label progression and the unexercised-fiscal-branch clause are not carried at all. Worse, no clause states the closure law: if the operator never grants live-write authorization, does D8 stall indefinitely, or close with the obligations silently evaporating? Both failure modes are real and the second is the classic declared-risk-becomes-debt defect.
+- **smallest correction:** one disposition table in D8 listing every D4-deferred probe with exactly one of: `EXECUTE + RECORD BEFORE D8 CLOSE` or `EXPLICIT OPERATOR-RATIFIED RE-DEFER to <named later gate>`; plus one sentence: D8 cannot close while any row is undispositioned.
+- **owner:** D8 is the named receiving gate for these obligations; no D4 reopen — D4's list is unchanged, D8 must mirror and disposition it.
+
+**F-2 — no revalidation law if D6-R2 or the Pre-D9 contract materially changes accepted surface/owner/invariant**
+- **classification:** `D8_FIX` · **severity:** Important
+- **location:** D8-GOLDEN-FLOWS §12.2–§12.6; roadmap "Approved pre-D9 realization sequence".
+- **governing authority:** D8 §9 conservation control ("a required operation 100 or Permission 31 is a material finding"); Method global-coherence rule.
+- **counterexample:** precedent exists — D6's own realization work surfaced D6-R1 and legitimately moved the surface 95→99/29→30. If D6-R2 similarly surfaces a missing material operation/Permission via the smallest owning authority, the accepted D8 flows and the §9 "exactly 99/30" conservation row become silently stale, and D9 would adjudicate golden flows validated against a surface that no longer exists. The candidate is silent on this ordering (Challenge H sequencing question).
+- **smallest correction:** one clause in §12.2: any D6-R2/Pre-D9-contract change that alters an accepted operation, owner, Permission or material invariant (only via the smallest owning authority) triggers bounded revalidation of the affected D8 flow(s) before D9 entry, and the §9 conservation control re-baselines to the then-current accepted surface rather than the frozen numerals.
+- **owner:** D8 owns flow validity across the operator-approved post-D8 sequence it itself introduces.
+
+**F-3 — Governance is bound as a cross-cutting control but exercised by zero variants**
+- **classification:** `D8_FIX` · **severity:** Minor
+- **location:** D8-GOLDEN-FLOWS §9 (Governance/Work row), §5.4, §6.5.
+- **governing authority:** D1 Controlled Action Governance ("Governance owns authorization when required; execution stays with the action owner"); D7-C §7.1 step 5 (pre-dispatch Governance currentness revalidation); D5-B2 pipeline ("Governance when required").
+- **counterexample:** every other cross-cutting row (isolation, idempotency, physical qualification, knowledge honesty, effect safety) has at least one concrete falsifier row in §5.4/§6.5/§7.4; Governance has none. An implementation that treats a stale/revoked AuthorizationDecision as still valid at dispatch time, or lets Governance approval itself trigger execution, would pass the entire current minimum matrix.
+- **smallest correction:** one variant row in GF-01 or GF-02: "disposition requires current Governance authorization; authorization revoked/expired between approval and dispatch → fails closed pre-dispatch; Governance approval never executes the target." No new flow.
+- **owner:** variant addition inside an existing selected flow — exactly the candidate's own rule for cross-cutting properties.
+
+**F-4 — §12.5 partially restates the ratified D6 dependency graph, dropping the `app/routes → ui` edge**
+- **classification:** `D8_FIX` · **severity:** Minor
+- **location:** D8-GOLDEN-FLOWS §12.5 diagram.
+- **governing authority:** D6 §9.4 (allowed direction is closed-world and includes both `features ──→ ui` and `app/routes ─→ ui`).
+- **counterexample:** the Pre-D9 readiness contract is told to "convert material dependency directions into enforceable acceptance rules" starting from this §12.5 sketch. Under a closed-world/default-deny import rule, the omitted edge makes a D6-legal edge (`app/routes → ui`) forbidden by omission — a disguised amendment of a ratified mapping via incomplete restatement.
+- **smallest correction:** add the missing edge or replace the diagram with a bare citation of D6 §9.4 as the single source.
+- **owner:** D8 text fix; D6 unchanged.
+
+**F-5 — `scripts/gate.ps1` lost its trailing final newline in the candidate**
+- **classification:** `REPOSITORY_FIX` · **severity:** Minor
+- **location:** candidate diff, last hunk of `scripts/gate.ps1` (`\ No newline at end of file`).
+- **counterexample:** none functional (gate runs green); POSIX-tool and future-diff hygiene only. Prettier's lane does not cover `.ps1`, so nothing will ever flag it.
+- **smallest correction:** restore the final newline in the candidate branch.
+
+No other material finding exists. I did not manufacture style findings.
+
+### 5. Golden-flow coverage assessment
+
+- **GF-01 — necessary, sufficient, non-redundant.** Sole representative of the consequential-marketplace-write class: joint realization, fail-closed missing owner input, blast radius, idempotency fingerprint, override supersession, convergence-vs-transport. Removing it leaves D4-R1's entire §13 falsifier family unrepresented.
+- **GF-02 — necessary, sufficient with the F-3 variant, non-redundant.** Sole representative of party-ambiguity, destination safety, sanctioned-progression, physical-authority and cross-consequence-closure classes. The Post-Sale branch is correctly a branch: its distinct defect class (one consequence falsely closing another; Work close fabricating source closure) is present in the §6.5 table, so a standalone Post-Sale journey would add localization ceremony, not a new class. Not a hidden mega-flow: splitting it would sever exactly the cross-owner seams whose composition is the thing under test.
+- **GF-03 — necessary, sufficient, non-redundant.** Not redundant with Market/Economics reads: measurement-basis comparability, the survivorship-bias population law, scope-collapse prohibition, custody-vs-authorship and `performance.read` non-implication exist only in the Performance contract, and the 13th boundary is the least battle-tested accepted authority. No missing distinct Performance invariant requiring another path; the measure-by-scope obligation is D6-R1's explicitly assigned post-D9 real-dependency proof.
+- **SR-01 — necessary, sufficient, non-redundant, correctly systemic.** GF-01/GF-02 crash variants prove continuous-timeline safety; only SR-01 falsifies the rollback case where marker absence stops being evidence. It restates accepted D7-R1 §4 without weakening it, covers both false-negative continuity (fence must arm) and false-positive permanence (lineage-proved failover need not fence), and remains meaningfully executable post-D9.
+- **Missing distinct defect class:** none requiring a new flow. Candidates examined and rejected: channel onboarding/OAuth ingress (composition already whole-reviewed at the D5-B2 whole-ingress restructure; ingress is non-Product surface with its own falsifiers; implementation conformance re-executes them), Availability configuration (owner-separation class already in GF-01), access administration (revocation currency exercised via SR-01 + pre-dispatch gates), partial-acquisition absence≠closure (representable as an existing-flow variant under the knowledge-honesty control; D4-R1 proof obligation 3 already owns it).
+
+### 6. Cross-cutting control assessment
+
+Exercised, not merely mentioned — with one exception:
+
+- **Surface conservation:** independently recounted (99/30/H-A-S, 2 physical-qualification ops); the §9 row is checkable against the bundled OAD.
+- **Organization isolation:** exercised by the GF-01 "Organization/reference mismatch" variant; structural falsification (RLS/composite-FK/pool leakage) correctly assigned to post-D9 real PostgreSQL per D7-B §13.
+- **Auth carriers:** distinct-carrier and CSRF laws bound; dual-carrier ambiguity and carrier/scheme mismatch remain D7-R1 F-4 negative controls at implementation — acceptable as cross-cutting.
+- **Permission/kind/physical-qualification/Governance non-equivalence:** kind and physical qualification exercised by GF-02 variants; **Governance currency not exercised anywhere → F-3.**
+- **Wire authority / frontend:** GF-01 property 11 + the GF-02 §6.2 negative list verified against the OAD (no screen-shaped or command operations exist to leak).
+- **Idempotency/revision:** exercised by three GF-01 variants; 412-vs-409 distinctness is D7-B §13.12.
+- **Durable effects / reconciliation:** exercised by timeout/crash variants in both business flows plus SR-01.
+- **Work non-authority:** exercised by the GF-02 "Work close" variant.
+- **Knowledge honesty:** exercised by the whole GF-03 matrix plus GF-02 party-ambiguity.
+- **Technical exclusion:** the Direct-Oracle prohibition is exercised by GF-02 property 3 and D7-C falsifier 16.
+
+### 7. Proof-horizon assessment
+
+- **Provable now (D8, repository reasoning):** everything in §3 above — flow/authority correspondence, OAD surface conservation, negative claims about nonexistent operations, falsifier-table representativeness, SR-01/D7-R1 identity.
+- **Requires separately authorized real external probes before D8 close (or explicit ratified re-defer — F-1):** the D4 §7 list — controlled ML creation/write with authoritative reread + shared-UP blast-radius verification (discharging the Price/Availability effect if so recorded), controlled Destination Realization, first 313→306 with reread/correlation, selected-lane label/artifact progression, unexercised-fiscal-branch check. These are external-contract evidence and do not violate the implementation gate: they exercise provider/ERP contracts, not a Product runtime.
+- **Must wait for post-D9 implemented conformance:** all D7-B §13 PostgreSQL/RLS proofs, D7-C §15 River proofs, D7-R1 §4 recovery falsifiers (both unarmed-restore and continuous-lineage probes), D7-R1 F-4 validator/carrier negative controls, browser/CSRF behavior, object-store integrity, and the D6-R1 measure-by-scope proof. No D8 language claims any of these currently execute; §4.2 and roadmap "active runtime NONE" are honest.
+
+### 8. Implementation-readiness assessment
+
+- **D8-F1 is material and correctly owned.** The architecture-closure ≠ implementation-readiness distinction is real (D6 proved 39 representative states for 99 operations — representative, not exhaustive; a coding agent would still decide material screen states). Surfacing it during whole-composition review is exactly where it becomes visible; filing the work as D6-R2 + a pre-D9 gate rather than doing it inside D8 avoids a D6 reopen by convenience. Not ceremony: neither D6 (closed as architecture) nor D9 (adversarial review, not authoring) implies this completion.
+- **D6-R2 obligations are proportionate:** derivation from 99/30+D7 rather than visual-first, shared annotated wireframes over combinatorial images, and the fabricate-nothing/return-to-smallest-owner stop rule are the right guards against both under- and over-specification.
+- **Realization Contract:** the field set (outcome, authorities, operations, permissions, state ownership, runtime properties, dependency directions, negative controls, executable acceptance, real-dependency proof, exit state) passes the two-materially-different-implementations test for authority/contract/dependency/acceptance dimensions; residual freedom (styling, private decomposition, naming) is exactly the freedom §12.4 intends to leave. The D9 entry challenge in §12.6 is the correct adversarial closure for whatever ambiguity survives.
+- **Import/dependency enforcement:** converting D6 §9.4 into default-deny acceptance rules is right, and D6 itself already deferred the mechanism until a real source tree exists — but see F-4: the conversion must start from the complete ratified graph, not §12.5's partial sketch.
+- **Sequencing:** correct except for the missing revalidation law — F-2.
+
+### 9. YAGNI / Global Maximum assessment
+
+The candidate is the smallest sustainable structure. 3+1 is genuinely irreducible: each row is the sole representative of a disjoint defect-class family (consequential marketplace write; cross-owner business/fiscal/physical composition; knowledge honesty; acknowledged-state rollback), and every proposed expansion in §11 was checked and correctly rejected — no rejected row names a defect class the selected set cannot falsify. Compression into mega-flows is correctly rejected for localization. D8-F1 does not create speculative machinery: it adds one completion pass and one contract seam, both consumed by the already-required D9; the Realization Contract is a checklist, not a framework. No over-engineering found; under-engineering is limited to F-1/F-2/F-3.
+
+### 10. Required corrections before D8 closeout
+
+**Candidate fixes (block closeout, not adjudication):**
+
+1. F-1 — probe disposition table + closure law.
+2. F-2 — post-D8 material-change revalidation clause.
+3. F-3 — one Governance-currency variant row.
+4. F-4 — complete or cite the D6 §9.4 graph.
+5. F-5 — restore `gate.ps1` trailing newline.
+
+**Later proof obligations (not candidate text):** execution/recording of the D4-deferred probes under explicit operator authorization per the F-1 disposition table; all post-D9 conformance items in §7.
+
+**Rejected suggestions (do not adopt):** standalone flows for onboarding, Post-Sale, Work lifecycle, Availability config, access administration or per-operation coverage; any exhaustive scenario catalog; any second recovery flow.
+
+### 11. Reopen decision
+
+**NO D0–D7 REOPEN.** Every candidate claim traced to an accepted owner without contradiction; all five findings are D8-local text/bookkeeping corrections plus one repository hygiene item. No falsifier implicates any accepted D0–D7 semantic, ownership, safety or proof decision.
