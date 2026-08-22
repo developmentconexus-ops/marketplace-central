@@ -1,6 +1,6 @@
 # D6-R2 P4-R1 — Global IA / Operational Mass Reopen
 
-> **Status:** OPEN / OPERATOR-ADJUDICATED DIRECTION — IA-01 confirmed; OP-READ-01 RESOLVED; corrected B00 render NEXT
+> **Status:** OPEN / OPERATOR-ADJUDICATED DIRECTION — IA-01 confirmed; OP-READ-01 RESOLVED; corrected B00 HTML `CANDIDATE` rendered
 > **Parent:** [D6-R2 Complete Frontend Realization Closure](D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md)
 > **Method:** [Frontend Product Experience Planning Method v2.1](../../development/frontend-product-experience-planning-method.md)
 > **Bounded Product repair:** [D5-R2 Operational Read Projection Repair](D5-R2-OPERATIONAL-READ-PROJECTION-REPAIR.md)
@@ -100,11 +100,11 @@ The reopen remains deliberately bounded:
 
 ```text
 B00 physical shell / Organization / Installation / responsive laws -> remain LOCKED
-B00 global grouping / nav labels                                 -> REOPENED by IA-01
+B00 global grouping / nav labels                                 -> REOPENED by IA-01 / corrected HTML CANDIDATE
 B01 Overview content/state hierarchy                             -> remains LOCKED
 B01 will later inherit the corrected global nav                  -> structural shell delta only
 B10 Preparation internal P6 pattern                              -> remains valid
-B10 placement in global IA                                       -> SUSPENDED until corrected B00 nav is re-rendered
+B10 placement in global IA                                       -> SUSPENDED until corrected B00 nav is operator-LOCKED
 B20+                                                               -> BLOCKED
 ```
 
@@ -208,6 +208,14 @@ accepted Product/system authority
 
 A better screen is not sufficient reason to change Product. A proven user job requiring an already-owned truth that is not consumable may justify the smallest owner-local read repair, as OP-READ-01 demonstrated.
 
-## 8. Exact next action
+## 8. Corrected B00 candidate
 
-Re-render the **B00 global navigation only** using the operator-approved masses while preserving the previously locked physical/context/responsive shell. The corrected B00 remains `CANDIDATE` until explicit operator review. Do not render the Visão operacional or resume B10/B20 before the corrected global IA is operator-`LOCKED`.
+**Artifact:** [`qualification/d6-r2-wireframes/b00-app-shell.html`](../../../qualification/d6-r2-wireframes/b00-app-shell.html)
+
+The rerender changes only the reopened navigation grouping/labels and adds the candidate organization-wide `Visão operacional` destination. The previously locked shell dimensions, Organization/Installation laws, access failure states and responsive transformation are intentionally preserved.
+
+The artifact remains `CANDIDATE`; IA-01 is not restored to global-frame `LOCK` until explicit post-render operator adjudication.
+
+## 9. Exact next action
+
+Operator opens/interacts with the corrected **B00 App Shell + global IA** and adjudicates the rerendered navigation. Do not render the Visão operacional or resume B10/B20 before the corrected global IA is operator-`LOCKED`.
