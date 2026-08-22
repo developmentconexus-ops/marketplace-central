@@ -1,8 +1,10 @@
 # D6-R2 P4-R1 — Global IA / Operational Mass Reopen
 
-> **Status:** OPEN / OPERATOR-ADJUDICATED DIRECTION — IA-01 confirmed; OP-READ-01 OPEN
+> **Status:** OPEN / OPERATOR-ADJUDICATED DIRECTION — IA-01 confirmed; OP-READ-01 RESOLVED; corrected B00 render NEXT
 > **Parent:** [D6-R2 Complete Frontend Realization Closure](D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md)
 > **Method:** [Frontend Product Experience Planning Method v2.1](../../development/frontend-product-experience-planning-method.md)
+> **Bounded Product repair:** [D5-R2 Operational Read Projection Repair](D5-R2-OPERATIONAL-READ-PROJECTION-REPAIR.md)
+> **GF-02 revalidation:** [D8-R2 Operational Read Revalidation](D8-R2-OPERATIONAL-READ-REVALIDATION.md)
 > **Product implementation:** BLOCKED UNTIL accepted D9
 
 ## 1. Trigger
@@ -19,7 +21,7 @@ post-sale execution
 
 This is **material user-model evidence**, not visual preference. It falsifies only the global functional grouping that placed both masses under one `OPERAÇÕES` label.
 
-The frontend method requires IA to follow human mental models/tasks rather than backend topology. Therefore the smallest affected authority is reopened.
+The frontend method requires IA to follow human mental models/tasks rather than backend topology. Therefore the smallest affected authority was reopened.
 
 ## 2. IA-01 — material falsifier
 
@@ -94,7 +96,7 @@ The only candidate new route identity is the operational landing, e.g. `/org/:or
 
 ## 4. Lock impact
 
-The reopen is deliberately bounded:
+The reopen remains deliberately bounded:
 
 ```text
 B00 physical shell / Organization / Installation / responsive laws -> remain LOCKED
@@ -106,7 +108,7 @@ B10 placement in global IA                                       -> SUSPENDED un
 B20+                                                               -> BLOCKED
 ```
 
-No React/topology/API/Permission/owner/runtime decision is reopened by IA-01 itself.
+No React/topology/Permission/owner/runtime decision is reopened by IA-01.
 
 ## 5. Operational landing structural hypothesis
 
@@ -131,58 +133,81 @@ A global `Nova -> Faturar -> Separar -> Conferir -> Embalar -> Enviar` Kanban is
 
 A Kanban-like representation remains a legitimate later hypothesis **inside Fulfillment/Expedição**, where one owner possesses explicit physical checkpoints.
 
-## 6. OP-READ-01 — owner-local operational read gap
+## 6. OP-READ-01 — RESOLVED
 
-**Status:** OPEN / operator-approved finding for bounded analysis before operational landing wireframe.
+The evidenced operational cockpit initially exposed an owner-local read gap: several collection contracts lacked enough state for efficient, honest triage without N+1 detail fan-out or frontend business projection.
 
-The user need is now evidenced, but several current collection reads do not carry enough owner-local state for efficient, honest triage without N+1 detail fan-out or frontend business projection.
+The operator approved the smallest owner-local repair and D5-R2 proved it executably while preserving the Product census and authorities.
 
-Observed gaps:
-
-### Fulfillment
-
-`GetFulfillmentExecution` owns:
+Accepted repair summary:
 
 ```text
-separation
-physical_conference
-packing
-dispatch_handoff
-physical_readiness
-provider_dispatch_deadline
+BusinessOrderIntent list
+  + convergence
+  + external_effect_state / convergence narrowing
+
+InvoicingIntent + list
+  + source-qualified Sale correlation
+  + convergence
+  + optional FulfillmentExecution correlation in list
+  + external_effect_state / convergence narrowing
+
+FulfillmentExecution list
+  + separation / physical_conference / packing / dispatch_handoff
+  + optional provider dispatch deadline
+  + owner-native readiness/checkpoint/deadline narrowing
+
+Shipment list
+  + optional Sale + dispatch deadline
+  + state narrowing
 ```
 
-but `FulfillmentExecutionListItem` exposes only identity/sale/scope/node, `physical_readiness` and `created_at`; `ListFulfillmentExecutions` currently filters by sale and node only. A UI cannot safely derive paginated `A separar / A conferir / A embalar / A despachar` queues from the current collection contract without detail fan-out and client classification.
+No repair was required for MarketplaceSales, PostSale or Work.
 
-### Business-System Materialization
-
-`BusinessOrderIntent` owns `external_effect_state + convergence`; its list item currently omits convergence.
-
-`InvoicingIntent` owns `external_effect_state + convergence` and correlation to BusinessOrder/Fulfillment; its list item omits convergence and richer sale/action correlation.
-
-### Shipment
-
-`Shipment` owns `sale`, `state`, `dispatch_deadline`, `observed_at`; `ShipmentListItem` currently exposes only shipment identity, state and observation time, and the collection has no state/deadline triage filter.
-
-### Post-Sale / Work
-
-These are comparatively queue-capable already: PostSale admits lifecycle narrowing; Work admits lifecycle, responsibility, assignment and origin filters.
-
-## 7. Repair law
-
-OP-READ-01 does **not** authorize:
+### 6.1 Preserved negative controls
 
 ```text
-GET /operational-dashboard
-new OperationalWorkflow owner
-screen-shaped aggregate API
-frontend-computed authoritative workflow state
-first-page counts presented as global counts
-N+1 detail fan-out as the implementation baseline
+no /operational-dashboard Product endpoint
+no OperationalWorkflow owner
+no cross-owner synthetic lifecycle
+no operational_stage / next_action / priority / total_count
+no global totals inferred from one paginated page
+no N+1 detail fan-out as production baseline
 ```
 
-The next action is to derive the smallest owner-local read-contract enrichment needed for the evidenced cockpit/queues. Prefer enriching existing list-item projections and filters; preserve existing semantic owners and, if possible, the 99-operation census. Any accepted Product-contract change must revalidate the affected D5 proof and GF-02 before D6-R2 continues.
+### 6.2 Proof and revalidation
+
+[D5-R2](D5-R2-OPERATIONAL-READ-PROJECTION-REPAIR.md) proves:
+
+```text
+99 Product operations
+30 ordinary Permissions
+H/A/S only
+owner-local projection proof PASS
+owner-local filter proof PASS
+negative controls 2/2
+```
+
+[D8-R2](D8-R2-OPERATIONAL-READ-REVALIDATION.md) confirms GF-02 choreography, owners, writes/effects, physical authority and source-qualified outcomes remain unchanged. Only read projection/filter expressibility is enriched.
+
+**OP-READ-01 is therefore RESOLVED.**
+
+## 7. Global-Maximum / YAGNI decision law
+
+For the remainder of D6-R2, every material decision follows:
+
+```text
+accepted Product/system authority
+→ evidenced human job / mental model
+→ smallest frontend structure that serves it
+→ owner/wire trace
+→ repair only the smallest owning authority when evidence falsifies it
+→ no local screen optimization that creates parallel Product truth
+→ no speculative capability/platform work
+```
+
+A better screen is not sufficient reason to change Product. A proven user job requiring an already-owned truth that is not consumable may justify the smallest owner-local read repair, as OP-READ-01 demonstrated.
 
 ## 8. Exact next action
 
-Derive and operator-review the bounded **OP-READ-01 repair candidate**. Do not edit the canonical OAD until that candidate is explicitly approved. Do not re-render B00 or the Visão operacional before the read gap is dispositioned.
+Re-render the **B00 global navigation only** using the operator-approved masses while preserving the previously locked physical/context/responsive shell. The corrected B00 remains `CANDIDATE` until explicit operator review. Do not render the Visão operacional or resume B10/B20 before the corrected global IA is operator-`LOCKED`.
