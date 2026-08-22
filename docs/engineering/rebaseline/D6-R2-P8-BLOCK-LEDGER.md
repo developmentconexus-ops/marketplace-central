@@ -1,6 +1,6 @@
 # D6-R2 P8 — Structural Wireframe Block Ledger
 
-> **Status:** OPEN / ACTIVE — B00 physical shell + B01 content operator-`LOCKED`; B00 global IA REOPENED by IA-01; OP-READ-01 RESOLVED; corrected B00 render NEXT; B10 SUSPENDED
+> **Status:** OPEN / ACTIVE — B00 physical shell + B01 content operator-`LOCKED`; corrected B00 global-IA HTML `CANDIDATE` rendered; OP-READ-01 RESOLVED; B10 SUSPENDED
 > **Parent:** [D6-R2 Complete Frontend Realization Closure](D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md)
 > **P4-R1 reopen:** [Global IA / Operational Mass Reopen](D6-R2-P4-R1-GLOBAL-IA-OPERATIONAL-MASS-REOPEN.md)
 > **D5-R2 repair:** [Operational Read Projection Repair](D5-R2-OPERATIONAL-READ-PROJECTION-REPAIR.md)
@@ -27,13 +27,13 @@ interaction needed to prove the block
 
 They do **not** decide final palette, typography, iconography, radius, shadows, illustration, branding polish or final component styling.
 
-## 2. B00 — App Shell + global IA — PARTIAL REOPEN / RERENDER NEXT
+## 2. B00 — App Shell + global IA — CORRECTED CANDIDATE
 
 **Physical/context shell:** `LOCKED`.  
-**Global IA grouping/labels:** `REOPENED` by operator-approved finding IA-01.  
-**Artifact to correct:** [`qualification/d6-r2-wireframes/b00-app-shell.html`](../../../qualification/d6-r2-wireframes/b00-app-shell.html)
+**Global IA grouping/labels:** corrected HTML `CANDIDATE`; awaiting operator review.  
+**Artifact:** [`qualification/d6-r2-wireframes/b00-app-shell.html`](../../../qualification/d6-r2-wireframes/b00-app-shell.html)
 
-The following B00 laws remain locked:
+The following B00 laws remain locked and were not changed by the rerender:
 
 ```text
 desktop persistent sidebar ≈264 px
@@ -53,7 +53,7 @@ Also preserved:
 - no-access/stale Organization blocks explicitly;
 - responsive transformation never changes context meaning.
 
-### 2.1 IA-01 grouping — operator-approved direction
+### 2.1 IA-01 corrected grouping — operator-adjudicated direction / rendered candidate
 
 ```text
 VISÃO GERAL
@@ -87,9 +87,9 @@ CONFIGURAÇÕES
   Configurações
 ```
 
-This grouping is operator-adjudicated direction but is not yet a restored B00 global-frame `LOCK`: it must be visibly re-rendered and separately reviewed.
-
 Existing technical route identities remain where possible; user-facing `Anúncios` may continue to use `/publicacoes/*`, and `Preços` may continue to use `/publicacoes/precos`. The only candidate new route is the organization-wide operational landing `/org/:organizationId/operacao`.
+
+The rerender deliberately does **not** decide the Visão operacional content. It proves only the destination's place in global IA and its organization-wide context.
 
 ## 3. B01 — Overview
 
@@ -178,8 +178,18 @@ human job + accepted authority
 → no speculative platform capability
 ```
 
-## 8. Exact next action
+## 8. Corrected B00 operator adjudication gate
 
-Re-render **B00 App Shell + global IA** only, preserving the locked physical/context/responsive shell and applying the operator-approved IA-01 navigation grouping. The corrected HTML remains `CANDIDATE` until the operator opens/interacts with it and explicitly restores the global-frame `LOCK`.
+The global-frame IA lock is restored only after the operator opens/interacts with the corrected HTML and explicitly adjudicates the navigation.
 
-Do not render the Visão operacional or resume B10/B20 before corrected B00 is operator-`LOCKED`.
+Possible dispositions:
+
+```text
+LOCKED       corrected global IA approved
+CANDIDATE    changes requested or review pending
+FINDING      another material IA contradiction discovered
+```
+
+## 9. Exact next action
+
+Operator opens/interacts with the corrected **B00 App Shell + global IA** and adjudicates the rerendered navigation. Do not render the Visão operacional or resume B10/B20 before corrected B00 is operator-`LOCKED`.
