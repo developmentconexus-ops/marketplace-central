@@ -1,11 +1,12 @@
 # D7-E — Operability / Secrets / Migrations / Deployment & Proof Baseline
 
-> **Status:** CANDIDATE / OPERATOR RATIFICATION PENDING  
+> **Status:** OPERATOR-RATIFIED  
 > **Parent:** `D7-RUNTIME-JOBS-TRANSACTIONS.md`  
 > **Accepted prerequisites:** D7-A + D7-B + D7-C + D7-D — OPERATOR-RATIFIED  
 > **Parent authorities:** accepted D5 Product OAD/tooling + accepted D7 runtime/persistence/work/auth realization  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
-> **Derived:** 2026-08-22
+> **Derived:** 2026-08-22  
+> **Ratified:** 2026-08-22
 
 ## 1. Purpose
 
@@ -31,7 +32,7 @@ D7-E does not create Product operations, monitoring Product features, a generic 
 
 ## 3. Product HTTP realization
 
-### 3.1 `go-chi/chi/v5` — SELECT CANDIDATE
+### 3.1 `go-chi/chi/v5` — SELECTED
 
 Use `github.com/go-chi/chi/v5` as the Product/technical HTTP router on top of `net/http`.
 
@@ -46,7 +47,7 @@ Exact Chi minor/patch is implementation-manifest authority; the major line is v5
 
 Echo/Gin/Fiber/Iris/Gorilla are not admitted merely because `oapi-codegen` supports them. They provide no current property absent from Chi for MPC.
 
-### 3.2 `oapi-codegen v2.8.0` strict Chi server — SELECT CANDIDATE
+### 3.2 `oapi-codegen v2.8.0` strict Chi server — SELECTED
 
 D5 already pins `oapi-codegen v2.8.0` for the canonical Product OAD Go projection. D7-E reuses that same generator rather than adding a second server generator.
 
@@ -97,7 +98,7 @@ Technical Ingress and authored-media delivery are not added to the Product OAD. 
 
 D5 already admits authored ListingIntent media and bounded fulfillment/artifact byte delivery while explicitly deferring physical storage/delivery mechanics to D7.
 
-### 4.1 Private S3-compatible object storage — SELECT CANDIDATE
+### 4.1 Private S3-compatible object storage — SELECTED
 
 Use one private S3 API-compatible object-storage bucket/namespace for MPC-owned binary content whose bytes are not appropriate as PostgreSQL relational state.
 
@@ -411,8 +412,8 @@ Exact runtime/test dependency versions other than the already-D5-pinned OAD tool
 
 ## 15. Adjudication
 
-**Candidate:** select Chi v5 + D5-pinned `oapi-codegen v2.8.0` strict server + `nethttp-middleware`; generate runtime operation-policy metadata from the OAD; keep private MPC binaries in private S3 API-compatible object storage with authenticated Go delivery; use typed startup config with deployment-injected secrets; use `tern/v2` through a separate migration role/release step; use JSON `slog` plus OpenTelemetry traces/metrics over OTLP/HTTP; package frontend + Go as one immutable OCI application image behind a trusted TLS edge; use dependency-aware liveness/readiness without provider false-death; require PostgreSQL PITR/restore proof, Keycloak identity-continuity backup and binary-integrity recovery; and require real PostgreSQL/River/Keycloak/browser/router/object-store falsifiers before implementation is accepted.
+**OPERATOR-RATIFIED:** select Chi v5 + D5-pinned `oapi-codegen v2.8.0` strict server + `nethttp-middleware`; generate runtime operation-policy metadata from the OAD; keep private MPC binaries in private S3 API-compatible object storage with authenticated Go delivery; use typed startup config with deployment-injected secrets; use `tern/v2` through a separate migration role/release step; use JSON `slog` plus OpenTelemetry traces/metrics over OTLP/HTTP; package frontend + Go as one immutable OCI application image behind a trusted TLS edge; use dependency-aware liveness/readiness without provider false-death; require PostgreSQL PITR/restore proof, Keycloak identity-continuity backup and binary-integrity recovery; and require real PostgreSQL/River/Keycloak/browser/router/object-store falsifiers before implementation is accepted.
 
-If ratified, D7-A→D7-E are complete. Next is **whole-D7 coherence + executable proof/adversarial review**, not D8 yet.
+D7-A→D7-E are complete. Next is **whole-D7 coherence + executable proof/adversarial review**, not D8 yet.
 
 Do not begin D8, D9 or Product implementation.
