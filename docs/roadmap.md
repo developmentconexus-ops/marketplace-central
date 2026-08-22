@@ -12,12 +12,12 @@
 | Current stage | **D7 — Runtime / Jobs / Transactions — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D6 ACCEPTED / CLOSED** |
 | D7 authority | [D7 Runtime / Jobs / Transactions](engineering/rebaseline/D7-RUNTIME-JOBS-TRANSACTIONS.md) |
-| D7-A | **Runtime Envelope & Transaction Ownership Boundary — CANDIDATE / OPERATOR RATIFICATION PENDING** |
+| D7-A | **Runtime Envelope & Transaction Ownership Boundary — OPERATOR-RATIFIED** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Operator adjudicate/ratify D7-A candidate before opening D7-B persistence/isolation realization.** |
+| Exact next action | **Open D7-B — PostgreSQL Isolation & Transaction Realization: derive structural Organization isolation/RLS, transaction context, idempotency storage and ETag/revision enforcement before selecting pgx/sqlc/tern details.** |
 | Implementation | **BLOCKED UNTIL D9** |
 
 ## Stage progression
@@ -32,7 +32,7 @@
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
 | D5 — API | ACCEPTED / CLOSED — bounded D5-R1 browser-auth carrier correction integrated and proved through D6 |
 | D6 — Frontend | **ACCEPTED / CLOSED** |
-| D7 — Runtime / Jobs / Transactions | **OPEN / ACTIVE — D7-A candidate pending operator ratification** |
+| D7 — Runtime / Jobs / Transactions | **OPEN / ACTIVE — D7-A operator-ratified; D7-B next** |
 | D8 — Golden Flows | BLOCKED |
 | D9 — Adversarial Architecture Review | BLOCKED |
 | Implementation | BLOCKED UNTIL D9 |
@@ -68,9 +68,9 @@ D7 must preserve Organization isolation, owner-defined Q/C/E/P meaning, Product 
 
 Pre-vetted candidates such as modular-monolith class, pgx/pgxpool, PostgreSQL RLS, River, OpenTelemetry/OTLP/slog, sqlc, tern, Keycloak and real-dependency test tooling remain **candidates only** until D7 proves a current consumer/property and adjudicates the smallest sufficient mechanism.
 
-## D7-A candidate
+## D7-A accepted authority
 
-Current candidate selects the minimum runtime envelope:
+The operator ratified the minimum runtime envelope:
 
 ```text
 one Go application process per replica
@@ -84,9 +84,9 @@ one Go application process per replica
 
 Owner consequential command intake uses one owner-local PostgreSQL transaction for canonical owner state plus required idempotency/audit/durable-handoff records. External writes happen only after commit and convergence remains authoritative-reread/reconciliation-driven. Cross-owner business state is never updated through a distributed/shared transaction.
 
-Separate API/worker processes are deferred until measured resource/failure/scaling/security/deployment evidence requires them; microservices remain rejected absent an independent consumer.
+Separate API/worker processes are deferred until measured resource/failure/scaling/security/deployment evidence requires them; microservices remain rejected absent an independent consumer. Current Go and River primary evidence shows graceful HTTP shutdown, in-process worker execution, transaction-bound job insertion and a later insert-only/split mode are available without forcing another service boundary. River remains a D7-C candidate, not a D7-A dependency selection.
 
-Current Go and River primary evidence shows graceful HTTP shutdown, in-process worker execution, transaction-bound job insertion and a later insert-only/split mode are available without forcing another service boundary. River remains a D7-C candidate, not a D7-A dependency selection.
+D7-B now owns structural PostgreSQL Organization isolation, transaction context, idempotency persistence and ETag/revision mechanics. It must establish the properties first and admit concrete database libraries only afterward.
 
 D8–D9 remain blocked. Product implementation remains blocked until D9. Reopen accepted D0–D6 authority only for a material falsifier at the smallest owning stage.
 
