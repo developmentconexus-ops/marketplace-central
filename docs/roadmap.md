@@ -12,15 +12,16 @@
 | Current stage | **D6-R2 — Complete Frontend Realization Closure — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | D6-R2 authority | [Closure](engineering/rebaseline/D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md) + [P4-R1](engineering/rebaseline/D6-R2-P4-R1-GLOBAL-IA-OPERATIONAL-MASS-REOPEN.md) + [P8](engineering/rebaseline/D6-R2-P8-BLOCK-LEDGER.md) — **IA-01 CLOSED; B00/B01 LOCKED; OP-READ-01 RESOLVED; B10 SUSPENDED** |
-| NOTIF-01 design | [Personal Notification Architecture Design](engineering/rebaseline/D6-R2-NOTIF-01-NOTIFICATION-ARCHITECTURE-DESIGN.md) — **OPERATOR-APPROVED DESIGN** |
-| NOTIF-01 plan | [Authority Amendment Plan](engineering/rebaseline/D6-R2-NOTIF-01-AUTHORITY-AMENDMENT-PLAN.md) — **READY FOR EXECUTION** |
+| NOTIF-01 design | [Architecture Design](engineering/rebaseline/D6-R2-NOTIF-01-NOTIFICATION-ARCHITECTURE-DESIGN.md) — **OPERATOR-APPROVED** |
+| NOTIF-01 authority | [Authority Amendment](engineering/rebaseline/D6-R2-NOTIF-01-AUTHORITY-AMENDMENT.md) — **D0 PRODUCT-SCOPE CANDIDATE; D1+ BLOCKED** |
+| NOTIF-01 plan | [Authority Amendment Plan](engineering/rebaseline/D6-R2-NOTIF-01-AUTHORITY-AMENDMENT-PLAN.md) — **ACTIVE / TASK 1** |
 | Product repair | [D5-R2](engineering/rebaseline/D5-R2-OPERATIONAL-READ-PROJECTION-REPAIR.md) — **ACCEPTED / CANONICAL** |
 | GF-02 revalidation | [D8-R2](engineering/rebaseline/D8-R2-OPERATIONAL-READ-REVALIDATION.md) — **ACCEPTED / PASS** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Choose NOTIF-01 plan execution mode, then execute Task 1 only: derive the bounded D0 Product-scope amendment and stop for operator adjudication. Do not open D1, edit the OAD, alter B00 for the bell, or resume B10/B20 first.** |
+| Exact next action | **Operator adjudicates only the NOTIF-01 bounded D0 Product-scope amendment. Do not open D1, edit the OAD, alter B00 for the bell, or resume B10/B20 before explicit D0 approval.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -29,8 +30,8 @@
 
 | Stage / gate | Status |
 | --- | --- |
-| D0 — Product / System Definition | ACCEPTED / CLOSED |
-| D1 — Domains / Boundaries | ACCEPTED / CLOSED |
+| D0 — Product / System Definition | ACCEPTED / CLOSED; **NOTIF-01 bounded amendment CANDIDATE** |
+| D1 — Domains / Boundaries | ACCEPTED / CLOSED; NOTIF-01 reopen BLOCKED |
 | D2 — Identity / Tenant / Data Ownership | ACCEPTED / CLOSED |
 | D3 — Communication / Events | ACCEPTED / CLOSED |
 | D4 — External Integrations | ACCEPTED / CLOSED |
@@ -41,7 +42,7 @@
 | D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED** |
 | D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED** |
 | D8-R2 — GF-02 Operational Read Revalidation | **ACCEPTED / PASS** |
-| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00/B01 LOCKED; B10 SUSPENDED; NOTIF-01 design approved / amendment plan ready** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00/B01 LOCKED; B10 SUSPENDED; NOTIF-01 D0 candidate** |
 | Pre-D9 readiness | **BLOCKED** |
 | D9 — Adversarial Architecture Review | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -51,9 +52,9 @@
 - IA-01 is closed: **OFERTA / OPERAÇÃO / ESTRATÉGIA E INTELIGÊNCIA / CONTROLE / CONFIGURAÇÕES**; `Publicações` is **Anúncios** and **Preços** is first-class under Oferta.
 - `OPERAÇÃO` = **Visão operacional / Vendas / Expedição / Pós-venda**; a global cross-owner Kanban is rejected.
 - OP-READ-01 is resolved by D5-R2; Product remains **99/30/H-A-S**. D8-R2 preserves GF-02.
-- **B00 App Shell + corrected global IA and B01 content are LOCKED.** B10 remains valid under `OFERTA > Preparação` but is paused for NOTIF-01.
-- NOTIF-01 design is operator-approved: persistent Personal Notifications, recoverable PostgreSQL+River delivery, no broker, no Work/Audit/authorization conflation, and an Organization-scoped **bell in the topbar** as Inbox entry point.
-- NOTIF-01 execution is gated D0→D1→D2→D3→D5→D6→D7→D8; each gate requires its own proof/operator adjudication. Product code remains blocked.
+- **B00 App Shell + corrected global IA and B01 content are LOCKED.** B10 remains paused for NOTIF-01.
+- NOTIF-01 design is approved, including the future Organization-scoped topbar bell; the current gate admits only the D0 Personal Notification Inbox Product responsibility/non-goals.
+- D1 owner/boundaries and all downstream Notification authority remain blocked until D0 is explicitly ratified.
 - Global-Maximum/YAGNI remains binding.
 
 ## D8 authority carried forward
