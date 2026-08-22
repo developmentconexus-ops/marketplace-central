@@ -108,6 +108,7 @@ B01 will later inherit the corrected global navigation. Its content/state lock i
 ## 4. B10 — Preparation — SUSPENDED
 
 **Internal pattern:** P6 `DERIVED`; P7 NOT TRIGGERED.  
+**P6 evidence:** [B10 Preparation Reference Study](D6-R2-P6-B10-PREPARATION-REFERENCE-STUDY.md).  
 **Rendered artifact:** [`qualification/d6-r2-wireframes/b10-preparation.html`](../../../qualification/d6-r2-wireframes/b10-preparation.html)  
 **Current disposition:** `SUSPENDED CANDIDATE` — do not operator-lock until corrected global IA is restored.
 
