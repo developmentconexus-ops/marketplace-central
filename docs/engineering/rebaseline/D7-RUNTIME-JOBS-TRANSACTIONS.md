@@ -1,6 +1,6 @@
 # D7 — Runtime / Jobs / Transactions
 
-> **Status:** OPEN / ACTIVE — D7-A RUNTIME ENVELOPE NEXT
+> **Status:** OPEN / ACTIVE — D7-A CANDIDATE / OPERATOR RATIFICATION PENDING
 > **Program:** Architecture Rebaseline / Technical System Design
 > **Opened:** 2026-08-21
 > **Parent authorities:** accepted D0–D6 semantics, `ARCHITECTURE.md`, canonical Product OAD, and bounded owner authority routed by `docs/index.md`
@@ -48,62 +48,21 @@ D7 must resolve only the mechanics needed by accepted D0–D6 behavior.
 
 Decide the minimum number and responsibility of runtime processes/executables and the serving boundary between browser/static delivery, Product API, Technical Ingress and background work.
 
-Questions:
-
-- one deployable modular-monolith class or more than one process for a proved operational reason;
-- whether HTTP serving and background execution share one binary/process or only one codebase/deployment unit;
-- where composition/wiring lives without becoming business authority;
-- shutdown/readiness/health boundaries needed for correctness;
-- same-origin topology required by D5-R1/D6 without creating a screen-shaped BFF.
-
 ### D7-B — Persistence, isolation and transactions
 
-Decide:
-
-- PostgreSQL connection/transaction ownership;
-- structural Organization isolation / RLS model and fail-closed proof;
-- transaction boundary for owner command intake;
-- concurrency/precondition realization for accepted ETag/revision semantics;
-- idempotency record ownership/lifecycle;
-- read-projection persistence only where a named consumer requires it.
-
-No schema/table census is frozen before these invariants are established.
+Decide PostgreSQL connection/transaction ownership, structural Organization isolation/RLS, owner command transactions, ETag/revision realization, idempotency lifecycle and only justified read projections.
 
 ### D7-C — Durable work and external effects
 
-Decide the smallest mechanism for:
-
-- post-commit durable work;
-- schedules/polling where accepted acquisition requires them;
-- owner fact → independent consumer reaction where D3 admits E;
-- external-effect dispatch, ambiguous outcomes, authoritative reread and reconciliation;
-- retry classification/backoff without changing business meaning;
-- atomic handoff between owner state commit and required durable work.
-
-No generic workflow engine, event bus or connector platform is admitted by default.
+Decide post-commit durable work, schedules/polling, admitted E reactions, external-effect dispatch/reconciliation, retry classification and atomic handoff between owner state and required work.
 
 ### D7-D — Authentication/session request-trust realization
 
-Realize the already-decided D5-R1 profile:
-
-- ApplicationSession representation/persistence/expiry/rotation/revocation;
-- OIDC Authorization Code exchange and server-side token handling;
-- CSRF bootstrap/generation/carriage/rotation;
-- Keycloak/provider client/realm topology only to the extent required now;
-- A/S audience-bound bearer validation and cache mechanics;
-- same-origin browser/API topology.
-
-D7 may choose mechanisms; it may not return the human SPA to bearer-token ownership.
+Realize ApplicationSession, OIDC exchange, CSRF, Keycloak/provider topology and A/S token validation under the already-decided D5-R1 carrier split.
 
 ### D7-E — Operability boundary
 
-Decide only what is needed for an executable production target:
-
-- structured logs/traces/metrics and correlation boundaries;
-- secrets/configuration ownership and injection;
-- migration ownership;
-- deployment/readiness/backup expectations required by accepted state and auth;
-- real-dependency test/proof seams needed before D8.
+Decide only the structured observability, secrets/configuration, migrations, deployment/readiness/backup and real-dependency proof mechanics needed by the resulting runtime.
 
 ## 5. Candidate set is evidence, not selection
 
@@ -146,39 +105,129 @@ D8 will exercise composed golden flows. D7 must provide the runtime contracts an
 
 ## 7. YAGNI exclusions
 
-Absent a concrete falsifier/consumer, D7 does not introduce:
-
-- microservices/service mesh;
-- Kubernetes/operator platform work;
-- Kafka/NATS or a generic event-stream platform;
-- a generic workflow/orchestration engine;
-- CQRS/event sourcing as architecture;
-- multi-region active-active;
-- generic cache layer/Redis;
-- generic repository/ORM abstraction;
-- second database or analytics warehouse;
-- separate BFF business API;
-- provider plugin framework;
-- real-time/WebSocket infrastructure;
-- AI/MCP runtime authority.
+Absent a concrete falsifier/consumer, D7 does not introduce microservices/service mesh, Kubernetes/operator work, Kafka/NATS, a generic workflow engine, CQRS/event sourcing, multi-region active-active, Redis/cache infrastructure, generic ORM/repository layers, a second database, separate BFF business API, provider plugin framework, realtime/WebSocket infrastructure or AI/MCP runtime authority.
 
 ## 8. Decision order
 
 D7 proceeds dependency-last:
 
-1. **D7-A Runtime envelope:** fix process/deploy/serving responsibilities and transaction ownership boundary at architectural level.
-2. **D7-B Persistence:** establish isolation + transaction invariants before database libraries/schema mechanics.
-3. **D7-C Durable work:** establish atomic handoff/retry/reconciliation properties before queue/worker selection.
-4. **D7-D Authentication:** select session/OIDC/CSRF/token mechanics under the already-accepted carrier split.
-5. **D7-E Operability:** add only deployment/observability/secret/migration mechanics required by the resulting runtime.
-6. Run one combined D7 coherence/proof review before closeout.
+1. **D7-A Runtime envelope:** process/serving responsibilities + transaction ownership boundary.
+2. **D7-B Persistence:** isolation + transaction invariants before database/schema mechanics.
+3. **D7-C Durable work:** atomic handoff/retry/reconciliation before worker selection.
+4. **D7-D Authentication:** session/OIDC/CSRF/token mechanics under the accepted carrier split.
+5. **D7-E Operability:** only required deployment/observability/secret/migration mechanics.
+6. One combined D7 coherence/proof review before closeout.
 
-A later step may force a bounded revisit of an earlier D7 mechanism, but accepted D0–D6 authority reopens only for a material falsifier at the smallest owning stage.
+## 9. Current primary evidence for D7-A
 
-## 9. Exact next D7 work
+Revalidated on 2026-08-21:
 
-**D7-A — Runtime Envelope & Transaction Ownership Boundary.**
+- Go `net/http.Server.Shutdown` provides graceful HTTP shutdown without interrupting active connections: <https://pkg.go.dev/net/http#Server.Shutdown>.
+- Go `ServeMux` supports method, host and path routing patterns, so route expressibility alone does not require a framework: <https://pkg.go.dev/net/http#ServeMux>.
+- Go `signal.NotifyContext` provides signal-driven context cancellation for process lifecycle: <https://pkg.go.dev/os/signal#NotifyContext>.
+- Current River documentation shows a PostgreSQL-backed client can start worker loops in background goroutines inside the application process, can be insert-only when queues are omitted, supports graceful worker stop, and supports transaction-bound `InsertTx`: <https://pkg.go.dev/github.com/riverqueue/river> and <https://riverqueue.com/>.
 
-Derive the smallest serving/process model capable of hosting Product API, Technical Ingress, human same-origin session mediation and durable background work while keeping owner transactions explicit. Compare the modular-monolith/process alternatives against current primary evidence and accepted MPC constraints before selecting any concrete HTTP/runtime/job library.
+River remains only a D7-C candidate here. Its evidence matters to D7-A because it proves that durable PostgreSQL work does **not** force a separate worker service/process and that a future split remains possible without a business-authority rewrite.
+
+## 10. D7-A candidate — Runtime Envelope & Transaction Ownership Boundary
+
+> **Candidate / not operator-ratified:** one Go application process per replica, one public application origin, Product API + Technical Ingress + human session mediation + durable worker runner in the same process; owner business transactions stay local to one semantic owner and all consequential external effects happen outside the database transaction after an atomic durable handoff.
+
+### 10.1 Alternatives adjudicated
+
+| Alternative | Disposition | Reason |
+| --- | --- | --- |
+| one Go process per replica: HTTP + workers | **SELECT CANDIDATE** | smallest topology; current Go lifecycle and PostgreSQL-backed durable-work capabilities satisfy the required envelope without another service boundary |
+| same codebase but separate API and worker processes | **DEFER / REOPEN TRIGGER** | useful only with proved resource/failure/scaling isolation; current job candidates allow this split later without changing business ownership |
+| microservices / per-owner services | **REJECT** | no current independent deployment/security/scaling consumer; adds network/distributed-transaction/operability failure modes without Product value |
+
+### 10.2 Process and serving shape
+
+Baseline:
+
+```text
+https://conexus.fun
+        |
+        v
+one Go application process / replica
+  ├─ same-origin frontend/static delivery
+  ├─ Product API handler boundary
+  ├─ Technical Non-Product Ingress handler boundary
+  ├─ H session / CSRF / OIDC mediation boundary
+  ├─ in-process durable worker runner
+  ├─ scheduler coordinator seam (mechanism D7-C)
+  └─ PostgreSQL connection pool
+```
+
+Binding laws:
+
+- **one process does not mean one business module**: accepted owner/context boundaries remain explicit inside the modular monolith;
+- Product API and Technical Ingress use separate route/middleware composition boundaries even though they share listener/process infrastructure;
+- no internal owner-to-owner HTTP merely for symmetry: Q/C/P inside the monolith use explicit owner-owned application ports/interfaces; E remains durable only where D3 admits an independent reaction;
+- browser/static + API remain one public origin. A separate CDN/edge/runtime is not baseline and requires an operational consumer;
+- no separate screen-shaped BFF appears: server-side OIDC/session mediation protects the same Product API;
+- correctness must not depend on exactly one replica. The process may later be replicated if D7-C coordination and D7-D session persistence are safe across replicas;
+- no HTTP router/framework is selected by D7-A. Current Go routing capability means a dependency must prove a concrete missing property before admission.
+
+### 10.3 Owner transaction ownership
+
+For a consequential owner command:
+
+```text
+request / admitted internal C
+  -> authenticate + scope/Permission/precondition gates
+  -> begin one owner command transaction
+       -> claim/validate idempotency identity when required
+       -> mutate only that owner's canonical business state
+       -> write required audit/intake/outcome metadata
+       -> atomically persist required durable handoff/job/outbox record
+  -> COMMIT
+  -> return accepted/pending/domain outcome
+  -> background worker performs external effect after commit
+  -> authoritative reread/reconciliation determines convergence
+```
+
+Laws:
+
+- one transaction may include platform records required for correctness (idempotency, audit, durable handoff) but **must not mutate another semantic owner's private business state**;
+- cross-owner business changes do not use a distributed transaction. They cross explicit Q/C/E contracts and each owner commits its own meaning;
+- external network writes are never performed while holding the owner PostgreSQL transaction open;
+- potentially accepted external effects are never blindly replayed after transport ambiguity;
+- external reads/preflight evidence, when required, occur outside the write transaction; local revision/scope/precondition checks are revalidated before commit as needed;
+- ordinary Q reads do not acquire a write transaction. Snapshot/read-only transaction semantics remain D7-B only where a concrete multi-read consistency property requires them;
+- Product HTTP handlers, workers and Technical Ingress adapters enter the same owner application boundary rather than duplicating business logic.
+
+### 10.4 Lifecycle and health boundary
+
+Startup must fail closed on missing critical configuration, incompatible database/migration baseline or inability to establish required local dependencies.
+
+Graceful shutdown order:
+
+```text
+1. mark application not-ready;
+2. stop accepting new HTTP work;
+3. stop fetching new durable jobs/scheduled work;
+4. allow active HTTP requests and jobs a bounded drain window;
+5. cancel remaining work after the bound while leaving durable work recoverable;
+6. flush telemetry and close database/resources.
+```
+
+Provider/Sankhya unavailability is **not** application unreadiness by itself; accepted Product knowledge/outcome semantics represent those dependencies as unavailable/partial/pending where appropriate.
+
+### 10.5 Reopen triggers
+
+Split API and worker process roles only if a real proof establishes at least one of:
+
+- background work causes unacceptable API resource starvation or shutdown coupling;
+- API and worker need materially different scaling envelopes;
+- a security/exposure boundary requires separate processes;
+- D8 composed-flow proof cannot satisfy graceful drain/recovery with the combined process;
+- deployment constraints make combined lifecycle unsafe or operationally unmanageable.
+
+Preference for process separation, microservices or framework convention is not a reopen trigger.
+
+## 11. Exact next D7 work
+
+If the operator ratifies D7-A, proceed to **D7-B — PostgreSQL Isolation & Transaction Realization**: derive the structural Organization/RLS model, transaction context propagation, idempotency storage boundary and ETag/revision enforcement before choosing pgx/sqlc/tern details.
 
 Do not begin D8, D9 or Product implementation.
