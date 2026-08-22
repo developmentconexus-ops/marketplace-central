@@ -2,26 +2,27 @@
 
 <!-- program-status-authority -->
 
-> **Role:** sole mutable current-program stage/status/allowed-work/next-action authority. Detailed Product and architecture semantics remain in their owning documents.
+> **Role:** sole mutable current-stage/status/allowed-work/next-action authority. Detailed semantics live in routed owning documents.
 
 ## Current checkpoint
 
 | Field | Current value |
 | --- | --- |
 | Product | **Marketplace Operations Control Plane + Commercial Intelligence** |
-| Current stage | **D5 — API — ACCEPTED / CLOSED** |
-| Accepted through | **D0–D5**, including the canonical Product OpenAPI Description and executable proof |
-| Exact next action | **D6 — Frontend — NEXT / NOT STARTED; await explicit operator authorization to open D6** |
+| Current stage | **D6 — Frontend — ACCEPTED / CLOSED** |
+| Accepted baseline | **D0–D6 ACCEPTED / CLOSED** |
+| D5-R1 auth correction | **OPERATOR-APPROVED / EXECUTABLE PROOF PASS** — [Human Browser Authentication Correction](engineering/rebaseline/D5-R1-HUMAN-BROWSER-AUTHENTICATION.md) |
+| D6-R1 | **Marketplace Performance Intelligence — OPERATOR-APPROVED / FABLE REVIEWED / BOUNDED FIXES ADJUDICATED** |
+| D6-B1 | **OPERATOR-RATIFIED — corrected Portuguese interaction map + wireframes** |
+| D6-B2 | **OPERATOR-RATIFIED — frontend realization topology + dependency profile** |
+| Final D6 challenge | **ACCEPT WITH BOUNDED FIXES — GPT ADJUDICATED / BOUNDED FIXES PROVED / NO ROUND 2 REQUIRED** |
+| Cross-repo review | **Marketplace Central ↔ MetalDocs — OPERATOR-APPROVED / ADJUDICATED** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
-| Product surface | **95 Product operations · 29 ordinary Permissions · Principal kinds H / A / S only** |
+| Product surface | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
-| Product Problem namespace | `https://conexus.fun/marketplace-central/problems/product/{slug}` |
-| Technical Problem namespace | `https://conexus.fun/marketplace-central/problems/technical/{surface}/{slug}` when independently contracted |
-| Ngrok | preview/tunnel only; never canonical `Problem.type` authority |
 | Active runtime baseline | **NONE** |
+| Exact next action | **After PR #54 lands, revalidate merged `main`, then open D7 — Runtime / Jobs / Transactions on a fresh stage branch. D7 is not started by this closeout.** |
 | Implementation | **BLOCKED UNTIL D9** |
-
-The admitted Product surface is contract scope, not an instruction to build 95 runtime handlers at once.
 
 ## Stage progression
 
@@ -33,44 +34,72 @@ The admitted Product surface is contract scope, not an instruction to build 95 r
 | D3 — Communication / Events | ACCEPTED / CLOSED |
 | D4 — External Integrations | ACCEPTED / CLOSED |
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
-| D5 — API | ACCEPTED / CLOSED |
-| D6 — Frontend | NEXT / NOT STARTED |
-| D7 — Runtime / Jobs / Transactions | BLOCKED |
+| D5 — API | ACCEPTED / CLOSED — bounded D5-R1 browser-auth carrier correction integrated and proved through D6 |
+| D6 — Frontend | **ACCEPTED / CLOSED — operator-authorized after final independent challenge and adjudication** |
+| D7 — Runtime / Jobs / Transactions | **NEXT / NOT STARTED** |
 | D8 — Golden Flows | BLOCKED |
 | D9 — Adversarial Architecture Review | BLOCKED |
 | Implementation | BLOCKED UNTIL D9 |
 
-## D5 closure
+## Accepted D6 authority
 
-D5 is closed on the canonical Product OAD landed in `main` after executable proof, independent Fable challenge and review adjudication.
+The accepted Product surface is now:
 
-Closure preserves:
+```text
+99 Product operations
+30 ordinary Permissions
+Principal kinds H / A / S only
+4 Marketplace Performance Qs under performance.read
+stable origin https://conexus.fun
+```
 
-- exactly 95 Product operations and 29 ordinary Permissions;
-- Principal kinds H / A / S only;
-- Product Problem identity under the stable `https://conexus.fun` origin;
-- Product/Technical Ingress separation and no provider/OAuth ingress in the Product OAD;
-- generated TypeScript and Go projections as temporary derived proof artifacts, never a second authority;
-- Organization privacy-preserving `404`, required idempotency carriers, strong validators and accepted collection grammar;
-- zero population of the retired legacy runtime/OpenAPI/manual SDK;
-- no Product runtime, router, database or deployment selection.
+Human/machine authentication remains:
 
-D5 proof demonstrates source/wire/generator compatibility only. Runtime schema rejection, concrete router compatibility for canonical `:verb` paths, supported Go runtime floor, persistence and transaction mechanics remain D7 obligations.
+```text
+H browser  -> server-side OIDC login -> Secure HttpOnly application session + CSRF on unsafe requests
+A / S      -> Client Credentials -> audience-bound bearer
+```
 
-## Post-D5 boundary
+D6 frontend realization remains:
 
-D6 is the next stage but has **not started**. Opening D6 requires explicit operator authorization and its own bounded authority pack.
+```text
+React + TypeScript strict
+TanStack Query              server-state authority
+TanStack Router             typed/validated URL/navigation state
+openapi-typescript          generated Product wire shapes
+openapi-fetch               thin OAD-bound Product HTTP client
+```
 
-Until then:
+The detailed interaction, topology, URL, state, Product-client, retry/idempotency/concurrency and YAGNI laws remain owned by [D6 Frontend](engineering/rebaseline/D6-FRONTEND.md). The [interaction map](engineering/rebaseline/D6-B1-INTERACTION-MAP.md) and Portuguese [wireframes](../qualification/d6-wireframes/index.html) remain the ratified interaction proof.
 
-- do not begin D6 work by implication from D5 closure;
-- do not begin D7–D9 or Product implementation;
-- do not select runtime/router/database/deployment mechanics;
-- do not restore retired legacy runtime/OpenAPI/manual SDK authority;
-- reopen D5 only if executable evidence exposes a material contradiction, and then reopen only the smallest implicated authority.
+## Final D6 proof
 
-## Progression law
+The final independent Fable challenge returned **ACCEPT WITH BOUNDED FIXES** and found no material reason to reopen D5-R1, D6-R1, D6-B1, D6-B2, the 99/30 Product surface, the authentication split, or the selected frontend topology/dependency profile.
 
-One coherent stage/gate lands before the next begins. A material contradiction reopens only the smallest implicated decision. Product implementation becomes eligible only after accepted D9.
+GPT adjudicated every material finding. The accepted bounded corrections repaired the default gate entry point, D6-B1 status/count precision, and fixed-metric Traffic/Sales comparison-state precision without forcing false Retail Media metric uniformity. Repository-only reporting observations were not promoted into architecture work.
 
-For task-specific reading, return to [`index.md`](index.md).
+Fresh executable proof after those fixes establishes:
+
+```text
+accepted D5 baseline             95/95 operations · 29/29 Permissions · 12/12 controls
+current D6 Product               99/99 operations · 30/30 Permissions · 28/28 List/Search
+Performance controls             7/7 PASS
+current auth profile             H session + CSRF · A/S bearer · 5/5 controls
+current generated projections    TypeScript + Go PASS / deterministic / compilable
+Performance knowledge            2/2 controls PASS
+legacy runtime population        0
+repository negative controls     1/1
+gate                             PASS
+```
+
+No Critical finding survived adjudication and no material contradiction remains, so a second Fable round is not warranted.
+
+## D7 boundary
+
+D7 is **NEXT / NOT STARTED**. D6 does not select the server runtime/HTTP mux, database/RLS, transaction implementation, worker/queue realization, session persistence, CSRF bootstrap/rotation, Keycloak realm/deployment or production deployment topology.
+
+D7 may independently evaluate the already pre-vetted candidates from accepted architecture, but none becomes selected merely because D6 mentioned it. Reopen D0–D6 only for a material falsifier at the smallest owning authority.
+
+Do not begin D8–D9, restore retired runtime/manual SDK authority, add Ads-management/autonomous-optimization/AI business authority, or implement Product code before accepted D9.
+
+One coherent gate lands before the next. For task-specific reading, return to [`index.md`](index.md).

@@ -1,0 +1,749 @@
+pathItems:
+  MarketplacePerformanceSummary:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/MarketplaceInstallationId'}]
+    get:
+      operationId: GetMarketplacePerformanceSummary
+      summary: Get marketplace performance summary
+      description: Read/derive Performance meaning for one exact Marketplace Installation and explicit reporting period. The representation may use preserved source-qualified historical evidence and is never a live-provider-passthrough guarantee.
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: performance.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: MarketplacePerformanceIntelligence
+      parameters: [{$ref: '#/parameters/PeriodFrom'}, {$ref: '#/parameters/PeriodBefore'}, {$ref: '#/parameters/ComparisonFrom'}, {$ref: '#/parameters/ComparisonBefore'}]
+      responses:
+        '200': {description: Marketplace performance summary., content: {'application/json': {schema: {$ref: '#/schemas/MarketplacePerformanceSummary'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  MarketplaceListingPerformances:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/MarketplaceInstallationId'}]
+    get:
+      operationId: ListMarketplaceListingPerformance
+      summary: List marketplace listing performance
+      description: Enumerate all currently known Listings in the exact Installation, including Listings whose Performance evidence is unknown or unavailable so absence of measurement never creates survivorship bias.
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: performance.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: MarketplacePerformanceIntelligence
+      parameters: [{$ref: '#/parameters/PeriodFrom'}, {$ref: '#/parameters/PeriodBefore'}, {$ref: '#/parameters/ComparisonFrom'}, {$ref: '#/parameters/ComparisonBefore'}, {$ref: './components.yaml#/parameters/Limit'}, {$ref: './components.yaml#/parameters/Cursor'}]
+      responses:
+        '200': {description: Listing performance collection., content: {'application/json': {schema: {$ref: '#/schemas/MarketplaceListingPerformanceCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  MarketplaceListingPerformance:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/MarketplaceInstallationId'}, {$ref: './components.yaml#/parameters/NativeListingKey'}]
+    get:
+      operationId: GetMarketplaceListingPerformance
+      summary: Get marketplace listing performance
+      description: Get Performance meaning for one exact source-qualified Listing. Retail-media evidence is included only when its provider scope is sufficiently attributable to this exact Listing.
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: performance.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: MarketplacePerformanceIntelligence
+      parameters: [{$ref: '#/parameters/PeriodFrom'}, {$ref: '#/parameters/PeriodBefore'}, {$ref: '#/parameters/ComparisonFrom'}, {$ref: '#/parameters/ComparisonBefore'}]
+      responses:
+        '200': {description: Marketplace listing performance., content: {'application/json': {schema: {$ref: '#/schemas/MarketplaceListingPerformance'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  RetailMediaPerformances:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/MarketplaceInstallationId'}]
+    get:
+      operationId: ListRetailMediaPerformance
+      summary: List retail media performance
+      description: Enumerate admitted Retail Media performance scopes without treating campaign, Listing, marketplace catalog grouping and marketplace family grouping as interchangeable Product entities.
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: performance.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: MarketplacePerformanceIntelligence
+      parameters: [{$ref: '#/parameters/PeriodFrom'}, {$ref: '#/parameters/PeriodBefore'}, {$ref: '#/parameters/ComparisonFrom'}, {$ref: '#/parameters/ComparisonBefore'}, {$ref: './components.yaml#/parameters/Limit'}, {$ref: './components.yaml#/parameters/Cursor'}]
+      responses:
+        '200': {description: Retail Media performance collection or explicit unavailable/unsupported population knowledge., content: {'application/json': {schema: {$ref: '#/schemas/RetailMediaPerformanceCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+parameters:
+  PeriodFrom:
+    name: period_from
+    in: query
+    required: true
+    description: Inclusive calendar date in the Marketplace Installation reporting calendar.
+    schema: {$ref: '#/schemas/PerformanceDate'}
+  PeriodBefore:
+    name: period_before
+    in: query
+    required: true
+    description: Exclusive calendar date in the Marketplace Installation reporting calendar; must be later than period_from.
+    schema: {$ref: '#/schemas/PerformanceDate'}
+  ComparisonFrom:
+    name: comparison_from
+    in: query
+    required: false
+    description: Optional comparison inclusive date. Must be supplied together with comparison_before; comparison duration must equal the primary period and must not overlap it.
+    schema: {$ref: '#/schemas/PerformanceDate'}
+  ComparisonBefore:
+    name: comparison_before
+    in: query
+    required: false
+    description: Optional comparison exclusive date. Must be supplied together with comparison_from; comparison duration must equal the primary period and must not overlap it.
+    schema: {$ref: '#/schemas/PerformanceDate'}
+
+schemas:
+  PerformanceDate: {type: string, format: date}
+  ReportingTimeZone: {type: string, minLength: 1, description: Reporting-calendar time-zone identifier established by server/provider context; never caller-selected business authority.}
+  NonNegativeCountString: {type: string, pattern: '^[0-9]+$', description: Exact non-negative integer count represented as a decimal string to preserve client precision.}
+  SignedCountString: {type: string, pattern: '^-?[0-9]+$', description: Exact signed integer count delta represented as a decimal string.}
+
+  PercentageValue:
+    type: object
+    additionalProperties: false
+    required: [value, unit]
+    properties:
+      value: {$ref: './components.yaml#/schemas/NonNegativeExactDecimalString'}
+      unit: {const: percent}
+  SignedPercentageValue:
+    type: object
+    additionalProperties: false
+    required: [value, unit]
+    properties:
+      value: {$ref: './components.yaml#/schemas/ExactDecimalString'}
+      unit: {const: percent}
+  MultipleValue:
+    type: object
+    additionalProperties: false
+    required: [value, unit]
+    properties:
+      value: {$ref: './components.yaml#/schemas/NonNegativeExactDecimalString'}
+      unit: {const: multiple}
+  SignedMultipleValue:
+    type: object
+    additionalProperties: false
+    required: [value, unit]
+    properties:
+      value: {$ref: './components.yaml#/schemas/ExactDecimalString'}
+      unit: {const: multiple}
+
+  PerformancePeriod:
+    type: object
+    additionalProperties: false
+    required: [from_date, before_date]
+    properties:
+      from_date: {$ref: '#/schemas/PerformanceDate'}
+      before_date: {$ref: '#/schemas/PerformanceDate'}
+
+  PerformanceEvidenceCoverage:
+    oneOf:
+      - {$ref: '#/schemas/PerformanceCoverageComplete'}
+      - {$ref: '#/schemas/PerformanceCoveragePartial'}
+      - {$ref: '#/schemas/PerformanceCoverageUnknown'}
+      - {$ref: '#/schemas/PerformanceCoverageUnavailable'}
+      - {$ref: '#/schemas/PerformanceCoverageUnsupported'}
+  PerformanceCoverageComplete:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: complete}}
+  PerformanceCoveragePartial:
+    type: object
+    additionalProperties: false
+    required: [state, covered_periods]
+    properties:
+      state: {const: partial}
+      covered_periods: {type: array, minItems: 1, items: {$ref: '#/schemas/PerformancePeriod'}}
+  PerformanceCoverageUnknown:
+    type: object
+    additionalProperties: false
+    required: [state, reason]
+    properties:
+      state: {const: unknown}
+      reason: {type: string, enum: [historical_gap, insufficient_source_evidence]}
+  PerformanceCoverageUnavailable:
+    type: object
+    additionalProperties: false
+    required: [state, reason]
+    properties:
+      state: {const: unavailable}
+      reason: {type: string, enum: [configuration_required, provider_access_unavailable, source_unavailable, contract_restricted]}
+  PerformanceCoverageUnsupported:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: unsupported}}
+
+  AvailablePerformanceEvidenceCoverage:
+    oneOf:
+      - {$ref: '#/schemas/PerformanceCoverageComplete'}
+      - {$ref: '#/schemas/PerformanceCoveragePartial'}
+  UnavailablePerformanceEvidenceCoverage:
+    oneOf:
+      - {$ref: '#/schemas/PerformanceCoverageUnknown'}
+      - {$ref: '#/schemas/PerformanceCoverageUnavailable'}
+      - {$ref: '#/schemas/PerformanceCoverageUnsupported'}
+
+  PerformanceProvenance:
+    type: object
+    additionalProperties: false
+    required: [source_authority, marketplace_kind, evidence_custody, acquired_at]
+    properties:
+      source_authority: {const: marketplace_provider}
+      marketplace_kind: {type: string, enum: [mercado_livre]}
+      evidence_custody: {type: string, enum: [current_source_observation, preserved_source_evidence]}
+      acquired_at: {$ref: './components.yaml#/schemas/Instant'}
+      observed_through: {$ref: './components.yaml#/schemas/Instant'}
+
+  ProviderMeasurementBasis:
+    type: object
+    additionalProperties: false
+    required: [origin, marketplace_kind]
+    properties:
+      origin: {const: provider_reported}
+      marketplace_kind: {type: string, enum: [mercado_livre]}
+      attribution_window_days: {$ref: '#/schemas/NonNegativeCountString'}
+      basis_revision: {$ref: './components.yaml#/schemas/OpaqueKey'}
+
+  CountChange:
+    oneOf:
+      - {$ref: '#/schemas/ComparableCountChange'}
+      - {$ref: '#/schemas/InsufficientCountChange'}
+      - {$ref: '#/schemas/NotComparableCountChange'}
+  ComparableCountChange:
+    type: object
+    additionalProperties: false
+    required: [state, absolute_change]
+    properties:
+      state: {const: comparable}
+      absolute_change: {$ref: '#/schemas/SignedCountString'}
+      relative_change: {$ref: '#/schemas/SignedPercentageValue'}
+  InsufficientCountChange:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: insufficient_evidence}}
+  NotComparableCountChange:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: not_comparable}}
+
+  MoneyChange:
+    oneOf:
+      - {$ref: '#/schemas/ComparableMoneyChange'}
+      - {$ref: '#/schemas/InsufficientMoneyChange'}
+      - {$ref: '#/schemas/NotComparableMoneyChange'}
+  ComparableMoneyChange:
+    type: object
+    additionalProperties: false
+    required: [state, absolute_change]
+    properties:
+      state: {const: comparable}
+      absolute_change: {$ref: './components.yaml#/schemas/Money'}
+      relative_change: {$ref: '#/schemas/SignedPercentageValue'}
+  InsufficientMoneyChange:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: insufficient_evidence}}
+  NotComparableMoneyChange:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: not_comparable}}
+
+  PercentageChange:
+    oneOf:
+      - {$ref: '#/schemas/ComparablePercentageChange'}
+      - {$ref: '#/schemas/InsufficientPercentageChange'}
+      - {$ref: '#/schemas/NotComparablePercentageChange'}
+  ComparablePercentageChange:
+    type: object
+    additionalProperties: false
+    required: [state, absolute_change]
+    properties:
+      state: {const: comparable}
+      absolute_change: {$ref: '#/schemas/SignedPercentageValue'}
+  InsufficientPercentageChange:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: insufficient_evidence}}
+  NotComparablePercentageChange:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: not_comparable}}
+
+  MultipleChange:
+    oneOf:
+      - {$ref: '#/schemas/ComparableMultipleChange'}
+      - {$ref: '#/schemas/InsufficientMultipleChange'}
+      - {$ref: '#/schemas/NotComparableMultipleChange'}
+  ComparableMultipleChange:
+    type: object
+    additionalProperties: false
+    required: [state, absolute_change]
+    properties:
+      state: {const: comparable}
+      absolute_change: {$ref: '#/schemas/SignedMultipleValue'}
+  InsufficientMultipleChange:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: insufficient_evidence}}
+  NotComparableMultipleChange:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: not_comparable}}
+
+  TrafficPerformance:
+    oneOf:
+      - {$ref: '#/schemas/TrafficPerformanceAvailable'}
+      - {$ref: '#/schemas/TrafficPerformanceUnavailable'}
+  TrafficPerformanceAvailable:
+    type: object
+    additionalProperties: false
+    required: [coverage, visits, provenance]
+    properties:
+      coverage: {$ref: '#/schemas/AvailablePerformanceEvidenceCoverage'}
+      visits: {$ref: '#/schemas/NonNegativeCountString'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+      comparison: {$ref: '#/schemas/TrafficPerformanceComparison'}
+  TrafficPerformanceUnavailable:
+    type: object
+    additionalProperties: false
+    required: [coverage, provenance]
+    properties:
+      coverage: {$ref: '#/schemas/UnavailablePerformanceEvidenceCoverage'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+      comparison: {$ref: '#/schemas/TrafficPerformanceComparison'}
+
+  TrafficPerformanceComparison:
+    oneOf:
+      - {$ref: '#/schemas/TrafficPerformanceComparisonAvailable'}
+      - {$ref: '#/schemas/TrafficPerformanceComparisonUnavailable'}
+  TrafficPerformanceComparisonAvailable:
+    type: object
+    additionalProperties: false
+    required: [period, coverage, visits, visits_change, provenance]
+    properties:
+      period: {$ref: '#/schemas/PerformancePeriod'}
+      coverage: {$ref: '#/schemas/AvailablePerformanceEvidenceCoverage'}
+      visits: {$ref: '#/schemas/NonNegativeCountString'}
+      visits_change: {$ref: '#/schemas/CountChange'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+  TrafficPerformanceComparisonUnavailable:
+    type: object
+    additionalProperties: false
+    required: [period, coverage, provenance]
+    properties:
+      period: {$ref: '#/schemas/PerformancePeriod'}
+      coverage: {$ref: '#/schemas/UnavailablePerformanceEvidenceCoverage'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+
+  SalesActivityPerformance:
+    oneOf:
+      - {$ref: '#/schemas/SalesActivityPerformanceAvailable'}
+      - {$ref: '#/schemas/SalesActivityPerformanceUnavailable'}
+  SalesActivityPerformanceAvailable:
+    type: object
+    additionalProperties: false
+    required: [coverage, sales_count, units_count, provenance]
+    properties:
+      coverage: {$ref: '#/schemas/AvailablePerformanceEvidenceCoverage'}
+      sales_count: {$ref: '#/schemas/NonNegativeCountString'}
+      units_count: {$ref: '#/schemas/NonNegativeCountString'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+      comparison: {$ref: '#/schemas/SalesActivityPerformanceComparison'}
+  SalesActivityPerformanceUnavailable:
+    type: object
+    additionalProperties: false
+    required: [coverage, provenance]
+    properties:
+      coverage: {$ref: '#/schemas/UnavailablePerformanceEvidenceCoverage'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+      comparison: {$ref: '#/schemas/SalesActivityPerformanceComparison'}
+
+  SalesActivityPerformanceComparison:
+    oneOf:
+      - {$ref: '#/schemas/SalesActivityPerformanceComparisonAvailable'}
+      - {$ref: '#/schemas/SalesActivityPerformanceComparisonUnavailable'}
+  SalesActivityPerformanceComparisonAvailable:
+    type: object
+    additionalProperties: false
+    required: [period, coverage, sales_count, units_count, sales_count_change, units_count_change, provenance]
+    properties:
+      period: {$ref: '#/schemas/PerformancePeriod'}
+      coverage: {$ref: '#/schemas/AvailablePerformanceEvidenceCoverage'}
+      sales_count: {$ref: '#/schemas/NonNegativeCountString'}
+      units_count: {$ref: '#/schemas/NonNegativeCountString'}
+      sales_count_change: {$ref: '#/schemas/CountChange'}
+      units_count_change: {$ref: '#/schemas/CountChange'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+  SalesActivityPerformanceComparisonUnavailable:
+    type: object
+    additionalProperties: false
+    required: [period, coverage, provenance]
+    properties:
+      period: {$ref: '#/schemas/PerformancePeriod'}
+      coverage: {$ref: '#/schemas/UnavailablePerformanceEvidenceCoverage'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+
+  RetailMediaExposureMeasures:
+    type: object
+    additionalProperties: false
+    minProperties: 1
+    properties:
+      impressions: {$ref: '#/schemas/NonNegativeCountString'}
+      impression_share: {$ref: '#/schemas/PercentageValue'}
+      top_impression_share: {$ref: '#/schemas/PercentageValue'}
+      lost_impression_share_by_budget: {$ref: '#/schemas/PercentageValue'}
+      lost_impression_share_by_rank:
+        allOf: [{$ref: '#/schemas/PercentageValue'}]
+        description: Owner-local Product name deliberately mapped from Mercado Livre provider metric lost_impression_share_by_ad_rank when that campaign-detail metric is available; not assumed at other scopes.
+  RetailMediaEngagementMeasures:
+    type: object
+    additionalProperties: false
+    minProperties: 1
+    properties:
+      clicks: {$ref: '#/schemas/NonNegativeCountString'}
+      click_through_rate: {$ref: '#/schemas/PercentageValue'}
+      cost_per_click: {$ref: './components.yaml#/schemas/Money'}
+  RetailMediaConversionMeasures:
+    type: object
+    additionalProperties: false
+    minProperties: 1
+    properties:
+      conversion_rate: {$ref: '#/schemas/PercentageValue'}
+      attributed_units: {$ref: '#/schemas/NonNegativeCountString'}
+      attributed_sales_amount: {$ref: './components.yaml#/schemas/Money'}
+  RetailMediaEfficiencyMeasures:
+    type: object
+    additionalProperties: false
+    minProperties: 1
+    properties:
+      spend: {$ref: './components.yaml#/schemas/Money'}
+      return_on_ad_spend: {$ref: '#/schemas/MultipleValue'}
+      advertising_cost_of_sales: {$ref: '#/schemas/PercentageValue'}
+      total_advertising_cost_of_sales: {$ref: '#/schemas/PercentageValue'}
+      share_of_voice: {$ref: '#/schemas/PercentageValue'}
+  RetailMediaOrganicMeasures:
+    type: object
+    additionalProperties: false
+    minProperties: 1
+    properties:
+      organic_units: {$ref: '#/schemas/NonNegativeCountString'}
+      organic_sales_amount: {$ref: './components.yaml#/schemas/Money'}
+  RetailMediaMeasures:
+    type: object
+    additionalProperties: false
+    minProperties: 1
+    properties:
+      exposure: {$ref: '#/schemas/RetailMediaExposureMeasures'}
+      engagement: {$ref: '#/schemas/RetailMediaEngagementMeasures'}
+      conversion: {$ref: '#/schemas/RetailMediaConversionMeasures'}
+      efficiency: {$ref: '#/schemas/RetailMediaEfficiencyMeasures'}
+      organic_related: {$ref: '#/schemas/RetailMediaOrganicMeasures'}
+
+  RetailMediaExposureChanges:
+    type: object
+    additionalProperties: false
+    minProperties: 1
+    properties:
+      impressions: {$ref: '#/schemas/CountChange'}
+      impression_share: {$ref: '#/schemas/PercentageChange'}
+      top_impression_share: {$ref: '#/schemas/PercentageChange'}
+      lost_impression_share_by_budget: {$ref: '#/schemas/PercentageChange'}
+      lost_impression_share_by_rank: {$ref: '#/schemas/PercentageChange'}
+  RetailMediaEngagementChanges:
+    type: object
+    additionalProperties: false
+    minProperties: 1
+    properties:
+      clicks: {$ref: '#/schemas/CountChange'}
+      click_through_rate: {$ref: '#/schemas/PercentageChange'}
+      cost_per_click: {$ref: '#/schemas/MoneyChange'}
+  RetailMediaConversionChanges:
+    type: object
+    additionalProperties: false
+    minProperties: 1
+    properties:
+      conversion_rate: {$ref: '#/schemas/PercentageChange'}
+      attributed_units: {$ref: '#/schemas/CountChange'}
+      attributed_sales_amount: {$ref: '#/schemas/MoneyChange'}
+  RetailMediaEfficiencyChanges:
+    type: object
+    additionalProperties: false
+    minProperties: 1
+    properties:
+      spend: {$ref: '#/schemas/MoneyChange'}
+      return_on_ad_spend: {$ref: '#/schemas/MultipleChange'}
+      advertising_cost_of_sales: {$ref: '#/schemas/PercentageChange'}
+      total_advertising_cost_of_sales: {$ref: '#/schemas/PercentageChange'}
+      share_of_voice: {$ref: '#/schemas/PercentageChange'}
+  RetailMediaOrganicChanges:
+    type: object
+    additionalProperties: false
+    minProperties: 1
+    properties:
+      organic_units: {$ref: '#/schemas/CountChange'}
+      organic_sales_amount: {$ref: '#/schemas/MoneyChange'}
+  RetailMediaMeasureChanges:
+    type: object
+    additionalProperties: false
+    minProperties: 1
+    properties:
+      exposure: {$ref: '#/schemas/RetailMediaExposureChanges'}
+      engagement: {$ref: '#/schemas/RetailMediaEngagementChanges'}
+      conversion: {$ref: '#/schemas/RetailMediaConversionChanges'}
+      efficiency: {$ref: '#/schemas/RetailMediaEfficiencyChanges'}
+      organic_related: {$ref: '#/schemas/RetailMediaOrganicChanges'}
+
+  RetailMediaPerformance:
+    oneOf:
+      - {$ref: '#/schemas/RetailMediaPerformanceAvailable'}
+      - {$ref: '#/schemas/RetailMediaPerformanceUnavailable'}
+  RetailMediaPerformanceAvailable:
+    type: object
+    additionalProperties: false
+    required: [coverage, measures, measurement_basis, provenance]
+    properties:
+      coverage: {$ref: '#/schemas/AvailablePerformanceEvidenceCoverage'}
+      measures: {$ref: '#/schemas/RetailMediaMeasures'}
+      measurement_basis: {$ref: '#/schemas/ProviderMeasurementBasis'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+      comparison: {$ref: '#/schemas/RetailMediaPerformanceComparison'}
+  RetailMediaPerformanceUnavailable:
+    type: object
+    additionalProperties: false
+    required: [coverage, measurement_basis, provenance]
+    properties:
+      coverage: {$ref: '#/schemas/UnavailablePerformanceEvidenceCoverage'}
+      measurement_basis: {$ref: '#/schemas/ProviderMeasurementBasis'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+      comparison: {$ref: '#/schemas/RetailMediaPerformanceComparison'}
+
+  RetailMediaPerformanceComparison:
+    oneOf:
+      - {$ref: '#/schemas/RetailMediaPerformanceComparisonAvailable'}
+      - {$ref: '#/schemas/RetailMediaPerformanceComparisonUnavailable'}
+  RetailMediaPerformanceComparisonAvailable:
+    type: object
+    additionalProperties: false
+    required: [period, coverage, measures, measurement_basis, provenance]
+    properties:
+      period: {$ref: '#/schemas/PerformancePeriod'}
+      coverage: {$ref: '#/schemas/AvailablePerformanceEvidenceCoverage'}
+      measures: {$ref: '#/schemas/RetailMediaMeasures'}
+      changes: {$ref: '#/schemas/RetailMediaMeasureChanges'}
+      measurement_basis: {$ref: '#/schemas/ProviderMeasurementBasis'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+  RetailMediaPerformanceComparisonUnavailable:
+    type: object
+    additionalProperties: false
+    required: [period, coverage, measurement_basis, provenance]
+    properties:
+      period: {$ref: '#/schemas/PerformancePeriod'}
+      coverage: {$ref: '#/schemas/UnavailablePerformanceEvidenceCoverage'}
+      measurement_basis: {$ref: '#/schemas/ProviderMeasurementBasis'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+
+  RetailMediaSummary:
+    oneOf:
+      - {$ref: '#/schemas/RetailMediaSummaryAvailable'}
+      - {$ref: '#/schemas/RetailMediaSummaryUnavailable'}
+  RetailMediaSummaryAvailable:
+    type: object
+    additionalProperties: false
+    required: [coverage, measurement_basis, provenance]
+    anyOf:
+      - {required: [spend]}
+      - {required: [return_on_ad_spend]}
+    properties:
+      coverage: {$ref: '#/schemas/AvailablePerformanceEvidenceCoverage'}
+      spend: {$ref: './components.yaml#/schemas/Money'}
+      return_on_ad_spend: {$ref: '#/schemas/MultipleValue'}
+      measurement_basis: {$ref: '#/schemas/ProviderMeasurementBasis'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+      comparison: {$ref: '#/schemas/RetailMediaSummaryComparison'}
+  RetailMediaSummaryUnavailable:
+    type: object
+    additionalProperties: false
+    required: [coverage, measurement_basis, provenance]
+    properties:
+      coverage: {$ref: '#/schemas/UnavailablePerformanceEvidenceCoverage'}
+      measurement_basis: {$ref: '#/schemas/ProviderMeasurementBasis'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+      comparison: {$ref: '#/schemas/RetailMediaSummaryComparison'}
+
+  RetailMediaSummaryComparison:
+    oneOf:
+      - {$ref: '#/schemas/RetailMediaSummaryComparisonAvailable'}
+      - {$ref: '#/schemas/RetailMediaSummaryComparisonUnavailable'}
+  RetailMediaSummaryComparisonAvailable:
+    type: object
+    additionalProperties: false
+    required: [period, coverage, measurement_basis, provenance]
+    anyOf:
+      - {required: [spend]}
+      - {required: [return_on_ad_spend]}
+    properties:
+      period: {$ref: '#/schemas/PerformancePeriod'}
+      coverage: {$ref: '#/schemas/AvailablePerformanceEvidenceCoverage'}
+      spend: {$ref: './components.yaml#/schemas/Money'}
+      return_on_ad_spend: {$ref: '#/schemas/MultipleValue'}
+      spend_change: {$ref: '#/schemas/MoneyChange'}
+      return_on_ad_spend_change: {$ref: '#/schemas/MultipleChange'}
+      measurement_basis: {$ref: '#/schemas/ProviderMeasurementBasis'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+  RetailMediaSummaryComparisonUnavailable:
+    type: object
+    additionalProperties: false
+    required: [period, coverage, measurement_basis, provenance]
+    properties:
+      period: {$ref: '#/schemas/PerformancePeriod'}
+      coverage: {$ref: '#/schemas/UnavailablePerformanceEvidenceCoverage'}
+      measurement_basis: {$ref: '#/schemas/ProviderMeasurementBasis'}
+      provenance: {$ref: '#/schemas/PerformanceProvenance'}
+
+  MarketplacePerformanceSummary:
+    type: object
+    additionalProperties: false
+    required: [marketplace_installation_id, period, reporting_time_zone, traffic, sales_activity, retail_media]
+    properties:
+      marketplace_installation_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      period: {$ref: '#/schemas/PerformancePeriod'}
+      comparison_period: {$ref: '#/schemas/PerformancePeriod'}
+      reporting_time_zone: {$ref: '#/schemas/ReportingTimeZone'}
+      traffic: {$ref: '#/schemas/TrafficPerformance'}
+      sales_activity: {$ref: '#/schemas/SalesActivityPerformance'}
+      retail_media: {$ref: '#/schemas/RetailMediaSummary'}
+
+  MarketplaceListingPerformanceListItem:
+    type: object
+    additionalProperties: false
+    required: [marketplace_installation_id, native_listing_key, period, traffic, sales_activity, retail_media_summary]
+    properties:
+      marketplace_installation_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      native_listing_key: {$ref: './components.yaml#/schemas/OpaqueKey'}
+      display_name: {type: string, minLength: 1, description: Non-authoritative Listing presentation label; never Listing identity.}
+      period: {$ref: '#/schemas/PerformancePeriod'}
+      traffic: {$ref: '#/schemas/TrafficPerformance'}
+      sales_activity: {$ref: '#/schemas/SalesActivityPerformance'}
+      retail_media_summary: {$ref: '#/schemas/RetailMediaSummary'}
+
+  MarketplaceListingPerformanceCollection:
+    type: object
+    additionalProperties: false
+    required: [period, reporting_time_zone, listing_population_coverage, listing_performances]
+    properties:
+      period: {$ref: '#/schemas/PerformancePeriod'}
+      comparison_period: {$ref: '#/schemas/PerformancePeriod'}
+      reporting_time_zone: {$ref: '#/schemas/ReportingTimeZone'}
+      listing_population_coverage: {$ref: '#/schemas/PerformanceEvidenceCoverage'}
+      listing_performances: {type: array, items: {$ref: '#/schemas/MarketplaceListingPerformanceListItem'}}
+      next_cursor: {$ref: './components.yaml#/schemas/OpaqueKey'}
+
+  MarketplaceListingPerformance:
+    type: object
+    additionalProperties: false
+    required: [marketplace_installation_id, native_listing_key, period, reporting_time_zone, traffic, sales_activity, retail_media]
+    properties:
+      marketplace_installation_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      native_listing_key: {$ref: './components.yaml#/schemas/OpaqueKey'}
+      display_name: {type: string, minLength: 1, description: Non-authoritative Listing presentation label; never Listing identity.}
+      period: {$ref: '#/schemas/PerformancePeriod'}
+      comparison_period: {$ref: '#/schemas/PerformancePeriod'}
+      reporting_time_zone: {$ref: '#/schemas/ReportingTimeZone'}
+      traffic: {$ref: '#/schemas/TrafficPerformance'}
+      sales_activity: {$ref: '#/schemas/SalesActivityPerformance'}
+      retail_media: {$ref: '#/schemas/RetailMediaPerformance'}
+
+  RetailMediaScope:
+    oneOf:
+      - {$ref: '#/schemas/RetailMediaCampaignScope'}
+      - {$ref: '#/schemas/RetailMediaListingScope'}
+      - {$ref: '#/schemas/RetailMediaCatalogGroupScope'}
+      - {$ref: '#/schemas/RetailMediaFamilyGroupScope'}
+  RetailMediaCampaignScope:
+    type: object
+    additionalProperties: false
+    required: [kind, native_campaign_key]
+    properties:
+      kind: {const: campaign}
+      native_campaign_key: {$ref: './components.yaml#/schemas/OpaqueKey'}
+      display_name: {type: string, minLength: 1}
+  RetailMediaListingScope:
+    type: object
+    additionalProperties: false
+    required: [kind, native_listing_key]
+    properties:
+      kind: {const: listing}
+      native_listing_key: {$ref: './components.yaml#/schemas/OpaqueKey'}
+      display_name: {type: string, minLength: 1}
+  RetailMediaCatalogGroupScope:
+    type: object
+    additionalProperties: false
+    required: [kind, native_catalog_group_key]
+    properties:
+      kind: {const: marketplace_catalog_group}
+      native_catalog_group_key: {$ref: './components.yaml#/schemas/OpaqueKey'}
+      display_name: {type: string, minLength: 1}
+  RetailMediaFamilyGroupScope:
+    type: object
+    additionalProperties: false
+    required: [kind, native_family_group_key]
+    properties:
+      kind: {const: marketplace_family_group}
+      native_family_group_key: {$ref: './components.yaml#/schemas/OpaqueKey'}
+      display_name: {type: string, minLength: 1}
+
+  RetailMediaPerformanceItem:
+    type: object
+    additionalProperties: false
+    required: [scope, period, retail_media]
+    properties:
+      scope: {$ref: '#/schemas/RetailMediaScope'}
+      period: {$ref: '#/schemas/PerformancePeriod'}
+      retail_media: {$ref: '#/schemas/RetailMediaPerformance'}
+
+  RetailMediaPerformanceCollection:
+    oneOf:
+      - {$ref: '#/schemas/RetailMediaPerformanceCollectionAvailable'}
+      - {$ref: '#/schemas/RetailMediaPerformanceCollectionUnavailable'}
+  RetailMediaPerformanceCollectionAvailable:
+    type: object
+    additionalProperties: false
+    required: [state, period, reporting_time_zone, population_coverage, retail_media_performance]
+    properties:
+      state: {const: available}
+      period: {$ref: '#/schemas/PerformancePeriod'}
+      comparison_period: {$ref: '#/schemas/PerformancePeriod'}
+      reporting_time_zone: {$ref: '#/schemas/ReportingTimeZone'}
+      population_coverage: {$ref: '#/schemas/AvailablePerformanceEvidenceCoverage'}
+      retail_media_performance: {type: array, items: {$ref: '#/schemas/RetailMediaPerformanceItem'}}
+      next_cursor: {$ref: './components.yaml#/schemas/OpaqueKey'}
+  RetailMediaPerformanceCollectionUnavailable:
+    type: object
+    additionalProperties: false
+    required: [state, period, reporting_time_zone, population_coverage]
+    properties:
+      state: {const: unavailable}
+      period: {$ref: '#/schemas/PerformancePeriod'}
+      comparison_period: {$ref: '#/schemas/PerformancePeriod'}
+      reporting_time_zone: {$ref: '#/schemas/ReportingTimeZone'}
+      population_coverage: {$ref: '#/schemas/UnavailablePerformanceEvidenceCoverage'}

@@ -8,19 +8,42 @@ info:
     This document defines Product wire shape only. Active runtime is NONE and implementation
     remains blocked until D9.
 security:
-  - MpcBearerAuth: []
+  - MpcHumanSessionAuth: []
+  - MpcMachineBearerAuth: []
+
+x-mpc-authentication-profile:
+  human:
+    principal_kind: H
+    security_scheme: MpcHumanSessionAuth
+    oidc_flow: authorization_code_server_side
+    browser_oidc_token_exposure: none
+    session_cookie:
+      name: __Host-mpc_session
+      secure: true
+      http_only: true
+      same_site: lax
+      path: /
+      domain: absent
+    csrf:
+      carrier: header
+      name: X-CSRF-Token
+      required_on_methods: [DELETE, PATCH, POST, PUT]
+  machine:
+    principal_kinds: [A, S]
+    security_scheme: MpcMachineBearerAuth
+    grant: client_credentials
 
 paths:
   '/access-context':
-    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/AccessContext'
+    $ref: './paths-access-performance.yaml#/pathItems/AccessContext'
   '/organizations/{organization_id}/members':
-    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/OrganizationMembers'
+    $ref: './paths-access-performance.yaml#/pathItems/OrganizationMembers'
   '/organizations/{organization_id}/access-roles':
-    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/AccessRoles'
+    $ref: './paths-access-performance.yaml#/pathItems/AccessRoles'
   '/organizations/{organization_id}/members/{principal_id}:assign-access-role':
-    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/AssignAccessRole'
+    $ref: './paths-access-performance.yaml#/pathItems/AssignAccessRole'
   '/organizations/{organization_id}/members/{principal_id}:revoke-access-role':
-    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/RevokeAccessRole'
+    $ref: './paths-access-performance.yaml#/pathItems/RevokeAccessRole'
   '/organizations/{organization_id}/marketplace-installations':
     $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/MarketplaceInstallations'
   '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}':
@@ -76,6 +99,17 @@ paths:
     $ref: './paths-offering-availability-market.yaml#/pathItems/CompetitivePosition'
   '/organizations/{organization_id}/comparable-offers':
     $ref: './paths-offering-availability-market.yaml#/pathItems/ComparableOffers'
+
+  # D6-R1 performance paths start
+  '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/performance':
+    $ref: './paths-performance.yaml#/pathItems/MarketplacePerformanceSummary'
+  '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/listing-performances':
+    $ref: './paths-performance.yaml#/pathItems/MarketplaceListingPerformances'
+  '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/listings/{native_listing_key}/performance':
+    $ref: './paths-performance.yaml#/pathItems/MarketplaceListingPerformance'
+  '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}/retail-media-performance':
+    $ref: './paths-performance.yaml#/pathItems/RetailMediaPerformances'
+  # D6-R1 performance paths end
 
   '/organizations/{organization_id}/expected-economics':
     $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/ExpectedEconomics'
@@ -177,7 +211,17 @@ paths:
 
 components:
   securitySchemes:
-    MpcBearerAuth:
+    MpcHumanSessionAuth:
+      type: apiKey
+      in: cookie
+      name: __Host-mpc_session
+      description: >-
+        Opaque server-side application-session handle for the interactive human Principal.
+        External OIDC/OAuth tokens stay server-side; Product authorization remains MPC-owned current authority.
+    MpcMachineBearerAuth:
       type: http
       scheme: bearer
-      description: Accepted external bearer credential; Product authorization remains MPC-owned current authority.
+      description: >-
+        Audience-bound external OAuth access token issued to a confidential machine client through
+        Client Credentials and resolved fail-closed to one automation/system Principal. Product
+        authorization remains MPC-owned current authority.

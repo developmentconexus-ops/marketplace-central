@@ -1,0 +1,154 @@
+pathItems:
+  AccessContext:
+    get:
+      operationId: GetCurrentAccessContext
+      summary: Get current access context
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: authenticated
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: IdentityAccess
+      responses:
+        '200': {description: Current access context., content: {'application/json': {schema: {$ref: '#/schemas/AccessContextView'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  OrganizationMembers:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListOrganizationMembers
+      summary: List organization members
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: access.read
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: IdentityAccess
+      parameters: [{$ref: './components.yaml#/parameters/Limit'}, {$ref: './components.yaml#/parameters/Cursor'}]
+      responses:
+        '200': {description: Organization members., content: {'application/json': {schema: {$ref: '#/schemas/OrganizationMembersCollectionView'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  AccessRoles:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListAccessRoles
+      summary: List access roles
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: access.read
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: IdentityAccess
+      parameters: [{$ref: './components.yaml#/parameters/Limit'}, {$ref: './components.yaml#/parameters/Cursor'}]
+      responses:
+        '200': {description: Access roles., content: {'application/json': {schema: {$ref: '#/schemas/AccessRolesCollectionView'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  AssignAccessRole:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/PrincipalId'}]
+    post:
+      operationId: AssignAccessRole
+      summary: Assign access role
+      x-mpc-operation-class: C
+      x-mpc-required-permission: access.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: IdentityAccess
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/RoleMutationRequest'}}}}
+      responses:
+        '200': {description: Current member access relation., content: {'application/json': {schema: {$ref: '#/schemas/OrganizationMemberView'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  RevokeAccessRole:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/PrincipalId'}]
+    post:
+      operationId: RevokeAccessRole
+      summary: Revoke access role
+      x-mpc-operation-class: C
+      x-mpc-required-permission: access.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: IdentityAccess
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/RoleMutationRequest'}}}}
+      responses:
+        '200': {description: Current member access relation., content: {'application/json': {schema: {$ref: '#/schemas/OrganizationMemberView'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+schemas:
+  PresentationLabel:
+    type: string
+    minLength: 1
+    description: Mutable non-unique human-readable presentation metadata; never canonical identity, Organization scope, correlation or authorization authority.
+
+  PermissionView:
+    type: string
+    description: Effective ordinary Product Permission vocabulary visible through access reads; authenticated remains a special non-Permission condition.
+    enum: [access.read, access.manage, portfolio.read, portfolio.manage, readiness.read, readiness.manage, offering.read, listing.manage, price.manage, availability.read, availability.manage, market.read, performance.read, economics.read, economics.policy.manage, economics.reconcile, governance.read, governance.decide, governance.manage, sales.read, sales.manage, materialization.read, materialization.resolve, fulfillment.read, fulfillment.execute, fulfillment.manage, post_sale.read, post_sale.manage, work.read, work.manage]
+
+  AccessContextView:
+    type: object
+    additionalProperties: false
+    required: [principal_id, principal_kind, display_name, organizations]
+    properties:
+      principal_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      principal_kind: {$ref: './components.yaml#/schemas/PrincipalKind'}
+      display_name: {$ref: '#/schemas/PresentationLabel'}
+      organizations: {type: array, items: {$ref: '#/schemas/OrganizationAccessView'}}
+
+  OrganizationAccessView:
+    type: object
+    additionalProperties: false
+    required: [organization_id, display_name, role_keys, permissions]
+    properties:
+      organization_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      display_name: {$ref: '#/schemas/PresentationLabel'}
+      role_keys: {type: array, uniqueItems: true, items: {$ref: './components.yaml#/schemas/OpaqueKey'}}
+      permissions: {type: array, uniqueItems: true, items: {$ref: '#/schemas/PermissionView'}}
+
+  OrganizationMemberView:
+    type: object
+    additionalProperties: false
+    required: [principal_id, principal_kind, display_name, role_keys]
+    properties:
+      principal_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      principal_kind: {$ref: './components.yaml#/schemas/PrincipalKind'}
+      display_name: {$ref: '#/schemas/PresentationLabel'}
+      role_keys: {type: array, uniqueItems: true, items: {$ref: './components.yaml#/schemas/OpaqueKey'}}
+
+  OrganizationMembersCollectionView:
+    type: object
+    additionalProperties: false
+    required: [members]
+    properties:
+      members: {type: array, items: {$ref: '#/schemas/OrganizationMemberView'}}
+      next_cursor: {$ref: './components.yaml#/schemas/OpaqueKey'}
+
+  AccessRoleView:
+    type: object
+    additionalProperties: false
+    required: [role_key, display_name, permissions]
+    properties:
+      role_key: {$ref: './components.yaml#/schemas/OpaqueKey'}
+      display_name: {$ref: '#/schemas/PresentationLabel'}
+      permissions: {type: array, uniqueItems: true, items: {$ref: '#/schemas/PermissionView'}}
+
+  AccessRolesCollectionView:
+    type: object
+    additionalProperties: false
+    required: [access_roles]
+    properties:
+      access_roles: {type: array, items: {$ref: '#/schemas/AccessRoleView'}}
+      next_cursor: {$ref: './components.yaml#/schemas/OpaqueKey'}
