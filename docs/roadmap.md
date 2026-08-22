@@ -34,7 +34,7 @@
 | D3 — Communication / Events | ACCEPTED / CLOSED |
 | D4 — External Integrations | ACCEPTED / CLOSED |
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
-| D5 — API | **ACCEPTED / CLOSED** |
+| D5 — API | ACCEPTED / CLOSED |
 | D5-R2 — Operational Read Projection Repair | **ACCEPTED / CANONICAL** |
 | D6 — Frontend | **ACCEPTED / CLOSED** |
 | D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED** |
