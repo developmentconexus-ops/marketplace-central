@@ -1,6 +1,6 @@
 # D7 — Runtime / Jobs / Transactions
 
-> **Status:** OPEN / ACTIVE — D7-A CANDIDATE / OPERATOR RATIFICATION PENDING
+> **Status:** OPEN / ACTIVE — D7-A OPERATOR-RATIFIED / D7-B NEXT
 > **Program:** Architecture Rebaseline / Technical System Design
 > **Opened:** 2026-08-21
 > **Parent authorities:** accepted D0–D6 semantics, `ARCHITECTURE.md`, canonical Product OAD, and bounded owner authority routed by `docs/index.md`
@@ -111,8 +111,8 @@ Absent a concrete falsifier/consumer, D7 does not introduce microservices/servic
 
 D7 proceeds dependency-last:
 
-1. **D7-A Runtime envelope:** process/serving responsibilities + transaction ownership boundary.
-2. **D7-B Persistence:** isolation + transaction invariants before database/schema mechanics.
+1. **D7-A Runtime envelope:** process/serving responsibilities + transaction ownership boundary — **OPERATOR-RATIFIED**.
+2. **D7-B Persistence:** isolation + transaction invariants before database/schema mechanics — **NEXT**.
 3. **D7-C Durable work:** atomic handoff/retry/reconciliation before worker selection.
 4. **D7-D Authentication:** session/OIDC/CSRF/token mechanics under the accepted carrier split.
 5. **D7-E Operability:** only required deployment/observability/secret/migration mechanics.
@@ -129,15 +129,15 @@ Revalidated on 2026-08-21:
 
 River remains only a D7-C candidate here. Its evidence matters to D7-A because it proves that durable PostgreSQL work does **not** force a separate worker service/process and that a future split remains possible without a business-authority rewrite.
 
-## 10. D7-A candidate — Runtime Envelope & Transaction Ownership Boundary
+## 10. D7-A accepted — Runtime Envelope & Transaction Ownership Boundary
 
-> **Candidate / not operator-ratified:** one Go application process per replica, one public application origin, Product API + Technical Ingress + human session mediation + durable worker runner in the same process; owner business transactions stay local to one semantic owner and all consequential external effects happen outside the database transaction after an atomic durable handoff.
+> **OPERATOR-RATIFIED:** one Go application process per replica, one public application origin, Product API + Technical Ingress + human session mediation + durable worker runner in the same process; owner business transactions stay local to one semantic owner and all consequential external effects happen outside the database transaction after an atomic durable handoff.
 
 ### 10.1 Alternatives adjudicated
 
 | Alternative | Disposition | Reason |
 | --- | --- | --- |
-| one Go process per replica: HTTP + workers | **SELECT CANDIDATE** | smallest topology; current Go lifecycle and PostgreSQL-backed durable-work capabilities satisfy the required envelope without another service boundary |
+| one Go process per replica: HTTP + workers | **ACCEPTED** | smallest topology; current Go lifecycle and PostgreSQL-backed durable-work capabilities satisfy the required envelope without another service boundary |
 | same codebase but separate API and worker processes | **DEFER / REOPEN TRIGGER** | useful only with proved resource/failure/scaling isolation; current job candidates allow this split later without changing business ownership |
 | microservices / per-owner services | **REJECT** | no current independent deployment/security/scaling consumer; adds network/distributed-transaction/operability failure modes without Product value |
 
@@ -228,6 +228,6 @@ Preference for process separation, microservices or framework convention is not 
 
 ## 11. Exact next D7 work
 
-If the operator ratifies D7-A, proceed to **D7-B — PostgreSQL Isolation & Transaction Realization**: derive the structural Organization/RLS model, transaction context propagation, idempotency storage boundary and ETag/revision enforcement before choosing pgx/sqlc/tern details.
+Proceed to **D7-B — PostgreSQL Isolation & Transaction Realization**: derive the structural Organization/RLS model, transaction context propagation, idempotency storage boundary and ETag/revision enforcement before choosing pgx/sqlc/tern details.
 
 Do not begin D8, D9 or Product implementation.
