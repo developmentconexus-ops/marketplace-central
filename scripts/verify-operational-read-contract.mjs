@@ -107,8 +107,8 @@ function assertForbidden(schema, names, label) {
 function validate(document) {
   const ops = operations(document);
   assert(ops.length === 99, `Product operation count changed: ${ops.length}/99`);
-  const permission = schemaBySuffix(document, 'Permission');
-  assert((permission.enum ?? []).length === 30, `ordinary Permission count changed: ${(permission.enum ?? []).length}/30`);
+  const ordinaryPermissions = normalize(ops.map(({ operation }) => operation['x-mpc-required-permission']).filter((value) => value && value !== 'authenticated'));
+  assert(ordinaryPermissions.length === 30, `ordinary Permission count changed: ${ordinaryPermissions.length}/30`);
 
   const businessOrder = schemaBySuffix(document, 'BusinessOrderIntentListItem');
   assertRequired(businessOrder, ['business_order_intent_id', 'sale', 'target_source_instance_id', 'external_effect_state', 'convergence', 'created_at'], 'BusinessOrderIntentListItem');
