@@ -17,7 +17,7 @@
 | Product surface | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Derive and operator-review the smallest OP-READ-01 owner-local read-contract repair. Do not edit canonical OAD before explicit approval; do not re-render B00 or Visão operacional first.** |
+| Exact next action | **Operator adjudicates the derived OP-READ-01 repair candidate. Do not edit canonical OAD before explicit approval; do not re-render B00 or Visão operacional first.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -55,19 +55,42 @@
 - B10 internal `search/list → selected exact-subject detail` evidence remains valid but B10 is **SUSPENDED** under `OFERTA > Preparação` until corrected B00 global IA is re-rendered.
 - D5 remains ACCEPTED / CLOSED while OP-READ-01 is only a repair candidate; no Product operation, Permission, semantic owner or OAD has been changed by the finding yet.
 
-## OP-READ-01 guardrail
+## OP-READ-01 candidate guardrail
 
-Preferred repair shape:
+Leading repair shape, awaiting operator adjudication:
 
 ```text
-enrich existing owner-local list projections / filters
-preserve semantic owners
-avoid screen-shaped /operational-dashboard
-avoid new OperationalWorkflow authority
-preserve 99-operation census if possible
+BusinessOrderIntent list
+  expose convergence + typed state/convergence filters
+
+InvoicingIntent list
+  expose convergence + necessary owner-local correlation + typed state/convergence filters
+
+FulfillmentExecution list
+  expose checkpoint states + provider dispatch deadline
+  add typed readiness/checkpoint/deadline filters
+
+Shipment list
+  expose sale + dispatch deadline
+  add typed state/deadline filters
+
+PostSale / Work
+  no repair currently justified
 ```
 
-If the operator approves a Product read-contract repair, reopen only the smallest D5 authority needed, prove the canonical OAD again and revalidate the affected GF-02 properties before frontend wireframing resumes.
+Binding negative controls:
+
+```text
+no new operation
+no new Permission
+no new semantic owner
+no screen-shaped /operational-dashboard
+no generic sort/filter DSL
+no total_count
+no cross-owner synthetic lifecycle
+```
+
+If the operator approves this direction, reopen only the smallest D5-B2 W2/W3 + canonical OAD authority needed, preserve the **99-operation / 30-Permission / H-A-S** census, prove generated projections and revalidate affected GF-02 read/composition properties. Live external-effect probes are not repeated unless a write/effect invariant is actually changed.
 
 ## D8 authority carried forward
 
