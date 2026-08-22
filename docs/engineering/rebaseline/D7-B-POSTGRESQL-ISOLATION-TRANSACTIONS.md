@@ -1,11 +1,12 @@
 # D7-B — PostgreSQL Isolation & Transaction Realization
 
-> **Status:** CANDIDATE / OPERATOR RATIFICATION PENDING  
+> **Status:** OPERATOR-RATIFIED  
 > **Parent:** `D7-RUNTIME-JOBS-TRANSACTIONS.md`  
 > **Accepted prerequisite:** D7-A Runtime Envelope & Transaction Ownership Boundary — OPERATOR-RATIFIED  
 > **Parent authorities:** accepted D2 Organization/data ownership, accepted D5 wire/idempotency/revision grammar, accepted D7-A transaction ownership  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
-> **Derived:** 2026-08-21
+> **Derived:** 2026-08-21  
+> **Ratified:** 2026-08-21
 
 ## 1. Purpose
 
@@ -189,11 +190,11 @@ Technical-routing mode policies exist only on bounded technical routing/queue re
 
 No universal policy DSL or dynamic ACL engine is introduced.
 
-## 8. Database primitive candidate
+## 8. Database primitive
 
-### 8.1 `pgx/v5` + `pgxpool` — SELECT CANDIDATE
+### 8.1 `pgx/v5` + `pgxpool` — ACCEPTED
 
-D7-B selects `pgx/v5` + `pgxpool` as the candidate PostgreSQL connection/transaction primitive because:
+D7-B selects `pgx/v5` + `pgxpool` as the PostgreSQL connection/transaction primitive because:
 
 - PostgreSQL is already canonical rather than an interchangeable database target;
 - `pgxpool` is the concurrency-safe pool for a Go server;
@@ -261,7 +262,7 @@ Exact binary length/encoding helper is implementation detail as long as collisio
 
 For every operation whose OAD requires `Idempotency-Key`, the owner transaction uses one organization-scoped technical idempotency record.
 
-Candidate uniqueness scope:
+Accepted uniqueness scope:
 
 ```text
 organization_id
@@ -311,7 +312,7 @@ Exact retention duration is not frozen without a proved retry/history horizon; D
 
 ## 13. Falsifiable proof contract
 
-D7-B cannot be ratified until a real PostgreSQL proof design demonstrates at least:
+D7-B acceptance requires a real PostgreSQL proof design that demonstrates at least:
 
 1. runtime role is not table owner, superuser or `BYPASSRLS`;
 2. every organization-scoped table has `organization_id NOT NULL`, RLS enabled, RLS forced and an admitted policy;
@@ -356,10 +357,10 @@ Relevant current PostgreSQL facts:
 
 ## 15. Adjudication
 
-**Candidate:** accept transaction-local scope + RLS/`FORCE RLS` + non-owner/no-`BYPASSRLS` runtime role + composite Organization FKs + `READ COMMITTED`/explicit row locking + opaque random owner revision token + organization/operation-scoped idempotency records + `pgx/v5`/`pgxpool` as the direct PostgreSQL primitive.
+**OPERATOR-RATIFIED:** transaction-local scope + RLS/`FORCE RLS` + non-owner/no-`BYPASSRLS` runtime role + composite Organization FKs + `READ COMMITTED`/explicit row locking + opaque random owner revision token + organization/operation-scoped idempotency records + `pgx/v5`/`pgxpool` as the direct PostgreSQL primitive.
 
 No Product operation, Permission, Principal kind, semantic owner or frontend decision changes.
 
-If ratified, next is **D7-C — Durable Work & External Effects**, where the accepted D7-A handoff property is used to decide River/outbox/scheduler/retry/reconciliation mechanics.
+Next is **D7-C — Durable Work & External Effects**, where the accepted D7-A handoff property is used to decide River/outbox/scheduler/retry/reconciliation mechanics.
 
 Do not begin D8, D9 or Product implementation.
