@@ -1,6 +1,6 @@
 # D8 — Golden Flows
 
-> **Status:** OPEN / ACTIVE — DERIVED CANDIDATE / OPERATOR-APPROVED FLOW SET  
+> **Status:** ACCEPTED / CLOSED — OPERATOR-RATIFIED 2026-08-22  
 > **Program:** Architecture Rebaseline / Technical System Design  
 > **Opened:** 2026-08-22  
 > **Accepted prerequisites:** D0–D7 — ACCEPTED / CLOSED  
@@ -12,7 +12,7 @@ D8 defines the smallest set of representative **golden flows** needed to prove t
 
 D8 owns flow selection, choreography and proof expectations only. It does **not** reopen accepted Product operations, Permissions, Principal kinds, semantic owners, provider contracts, frontend authority or D7 runtime mechanisms by convenience, and it does not begin Product implementation.
 
-Post-review proof-closure corrections live in [D8-R1 Proof Closure & Implementation-Readiness Coherence](D8-R1-PROOF-CLOSURE-COHERENCE.md). Operator-authorized external execution follows [D8 Controlled Live Probe Protocol](D8-LIVE-PROBE-PROTOCOL.md).
+Post-review proof-closure corrections live in [D8-R1 Proof Closure & Implementation-Readiness Coherence](D8-R1-PROOF-CLOSURE-COHERENCE.md). Operator-authorized external execution follows [D8 Controlled Live Probe Protocol](D8-LIVE-PROBE-PROTOCOL.md), with outcomes recorded in [D8 Live Probe Evidence](D8-LIVE-PROBE-EVIDENCE.md).
 
 ## 2. Accepted baseline
 
@@ -57,7 +57,7 @@ D8 may use:
 - deterministic repository proof;
 - bounded real external-system probes explicitly deferred to D8 by accepted D4 authority.
 
-D4 deferred the first controlled real Mercado Livre publication/write proof and selected Sankhya fiscal/destination progression proof to D8. The operator authorized bounded execution on 2026-08-22. Execution still obeys the exact preflight, blast-radius, no-blind-retry and evidence rules in [D8 Controlled Live Probe Protocol](D8-LIVE-PROBE-PROTOCOL.md); authorization is not permission to widen a probe or bypass a failed provider prerequisite.
+D4 deferred the first controlled real Mercado Livre publication/write proof and selected Sankhya fiscal/destination progression proof to D8. The operator authorized bounded execution on 2026-08-22. Those probes were executed/recorded under [D8 Controlled Live Probe Protocol](D8-LIVE-PROBE-PROTOCOL.md): P1 and P3 converged, P5 narrowed full alternate-destination override to external-required/unsupported, P4/P6 were not triggered by the chosen fixture, and P2 was explicitly operator-redeferred because no qualifying open Mercado Livre Sale existed. Exact evidence is in [D8 Live Probe Evidence](D8-LIVE-PROBE-EVIDENCE.md).
 
 ### 4.2 Post-D9 implementation conformance
 
@@ -129,7 +129,7 @@ At minimum the proof matrix must be capable of falsifying:
 
 ## 5.5 D8 real external gate
 
-Accepted D4-R1 specifically leaves the **first controlled real Mercado Livre creation/write** to D8. The operator has authorized bounded execution; the probe must follow `D8-LIVE-PROBE-PROTOCOL.md`, include authoritative reread plus shared-User-Product blast-radius verification, and must not be used to infer a Product-runtime PASS.
+The first controlled real Mercado Livre Price/Availability effect was executed under the D8 probe protocol against one bounded seller-owned Item/User Product lane. Availability and price each converged by authoritative reread and the fixture was restored. This closes the D4/D4-R1 external-contract proof for the selected lane without claiming Product-runtime conformance. See [D8 Live Probe Evidence](D8-LIVE-PROBE-EVIDENCE.md).
 
 ---
 
@@ -217,7 +217,7 @@ GF-02 must preserve all of the following:
 
 ## 6.6 D8 real external gates
 
-Accepted D4 leaves the controlled Destination Realization, selected-lane fiscal/invoice/label progression and first `TOP 313 → TOP 306` effect to D8. The operator authorized bounded execution; each receives an independent verdict even when one qualifying real Sale safely carries several probes. Exact execution follows `D8-LIVE-PROBE-PROTOCOL.md`.
+The bounded Sankhya `313→306` Gateway progression converged on a test order and produced a distinct unconfirmed TOP-306 note with exact item/partner correlation. The alternate-contact reference survived that progression, while the probe proved that sanctioned `Contato` does **not** carry a full street-address override; full alternate-destination realization therefore remains explicit `external-required/unsupported` on this SourceInstance. Native Party mutation and additional fiscal branches were not triggered by the fixture. The Mercado Livre invoice→label drive is explicitly operator-redeferred to the first real open Sale or a beta-flagged implementation drive because D8 had no qualifying open Sale and fabricating one is forbidden. See [D8 Live Probe Evidence](D8-LIVE-PROBE-EVIDENCE.md).
 
 ---
 
@@ -441,9 +441,7 @@ If yes, the specification still contains a material realization ambiguity and re
 
 ---
 
-# 13. Candidate disposition
-
-Current D8 derivation result:
+# 13. Closeout disposition
 
 ```text
 D0–D7 reopen                 NONE
@@ -453,14 +451,20 @@ systemic recovery falsifier  1
 new business authority       NONE
 new Product operation        NONE
 new Permission               NONE
+live external probes         CLOSED / VALIDLY DISPOSITIONED
+P1                            PASS_CONVERGED
+P2                            OPERATOR_RATIFIED_REDEFER — first real open ML Sale / beta-flagged drive
+P3                            PASS_CONVERGED
+P4                            NOT_TRIGGERED
+P5                            CAPABILITY_NOT_PROVEN — full destination override remains external-required/unsupported
+P6                            NOT_TRIGGERED
 Product implementation       BLOCKED
 D9                            BLOCKED
 post-D8 realization finding  D6-R2 + Pre-D9 Implementation Readiness Contract
-live external probes         OPERATOR-AUTHORIZED / EXECUTION PENDING
 ```
 
-**Candidate outcome:** `CURRENT STRUCTURE CONFIRMED` with D8 live external proof still open and implementation-readiness completion required before D9.
+**Accepted outcome:** `CURRENT STRUCTURE CONFIRMED` with one explicit future P2 proof obligation and with complete frontend realization/readiness required before D9.
 
-## 14. Exact next action
+## 14. Integration boundary
 
-**Execute and record the operator-authorized D8 live probes through `D8-LIVE-PROBE-PROTOCOL.md`. Do not begin D6-R2, D9 or Product implementation until D8 closes.**
+D8 is operator-ratified `ACCEPTED / CLOSED` on this candidate branch. PR #59 remains the sole integration vehicle and must not be merged without explicit operator merge authorization. Until integration, do not stack D6-R2 work on this branch. After an authorized merge, revalidate `main`, PRs and branches before opening D6-R2.
