@@ -1,6 +1,6 @@
 # D6-R2 P8 — Structural Wireframe Block Ledger
 
-> **Status:** OPEN / ACTIVE — B00 operator-`LOCKED`; B01 is NEXT
+> **Status:** OPEN / ACTIVE — B00 operator-`LOCKED`; A04 operator-adjudicated; B01 HTML `CANDIDATE` rendered
 > **Parent:** [D6-R2 Complete Frontend Realization Closure](D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md)
 > **P5 input:** [Complete Screen / Material-Surface Inventory](D6-R2-P5-SCREEN-SURFACE-INVENTORY.md)
 > **Method:** [Frontend Product Experience Planning Method v2.1](../../development/frontend-product-experience-planning-method.md)
@@ -115,43 +115,122 @@ rendered artifact reviewed: YES
 operator disposition:          LOCKED
 material changes requested:    NONE
 visual-design decisions locked: NONE
-verification HEAD:             86500b7dea9691891905738eb4cff10fe183617b
-ci / gate:                     #391 SUCCESS / PASS
+verification HEAD:             ca7370856c2f9403a28a275403995c7e9daa5120
+ci / gate:                     #393 SUCCESS / PASS
 Product surface:               99/99 ops · 30/30 Permissions · H/A/S
 bootstrap:                     18827 / 20480 bytes
 ```
 
 This `LOCKED` status is operator authority only; CI verifies repository coherence but does not grant the lock.
 
-## 4. B01 — Overview — NEXT
+## 4. A04 — Overview priority — OPERATOR-ADJUDICATED
 
+The original static choices A/B/C/D/E were challenged before B01 rendering. The operator approved the following **contextual-priority** law instead of any always-dominant signal:
+
+```text
+if Work is known + actionable
+→ operational-attention region expands and leads the page
+
+if Work is known-empty
+→ operational-attention region collapses to a short explicit known-empty state
+→ it MUST NOT say or imply “everything is healthy”
+
+if Work knowledge is unavailable/unknown
+→ the region remains visible as unavailable/unknown
+→ it MUST NOT infer zero, empty or healthy
+
+in all three cases
+→ a compact marketplace/account + Performance + Economics orientation remains visible
+```
+
+This is **not** a new health model. The Overview remains a read-only composition of admitted owner reads.
+
+### 4.1 Review findings incorporated
+
+1. A pure Work-first page was rejected because an empty Work result could become a false green state if the underlying detection/evidence path is incomplete.
+2. Slow commercial degradation may never produce discrete Work, so the bounded Performance/Economics orientation is a safety net, not decoration.
+3. No alert-triage lifecycle is invented. Current Work authority does **not** admit generic `resolve`, `dismiss` or `close`; B01 may navigate to Work only.
+4. No “verified X minutes ago” or collector-health freshness is fabricated. Such freshness may be displayed only when the owning Product authority actually exposes it.
+5. No health score, hidden total, cross-provider KPI or synthetic dashboard authority is admitted.
+
+A04 is therefore **resolved for B01 hierarchy by operator adjudication**. It does not create a Product capability and does not reopen D0–D8.
+
+## 5. B01 — Overview
+
+**Status:** `CANDIDATE` — rendered; awaiting operator review of the executable HTML.  
 **Homes:** R01.  
+**Artifact:** [`qualification/d6-r2-wireframes/b01-overview.html`](../../../qualification/d6-r2-wireframes/b01-overview.html)  
 **P6:** NOT TRIGGERED.  
 **P7:** NOT TRIGGERED.
 
-P5 already limits Overview to a small read-only composition that may expose, when separately permitted:
+### 5.1 Candidate structure
+
+B01 inherits the entire locked B00 shell unchanged. Its page-owned content is:
 
 ```text
-Marketplace Installation posture
-bounded economic summary
-bounded Work preview
-per-Installation Performance entry point
+Visão geral
+├─ contextual operational-attention region
+│  ├─ ACTIONABLE          -> expanded preview + navigation to Trabalho
+│  ├─ KNOWN_EMPTY         -> collapsed explicit known-empty state
+│  └─ KNOWLEDGE_UNAVAILABLE -> visible unknown/unavailable state
+└─ balanced orientation — always present
+   ├─ Marketplace / account posture       [MarketplacePortfolio]
+   ├─ per-Installation Performance entry/result [MarketplacePerformanceIntelligence]
+   └─ bounded economic orientation         [CommercialEconomics]
 ```
 
-A04 remains OPEN: accepted authority does not yet prove which permitted signal deserves first visual priority. External reference research cannot decide organization-specific priority, so B01 must begin with the smallest operator walkthrough needed to resolve or explicitly carry that priority assumption.
+The Work preview is bounded evidence, not a global inferred count. It exposes no screen-shaped mutation and cannot resolve underlying source truth.
 
-### Exact B01 pre-render question
+### 5.2 Independent-owner law
 
-Before rendering the HTML candidate, establish what the user should notice first on opening `Visão geral`:
+Each Overview region remains permission/evidence conditioned independently. Missing one region does not authorize the host page to infer that owner's truth.
 
 ```text
-A  operational attention / Work requiring action
-B  marketplace/account operating posture
-C  commercial/economic posture
-D  Performance entry / recent channel result
-E  no dominant signal; intentionally balanced orientation
+not permitted != known empty
+unknown/unavailable != zero
+Work empty != healthy operation
+Performance absent != zero performance
+Economics absent != zero/healthy economics
 ```
 
-The answer controls hierarchy only. It does not create new Product reads, hidden counts, cross-provider aggregation or `/dashboard` authority.
+### 5.3 Responsive law
 
-No B01 HTML is baseline until this A04 input is recorded and the resulting rendered candidate is separately operator-reviewed.
+The B00 responsive shell remains locked. B01 content may stack at narrower widths, but reading priority stays:
+
+```text
+contextual attention state
+→ marketplace/account orientation
+→ Performance orientation
+→ Economics orientation
+```
+
+When Work is `KNOWN_EMPTY`, its collapsed band does not consume dominant vertical space. When Work is `KNOWLEDGE_UNAVAILABLE`, its uncertainty remains visible rather than disappearing.
+
+### 5.4 B01 negative controls
+
+B01 must visibly reject:
+
+```text
+“Tudo certo” inferred from empty Work
+resolve/dismiss/close Work actions
+frontend-generated collector freshness
+health score
+/dashboard authority
+cross-provider aggregate KPI
+hidden global totals from one paginated list
+owner write authority acquired by composition
+```
+
+## 6. B01 operator adjudication gate
+
+B01 may become `LOCKED` only after the operator opens/interacts with the HTML artifact and explicitly adjudicates the rendered structure.
+
+Possible dispositions:
+
+```text
+LOCKED       explicit operator approval of rendered B01
+CANDIDATE    changes requested or review pending
+FINDING      material contradiction discovered
+```
+
+Do not render B10 Preparation as baseline before B01 is `LOCKED`, unless the operator explicitly authorizes parallel progression. B10 additionally requires its bounded P6 study before rendering.
