@@ -1,6 +1,6 @@
 # D7 — Runtime / Jobs / Transactions
 
-> **Status:** OPEN / ACTIVE — D7-A→D7-E OPERATOR-RATIFIED / WHOLE-D7 COHERENCE + PROOF REVIEW OPEN  
+> **Status:** OPEN / ACTIVE — D7-A→D7-E OPERATOR-RATIFIED / WHOLE-D7 REVIEW CONVERGED / FINAL EXACT-HEAD PROOF PENDING  
 > **Program:** Architecture Rebaseline / Technical System Design  
 > **Opened:** 2026-08-21  
 > **Parent authorities:** accepted D0–D6 semantics, `ARCHITECTURE.md`, canonical Product OAD, and bounded owner authority routed by `docs/index.md`  
@@ -12,7 +12,7 @@ D7 defines the smallest target runtime realization capable of executing the alre
 
 D7 owns server/process topology, PostgreSQL isolation/transactions, durable work/effects, session/CSRF/OIDC and machine-token realization, Product HTTP runtime/validation, private byte custody, secrets/configuration, observability, migrations, deployment/health/backup and real-dependency proof seams.
 
-D7 does **not** reopen Product operations, ordinary Permissions, Principal kinds, semantic ownership, frontend interaction meaning or provider/business-system semantics by implementation convenience. D8 golden-flow choreography, D9 adversarial review and Product implementation remain blocked.
+D7 does **not** reopen Product operations, ordinary Permissions, Principal kinds, semantic ownership, frontend interaction meaning or provider/business-system semantics by implementation convenience. D8 golden-flow choreography, D9 adversarial review and Product implementation remain blocked until the roadmap explicitly advances them.
 
 ## 2. Imported invariants
 
@@ -41,9 +41,9 @@ D7 does **not** reopen Product operations, ordinary Permissions, Principal kinds
 | D7-C — Durable Work & External Effects | [D7-C](D7-C-DURABLE-WORK-EXTERNAL-EFFECTS.md) | **OPERATOR-RATIFIED** |
 | D7-D — Authentication / Session / CSRF / Machine Tokens | [D7-D](D7-D-AUTHENTICATION-SESSION-CSRF.md) | **OPERATOR-RATIFIED** |
 | D7-E — Operability / Secrets / Migrations / Deployment & Proof | [D7-E](D7-E-OPERABILITY-DEPLOYMENT-PROOF.md) | **OPERATOR-RATIFIED** |
-| D7-R1 — Whole-Stage Coherence Corrections | [D7-R1](D7-R1-WHOLE-STAGE-COHERENCE.md) | **CANDIDATE / INTERNAL REVIEW — INDEPENDENT CHALLENGE PENDING** |
+| D7-R1 — Whole-Stage Coherence Corrections | [D7-R1](D7-R1-WHOLE-STAGE-COHERENCE.md) | **FABLE REVIEWED / GPT ADJUDICATED — BOUNDED FIX APPLIED** |
 
-All five realization slices are ratified. Whole-D7 internal review found only bounded realization seams and captured the repair candidate in D7-R1. D7 still requires independent challenge + adjudication before closeout. D8 does not open merely because the slices are complete.
+All five realization slices are ratified. Whole-D7 review found no D0–D6 contradiction and no need to reconstruct D7. D7-R1 contains only the bounded composition repairs that survive review.
 
 ## 5. Accepted D7-A — Runtime Envelope & Transaction Ownership
 
@@ -81,9 +81,9 @@ organization_id on organization-owned state/evidence
 + pgx/v5 + pgxpool
 ```
 
-Principal-self and technical-routing scope are bounded bootstrap modes, never generic cross-tenant business access. No generic ORM/repository abstraction, database/schema/role-per-Organization or global `SERIALIZABLE` baseline is admitted.
+D7-R1 completes the persistence taxonomy with a narrow `authentication_bootstrap` mode for one-time login transaction, ApplicationSession lookup and machine-client binding before Principal resolution. It cannot read Organization-owned business/evidence state. River engine tables are explicit platform technical/library state and do not grant business authority.
 
-D7-R1 proposes the smallest scope-taxonomy completion for D7-D authentication bootstrap without weakening Organization isolation.
+No generic ORM/repository abstraction, database/schema/role-per-Organization or global `SERIALIZABLE` baseline is admitted.
 
 ## 7. Accepted D7-C — Durable Work & External Effects
 
@@ -102,7 +102,7 @@ scheduler/job state = wake-up/technical state only
 
 River completion, retry, uniqueness, rescue and schedule state never become business truth/history. Crash/timeout after possible dispatch moves to reconciliation, not generic retry.
 
-D7-R1 qualifies normal crash semantics for database-time rollback: post-restore dispatch is recovery-fenced until reconciliation proves safety.
+D7-R1 qualifies continuous-timeline crash semantics for database rollback: after a restore, absence of a marker is not proof that no external effect occurred. Consequential dispatch remains behind the recovery fence until timeline continuity or reconciliation proves safety.
 
 ## 8. Accepted D7-D — Authentication / Session / CSRF / Machine Tokens
 
@@ -125,7 +125,7 @@ A/S: Keycloak Client Credentials
 
 No browser bearer, persistent human refresh-token cache, Redis session store, IdP role→Permission mapping, realm-per-Organization, wildcard CORS or generic IAM engine is admitted.
 
-D7-R1 clarifies the pre-Principal persistence scope and fail-closed multiple-carrier/OAD-validator seam.
+D7-R1 clarifies pre-Principal persistence scope and fail-closed multiple-carrier/OAD-validator composition.
 
 ## 9. Accepted D7-E — Operability / Deployment / Proof Baseline
 
@@ -137,7 +137,7 @@ validation oapi-codegen/nethttp-middleware
 policy     generated OAD operation-policy metadata; no handwritten duplicate map
 bytes      private S3 API-compatible object storage; authenticated Go delivery; no CDN baseline
 config     typed startup config + deployment-injected env/file secrets
-migrate    tern/v2 via separate migration owner / release step
+migrate    tern/v2 for MPC schema + version-matched River migration tool for River schema
 logs       JSON log/slog
 telemetry  OpenTelemetry traces + metrics over OTLP/HTTP; logs remain slog
 artifact   one immutable OCI application image with Go + compiled frontend
@@ -146,53 +146,61 @@ backup     PostgreSQL base backup + WAL/PITR or managed equivalent; restore proo
 proof      real PostgreSQL/River/Keycloak/browser/router/object-store seams
 ```
 
-D7-R1 separates MPC `tern` schema ownership from River's library-owned migration line and adds the post-restore recovery fence plus scheme-aware OAD validation composition.
-
 No Kubernetes/service mesh, Redis, external broker, mandatory Collector/Prometheus/ELK stack, Vault dependency, hot configuration, ORM auto-schema, startup auto-migration, CDN/public bucket, multi-region or generic IaC platform is introduced.
 
-## 10. Whole-D7 proof obligations
+## 10. Accepted D7-R1 bounded composition repairs
 
-Before D7 closes, the combined **proof contract** must make at least these properties falsifiable:
+[D7-R1](D7-R1-WHOLE-STAGE-COHERENCE.md) preserves D7-A→D7-E while closing only five composition seams:
 
-- cross-Organization DB access/reference bypass;
-- transaction-scope leakage through pooled connections;
-- authentication-bootstrap scope escaping into business/evidence tables;
+1. `authentication_bootstrap` persistence scope before Principal resolution;
+2. separate migration ownership: `tern` for MPC schema, exact-version River tooling for River schema;
+3. PITR/database-time rollback recovery fence with **affirmative external continuity witness** and automatic fail-closed arming when continuity is absent/unverifiable;
+4. scheme-aware OAD validator composition over already-established D7-D carrier context; no production no-op authentication function and no implicit dual-carrier priority;
+5. proof-timing distinction between D7 architecture closeout and later implemented real-dependency conformance.
+
+Independent Fable challenge on exact candidate `c08a4d025cfd89269cc071f4b307695e79f6f8cb` returned **ACCEPT WITH BOUNDED FIXES**. GPT accepted only the Important continuity/arming completion. Fable's `chi-server` generation suggestion and bootstrap-budget note remain non-blocking and require no D7 authority change.
+
+Round 2 is not justified because the blocking amendment adds no new technology, Product meaning or runtime topology.
+
+## 11. Whole-D7 proof contract
+
+D7 closeout leaves executable falsifiers for at least:
+
+- cross-Organization DB access/reference bypass and pooled-scope leakage;
+- authentication-bootstrap escape into business/evidence state;
 - stale revision/idempotency divergence;
-- owner commit without required durable job or rolled-back owner state with runnable job;
-- duplicate/rescued/out-of-order work corrupting business truth;
-- ambiguous external effect being blindly redispatched, including after PITR/database rollback;
-- Sankhya recovery falling back to Direct Oracle;
-- browser access/refresh token exposure;
-- invalid/replayed OIDC state/nonce/issuer/audience creating a session;
-- unsafe H request escaping CSRF/cross-origin controls;
-- A/S bearer resolving to H or gaining Permission from IdP roles;
-- OAD validation satisfying security through a no-op/mismatched carrier;
-- Product `{id}:verb` paths failing selected runtime dispatch;
-- runtime request validation accepting OAD-invalid shape;
-- technical routes leaking into Product OAD/SDK;
-- unauthorized private byte delivery;
+- owner state/handoff atomicity and duplicate/rescued/out-of-order work;
+- ambiguous external effect redispatch, including an ordinary boot after PITR with no manual fence-arming step;
+- automatic fail-closed continuity detection when restored database lineage cannot be positively established;
+- Sankhya Direct Oracle fallback;
+- browser token exposure, OIDC replay/fixation, CSRF/cross-origin bypass and disabled-Principal session use;
+- wrong machine issuer/audience/JWKS/client binding and A/S→H confusion;
+- no-op/mismatched OAD security validation and dual-carrier ambiguity;
+- `{id}:verb` runtime dispatch, OAD-invalid request rejection and technical-surface exclusion;
+- unauthorized private byte delivery and object/DB recovery integrity;
 - secret/PII leakage through logs/traces/metrics/jobs;
-- incompatible MPC or River schema booting successfully or runtime receiving migration-owner power;
-- untrusted proxy headers influencing auth/public-origin security;
-- provider/telemetry degradation falsely killing application readiness;
-- backup/restore losing RLS/history/effect safety, stable IdP subject continuity or committed binary integrity.
+- MPC/River migration skew, runtime migration-owner privilege and incompatible-schema boot;
+- trusted-proxy spoofing, provider false-death and telemetry coupling;
+- restore loss of RLS/history/effect safety, IdP subject continuity or committed binary integrity.
 
-D7 closeout does **not** claim an implemented Product runtime PASS. D7-R1 defines the proof-timing boundary: real-dependency execution is mandatory for implementation acceptance after the implementation gate opens; mocks cannot substitute for those claims.
+D7 architecture closeout does **not** claim an implemented Product runtime PASS. The current repository intentionally has active runtime population `NONE`. Real PostgreSQL/River/Keycloak/browser/router-validator/object-store execution becomes mandatory for implementation acceptance when the implementation gate opens after D9; mock-only tests cannot substitute for those claims.
 
-## 11. Whole-D7 review gate
+## 12. Whole-D7 review result
 
-**OPEN / ACTIVE.** Internal whole-stage review found five bounded realization seams and no D0–D6 semantic contradiction. The repair candidate is [D7-R1](D7-R1-WHOLE-STAGE-COHERENCE.md).
+```text
+internal coherence review        COMPLETE
+independent Fable challenge      ACCEPT WITH BOUNDED FIXES
+GPT adjudication                 CONVERGED
+surviving Important finding      PITR continuity/automatic fence arming — APPLIED
+D0–D6 reopen                     NONE
+D7 reconstruction               NONE
+Product                          99 operations / 30 Permissions / H-A-S unchanged
+D8 / D9                          BLOCKED
+Product implementation           BLOCKED
+```
 
-Required remaining sequence:
+## 13. Exact next action
 
-1. fresh candidate gate after D7-R1 routing;
-2. independent Fable challenge on an isolated `review/d7-fable` branch;
-3. GPT adjudication of every material finding;
-4. bounded fixes + fresh exact-head gate when required;
-5. operator closeout decision.
+Run one fresh exact-head repository gate after the bounded Fable F-1 amendment. If green, present D7 for explicit operator closeout.
 
-D7 is not closed and D8 is not open until this review converges and the operator ratifies closeout.
-
-## 12. Exact next action
-
-**Prove the D7-R1 candidate leaves repository/Product gates green, then open the isolated whole-D7 Fable challenge. Do not begin D8, D9 or Product implementation.**
+Do **not** merge PR #58, mark D7 closed, open D8/D9 or begin Product implementation without that operator decision.
