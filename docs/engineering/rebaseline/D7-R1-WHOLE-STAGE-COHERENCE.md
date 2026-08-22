@@ -1,10 +1,11 @@
 # D7-R1 — Whole-Stage Coherence Corrections & Proof-Timing Contract
 
-> **Status:** FABLE REVIEWED / GPT ADJUDICATED — BOUNDED FIX APPLIED / OPERATOR D7 CLOSEOUT PENDING  
+> **Status:** OPERATOR-RATIFIED / ACCEPTED — WHOLE-D7 CLOSEOUT COMPLETE  
 > **Parent:** `D7-RUNTIME-JOBS-TRANSACTIONS.md`  
 > **Scope:** exact D7-B/C/D/E realization seams only; no D0–D6 semantic reopen  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
 > **Derived:** 2026-08-22  
+> **Ratified:** 2026-08-22  
 > **Independent Fable verdict:** ACCEPT WITH BOUNDED FIXES  
 > **GPT adjudication:** CONVERGED — Fable F-1 accepted; F-2/F-3 non-blocking
 
@@ -260,27 +261,23 @@ Fable independently found no reason to reopen D0–D6 or reconstruct D7-A→D7-E
 
 Round 2 is not justified: the sole Important finding is a bounded completion of the already-owned R1-F3 recovery law and introduces no new architecture selection.
 
-## 8. Whole-D7 review disposition
+## 8. Whole-D7 closeout disposition
 
-Current whole-D7 result after Fable + GPT adjudication:
+Operator ratification closes the whole-stage review with the following accepted result:
 
 ```text
 D0–D6 semantic reopen       NONE
-D7-A process topology       PRESERVED
-D7-B core RLS/transaction   PRESERVED + auth-bootstrap taxonomy repair
-D7-C River/effect model     PRESERVED + post-restore continuity/fence qualification
-D7-D auth profile           PRESERVED + ambiguous-carrier fail-closed clarification
-D7-E operability profile    PRESERVED + River migration/recovery/auth-validator seams
-D7-R1                       BOUNDED FIX APPLIED / GPT ADJUDICATED
+D7-A process topology       OPERATOR-RATIFIED
+D7-B RLS/transactions       OPERATOR-RATIFIED + R1 auth-bootstrap completion
+D7-C River/effect model     OPERATOR-RATIFIED + R1 recovery-fence qualification
+D7-D auth profile           OPERATOR-RATIFIED + R1 dual-carrier/OAD-validator clarification
+D7-E operability profile    OPERATOR-RATIFIED + R1 migration/recovery seams
+D7-R1                       OPERATOR-RATIFIED / ACCEPTED
 Product surface             99 operations / 30 Permissions / H-A-S unchanged
-D8 / D9                     NOT OPEN
+D8 / D9                     NOT OPEN ON THIS UNMERGED BRANCH
 Product implementation      BLOCKED
 ```
 
 No microservices, Redis, broker, workflow engine, new business authority, Product operation or Permission is introduced.
 
-## 9. Exact next action
-
-Run one fresh exact-head repository gate after this bounded F-1 amendment. If green, present D7 for explicit operator closeout decision.
-
-Do **not** merge PR #58, mark D7 closed, open D8/D9 or begin Product implementation without that operator decision.
+D7-R1 is now accepted authority. The remaining repository action is integration of the D7 closeout into `main`; this document does not itself authorize that merge.
