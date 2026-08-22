@@ -11,14 +11,7 @@
 
 D7-C selects the smallest durable-work realization that makes accepted D3 recoverable propagation and D4 external-effect ambiguity/reconciliation semantics executable without creating a generic workflow/event business authority.
 
-D7-C owns only technical mechanics for:
-
-- transactionally durable post-commit work;
-- admitted producer-fact → consumer reaction delivery;
-- external-effect dispatch and crash recovery;
-- retry/backoff classification;
-- authoritative reconciliation work;
-- bounded schedules/polling/recovery sweeps already required by accepted D4 consumers.
+D7-C owns only technical mechanics for transactionally durable post-commit work, admitted producer-fact → consumer reaction delivery, external-effect dispatch and crash recovery, retry/backoff classification, authoritative reconciliation work, and bounded schedules/polling/recovery sweeps already required by accepted D4 consumers.
 
 D7-C does not create new Product operations, business events, intents, owners, workflow states, provider semantics, broker topology or Product implementation.
 
@@ -71,7 +64,7 @@ Why it is the smallest fit:
 - River supports transaction-bound `InsertTx`, allowing owner state and required job handoff to commit/rollback atomically;
 - a job inserted in the owner transaction is not work-visible until commit and disappears if the transaction rolls back;
 - workers execute in-process under the D7-A topology;
-- River provides retries/backoff, scheduled/periodic jobs, stuck-job rescue, job inspection and transactional completion without MPC building a generic queue framework;
+- River provides retries/backoff, scheduled/periodic jobs, unique jobs, graceful stop, stuck-job rescue and transactional completion without MPC building a generic queue framework;
 - River can later run insert-only or with different worker roles if D7-A's process-split reopen triggers become real.
 
 Exact River version is an implementation-manifest concern; D7-C depends on these documented behavioral properties, not on a speculative version pin.
@@ -190,13 +183,7 @@ The adapter returns the smallest D4 semantic effect evidence/classification, nev
 
 ### 7.3 Post-dispatch persistence
 
-After a response/failure is observed, the worker enters a new owner transaction and persists the owner-visible effect outcome proportionately:
-
-- definitive rejection;
-- accepted/pending external work;
-- synchronous confirmed effect where the D4 contract truly proves it;
-- ambiguous/unknown possible acceptance;
-- reconciliation-required state/evidence.
+After a response/failure is observed, the worker enters a new owner transaction and persists the owner-visible effect outcome proportionately: definitive rejection; accepted/pending external work; synchronous confirmed effect where the D4 contract truly proves it; ambiguous/unknown possible acceptance; or reconciliation-required state/evidence.
 
 Convergence remains controlled by the accepted authoritative reread surface, not by queue/job success.
 
@@ -241,7 +228,7 @@ Authoritative reads, polling and reconciliation reads are repeatable subject to 
 
 ### Class R3 — definitive external rejection/precondition failure
 
-Provider/business-system contract proves the write was not accepted (for example an authoritative stale-precondition rejection class where D4 says it is definitive).
+Provider/business-system contract proves the write was not accepted.
 
 - do not blindly auto-resubmit the same effect;
 - persist rejection/conflict evidence;
@@ -285,12 +272,7 @@ Persistent unresolved actionable conditions may become Operational Work under ac
 
 ## 11. Scheduling and polling
 
-River scheduled/periodic jobs are admitted as technical wake-up mechanisms for already-accepted needs such as:
-
-- D4 acquisition/polling where notification/coverage alone is insufficient;
-- reconciliation rereads;
-- bounded recovery sweeps for missed required reactions;
-- source-token/config maintenance only when later D7-D/E authority admits it.
+River scheduled/periodic jobs are admitted as technical wake-up mechanisms for already-accepted needs such as D4 acquisition/polling where notification/coverage alone is insufficient, reconciliation rereads, bounded recovery sweeps for missed required reactions, and source-token/config maintenance only when later D7-D/E authority admits it.
 
 Laws:
 
@@ -301,7 +283,7 @@ Laws:
 - correctness-critical deadlines remain owner/source semantics; a generic scheduler does not own them;
 - no global `backfill|incremental|sweep` business vocabulary is introduced.
 
-Current River leader election/periodic scheduling is therefore an efficiency mechanism, not the sole correctness proof for a due business obligation.
+Current River client leadership/maintenance scheduling is therefore an efficiency mechanism, not the sole correctness proof for a due business obligation.
 
 ## 12. Queue topology and backpressure
 
@@ -315,13 +297,7 @@ Do not pre-create per-owner queues or a generic priority taxonomy by symmetry.
 
 A durable job that exhausts safe technical retries remains inspectable; it does not disappear silently.
 
-Operational handling must distinguish:
-
-- job transport/executor failure;
-- owner semantic rejection/block;
-- external-effect ambiguity;
-- source/provider unavailability;
-- unresolved actionable business condition.
+Operational handling must distinguish job transport/executor failure, owner semantic rejection/block, external-effect ambiguity, source/provider unavailability, and unresolved actionable business condition.
 
 River discarded/failed state may support technical inspection, but canonical business meaning remains in owner state. D7-E decides the smallest operational alert/UI/log surface; D7-C does not make River UI a Product requirement.
 
@@ -382,8 +358,9 @@ Relevant current properties:
 
 - transaction-bound job insertion commits/rolls back with the caller transaction and jobs do not run before commit;
 - clients may work jobs in-process or be insert-only;
-- retries/backoff, scheduled/periodic jobs, unique jobs, graceful stop and stuck-job rescue are built in;
+- retries/backoff, scheduled/periodic jobs, unique jobs, graceful stop, stuck-job rescue and transactional completion are built in;
 - River explicitly documents that stuck-job rescue can cause repeated/duplicate execution if a job was still alive, reinforcing the need for semantic idempotency;
+- River uses client leadership for maintenance facilities including periodic work across a shared schema, so scheduler leadership is treated only as a wake-up optimization and not as durable business authority;
 - current River releases remain on the v0 line; exact pin belongs to the implementation manifest.
 
 ## 17. Adjudication
