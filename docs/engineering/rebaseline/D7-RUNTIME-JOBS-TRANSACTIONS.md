@@ -1,6 +1,6 @@
 # D7 — Runtime / Jobs / Transactions
 
-> **Status:** OPEN / ACTIVE — D7-A→D7-E OPERATOR-RATIFIED / WHOLE-D7 REVIEW CONVERGED / FINAL EXACT-HEAD PROOF PENDING  
+> **Status:** OPEN / ACTIVE — D7-A→D7-E OPERATOR-RATIFIED / WHOLE-D7 REVIEW CONVERGED / OPERATOR CLOSEOUT PENDING  
 > **Program:** Architecture Rebaseline / Technical System Design  
 > **Opened:** 2026-08-21  
 > **Parent authorities:** accepted D0–D6 semantics, `ARCHITECTURE.md`, canonical Product OAD, and bounded owner authority routed by `docs/index.md`  
@@ -116,7 +116,7 @@ H: confidential Authorization Code + PKCE S256
    human OIDC token set discarded after callback
    PostgreSQL stores session-handle digest only
    30m idle / 8h absolute baseline
-   X-CSRF-Token synchronizer + net/http CrossOriginProtection
+   X-CSRF-Token synchronizer + net/http.CrossOriginProtection
 A/S: Keycloak Client Credentials
      audience includes https://conexus.fun
      jwx/v3 trusted-JWKS verification
@@ -192,6 +192,7 @@ internal coherence review        COMPLETE
 independent Fable challenge      ACCEPT WITH BOUNDED FIXES
 GPT adjudication                 CONVERGED
 surviving Important finding      PITR continuity/automatic fence arming — APPLIED
+fresh post-fix repository gate   PASS @ 42c208abdc320538f9222ccb1ccc4d09705f6577
 D0–D6 reopen                     NONE
 D7 reconstruction               NONE
 Product                          99 operations / 30 Permissions / H-A-S unchanged
@@ -201,6 +202,4 @@ Product implementation           BLOCKED
 
 ## 13. Exact next action
 
-Run one fresh exact-head repository gate after the bounded Fable F-1 amendment. If green, present D7 for explicit operator closeout.
-
-Do **not** merge PR #58, mark D7 closed, open D8/D9 or begin Product implementation without that operator decision.
+**Operator adjudicate/ratify D7 closeout.** Until that explicit decision, D7 remains OPEN / ACTIVE, PR #58 remains unmerged, D8/D9 remain blocked and Product implementation remains blocked.
