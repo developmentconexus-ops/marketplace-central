@@ -30,6 +30,7 @@ Pre-standard current-status/read-order prose inside accepted D-stage, architectu
 | Publication input, `ListingIntent`, readiness/source-following/override | [D4-R1 Publication Input](engineering/rebaseline/D4-R1-PUBLICATION-INPUT.md) | generic PIM assumptions |
 | Product API semantic laws | [D5 API](engineering/rebaseline/D5-API.md) | D6–D9 |
 | Frontend interaction/authority model, screen→Product capability mapping, frontend topology | [D6 Frontend](engineering/rebaseline/D6-FRONTEND.md) | D7–D9 and removed frontend runtime |
+| Frontend product-experience planning process / D6-R2 execution method | [Frontend Product Experience Planning Method v2.1](development/frontend-product-experience-planning-method.md) — reusable methodology, not stage/status authority | stage semantics; use `roadmap.md` + owning authority |
 | Runtime/process topology and whole-D7 integration | [D7 Runtime / Jobs / Transactions](engineering/rebaseline/D7-RUNTIME-JOBS-TRANSACTIONS.md) | D8–D9 and removed runtime |
 | PostgreSQL Organization isolation, RLS, transaction scope, idempotency, ETag/revision | [D7-B PostgreSQL Isolation & Transactions](engineering/rebaseline/D7-B-POSTGRESQL-ISOLATION-TRANSACTIONS.md) | D7-C–E and full schema census |
 | Durable work, River, retries, external-effect ambiguity/reconciliation | [D7-C Durable Work & External Effects](engineering/rebaseline/D7-C-DURABLE-WORK-EXTERNAL-EFFECTS.md) | auth/deployment and generic workflow assumptions |
