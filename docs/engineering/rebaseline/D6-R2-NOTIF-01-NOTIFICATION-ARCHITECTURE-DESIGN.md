@@ -65,8 +65,8 @@ Do not create event-per-CRUD notifications.
 The first mandatory trigger is the strongest currently evidenced personal-awareness occurrence:
 
 ```text
-Operational Work becomes explicitly assigned to a human Principal
-  -> Personal Notification for that exact Principal
+Operational Work becomes explicitly assigned or reassigned to a human Principal
+  -> Personal Notification for that exact new Principal
 ```
 
 The Notification says that Work became personally relevant; Work remains the obligation authority.
@@ -123,7 +123,7 @@ Exact ordinary Permission wording and operation mapping are deferred to the boun
 
 ## 7. Product API shape — semantic requirement only
 
-D5 will derive exact operationIds, paths, methods, error semantics and Permission mapping after D0–D3/D2 authority is accepted.
+D5 will derive exact operationIds, paths, methods, error semantics and Permission mapping only after the targeted D0/D1/D2/D3 amendments are accepted.
 
 The minimum required capability classes are:
 
@@ -291,7 +291,7 @@ No Product code is authorized by this sequence.
 At minimum the later composed proof must falsify:
 
 ```text
-1. Assign Work to human Principal -> required Notification eventually exists.
+1. Assign/reassign Work to human Principal -> required Notification eventually exists for the new Principal.
 2. Duplicate River reaction -> no duplicate semantic Notification.
 3. Read Notification -> Work/source state unchanged.
 4. Archive Notification -> Work/source state unchanged.
