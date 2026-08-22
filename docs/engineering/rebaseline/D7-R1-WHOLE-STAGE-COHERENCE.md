@@ -1,18 +1,20 @@
 # D7-R1 — Whole-Stage Coherence Corrections & Proof-Timing Contract
 
-> **Status:** CANDIDATE / INTERNAL WHOLE-D7 REVIEW — BOUNDED FIXES / INDEPENDENT CHALLENGE PENDING  
+> **Status:** FABLE REVIEWED / GPT ADJUDICATED — BOUNDED FIX APPLIED / OPERATOR D7 CLOSEOUT PENDING  
 > **Parent:** `D7-RUNTIME-JOBS-TRANSACTIONS.md`  
 > **Scope:** exact D7-B/C/D/E realization seams only; no D0–D6 semantic reopen  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
-> **Derived:** 2026-08-22
+> **Derived:** 2026-08-22  
+> **Independent Fable verdict:** ACCEPT WITH BOUNDED FIXES  
+> **GPT adjudication:** CONVERGED — Fable F-1 accepted; F-2/F-3 non-blocking
 
 ## 1. Purpose
 
-Whole-D7 cross-check found a small set of realization seams that become contradictory only when D7-A→D7-E are composed as one runtime. This amendment is the smallest bounded repair candidate.
+Whole-D7 cross-check found a small set of realization seams that become contradictory only when D7-A→D7-E are composed as one runtime. This amendment is the smallest bounded repair.
 
 It does **not** change Product operations, Permissions, Principal kinds, owner semantics, D3 Q/C/E/P meaning, D4 external-effect meaning, D5 wire/auth contract or D6 frontend authority.
 
-If accepted, this document supersedes only the exact D7 clauses named below.
+This document supersedes only the exact D7 clauses named below.
 
 ## 2. Finding R1-F1 — authentication bootstrap is missing from D7-B scope taxonomy
 
@@ -118,24 +120,47 @@ Blindly resuming restored River jobs would therefore violate D4/D7-C no-blind-re
 
 The D7-C `no marker -> may dispatch` rule is valid only on the same durable database timeline with no acknowledged-state rollback.
 
-Any disaster/PITR restore that may have lost acknowledged MPC commits enters a fail-closed **recovery fence** before normal Product readiness:
+Any disaster/PITR restore that may have lost acknowledged MPC commits enters a fail-closed **recovery fence** before normal external-dispatch authority resumes:
 
-1. record/identify the restored recovery point and possible state-loss window;
+1. identify the restored recovery point and possible state-loss window;
 2. invalidate restored human ApplicationSessions and one-time login transactions so a lost post-backup logout/revocation cannot resurrect a browser session;
-3. keep normal consequential external-write dispatch disabled, including restored River external-effect jobs;
+3. keep consequential external-write dispatch disabled, including restored River external-effect jobs;
 4. treat restored dispatchable/ambiguous work as reconciliation-only until its owner/source scope is cleared;
 5. reacquire authoritative provider/business-system state for affected Installations/SourceInstances and reconcile restored owner intents/effect anchors over the possible loss window;
 6. revalidate current identity/access and machine-client configuration before normal authenticated automation resumes when the restore could have rolled those changes back;
 7. verify committed binary references at the restored database point against object-store digest/size/type evidence;
 8. release the fence only for scopes whose reconciliation/access/integrity checks are sufficient. If coverage cannot establish safety, automated external writes remain disabled and the condition is surfaced for operator resolution rather than guessed away.
 
-New durable intake may be recorded during a bounded recovery posture only if its external dispatch remains behind the same recovery fence.
+New durable intake may be recorded during a bounded recovery posture only if its external dispatch remains behind the same recovery fence. Safe reads may remain available where their accepted semantics are still honest; the fence is not permission to create a false whole-application outage.
 
-A zero-data-loss failover whose durable database timeline is proved continuous need not enter the rollback recovery path.
+A zero-data-loss failover whose durable database lineage is affirmatively proved continuous need not enter the rollback recovery path.
 
-### Required recovery falsifier
+### Recovery-fence arming / continuity law — Fable F-1 accepted
 
-Restore a database snapshot from **before** a simulated externally accepted write while the external system retains the effect. Prove that restored River/owner state does not redispatch before reconciliation/fence release.
+**Timeline continuity is established affirmatively; it is never assumed from a syntactically healthy restored database.**
+
+Before ordinary boot may enable consequential external dispatch or trust restored authentication state as continuous, the runtime/deployment boundary must verify a **continuity witness outside the PostgreSQL rollback domain**. The witness must carry enough deployment/database lineage and durable-position/recovery-epoch evidence to distinguish a continuous current database from a database restored to an earlier acknowledged state. Examples include PostgreSQL system/timeline/durable-position evidence anchored in already-selected object/deployment state, or an equivalent deployment-provider continuity control. Exact representation is implementation detail.
+
+Binding laws:
+
+- absence, mismatch, stale/unverifiable lineage, or inability to prove that the current database safely descends from the last externally witnessed state **arms the recovery fence by default**;
+- ordinary application boot after a PITR/rollback must fail closed for external dispatch **without requiring an operator to remember a manual `recovery=true` flag or runbook step**;
+- the continuity protocol must cover every commit class whose rollback could re-enable an already-possible external effect or resurrect authentication/authority that was subsequently revoked. A casual periodic heartbeat that can lag those safety-sensitive transitions is insufficient;
+- a sufficient realization may advance the out-of-rollback-domain witness around safety-sensitive checkpoints or use equivalent provider/deployment lineage guarantees, but D7 does not freeze that implementation here;
+- failure to update/verify the witness cannot silently preserve normal dispatch authority;
+- continuity evidence is technical safety state only. It does not become business history, Product identity, provider truth or a second authorization authority;
+- false-positive fencing is acceptable and recoverable; false-negative continuity is not.
+
+This law closes the unarmed-restore path identified by independent Fable review without introducing a new business mechanism or reopening D4/D7-C effect semantics.
+
+### Required recovery falsifiers
+
+The eventual real-dependency implementation proof must include both:
+
+1. restore a database snapshot from **before** a simulated externally accepted write while the external system retains the effect; prove restored River/owner state does not redispatch before reconciliation/fence release;
+2. perform an ordinary application boot after that restore with **no manual fence-arming action**; prove the external continuity check detects/assumes unsafe rollback and automatically keeps dispatch fenced. A proof that starts with the fence pre-engaged is insufficient.
+
+A complementary continuous-lineage failover probe should prove the fence can remain open only when continuity is positively established.
 
 ## 5. Finding R1-F4 — OAD security validation must compose with, not bypass, D7-D authentication
 
@@ -207,17 +232,46 @@ Accordingly, prior D7-B/C/D wording that real-dependency execution is required t
 
 Existing current gate output that reports no active runtime/schema enforcement remains honest: D7 selects target realization; it does not populate Product runtime code.
 
-## 7. Internal review disposition
+## 7. Independent Fable review and GPT adjudication
 
-Current internal whole-D7 result:
+The isolated `review/d7-fable` challenge reviewed exact candidate:
+
+```text
+stage/d7-runtime @ c08a4d025cfd89269cc071f4b307695e79f6f8cb
+```
+
+with correct single-file review isolation and green exact-candidate CI.
+
+Fable verdict:
+
+```text
+ACCEPT WITH BOUNDED FIXES
+```
+
+Material adjudication:
+
+| Fable finding | GPT disposition | D7 action |
+| --- | --- | --- |
+| F-1 — recovery fence lacks affirmative detection/arming law | **ACCEPT** | incorporated in §4 continuity law + unarmed-restore falsifier |
+| F-2 — selected `chi-server` generation mode not yet executed against canonical OAD | **VALID / NON-BLOCKING** | no authority change; optional cheap future gate hardening, not required for D7 closeout |
+| F-3 — bootstrap budget at 93% | **VALID / REPOSITORY HYGIENE / NON-BLOCKING** | no cap increase; compress CLOSED D7 roadmap detail when D8 opens if needed |
+
+Fable independently found no reason to reopen D0–D6 or reconstruct D7-A→D7-E, and confirmed 99 Product operations / 30 ordinary Permissions / H-A-S only, provider isolation, Sankhya API-Gateway-only and Product implementation blocked until D9.
+
+Round 2 is not justified: the sole Important finding is a bounded completion of the already-owned R1-F3 recovery law and introduces no new architecture selection.
+
+## 8. Whole-D7 review disposition
+
+Current whole-D7 result after Fable + GPT adjudication:
 
 ```text
 D0–D6 semantic reopen       NONE
 D7-A process topology       PRESERVED
 D7-B core RLS/transaction   PRESERVED + auth-bootstrap taxonomy repair
-D7-C River/effect model     PRESERVED + post-restore fence qualification
+D7-C River/effect model     PRESERVED + post-restore continuity/fence qualification
 D7-D auth profile           PRESERVED + ambiguous-carrier fail-closed clarification
 D7-E operability profile    PRESERVED + River migration/recovery/auth-validator seams
+D7-R1                       BOUNDED FIX APPLIED / GPT ADJUDICATED
 Product surface             99 operations / 30 Permissions / H-A-S unchanged
 D8 / D9                     NOT OPEN
 Product implementation      BLOCKED
@@ -225,17 +279,8 @@ Product implementation      BLOCKED
 
 No microservices, Redis, broker, workflow engine, new business authority, Product operation or Permission is introduced.
 
-## 8. Required next review
+## 9. Exact next action
 
-This bounded repair remains **candidate** until the independent whole-D7 Fable challenge and GPT adjudication complete.
+Run one fresh exact-head repository gate after this bounded F-1 amendment. If green, present D7 for explicit operator closeout decision.
 
-The independent reviewer must specifically try to falsify:
-
-- whether `authentication_bootstrap` leaks into a generic cross-tenant bypass;
-- whether River migration ownership is still duplicated or incomplete;
-- whether post-restore external-effect ambiguity can still cause redispatch;
-- whether OAD validation can accidentally bypass D7-D carrier separation;
-- whether proof-timing language still claims an unimplemented runtime PASS;
-- and whether these repairs introduce overengineering relative to the accepted Product 1.0 consumer set.
-
-Do not begin D8, D9 or Product implementation.
+Do **not** merge PR #58, mark D7 closed, open D8/D9 or begin Product implementation without that operator decision.
