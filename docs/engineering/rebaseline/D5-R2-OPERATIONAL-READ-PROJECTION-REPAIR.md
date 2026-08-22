@@ -1,6 +1,6 @@
 # D5-R2 — Operational Read Projection Repair
 
-> **Status:** AUTHORIZED / OPERATOR-APPROVED FOR EXECUTION — proof pending
+> **Status:** ACCEPTED / CANONICAL — OPERATOR-APPROVED / EXECUTABLY PROVEN 2026-08-22
 > **Trigger:** D6-R2 `OP-READ-01`
 > **Parent authority:** accepted D5 API + W2/W3 + canonical Product OAD
 > **Consumer evidence:** [D6-R2 P4-R1 Global IA / Operational Mass Reopen](D6-R2-P4-R1-GLOBAL-IA-OPERATIONAL-MASS-REOPEN.md)
@@ -8,9 +8,9 @@
 
 ## 1. Purpose
 
-D6-R2 proved a real human operational-triage consumer that the accepted Product owners can answer semantically, but several current ListItem/query contracts cannot answer efficiently without N+1 point reads or frontend-authored workflow projection.
+D6-R2 proved a real human operational-triage consumer that the accepted Product owners can answer semantically, but several prior ListItem/query contracts could not answer efficiently without N+1 point reads or frontend-authored workflow projection.
 
-This amendment repairs **read projection/query expressibility only**. It does not create a new business capability, owner, lifecycle or operation.
+This amendment repairs **read projection/query expressibility only**. It creates no new business capability, owner, lifecycle or Product operation.
 
 ## 2. Governing invariant
 
@@ -24,7 +24,7 @@ The existing W2/W3 laws remain binding:
 - pagination does not prove total population or knowledge completeness;
 - no caller-selectable sort or universal count by convenience.
 
-## 3. Bounded repair
+## 3. Accepted bounded repair
 
 ### 3.1 Business-System Materialization — BusinessOrderIntent
 
@@ -101,9 +101,9 @@ No additional Shipment deadline filter is admitted now; the evidenced consumer d
 
 No D5-R2 change is required for MarketplaceSales, PostSaleResolution or OperationalWork. Their current collection contracts already satisfy the present bounded consumer or remain intentionally owner-local specialist views.
 
-## 4. Product-surface conservation
+## 4. Product-surface conservation — PROVEN
 
-D5-R2 must preserve exactly:
+D5-R2 preserves exactly:
 
 ```text
 Product operations       99
@@ -135,15 +135,37 @@ frontend N+1 detail fan-out as baseline
 
 A user-facing phrase such as `A embalar` may be a frontend presentation of current Fulfillment predicates; it is not a new Product business state.
 
-## 6. Proof and downstream revalidation
+## 6. Executable proof
 
-The canonical OAD remains the machine-readable wire authority. `scripts/verify-operational-read-contract.mjs` proves this amendment mechanically and includes negative controls.
+Canonical OAD remains the machine-readable wire authority. `scripts/verify-operational-read-contract.mjs` proves this amendment mechanically and includes negative controls.
 
-After exact-head proof passes:
+Proven candidate HEAD:
 
-1. Product OAD remains 99/30/H-A-S and generated projections remain valid;
-2. GF-02 is revalidated only for affected read/composition properties;
-3. `OP-READ-01` may close;
-4. D6-R2 returns to the corrected global-frame/B00 cycle before any dependent wireframe progresses.
+```text
+4fdd07d48da76120c610d23a2e544d0b89571f7b
+ci #427                         SUCCESS
+gate                             PASS
+Product operations               99/99
+ordinary Permissions             30/30
+Principal kinds                  H/A/S
+full generated projection        PASS
+auth profile                     PASS
+Performance knowledge proof      PASS
+operational owner-local projection PASS
+operational filters              PASS
+operational negative controls    2/2
+operational read contract proof  PASS
+legacy runtime population        0
+```
+
+The proof failure immediately before this candidate was proof-harness-local: Redocly pruned the unreferenced `Permission` component from the bundle. The harness was corrected to count ordinary Permissions from canonical operation metadata; the OAD was not weakened to satisfy the proof.
+
+## 7. Downstream law
+
+Because D5-R2 changes only owner-local collection projection/filter expressibility:
+
+1. GF-02 must be revalidated only for affected read/composition properties;
+2. no GF-02 choreography, owner, write/effect, authorization, physical checkpoint or runtime mechanism changes;
+3. after that revalidation, `OP-READ-01` closes and D6-R2 returns to the corrected global-frame/B00 cycle.
 
 No Product implementation is authorized by this amendment.
