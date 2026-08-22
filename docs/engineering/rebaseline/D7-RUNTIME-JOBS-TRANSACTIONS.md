@@ -1,6 +1,6 @@
 # D7 — Runtime / Jobs / Transactions
 
-> **Status:** OPEN / ACTIVE — D7-A→D7-D OPERATOR-RATIFIED / D7-E CANDIDATE PENDING RATIFICATION  
+> **Status:** OPEN / ACTIVE — D7-A→D7-E OPERATOR-RATIFIED / WHOLE-D7 COHERENCE + PROOF REVIEW OPEN  
 > **Program:** Architecture Rebaseline / Technical System Design  
 > **Opened:** 2026-08-21  
 > **Parent authorities:** accepted D0–D6 semantics, `ARCHITECTURE.md`, canonical Product OAD, and bounded owner authority routed by `docs/index.md`  
@@ -40,9 +40,9 @@ D7 does **not** reopen Product operations, ordinary Permissions, Principal kinds
 | D7-B — PostgreSQL Isolation & Transactions | [D7-B](D7-B-POSTGRESQL-ISOLATION-TRANSACTIONS.md) | **OPERATOR-RATIFIED** |
 | D7-C — Durable Work & External Effects | [D7-C](D7-C-DURABLE-WORK-EXTERNAL-EFFECTS.md) | **OPERATOR-RATIFIED** |
 | D7-D — Authentication / Session / CSRF / Machine Tokens | [D7-D](D7-D-AUTHENTICATION-SESSION-CSRF.md) | **OPERATOR-RATIFIED** |
-| D7-E — Operability / Secrets / Migrations / Deployment & Proof | [D7-E](D7-E-OPERABILITY-DEPLOYMENT-PROOF.md) | **CANDIDATE / OPERATOR RATIFICATION PENDING** |
+| D7-E — Operability / Secrets / Migrations / Deployment & Proof | [D7-E](D7-E-OPERABILITY-DEPLOYMENT-PROOF.md) | **OPERATOR-RATIFIED** |
 
-After D7-E ratification, D7 still requires one whole-stage coherence + proof/adversarial review before closeout. D8 does not open merely because the five slices exist.
+All five slices are ratified. D7 still requires one whole-stage coherence + executable-proof/adversarial review before closeout. D8 does not open merely because the slices are complete.
 
 ## 5. Accepted D7-A — Runtime Envelope & Transaction Ownership
 
@@ -126,9 +126,9 @@ No browser bearer, persistent human refresh-token cache, Redis session store, Id
 
 Real Keycloak/OIDC plus browser-capable cookie/CSRF proof remains mandatory.
 
-## 9. Current D7-E candidate
+## 9. Accepted D7-E — Operability / Deployment / Proof Baseline
 
-[D7-E](D7-E-OPERABILITY-DEPLOYMENT-PROOF.md) proposes the remaining smallest runtime/operability profile:
+[D7-E](D7-E-OPERABILITY-DEPLOYMENT-PROOF.md) selects:
 
 ```text
 HTTP       Chi v5 + D5-pinned oapi-codegen v2.8 strict server
@@ -145,7 +145,7 @@ backup     PostgreSQL base backup + WAL/PITR or managed equivalent; restore proo
 proof      real PostgreSQL/River/Keycloak/browser/router/object-store seams
 ```
 
-The candidate also closes the D5 `{id}:verb` routing constraint, runtime OAD schema validation, private authored-media byte custody, schema-version boot refusal, dependency-aware readiness and Keycloak subject-continuity/binary-integrity recovery.
+This closes the D5 `{id}:verb` routing constraint, runtime OAD schema validation, private authored-media byte custody, schema-version boot refusal, dependency-aware readiness and Keycloak subject-continuity/binary-integrity recovery.
 
 No Kubernetes/service mesh, Redis, external broker, mandatory Collector/Prometheus/ELK stack, Vault dependency, hot configuration, ORM auto-schema, startup auto-migration, CDN/public bucket, multi-region or generic IaC platform is introduced.
 
@@ -176,8 +176,21 @@ Before D7 closes, the combined authority/proof plan must make at least these pro
 
 A mock-only green result cannot close a claim whose subject is PostgreSQL, River, Keycloak/OIDC, browser cookie/CSRF, HTTP router/OAD validator or object storage.
 
-## 11. Exact next action
+## 11. Whole-D7 review gate
 
-**Operator adjudicate/ratify D7-E. Do not begin whole-D7 closeout review before that decision.**
+**OPEN / ACTIVE.** Cross-check D7-A→D7-E as one composed runtime and challenge only material contradictions, missing seams, duplicated authority, impossible proof obligations or hidden Product-semantic changes.
 
-After D7-E ratification, run one combined D7 coherence + executable-proof/adversarial review over D7-A→D7-E. D8, D9 and Product implementation remain blocked.
+Required review sequence:
+
+1. whole-D7 internal coherence/adversarial review;
+2. executable-proof-plan review against real-dependency obligations;
+3. independent Fable challenge on an isolated `review/d7-fable` branch;
+4. GPT adjudication of every material finding;
+5. bounded fixes + fresh exact-head gate when required;
+6. operator closeout decision.
+
+D7 is not closed and D8 is not open until this review converges and the operator ratifies closeout.
+
+## 12. Exact next action
+
+**Run whole-D7 coherence + executable-proof/adversarial review over D7-A→D7-E. Do not begin D8, D9 or Product implementation.**
