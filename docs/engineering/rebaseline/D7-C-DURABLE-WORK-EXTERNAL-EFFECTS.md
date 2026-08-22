@@ -1,11 +1,12 @@
 # D7-C — Durable Work & External Effects
 
-> **Status:** CANDIDATE / OPERATOR RATIFICATION PENDING  
+> **Status:** OPERATOR-RATIFIED  
 > **Parent:** `D7-RUNTIME-JOBS-TRANSACTIONS.md`  
 > **Accepted prerequisites:** D7-A Runtime Envelope + D7-B PostgreSQL Isolation/Transactions — OPERATOR-RATIFIED  
 > **Parent authorities:** accepted D3 communication/failure semantics, accepted D4 external-effect contracts, accepted D7-A/B runtime and transaction boundaries  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
-> **Derived:** 2026-08-21
+> **Derived:** 2026-08-21  
+> **Ratified:** 2026-08-22
 
 ## 1. Purpose
 
@@ -54,7 +55,7 @@ D7-C does not create new Product operations, business events, intents, owners, w
 
 ## 4. Durable-work mechanism
 
-### 4.1 River — SELECT CANDIDATE
+### 4.1 River — ACCEPTED
 
 Select current River (`github.com/riverqueue/river`) with the pgx v5 driver as the bounded durable-work engine.
 
@@ -325,7 +326,7 @@ River discarded/failed state may support technical inspection, but canonical bus
 
 ## 15. Falsifiable proof contract
 
-D7-C cannot be ratified until executable proof design can falsify at least:
+D7-C cannot close D7 without executable proof capable of falsifying at least:
 
 1. owner transaction commits state but loses required River handoff;
 2. owner transaction rolls back but leaves a runnable River job;
@@ -363,12 +364,14 @@ Relevant current properties:
 - River uses client leadership for maintenance facilities including periodic work across a shared schema, so scheduler leadership is treated only as a wake-up optimization and not as durable business authority;
 - current River releases remain on the v0 line; exact pin belongs to the implementation manifest.
 
+Current review also found open 2026 River issues around concurrent stuck-job rescue and periodic-scheduler state advancement. Those observations do not become MPC authority; they reinforce the accepted rule that River completion/scheduling state is never business truth and that durable owner/source state must make duplicate rescue and missed wake-ups recoverable.
+
 ## 17. Adjudication
 
-**Candidate:** select River over the accepted `pgx/v5` PostgreSQL stack as the one durable-work engine; use `InsertTx` instead of a second generic MPC outbox for River-executed handoffs; treat all delivery as repeatable; make external write retry contingent on proved non-acceptance; persist a pre-dispatch marker before every consequential external write; route possible acceptance/crash uncertainty to authoritative reconciliation rather than redispatch; use River scheduling only as a wake-up mechanism over durable owner/source state.
+**OPERATOR-RATIFIED:** River is the accepted bounded durable-work engine over `pgx/v5` PostgreSQL. `InsertTx` is the baseline owner-state → durable-work atomic handoff and no second generic MPC outbox is admitted for River-executed work. Delivery is repeatable; River uniqueness/retry is optimization only. Consequential external writes persist a pre-dispatch marker; possible acceptance/crash uncertainty routes to authoritative reconciliation instead of redispatch. Scheduled/periodic River work is only a wake-up mechanism over durable owner/source state.
 
 No Product operation, Permission, Principal kind, semantic owner, frontend decision or provider contract changes.
 
-If ratified, next is **D7-D — Authentication / Session / CSRF / Machine Token Realization**.
+Next is **D7-D — Authentication / Session / CSRF / Machine Token Realization**.
 
 Do not begin D8, D9 or Product implementation.
