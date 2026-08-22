@@ -1,6 +1,6 @@
 # D6-R2 — Complete Frontend Realization Closure
 
-> **Status:** OPEN / ACTIVE — P0–P3 DERIVED; no operator UX `LOCKED` decision has been made in this stage
+> **Status:** OPEN / ACTIVE — P0–P4 DERIVED; accepted D6 IA survives bounded revalidation as the D6-R2 `CANDIDATE`; no D6-R2 UX block is operator-`LOCKED`
 > **Program:** Architecture Rebaseline / Technical System Design
 > **Parent authority:** accepted D0–D8, accepted D6 frontend authority, canonical Product OAD
 > **Execution method:** [`Frontend Product Experience Planning Method v2.1`](../../development/frontend-product-experience-planning-method.md), tailored as recorded here
@@ -27,7 +27,7 @@ P10–P13 complete interaction/prototype/adversarial/conformance obligations as 
 P14    close frontend realization readiness
 ```
 
-No screen is drawn in P0–P3.
+No screen is drawn in P0–P4.
 
 ## 2. D6-R2 tailoring laws
 
@@ -584,11 +584,11 @@ contact reference != full alternate fiscal/street destination
 
 ### No material architecture contradiction
 
-P0–P3 currently produce **no finding that justifies reopening D0–D8**. The accepted IA and frontend realization topology can represent all recovered human needs and all 14 Product operation families.
+P0–P3 produce **no finding that justifies reopening D0–D8**. The accepted IA and frontend realization topology can represent all recovered human needs and all 14 Product operation families.
 
 ### Open evidence findings, not architecture defects
 
-- **E01 — task frequency/density evidence missing:** A01 remains OPEN and may affect P4/P5/P8 prioritization.
+- **E01 — task frequency/density evidence missing:** A01 remains OPEN and may affect P5/P8 prioritization.
 - **E02 — real device/work-floor evidence missing:** A02 remains OPEN and may affect responsive interaction structure.
 - **E03 — terminology comprehension not directly tested:** A03 remains OPEN.
 - **E04 — Overview visual priority not directly evidenced:** A04 remains OPEN.
@@ -604,17 +604,286 @@ No P8 block is `LOCKED`; P8 has not started.
 
 ---
 
-# 15. Exact next action — P4 bounded IA revalidation
+# P4 — Bounded Information-Architecture Revalidation
 
-Run P4 against N01–N16 + UF01–UF16 + the P3 matrix.
+## 15. Revalidation law
 
-P4 must:
+P4 does **not** ask what IA would be preferred if Marketplace Central were being redesigned today. It asks whether the already accepted D6 IA is falsified by the user needs, complete flows or Product coverage recovered in P0–P3.
 
-1. preserve the accepted D6 shell/route grammar as the baseline;
-2. create the durable user-language terminology/object-task/findability trace required by Method v2.1;
-3. test whether each need is findable from the accepted IA without exposing backend package taxonomy;
-4. record a material falsifier if — and only if — a need cannot be coherently found/contained;
-5. avoid layout composition and wireframe drawing;
-6. avoid P6/P7 unless a real ambiguity trigger appears.
+A material IA falsifier exists only if an accepted need cannot be coherently found/contained without one of these failures:
 
-If P4 converges, P5 derives the complete screen/surface inventory. P8 remains blocked until the required upstream structural decisions are ready for operator-reviewed rendered blocks.
+```text
+new top-level navigation created only to mirror a backend owner/package
+hidden/default Organization, Installation or source identity required to reach the task
+one semantic owner collapsed into another merely for navigation convenience
+material flow step has no findable human context
+cross-owner composition requires a new business/Strategy/Workflow authority
+user must understand an internal API/domain term merely to find the task
+```
+
+No layout, visual hierarchy or component selection is part of this pass.
+
+## 16. Durable user-language glossary
+
+Accepted primary IA labels remain accepted D6 authority. Detailed object/action wording below is a **D6-R2 `CANDIDATE` terminology baseline**, because A03 direct comprehension evidence remains open. Canonical IDs and exact technical names remain available for correlation/support where needed but do not become primary labels by convenience.
+
+| Authority concept | Candidate user-facing term | Avoid as primary UX label | Status / note |
+| --- | --- | --- | --- |
+| Organization | Organização | tenant, org id | `Organização` is presentation; canonical id remains scope authority |
+| Marketplace Installation | Conta do marketplace, inside **Canais** | Installation, integração genérica | Exact account identity; `Canal` is grouping language, not a replacement identity |
+| Selling Entity | Entidade vendedora | legal-entity DTO/package names | accepted Settings grouping |
+| Source Product | Produto de origem | Product master MPC | source remains external/source-qualified |
+| SourceInstance | Fonte de origem | source instance id as user noun | exact technical key may be secondary evidence |
+| Product Channel Readiness | Preparação / prontidão para publicação | readiness service/domain | primary nav label **Preparação** is accepted |
+| Publication Requirements | Requisitos de publicação | provider requirement DTO | provenance/unsupported state stays explicit |
+| Product Channel Correspondence | Correspondência do produto | linkage entity/package | detail term remains candidate pending A03 |
+| Marketplace Listing | Publicação | listing resource as unexplained English noun | primary nav label **Publicações** is accepted |
+| ListingIntent | Intenção de publicação | provider mutation | MPC intent is distinct from provider state |
+| PriceIntent | Intenção de preço | SetPrice, alteração direta no marketplace | Offering intent remains distinct from Economics evidence |
+| Sellable Availability | Disponibilidade para venda | estoque = disponibilidade | derived availability is not native stock truth |
+| Inventory Source | Fonte de estoque | adapter/source table | configuration object under Disponibilidade |
+| Availability Allocation Policy | Política de disponibilidade | regra genérica/sync rule | only MPC-owned policy is editable |
+| Marketplace Performance | Performance | analytics genérico | accepted strategic lens |
+| Retail Media Performance | Performance de mídia / Mídia | Ads Manager | read-only evidence; no Ads management |
+| Competitive Position | Posição no mercado | MarketIntelligence owner name | accepted **Mercado** lens |
+| Comparable Offers | Ofertas comparáveis | competitor DTOs | evidence, not Product price authority |
+| Expected Economics | Economia prevista | cost engine | accepted **Economia** lens |
+| Sale / realized economics | Economia realizada da venda | settlement DTO as navigation | contextual economic evidence |
+| Economic Attribution | Reconciliação econômica / atribuição econômica | internal attribution engine | exact final object label remains A03 candidate |
+| Marketplace Sale | Venda | order/provider package | source-qualified marketplace sale |
+| BusinessOrderIntent / native materialization | Pedido no sistema de negócio / materialização do pedido | Sankhya command/TOP as user navigation | remains contextual to Sale, not a top-level owner area |
+| Party Resolution | Cliente/parceiro no sistema de negócio | Party resolver | ambiguity remains explicit |
+| Destination Realization | Destino de entrega | `CODCONTATO` as destination capability | D8 P5 narrowing must be visible |
+| InvoicingIntent / fiscal progression | Faturamento | generic ERP command | intent/result distinction remains owner-qualified |
+| FulfillmentExecution | Execução de expedição | workflow engine | accepted **Expedição** lens |
+| Shipment | Envio | carrier/TMS object as new owner | source-qualified observation |
+| PostSaleResolution | Resolução pós-venda | generic close/refund/cancel | accepted **Pós-venda** lens |
+| Operational Work | Trabalho | task command bus | coordination only; source truth stays elsewhere |
+| AuthorizationDecision | Decisão de aprovação | policy engine command | target action remains separate |
+| AuthorizationDelegation | Delegação | IAM role | accepted Configurações grouping |
+| AccessRole | Perfil de acesso | provider/IdP role | Product access presentation only |
+| FulfillmentNode | Nó de expedição | WMS node model | Marketplace-fulfillment configuration only |
+| Operational Target | Meta operacional | provider deadline | internal target never rewrites external obligation |
+
+Terminology falsifier result: no accepted user need requires a backend package/API-family name as the way to find the task. A03 remains OPEN for comprehension testing before P14.
+
+## 17. Object/task inventory against accepted navigation
+
+| Human context | Why users care | Primary task family | Important relationships | Findability role | Independent-nav verdict |
+| --- | --- | --- | --- | --- | --- |
+| Organization shell | establishes scope for everything | confirm/switch current workspace | all Product contexts | persistent global context | **KEEP** global shell context; not a content route |
+| Visão geral | orientation/attention entry | understand bounded current posture | Portfolio, Economics, Work, Performance when permitted | home/entry composition | **KEEP** accepted landing; content priority remains A04 |
+| Preparação | determine whether a product can participate | search source product, inspect readiness/requirements, resolve correspondence | Publicações, Disponibilidade | search-first task context | **KEEP** independent operational destination |
+| Publicações | operate provider-facing offering intent/state | browse listings/intents, author/submit listing/price intent | Preparação, Disponibilidade, Performance, Mercado, Economia | primary operational destination + contextual detail | **KEEP** independent destination |
+| Disponibilidade | know sellable availability | inspect sellable state; reach source/policy configuration | Publicações, Configurações | operational read destination | **KEEP** independent destination; configuration remains Settings |
+| Vendas | understand source-qualified sale and next safe handoff | browse sale, inspect composed cross-owner state | Economia, materialization, Expedição, Pós-venda, Trabalho | primary sale entry + contextual composition | **KEEP** independent destination |
+| Expedição | execute physical fulfillment and observe shipment | work executions/checkpoints/artifacts; observe shipments | Vendas, Trabalho, Configurações | operational queue/browse context | **KEEP** independent destination |
+| Pós-venda | coordinate essential cancellation/return/refund consequences | inspect/create resolution | Vendas, Trabalho, Economics consequences | operational exception destination | **KEEP** independent destination |
+| Performance | understand our marketplace participation | summary, listing performance, media evidence | Publicações, Mercado, Economia | strategic sub-navigation | **KEEP** separate from Mercado/Economia |
+| Mercado | understand competitive environment | competitive position/offers | Publicações, Economia | strategic evidence destination | **KEEP** separate owner lens; no write authority |
+| Economia | understand expected/realized economics | inspect, simulate, reconcile attribution | Mercado, Performance, Publicações/Vendas, policy Settings | strategic/economic destination | **KEEP** independent destination |
+| Trabalho | coordinate ambiguity/divergence | inspect/assign/hold/resume/escalate work | every underlying owner resource | cross-cutting work queue with contextual return links | **KEEP** control destination; never source truth |
+| Aprovações | make required governance decisions | inspect/create decisions for exact target/revision | target action/resource, Delegações | governance queue/context | **KEEP** control destination |
+| Configurações | low-frequency organization-operable setup | channels, selling entities, access, availability, fulfillment, commercial policy, delegations | corresponding operational lenses | grouped low-frequency settings | **KEEP** grouping only; never semantic owner |
+
+No row justifies exposing `IdentityAccess`, `BusinessSystemMaterialization`, `ControlledActionGovernance`, `MarketplacePerformanceIntelligence` or another backend owner name as primary navigation.
+
+## 18. Navigation model revalidation
+
+### 18.1 Global frame
+
+The accepted frame survives:
+
+```text
+Organization selector
+→ grouped primary navigation
+→ page-local/context navigation
+→ contextual cross-links for cross-owner evidence/handoffs
+```
+
+`Organization` remains the only global workspace. Marketplace Installation does **not** become a second global tenant/workspace; exact/all-or-exact Installation selection remains typed page/URL context only where admitted.
+
+### 18.2 Primary grouping
+
+The accepted groups remain coherent with N01–N16:
+
+```text
+VISÃO GERAL
+OPERAÇÕES
+ESTRATÉGIA E INTELIGÊNCIA
+CONTROLE
+CONFIGURAÇÕES
+```
+
+No need requires a new top-level `Strategy`, `Analytics`, `Integrações`, `Materialização`, `Workflow`, `ERP` or `Admin` product area.
+
+### 18.3 Local subcontexts that remain valid
+
+P4 confirms these are user-task subdivisions rather than backend taxonomy exposure:
+
+- **Performance:** Resumo / Publicações / Mídia;
+- **Publicações:** provider Listing observation, ListingIntent work and PriceIntent work remain one Offering-oriented human context;
+- **Economia:** expected/realized/reconciliation meanings may remain local subcontexts under the accepted route family;
+- **Expedição:** execution and Shipment observation remain related but distinct local contexts;
+- **Configurações:** Canais, Entidades vendedoras, Acesso, Disponibilidade, Expedição, Política comercial and Delegações remain low-frequency grouped settings.
+
+Exact route/surface splitting is P5, not P4.
+
+### 18.4 Cross-owner navigation is contextual, not a new owner
+
+The following relationships are deliberately satisfied by contextual links/composition rather than new primary navigation:
+
+```text
+Preparação → author ListingIntent
+Publicação → Performance / Disponibilidade / Mercado / Economia evidence
+Mercado / Economia → PriceIntent under Offering when a price decision is made
+Venda → Economics / business-order materialization / destination / invoicing / fulfillment / post-sale
+Execução/Shipment → related Sale and Work
+Pós-venda → related Sale / Work / economic consequences
+Trabalho → underlying source-owner resource
+Aprovação → exact governed target/revision
+```
+
+A cross-link never moves mutation authority into the source page that displays it.
+
+### 18.5 Home/default landing
+
+`Visão geral` remains the accepted default landing because D6 already ratified it as a small read-only composition. P4 does not infer which cards/signals are visually primary. That is A04 and belongs to P5/P8 plus P12 evidence.
+
+### 18.6 Search and breadcrumbs
+
+- no global Product search is introduced; the only search-first context currently proved is **Preparação/source-product search** through admitted Product authority;
+- no universal breadcrumb system is introduced merely because nested URLs exist;
+- detail surfaces may expose parent/context return navigation when P5 proves it useful, without implying a deeper domain hierarchy than the user model has.
+
+## 19. Findability decisions for material collections
+
+Mechanisms below are the smallest justified baseline. Exact filters/sorts are admitted only when the Product contract and P5/P9 screen contract support them.
+
+| Collection/task | Baseline findability | Explicitly not assumed |
+| --- | --- | --- |
+| source products for readiness | **search-first** in Preparação | global search, hidden SourceInstance default |
+| Marketplace Listings | browse/list under Publicações with exact Installation | synthetic all-provider merged list |
+| ListingIntents / PriceIntents | local browse/work contexts under Publicações | separate top-level Intent areas, generic mutation inbox |
+| Listing performance | Performance/Publicações + contextual Listing link | survivorship filtering that hides unknown/unavailable Performance |
+| Retail Media evidence | Performance/Mídia | Ads campaign manager |
+| sellable availability | browse/list under Disponibilidade | manual quantity editor or generic Sync action |
+| Marketplace Sales | browse/list under Vendas with exact Installation | cross-Installation synthetic identity merge |
+| fulfillment executions | operational queue/list under Expedição | company-wide WMS queue platform |
+| Shipments | local browse under Expedição | TMS/carrier navigation owner |
+| Post-Sale resolutions | browse/work context under Pós-venda | generic case-management/CRM platform |
+| Work | coordination queue under Trabalho | source-resource replacement |
+| Authorization decisions | decision queue/history under Aprovações | target execution inside Governance |
+| configuration collections | grouped browse/manage under Configurações | provider/plugin catalog or generic settings object model |
+
+No saved-view platform, alternate-view framework or bulk-selection model is justified at P4. A05 remains OPEN rather than becoming a bulk UX feature.
+
+## 20. N01–N16 findability falsification matrix
+
+| Need | Primary entry from accepted IA | Required contextual continuation | Result |
+| --- | --- | --- | --- |
+| N01 correct Organization | persistent Organization shell | Configurações/Acesso only for administration | **PASS** |
+| N02 usable marketplace channel | Configurações → Canais | external OAuth ceremony for exact account when required | **PASS** |
+| N03 determine publishability | Preparação | Publicações only after readiness work | **PASS** |
+| N04 listing/price intent | Publicações | contextual availability/economics and approval when required | **PASS** |
+| N05 marketplace Performance | Performance → Resumo/Publicações/Mídia | Listing contextual link where useful | **PASS** |
+| N06 competitive/economic position | Mercado + Economia | PriceIntent continuation returns to Publicações/Offering | **PASS** |
+| N07 sellable availability | Disponibilidade | Configurações/Disponibilidade for source/policy management | **PASS** |
+| N08 cross-system Sale understanding | Vendas | contextual economics/materialization/fulfillment/post-sale/work | **PASS** |
+| N09 physical fulfillment | Expedição → Execuções | Sale/Work context as needed | **PASS** |
+| N10 shipment/delivery outcome | Expedição → Envios | related Sale/Work | **PASS** |
+| N11 essential post-sale | Pós-venda | related Sale/Work/economic evidence | **PASS** |
+| N12 operational Work | Trabalho | contextual return to underlying owner | **PASS** |
+| N13 exceptional approval/delegation | Aprovações + Configurações/Delegações | exact governed target/revision | **PASS** |
+| N14 access administration | Configurações/Acesso | current access context in shell | **PASS** |
+| N15 fulfillment operating configuration | Configurações/Expedição | operational Expedição lens | **PASS** |
+| N16 policy/economic attribution | Configurações/Política comercial + Economia/Reconciliation context | Aprovações only when governance requires | **PASS** |
+
+Result:
+
+```text
+needs tested                     16
+findable/containable             16
+material IA falsifiers            0
+new top-level destinations needed 0
+backend-owner navigation leaks     0
+```
+
+The sale/materialization path is the strongest negative control: P4 deliberately **rejects** a top-level `Materialização` area. Business-order/Party/destination/invoicing meaning remains findable from the human Sale context and retains its own semantic owner underneath.
+
+## 21. Mental-model validation and P6/P7 trigger evaluation
+
+P4 uses the smallest proportionate validation because the global IA is already operator-ratified D6 authority and P0–P3 produced no new navigation need. The structural walkthrough asks whether a user goal can be located from the accepted tree without knowing backend taxonomy; all 16 pass.
+
+This is **not** direct user-comprehension proof. A03 remains open for P12 terminology/first-click comprehension validation.
+
+Current trigger disposition:
+
+| Trigger | P4 evidence | Disposition |
+| --- | --- | --- |
+| high-impact IA uncertainty requiring card sorting/tree test now | no uncontained need or competing category placement survives the N01–N16 walk | **NOT TRIGGERED in P4**; A03 remains P12 evidence obligation |
+| P6 unfamiliar/high-impact UX problem or meaningful pattern uncertainty | P4 decides navigation/findability only; no new unfamiliar layout problem introduced | **NOT TRIGGERED by P4** |
+| P7 genuine structural ambiguity with >1 credible IA hypothesis | accepted D6 tree contains every need without contradiction; alternatives would be preference-driven | **NOT TRIGGERED by P4** |
+
+P6/P7 may still trigger later for an individual P5/P8 material block if a real layout/interaction ambiguity appears.
+
+## 22. Future seams kept out of live IA
+
+The following may shape extensibility but do not earn live routes/navigation now:
+
+- marketplaces beyond the proved Mercado Livre operating loop;
+- all-marketplace KPI aggregation without measurement equivalence;
+- Ads campaign/budget/bid/creative management;
+- global Product search or saved-view platform;
+- bulk Product actions without an admitted Product capability and user evidence;
+- multi-Organization SaaS provisioning/billing administration;
+- generic provider/plugin/integration catalog;
+- provider-native composite-offer management unless a selected real flow makes it material;
+- AI/agent/autonomous commercial navigation authority.
+
+## 23. P4 findings and exit
+
+### Material finding disposition
+
+**No material IA falsifier found.** P4 does not reopen D6, D0–D5 or any D7/D8 authority.
+
+The accepted D6 IA therefore survives as the D6-R2 **`CANDIDATE` global IA** for downstream screen/surface derivation:
+
+```text
+accepted D6 IA
++ N01–N16 / UF01–UF16 falsification
++ 99/99 P3 coverage
+→ P4 CANDIDATE REVALIDATED
+```
+
+This does **not** create a new D6-R2 `LOCKED` decision. Under Method v2.1, the global frame becomes eligible for an operator `LOCKED` decision only after the first required rendered global-frame block cycle. Existing D6 operator ratification remains architectural input authority; D6-R2 does not pretend that an unrendered P4 trace is the P8 visual lock.
+
+### Open evidence carried forward
+
+- A01 frequency/density remains OPEN for P5/P8 prioritization and P12 validation.
+- A02 device/work-floor evidence remains OPEN for responsive P8 structure.
+- A03 detailed terminology/comprehension remains OPEN; glossary detail is `CANDIDATE`.
+- A04 Overview signal priority remains OPEN.
+- A05 bulk interaction remains unsupported by evidence and therefore absent.
+
+### P4 exit
+
+**DERIVED / REVALIDATED.** All 16 accepted needs are findable within the accepted D6 IA, no backend taxonomy must become navigation, no new Product capability is required, and no real P6/P7 ambiguity trigger appears at the IA level.
+
+P8 remains **NOT STARTED** and no D6-R2 UX block is `LOCKED`.
+
+---
+
+# 24. Exact next action — P5 complete screen/material-surface inventory
+
+Derive P5 from N01–N16 + UF01–UF16 + P3 coverage + the P4 candidate IA.
+
+P5 must:
+
+1. derive screens/surfaces from user-flow decisions, not from endpoints;
+2. distinguish route/page, material surface, drawer/modal, inline composition, alternate view and material state variant;
+3. use the prior D6-B1 39-state inventory as coverage evidence, **not** as a target count to preserve;
+4. split a material surface only when semantic truth, safe action, write owner, identity, concurrency/idempotency, disclosure/security, recovery or editor/viewer mode materially changes;
+5. preserve cross-owner composition without creating new write authority;
+6. name any block whose layout/interaction ambiguity legitimately triggers P6/P7;
+7. keep P8 wireframing blocked until P5 gives a coherent block inventory and sequencing basis.
