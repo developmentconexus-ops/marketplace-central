@@ -1,6 +1,7 @@
 # D6-R2 NOTIF-01 — Personal Notification Architecture Design
 
 > **Status:** PROPOSED / OPERATOR-DIRECTION-APPROVED / WRITTEN-SPEC REVIEW PENDING
+> **Verification:** repository full gate passed on the written design candidate before operator spec adjudication
 > **Trigger:** operator-requested Notification assessment during D6-R2 frontend realization
 > **Comparative evidence:** MetalDocs Notification direction; not Marketplace Central authority
 > **Current Product authority:** D0–D8 + D5-R2/D8-R2 remain accepted until targeted amendments are separately approved
