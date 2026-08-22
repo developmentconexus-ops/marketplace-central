@@ -41,8 +41,9 @@ D7 does **not** reopen Product operations, ordinary Permissions, Principal kinds
 | D7-C — Durable Work & External Effects | [D7-C](D7-C-DURABLE-WORK-EXTERNAL-EFFECTS.md) | **OPERATOR-RATIFIED** |
 | D7-D — Authentication / Session / CSRF / Machine Tokens | [D7-D](D7-D-AUTHENTICATION-SESSION-CSRF.md) | **OPERATOR-RATIFIED** |
 | D7-E — Operability / Secrets / Migrations / Deployment & Proof | [D7-E](D7-E-OPERABILITY-DEPLOYMENT-PROOF.md) | **OPERATOR-RATIFIED** |
+| D7-R1 — Whole-Stage Coherence Corrections | [D7-R1](D7-R1-WHOLE-STAGE-COHERENCE.md) | **CANDIDATE / INTERNAL REVIEW — INDEPENDENT CHALLENGE PENDING** |
 
-All five slices are ratified. D7 still requires one whole-stage coherence + executable-proof/adversarial review before closeout. D8 does not open merely because the slices are complete.
+All five realization slices are ratified. Whole-D7 internal review found only bounded realization seams and captured the repair candidate in D7-R1. D7 still requires independent challenge + adjudication before closeout. D8 does not open merely because the slices are complete.
 
 ## 5. Accepted D7-A — Runtime Envelope & Transaction Ownership
 
@@ -82,7 +83,7 @@ organization_id on organization-owned state/evidence
 
 Principal-self and technical-routing scope are bounded bootstrap modes, never generic cross-tenant business access. No generic ORM/repository abstraction, database/schema/role-per-Organization or global `SERIALIZABLE` baseline is admitted.
 
-Real PostgreSQL negative proof remains mandatory before D7 closeout.
+D7-R1 proposes the smallest scope-taxonomy completion for D7-D authentication bootstrap without weakening Organization isolation.
 
 ## 7. Accepted D7-C — Durable Work & External Effects
 
@@ -101,7 +102,7 @@ scheduler/job state = wake-up/technical state only
 
 River completion, retry, uniqueness, rescue and schedule state never become business truth/history. Crash/timeout after possible dispatch moves to reconciliation, not generic retry.
 
-Real PostgreSQL + River crash/restart, transactional enqueue, duplicate/rescue and cross-Organization proof remains mandatory.
+D7-R1 qualifies normal crash semantics for database-time rollback: post-restore dispatch is recovery-fenced until reconciliation proves safety.
 
 ## 8. Accepted D7-D — Authentication / Session / CSRF / Machine Tokens
 
@@ -124,7 +125,7 @@ A/S: Keycloak Client Credentials
 
 No browser bearer, persistent human refresh-token cache, Redis session store, IdP role→Permission mapping, realm-per-Organization, wildcard CORS or generic IAM engine is admitted.
 
-Real Keycloak/OIDC plus browser-capable cookie/CSRF proof remains mandatory.
+D7-R1 clarifies the pre-Principal persistence scope and fail-closed multiple-carrier/OAD-validator seam.
 
 ## 9. Accepted D7-E — Operability / Deployment / Proof Baseline
 
@@ -145,52 +146,53 @@ backup     PostgreSQL base backup + WAL/PITR or managed equivalent; restore proo
 proof      real PostgreSQL/River/Keycloak/browser/router/object-store seams
 ```
 
-This closes the D5 `{id}:verb` routing constraint, runtime OAD schema validation, private authored-media byte custody, schema-version boot refusal, dependency-aware readiness and Keycloak subject-continuity/binary-integrity recovery.
+D7-R1 separates MPC `tern` schema ownership from River's library-owned migration line and adds the post-restore recovery fence plus scheme-aware OAD validation composition.
 
 No Kubernetes/service mesh, Redis, external broker, mandatory Collector/Prometheus/ELK stack, Vault dependency, hot configuration, ORM auto-schema, startup auto-migration, CDN/public bucket, multi-region or generic IaC platform is introduced.
 
 ## 10. Whole-D7 proof obligations
 
-Before D7 closes, the combined authority/proof plan must make at least these properties falsifiable:
+Before D7 closes, the combined **proof contract** must make at least these properties falsifiable:
 
 - cross-Organization DB access/reference bypass;
 - transaction-scope leakage through pooled connections;
+- authentication-bootstrap scope escaping into business/evidence tables;
 - stale revision/idempotency divergence;
 - owner commit without required durable job or rolled-back owner state with runnable job;
 - duplicate/rescued/out-of-order work corrupting business truth;
-- ambiguous external effect being blindly redispatched;
+- ambiguous external effect being blindly redispatched, including after PITR/database rollback;
 - Sankhya recovery falling back to Direct Oracle;
 - browser access/refresh token exposure;
 - invalid/replayed OIDC state/nonce/issuer/audience creating a session;
 - unsafe H request escaping CSRF/cross-origin controls;
 - A/S bearer resolving to H or gaining Permission from IdP roles;
+- OAD validation satisfying security through a no-op/mismatched carrier;
 - Product `{id}:verb` paths failing selected runtime dispatch;
 - runtime request validation accepting OAD-invalid shape;
 - technical routes leaking into Product OAD/SDK;
 - unauthorized private byte delivery;
 - secret/PII leakage through logs/traces/metrics/jobs;
-- incompatible schema booting successfully or runtime receiving migration-owner power;
+- incompatible MPC or River schema booting successfully or runtime receiving migration-owner power;
 - untrusted proxy headers influencing auth/public-origin security;
 - provider/telemetry degradation falsely killing application readiness;
 - backup/restore losing RLS/history/effect safety, stable IdP subject continuity or committed binary integrity.
 
-A mock-only green result cannot close a claim whose subject is PostgreSQL, River, Keycloak/OIDC, browser cookie/CSRF, HTTP router/OAD validator or object storage.
+D7 closeout does **not** claim an implemented Product runtime PASS. D7-R1 defines the proof-timing boundary: real-dependency execution is mandatory for implementation acceptance after the implementation gate opens; mocks cannot substitute for those claims.
 
 ## 11. Whole-D7 review gate
 
-**OPEN / ACTIVE.** Cross-check D7-A→D7-E as one composed runtime and challenge only material contradictions, missing seams, duplicated authority, impossible proof obligations or hidden Product-semantic changes.
+**OPEN / ACTIVE.** Internal whole-stage review found five bounded realization seams and no D0–D6 semantic contradiction. The repair candidate is [D7-R1](D7-R1-WHOLE-STAGE-COHERENCE.md).
 
-Required review sequence:
+Required remaining sequence:
 
-1. whole-D7 internal coherence/adversarial review;
-2. executable-proof-plan review against real-dependency obligations;
-3. independent Fable challenge on an isolated `review/d7-fable` branch;
-4. GPT adjudication of every material finding;
-5. bounded fixes + fresh exact-head gate when required;
-6. operator closeout decision.
+1. fresh candidate gate after D7-R1 routing;
+2. independent Fable challenge on an isolated `review/d7-fable` branch;
+3. GPT adjudication of every material finding;
+4. bounded fixes + fresh exact-head gate when required;
+5. operator closeout decision.
 
 D7 is not closed and D8 is not open until this review converges and the operator ratifies closeout.
 
 ## 12. Exact next action
 
-**Run whole-D7 coherence + executable-proof/adversarial review over D7-A→D7-E. Do not begin D8, D9 or Product implementation.**
+**Prove the D7-R1 candidate leaves repository/Product gates green, then open the isolated whole-D7 Fable challenge. Do not begin D8, D9 or Product implementation.**
