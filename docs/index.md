@@ -30,8 +30,11 @@ Pre-standard current-status/read-order prose inside accepted D-stage, architectu
 | Publication input, `ListingIntent`, readiness/source-following/override | [D4-R1 Publication Input](engineering/rebaseline/D4-R1-PUBLICATION-INPUT.md) | generic PIM assumptions |
 | Product API semantic laws | [D5 API](engineering/rebaseline/D5-API.md) | D6–D9 |
 | Frontend interaction/authority model, screen→Product capability mapping, frontend topology | [D6 Frontend](engineering/rebaseline/D6-FRONTEND.md) | D7–D9 and removed frontend runtime |
-| Runtime/process topology, PostgreSQL isolation/transactions, durable jobs/effects, auth/session realization, operability | [D7 Runtime / Jobs / Transactions](engineering/rebaseline/D7-RUNTIME-JOBS-TRANSACTIONS.md) | D8–D9 and removed runtime |
-| PostgreSQL Organization isolation, RLS, transaction scope, idempotency persistence, ETag/revision mechanics | [D7-B PostgreSQL Isolation & Transactions](engineering/rebaseline/D7-B-POSTGRESQL-ISOLATION-TRANSACTIONS.md) | D7-C–E and full schema/table census |
+| Runtime/process topology and whole-D7 integration | [D7 Runtime / Jobs / Transactions](engineering/rebaseline/D7-RUNTIME-JOBS-TRANSACTIONS.md) | D8–D9 and removed runtime |
+| PostgreSQL Organization isolation, RLS, transaction scope, idempotency, ETag/revision | [D7-B PostgreSQL Isolation & Transactions](engineering/rebaseline/D7-B-POSTGRESQL-ISOLATION-TRANSACTIONS.md) | D7-C–E and full schema census |
+| Durable work, River, retries, external-effect ambiguity/reconciliation | [D7-C Durable Work & External Effects](engineering/rebaseline/D7-C-DURABLE-WORK-EXTERNAL-EFFECTS.md) | auth/deployment and generic workflow assumptions |
+| Human session/CSRF/OIDC and A/S machine bearer realization | [D7-D Authentication / Session / CSRF](engineering/rebaseline/D7-D-AUTHENTICATION-SESSION-CSRF.md) | D7-E and generic IAM |
+| HTTP runtime validation, byte storage, secrets, migrations, telemetry, deployment/backup/proof | [D7-E Operability / Deployment / Proof](engineering/rebaseline/D7-E-OPERABILITY-DEPLOYMENT-PROOF.md) | D8–D9 and provider-specific infra by preference |
 | Current decision-generation reconciliation | [Decision Reconciliation Baseline](engineering/rebaseline/DECISION-RECONCILIATION-BASELINE.md) | all phase history |
 | Stable cross-stage architecture constraints | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | all phase documents |
 | ADR disposition / retirement trigger | [ADR Registry](architecture/decisions/README.md), then only the named ADR | all ADRs |
@@ -97,12 +100,7 @@ Do not select D7 runtime/router/database/deployment mechanics from D6 research.
 
 ## D7 Runtime bounded subpacks
 
-Start from [D7 Runtime / Jobs / Transactions](engineering/rebaseline/D7-RUNTIME-JOBS-TRANSACTIONS.md) plus one exact accepted owner at a time.
-
-- process/serving topology → [`../ARCHITECTURE.md`](../ARCHITECTURE.md);
-- PostgreSQL isolation/transactions → [D7-B PostgreSQL Isolation & Transactions](engineering/rebaseline/D7-B-POSTGRESQL-ISOLATION-TRANSACTIONS.md), switching to D2 or D5 W1/W2 only for an exact ownership/wire question;
-- human session/CSRF/OIDC realization → [D5-R1 Human Browser Authentication](engineering/rebaseline/D5-R1-HUMAN-BROWSER-AUTHENTICATION.md);
-- durable cross-owner communication/effects → D3 or D4 only when that exact seam is under decision.
+Start from the D7 task-route row above and add only the one accepted prior owner needed for the concrete invariant. Do not read D7-A→D7-E recursively by default; whole-D7 review is the only task that intentionally composes the entire set.
 
 Do not begin D8 golden-flow choreography or Product implementation from D7 research.
 
