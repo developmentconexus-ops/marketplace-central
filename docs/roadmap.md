@@ -51,7 +51,7 @@
 - `OPERAÇÃO` = **Visão operacional / Vendas / Expedição / Pós-venda**; a global cross-owner Kanban is rejected.
 - OP-READ-01 is resolved by D5-R2; Product remains **99/30/H-A-S**. D8-R2 preserves GF-02.
 - **B00 App Shell + corrected global IA and B01 content are LOCKED.** B10 remains valid under `OFERTA > Preparação` but is paused for NOTIF-01.
-- NOTIF-01 direction: persistent Personal Notifications owner candidate, recoverable PostgreSQL+River delivery, no broker, no Work/Audit/authorization conflation, and an Organization-scoped **bell in the topbar** as Inbox entry point. This remains design, not Product authority, until written-spec approval.
+- NOTIF-01 direction: persistent Personal Notifications owner candidate, recoverable PostgreSQL+River delivery, no broker, no Work/Audit/authorization conflation, and an Organization-scoped **bell in the topbar** as Inbox entry point. The written design is verified structurally but remains proposed until operator spec approval.
 - Global-Maximum/YAGNI remains binding.
 
 ## D8 authority carried forward
