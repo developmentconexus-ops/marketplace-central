@@ -12,9 +12,11 @@
 | Current stage | **D6-R2 — Complete Frontend Realization Closure — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED** |
 | D6-R2 authority | [D6-R2 Closure](engineering/rebaseline/D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md) + [P5 Inventory](engineering/rebaseline/D6-R2-P5-SCREEN-SURFACE-INVENTORY.md) + [P8 Ledger](engineering/rebaseline/D6-R2-P8-BLOCK-LEDGER.md) — **P0–P5 DERIVED; B00 LOCKED; B01 NEXT** |
-| Method | [Frontend Product Experience Planning Method v2.1](development/frontend-product-experience-planning-method.md) |
-| Product surface | **99 operations · 30 ordinary Permissions · H / A / S** |
-| Active runtime | **NONE** |
+| Execution method | [Frontend Product Experience Planning Method v2.1](development/frontend-product-experience-planning-method.md) |
+| Canonical Product OAD | `contracts/api/product/openapi.yaml` |
+| Product surface | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
+| Stable origin | `https://conexus.fun` |
+| Active runtime baseline | **NONE** |
 | Exact next action | **B01 Overview: resolve A04 operator priority (Work / marketplace posture / economics / Performance / balanced), then render one executable low-fi HTML CANDIDATE. P6/P7 not triggered.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
@@ -24,13 +26,19 @@
 
 | Stage / gate | Status |
 | --- | --- |
-| D0–D5 | ACCEPTED / CLOSED |
+| D0 — Product / System Definition | ACCEPTED / CLOSED |
+| D1 — Domains / Boundaries | ACCEPTED / CLOSED |
+| D2 — Identity / Tenant / Data Ownership | ACCEPTED / CLOSED |
+| D3 — Communication / Events | ACCEPTED / CLOSED |
+| D4 — External Integrations | ACCEPTED / CLOSED |
+| D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
+| D5 — API | ACCEPTED / CLOSED |
 | D6 — Frontend | **ACCEPTED / CLOSED** |
 | D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED** |
 | D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED** |
-| D6-R2 | **OPEN / ACTIVE — P0–P5 DERIVED; B00 LOCKED; B01 NEXT** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — P0–P5 DERIVED; B00 LOCKED; B01 NEXT** |
 | Pre-D9 readiness | **BLOCKED** |
-| D9 | **BLOCKED** |
+| D9 — Adversarial Architecture Review | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
 
 ## Current D6-R2 result
