@@ -1,6 +1,6 @@
 # D7 — Runtime / Jobs / Transactions
 
-> **Status:** OPEN / ACTIVE — D7-A OPERATOR-RATIFIED / D7-B NEXT
+> **Status:** OPEN / ACTIVE — D7-A OPERATOR-RATIFIED / D7-B CANDIDATE PENDING RATIFICATION
 > **Program:** Architecture Rebaseline / Technical System Design
 > **Opened:** 2026-08-21
 > **Parent authorities:** accepted D0–D6 semantics, `ARCHITECTURE.md`, canonical Product OAD, and bounded owner authority routed by `docs/index.md`
@@ -49,6 +49,8 @@ D7 must resolve only the mechanics needed by accepted D0–D6 behavior.
 Decide the minimum number and responsibility of runtime processes/executables and the serving boundary between browser/static delivery, Product API, Technical Ingress and background work.
 
 ### D7-B — Persistence, isolation and transactions
+
+Owning candidate: [D7-B PostgreSQL Isolation & Transactions](D7-B-POSTGRESQL-ISOLATION-TRANSACTIONS.md).
 
 Decide PostgreSQL connection/transaction ownership, structural Organization isolation/RLS, owner command transactions, ETag/revision realization, idempotency lifecycle and only justified read projections.
 
@@ -112,7 +114,7 @@ Absent a concrete falsifier/consumer, D7 does not introduce microservices/servic
 D7 proceeds dependency-last:
 
 1. **D7-A Runtime envelope:** process/serving responsibilities + transaction ownership boundary — **OPERATOR-RATIFIED**.
-2. **D7-B Persistence:** isolation + transaction invariants before database/schema mechanics — **NEXT**.
+2. **D7-B Persistence:** isolation + transaction invariants before database/schema mechanics — **CANDIDATE / OPERATOR RATIFICATION PENDING**.
 3. **D7-C Durable work:** atomic handoff/retry/reconciliation before worker selection.
 4. **D7-D Authentication:** session/OIDC/CSRF/token mechanics under the accepted carrier split.
 5. **D7-E Operability:** only required deployment/observability/secret/migration mechanics.
@@ -226,8 +228,10 @@ Split API and worker process roles only if a real proof establishes at least one
 
 Preference for process separation, microservices or framework convention is not a reopen trigger.
 
-## 11. Exact next D7 work
+## 11. Current D7-B gate
 
-Proceed to **D7-B — PostgreSQL Isolation & Transaction Realization**: derive the structural Organization/RLS model, transaction context propagation, idempotency storage boundary and ETag/revision enforcement before choosing pgx/sqlc/tern details.
+The bounded [D7-B PostgreSQL Isolation & Transactions](D7-B-POSTGRESQL-ISOLATION-TRANSACTIONS.md) candidate is pending operator ratification. It proposes transaction-local scope + structural composite Organization references + PostgreSQL `ENABLE/FORCE RLS` under a non-owner/non-`BYPASSRLS` runtime role, explicit row locking for protected current owner meanings, opaque random ETag revision tokens, organization/operation-scoped idempotency records, and `pgx/v5` + `pgxpool` as the direct PostgreSQL primitive.
+
+Do not begin D7-C until D7-B is operator-ratified.
 
 Do not begin D8, D9 or Product implementation.
