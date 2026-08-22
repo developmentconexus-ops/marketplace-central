@@ -1,6 +1,6 @@
 # D8 — Controlled Live Probe Protocol
 
-> **Status:** EXECUTION AUTHORIZED / PROBES NOT YET EXECUTED  
+> **Status:** EXECUTED 2026-08-22 — outcomes recorded in [D8-LIVE-PROBE-EVIDENCE.md](D8-LIVE-PROBE-EVIDENCE.md)  
 > **Parent:** [D8-R1 Proof Closure & Implementation-Readiness Coherence](D8-R1-PROOF-CLOSURE-COHERENCE.md)  
 > **Operator authorization:** 2026-08-22 — execute the real probes needed to avoid theory-only architecture closure  
 > **Scope:** D4-deferred D8 external-contract probes only; no Product implementation  

@@ -1,6 +1,6 @@
 # D8-R1 — Proof Closure & Implementation-Readiness Coherence
 
-> **Status:** OPEN / ACTIVE — INDEPENDENT REVIEW ADJUDICATED; LIVE PROBES AUTHORIZED / EXECUTION PENDING  
+> **Status:** OPEN / ACTIVE — LIVE PROBES EXECUTED AND RECORDED 2026-08-22; CLOSEOUT PENDING OPERATOR RATIFICATION  
 > **Parent:** [D8 Golden Flows](D8-GOLDEN-FLOWS.md)  
 > **Execution protocol:** [D8 Controlled Live Probe Protocol](D8-LIVE-PROBE-PROTOCOL.md)  
 > **Candidate reviewed:** `stage/d8-golden-flows @ b3469258348289865a036bc7a946077f79d61faf`  
@@ -43,12 +43,12 @@ The operator explicitly authorized controlled real execution on **2026-08-22** s
 
 | ID | D4-deferred probe | D8 relationship | Current disposition |
 | --- | --- | --- | --- |
-| P1 | first Mercado Livre **Price/Availability effect** + authoritative convergence reread | GF-01; may be discharged by one controlled publication experiment only if the experiment explicitly exercises and records both meanings | **OPERATOR_AUTHORIZED — EXECUTION PENDING** |
-| P2 | selected-lane **fiscal / invoice / label progression** | GF-02 | **OPERATOR_AUTHORIZED — EXECUTION PENDING** |
-| P3 | first irreversible Sankhya **`313→306` fiscal progression** | GF-02; may share one controlled lane with P2 when separately evidenced in the result | **OPERATOR_AUTHORIZED — EXECUTION PENDING** |
-| P4 | first consequential native **Party create/update when needed** | GF-02 Materialization prerequisite | **CONDITIONAL — OPERATOR_AUTHORIZED IF TRIGGERED** |
-| P5 | first controlled **alternate-destination/contact realization** before claiming that concrete Sankhya capability | GF-02 | **OPERATOR_AUTHORIZED — EXECUTION PENDING** |
-| P6 | any currently unexercised fiscal **branch/component that becomes material** to a selected golden flow | GF-02 | **CONDITIONAL — OPERATOR_AUTHORIZED IF TRIGGERED** |
+| P1 | first Mercado Livre **Price/Availability effect** + authoritative convergence reread | GF-01; may be discharged by one controlled publication experiment only if the experiment explicitly exercises and records both meanings | **EXECUTED_AND_RECORDED — `PASS_CONVERGED`** ([evidence](D8-LIVE-PROBE-EVIDENCE.md)) |
+| P2 | selected-lane **fiscal / invoice / label progression** | GF-02 | **OPERATOR_RATIFIED_REDEFER(first real open ML Sale / beta-flagged implementation)** — no qualifying open Sale existed 2026-08-22 ([evidence](D8-LIVE-PROBE-EVIDENCE.md)) |
+| P3 | first irreversible Sankhya **`313→306` fiscal progression** | GF-02; may share one controlled lane with P2 when separately evidenced in the result | **EXECUTED_AND_RECORDED — `PASS_CONVERGED`** (nota left unconfirmed by operator constraint) ([evidence](D8-LIVE-PROBE-EVIDENCE.md)) |
+| P4 | first consequential native **Party create/update when needed** | GF-02 Materialization prerequisite | **NOT_TRIGGERED** (single compatible Party existed and was reused) ([evidence](D8-LIVE-PROBE-EVIDENCE.md)) |
+| P5 | first controlled **alternate-destination/contact realization** before claiming that concrete Sankhya capability | GF-02 | **EXECUTED_AND_RECORDED — `CAPABILITY_NOT_PROVEN`** for full destination override; contact-reference lane converged ([evidence](D8-LIVE-PROBE-EVIDENCE.md)) |
+| P6 | any currently unexercised fiscal **branch/component that becomes material** to a selected golden flow | GF-02 | **NOT_TRIGGERED** (fixture: PF consumidor final; no D4 §5.14 Unknown material) ([evidence](D8-LIVE-PROBE-EVIDENCE.md)) |
 
 D4-R1 separately states that D8 owns the first controlled real Mercado Livre creation/write proof with authoritative reread and shared-User-Product blast-radius verification. That proof may satisfy P1 only when its recorded scope actually includes the Price/Availability effect required by D4; equivalence is never inferred merely because both involve marketplace creation.
 
@@ -191,15 +191,17 @@ Golden-flow set                       3 business + 1 systemic — CONFIRMED
 Product surface                       99 operations / 30 Permissions / H-A-S unchanged
 active Product runtime                NONE
 D8 live-probe authorization           GRANTED 2026-08-22
-D8 real-probe ledger                  OPEN — EXECUTION / RECORDING PENDING
+D8 real-probe ledger                  EXECUTED_AND_RECORDED 2026-08-22 — P1/P3 PASS_CONVERGED,
+                                      P5 CAPABILITY_NOT_PROVEN (destination override narrowed),
+                                      P4/P6 NOT_TRIGGERED, P2 OPERATOR_RATIFIED_REDEFER
 D6-R2                                 BLOCKED UNTIL D8 CLOSE
 Pre-D9 readiness contract             BLOCKED UNTIL D6-R2
 D9                                    BLOCKED
 Product implementation                BLOCKED UNTIL D9
 ```
 
-D8 is **not yet closeable** because unconditional live-probe rows P1/P2/P3/P5 are authorized but not yet executed/recorded.
+Every probe row now carries a valid closeout state (§3.2): P1/P3/P5 `EXECUTED_AND_RECORDED`, P4/P6 `NOT_TRIGGERED` with evidence, P2 `OPERATOR_RATIFIED_REDEFER(first real open ML Sale / beta-flagged implementation)`. No probe result falsified accepted D0–D7 authority; P5 narrows an unclaimed capability (full alternate-destination override stays external-required/unsupported).
 
 ## 10. Exact next action
 
-**Execute the authorized D8 live probes through `D8-LIVE-PROBE-PROTOCOL.md` from the credentialed operator environment, in bounded order and with authoritative reread after every consequential attempt. Record P1/P2/P3/P5 and any triggered P4/P6. Do not begin D6-R2, D9 or Product implementation until D8 closes.**
+**Close D8 through operator ratification: rerun the repository gate on the recorded ledger, then ratify D8 close. The P2 redefer gate (first real open Mercado Livre Sale, or beta-flagged implementation drive) travels forward as an explicit obligation. Do not begin D6-R2, D9 or Product implementation until D8 closes.**
