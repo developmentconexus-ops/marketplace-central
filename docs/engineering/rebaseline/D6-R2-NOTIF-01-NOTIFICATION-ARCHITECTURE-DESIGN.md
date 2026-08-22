@@ -1,6 +1,6 @@
 # D6-R2 NOTIF-01 — Personal Notification Architecture Design
 
-> **Status:** PROPOSED / OPERATOR-DIRECTION-APPROVED / WRITTEN-SPEC REVIEW PENDING
+> **Status:** OPERATOR-APPROVED DESIGN / AUTHORITY-AMENDMENT PLAN NEXT
 > **Verification:** repository full gate passed on the written design candidate before operator spec adjudication
 > **Trigger:** operator-requested Notification assessment during D6-R2 frontend realization
 > **Comparative evidence:** MetalDocs Notification direction; not Marketplace Central authority
@@ -261,7 +261,7 @@ Notification-triggered source mutation
 
 ## 12. Targeted reopen sequence
 
-If this written design is approved, authority changes proceed in dependency order:
+With this written design operator-approved, authority changes proceed in dependency order:
 
 ```text
 D0-R?  add Personal Notification Inbox to Product 1.0 launch scope
