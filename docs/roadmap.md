@@ -9,15 +9,17 @@
 | Field | Current value |
 | --- | --- |
 | Product | **Marketplace Operations Control Plane + Commercial Intelligence** |
-| Current stage | **D8 — Golden Flows — CLOSEOUT RATIFIED / INTEGRATION PENDING** |
-| Accepted baseline | **D0–D8 ACCEPTED / CLOSED on candidate branch** |
-| D8 authority | [D8 Golden Flows](engineering/rebaseline/D8-GOLDEN-FLOWS.md) + [D8-R1 Proof Closure & Implementation-Readiness Coherence](engineering/rebaseline/D8-R1-PROOF-CLOSURE-COHERENCE.md) — **ACCEPTED / CLOSED / OPERATOR-RATIFIED 2026-08-22** |
-| Live-probe execution | [D8 Controlled Live Probe Protocol](engineering/rebaseline/D8-LIVE-PROBE-PROTOCOL.md) — **EXECUTED 2026-08-22**; outcomes in [D8 Live Probe Evidence](engineering/rebaseline/D8-LIVE-PROBE-EVIDENCE.md) |
+| Current stage | **D6-R2 — Complete Frontend Realization Closure — OPEN / ACTIVE** |
+| Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED** |
+| D6-R2 authority | [D6-R2 Complete Frontend Realization Closure](engineering/rebaseline/D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md) — **P0–P3 DERIVED; P8 NOT STARTED; no D6-R2 UX block is operator-LOCKED** |
+| Execution method | [Frontend Product Experience Planning Method v2.1](development/frontend-product-experience-planning-method.md) — reusable methodology; **not** stage/status authority |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Evaluate and operator-ratify the D6-R2 frontend-realization method while PR #59 remains the sole D8 integration vehicle. Do not merge without explicit merge authorization; do not open/stack D6-R2 work until D8 is integrated into `main`.** |
+| Exact next action | **Execute P4 bounded IA revalidation from the derived N01–N16 / UF01–UF16 / P3 coverage matrix. Preserve accepted D6 IA/routes by default; reopen only on a material falsifier. Do not draw P8 wireframes yet.** |
+| Pre-D9 Implementation Readiness Contract | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
+| D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
 
 ## Stage progression
@@ -33,15 +35,15 @@
 | D5 — API | ACCEPTED / CLOSED |
 | D6 — Frontend | **ACCEPTED / CLOSED** |
 | D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED** |
-| D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / PENDING INTEGRATION INTO `main`** |
-| D6-R2 — Complete Frontend Realization Closure | **BLOCKED UNTIL D8 INTEGRATION** |
+| D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — P0–P3 DERIVED** |
 | Pre-D9 Implementation Readiness Contract | **BLOCKED UNTIL D6-R2** |
-| D9 — Adversarial Architecture Review | BLOCKED |
-| Implementation | BLOCKED UNTIL D9 |
+| D9 — Adversarial Architecture Review | **BLOCKED** |
+| Implementation | **BLOCKED UNTIL D9** |
 
-## Accepted D8 closure
+## Accepted D8 result carried forward
 
-D8 confirmed the smallest representative falsifiable set:
+D8 remains accepted authority and is not reopened by D6-R2 preference.
 
 ```text
 GF-01  Publication & Marketplace Convergence
@@ -50,9 +52,7 @@ GF-03  Performance Evidence Honesty
 SR-01  PITR / Timeline Continuity Recovery
 ```
 
-This remains **3 business golden flows + 1 systemic recovery falsifier**, not an exhaustive 99-operation test catalog and not Product implementation. Independent Fable review, GPT adjudication and controlled real probes closed without a D0–D7 semantic reopen.
-
-Final probe disposition:
+Final live-probe disposition carried forward:
 
 ```text
 P1  ML Price/Availability                 PASS_CONVERGED
@@ -65,11 +65,33 @@ P5  alternate destination/contact         CAPABILITY_NOT_PROVEN for full overrid
 P6  additional fiscal branch/component    NOT_TRIGGERED
 ```
 
-P5 is a capability narrowing, not a contradiction: the sanctioned Sankhya contact reference survives fiscal progression, but it is not a full street/fiscal destination override. Partner master corruption or duplicate-Party creation remains forbidden. P2 travels forward as an explicit proof obligation and may not silently disappear.
+P2 remains an explicit future proof obligation. P5 is a capability narrowing: the sanctioned contact reference is not a full alternate street/fiscal destination override. D6-R2 may not silently present either as already-proven capability.
 
-## Approved pre-D9 realization sequence
+## D6-R2 execution contract
 
-D8 established that **architecture closure is not by itself implementation-readiness closure**. After D8 is integrated, the accepted sequence is:
+D6-R2 uses Frontend Product Experience Planning Method v2.1 with Marketplace Central tailoring:
+
+```text
+accepted D6 IA/routes/React/TanStack/topology remain accepted
+P0–P3 global foundation first
+P4 revalidates accepted IA rather than reopening it by preference
+P6/P7 activate only on real ambiguity
+P8 renders structural wireframes block by block; only operator may set LOCKED
+P9 binds exact owner + operationId + Permission + H/A/S + identity + state + effect semantics
+P14 closes frontend realization readiness
+```
+
+Current D6-R2 P0–P3 result:
+
+- four accepted D0 actor contexts retained; no invented personas;
+- 16 outcome-oriented user needs and 16 complete end-to-end flows derived without starting from screens;
+- accepted D6-B1 coverage remains 99/99 Product operations across 14 owner/families;
+- no new Product operation, Permission or semantic owner is required;
+- no D0–D8 reopen is justified;
+- task frequency/density, real device/work-floor distribution, detailed terminology comprehension, Overview priority and any future bulk-interaction need remain explicit P12 evidence assumptions rather than hidden design decisions;
+- P8 is **NOT STARTED** and no D6-R2 block is `LOCKED`.
+
+## Approved pre-D9 sequence
 
 ```text
 D8 integrated
@@ -79,10 +101,6 @@ D8 integrated
 → Product implementation only after accepted D9
 ```
 
-D6-R2 must complete material route/screen/state/action/API/Permission/wireframe realization against current accepted Product + D7/D8 authority without reopening accepted frontend technologies/topology by preference. The Pre-D9 Implementation Readiness Contract then projects accepted architecture into per-slice outcomes, the complete D6 dependency/import law, negative controls, executable acceptance and explicit exit states so coding agents do not decide material behavior during implementation.
-
 If D6-R2 or the readiness contract legitimately changes an accepted operation, Permission, semantic owner or another material invariant through the smallest owning authority, affected D8 flows/controls must be revalidated before D9 opens. D9 never reviews golden flows derived from superseded authority.
 
-Until PR #59 is explicitly authorized and merged, keep D6-R2 blocked and do not stack its branch on this candidate. After merge, revalidate `main`, branches, PRs and CI first. Product implementation remains blocked until accepted D9.
-
-One coherent gate lands before the next. For task-specific reading, return to [`index.md`](index.md).
+One coherent gate lands before the next. Product implementation remains blocked. For task-specific reading, return to [`index.md`](index.md).
