@@ -239,7 +239,7 @@
 </head>
 <body>
   <div class="prototype-bar" aria-label="Controles exclusivos do protótipo">
-    <div><strong>D6-R2 · P8 · B00 · CANDIDATE</strong> — wireframe estrutural executável; sem decisões de visual design.</div>
+    <div><strong>D6-R2 · P8 · B00-R1 · CANDIDATE</strong> — IA-01 corrigida; shell físico/contextual previamente LOCKED permanece inalterado.</div>
     <div class="prototype-controls">
       <label for="scenario">Cenário</label>
       <select id="scenario">
@@ -272,10 +272,16 @@
         </div>
 
         <div class="nav-group">
-          <div class="group-label">Operações</div>
+          <div class="group-label">Oferta</div>
           <button class="nav-item" data-page="preparation" data-title="Preparação" data-context="exact">Preparação</button>
-          <button class="nav-item" data-page="publications" data-title="Publicações" data-context="exact">Publicações</button>
+          <button class="nav-item" data-page="publications" data-title="Anúncios" data-context="exact">Anúncios</button>
+          <button class="nav-item" data-page="prices" data-title="Preços" data-context="all-or-exact">Preços</button>
           <button class="nav-item" data-page="availability" data-title="Disponibilidade" data-context="all-or-exact">Disponibilidade</button>
+        </div>
+
+        <div class="nav-group">
+          <div class="group-label">Operação</div>
+          <button class="nav-item" data-page="operations" data-title="Visão operacional" data-context="organization">Visão operacional</button>
           <button class="nav-item" data-page="sales" data-title="Vendas" data-context="exact">Vendas</button>
           <button class="nav-item" data-page="fulfillment" data-title="Expedição" data-context="all-or-exact">Expedição</button>
           <button class="nav-item" data-page="post-sale" data-title="Pós-venda" data-context="all-or-exact">Pós-venda</button>
@@ -285,7 +291,7 @@
           <div class="group-label">Estratégia e inteligência</div>
           <button class="nav-item" data-page="performance" data-title="Performance" data-context="exact">Performance</button>
           <button class="nav-item sub" data-page="performance-summary" data-title="Performance · Resumo" data-context="exact">Resumo</button>
-          <button class="nav-item sub" data-page="performance-publications" data-title="Performance · Publicações" data-context="exact">Publicações</button>
+          <button class="nav-item sub" data-page="performance-publications" data-title="Performance · Anúncios" data-context="exact">Anúncios</button>
           <button class="nav-item sub" data-page="performance-media" data-title="Performance · Mídia" data-context="exact">Mídia</button>
           <button class="nav-item" data-page="market" data-title="Mercado" data-context="all-or-exact">Mercado</button>
           <button class="nav-item" data-page="economics" data-title="Economia" data-context="all-or-exact">Economia</button>
@@ -318,7 +324,7 @@
       </header>
 
       <div class="content">
-        <div class="structural-meta" aria-label="Medidas estruturais candidatas">
+        <div class="structural-meta" aria-label="Medidas estruturais já preservadas">
           <span>desktop baseline ≥ 1200px</span>
           <span>header ≈ 64px</span>
           <span>content padding ≈ 24px</span>
@@ -373,19 +379,21 @@
 
       const descriptionByPage = {
         overview: 'B00 prova apenas o shell global. A composição e a prioridade de conteúdo desta página pertencem aos blocos posteriores.',
-        preparation: 'A rota exige conta exata; o shell deve hospedar esse contexto local sem transformar a conta em workspace global.',
-        publications: 'A rota exige conta exata; a navegação global permanece estável enquanto o contexto local muda.',
-        sales: 'A rota exige conta exata e preserva identidade source-qualified; B00 não desenha o detalhe da Venda.',
-        performance: 'Performance exige conta exata. Resumo, Publicações e Mídia permanecem subnavegação aceita.',
+        preparation: 'Oferta > Preparação exige uma conta exata; o shell hospeda esse contexto sem transformar a conta em workspace global.',
+        publications: 'Oferta > Anúncios exige uma conta exata. A linguagem de usuário mudou; a rota técnica pode continuar /publicacoes sem churn de valor.',
+        prices: 'Oferta > Preços executa PriceIntent no owner Offering. Estratégia pode informar a decisão, mas não ganha write authority.',
+        availability: 'Oferta > Disponibilidade admite visão ampla ou conta exata. B00 prova apenas o contexto e a findability.',
+        operations: 'Operação > Visão operacional é organization-wide e será uma composição read-only de owners existentes. B00 não decide cockpit, filas ou Kanban.',
+        sales: 'Operação > Vendas exige conta exata e preserva MarketplaceSale separado de BusinessOrderIntent e Fulfillment.',
+        fulfillment: 'Operação > Expedição admite contexto amplo ou exato conforme a subrota. Um eventual Kanban só poderá refletir verdade Fulfillment-owned.',
+        'post-sale': 'Operação > Pós-venda admite contexto amplo ou exato conforme a operação. O shell não cria lifecycle transversal.',
+        performance: 'Performance exige conta exata. Resumo, Anúncios e Mídia permanecem subnavegação de inteligência.',
         'performance-summary': 'Performance exige conta exata. B00 prova a localização da subnavegação, não o layout analítico.',
-        'performance-publications': 'Performance exige conta exata. O conteúdo analítico será decidido em bloco posterior.',
-        'performance-media': 'Performance exige conta exata. Nenhum controle de Ads nasce neste shell.',
-        availability: 'A rota admite visão ampla ou uma conta exata. B00 prova o host contextual, não filtros nem tabela.',
-        fulfillment: 'Expedição admite contexto amplo ou exato conforme a subrota. B00 não cria WMS/TMS global.',
-        'post-sale': 'Pós-venda admite contexto amplo ou exato conforme a operação. O shell não cria autoridade de caso genérico.',
+        'performance-publications': 'Performance > Anúncios exige conta exata. O conteúdo analítico será decidido em bloco posterior.',
+        'performance-media': 'Performance > Mídia exige conta exata. Nenhum controle de Ads nasce neste shell.',
         market: 'Mercado admite contexto amplo ou exato quando aplicável. A lente permanece separada de Performance e Economia.',
         economics: 'Economia admite contexto amplo ou exato quando aplicável. O shell não cria autoridade Strategy/Analytics.',
-        work: 'Trabalho é organization-wide e continua coordenação, não source truth.',
+        work: 'Trabalho é organization-wide e continua coordenação transversal, não source truth.',
         approvals: 'Aprovações é organization-wide e não executa a ação governada.',
         settings: 'Configurações é agrupamento UX de baixa frequência, nunca semantic owner.'
       };
