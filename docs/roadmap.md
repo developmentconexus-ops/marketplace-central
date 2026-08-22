@@ -12,18 +12,14 @@
 | Current stage | **D7 — Runtime / Jobs / Transactions — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D6 ACCEPTED / CLOSED** |
 | D7 authority | [D7 Runtime / Jobs / Transactions](engineering/rebaseline/D7-RUNTIME-JOBS-TRANSACTIONS.md) |
-| D7-A | **OPERATOR-RATIFIED** |
-| D7-B | **OPERATOR-RATIFIED** — [authority](engineering/rebaseline/D7-B-POSTGRESQL-ISOLATION-TRANSACTIONS.md) |
-| D7-C | **OPERATOR-RATIFIED** — [authority](engineering/rebaseline/D7-C-DURABLE-WORK-EXTERNAL-EFFECTS.md) |
-| D7-D | **OPERATOR-RATIFIED** — [authority](engineering/rebaseline/D7-D-AUTHENTICATION-SESSION-CSRF.md) |
-| D7-E | **OPERATOR-RATIFIED** — [authority](engineering/rebaseline/D7-E-OPERABILITY-DEPLOYMENT-PROOF.md) |
-| D7-R1 | **Whole-stage coherence corrections — CANDIDATE / INTERNAL REVIEW / FABLE CHALLENGE PENDING** — [candidate](engineering/rebaseline/D7-R1-WHOLE-STAGE-COHERENCE.md) |
-| Whole-D7 review | **OPEN / ACTIVE** |
+| D7-A→D7-E | **OPERATOR-RATIFIED** |
+| D7-R1 | **Whole-stage coherence corrections — FABLE REVIEWED / GPT ADJUDICATED / BOUNDED FIX APPLIED** — [authority candidate](engineering/rebaseline/D7-R1-WHOLE-STAGE-COHERENCE.md) |
+| Whole-D7 review | **CONVERGED — EXACT-HEAD PROOF PENDING / OPERATOR CLOSEOUT PENDING** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Run fresh gate on D7-R1 candidate, then open isolated whole-D7 Fable challenge and adjudicate findings. Do not open D8.** |
+| Exact next action | **Run fresh exact-head gate after the accepted Fable F-1 recovery-continuity amendment; if green, present D7 for explicit operator closeout. Do not open D8.** |
 | Implementation | **BLOCKED UNTIL D9** |
 
 ## Stage progression
@@ -38,7 +34,7 @@
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
 | D5 — API | ACCEPTED / CLOSED |
 | D6 — Frontend | **ACCEPTED / CLOSED** |
-| D7 — Runtime / Jobs / Transactions | **OPEN / ACTIVE — D7-A→D7-E ratified; D7-R1 repair candidate under whole-stage review** |
+| D7 — Runtime / Jobs / Transactions | **OPEN / ACTIVE — closeout proof + operator decision remaining** |
 | D8 — Golden Flows | BLOCKED |
 | D9 — Adversarial Architecture Review | BLOCKED |
 | Implementation | BLOCKED UNTIL D9 |
@@ -46,52 +42,38 @@
 ## Accepted D7 baseline
 
 ```text
-Product            99 operations · 30 Permissions · H/A/S
-backend            Go modular-monolith process per replica
-state              PostgreSQL + pgx/v5 + pgxpool
-isolation          explicit Organization + composite FKs + ENABLE/FORCE RLS
-transactions       owner-local · READ COMMITTED + explicit locking
-work/effects       River InsertTx · repeat-safe · possible acceptance => reconcile, never redispatch
-auth H             Keycloak OIDC code+PKCE -> opaque PostgreSQL MPC session + CSRF
-auth A/S           Client Credentials -> audience-bound bearer -> explicit A/S Principal binding
-HTTP               Chi v5 + oapi-codegen strict server + OAD runtime validation
-bytes              private S3-compatible custody + authenticated Go delivery
-migrations         tern/v2 for MPC-owned schema; D7-R1 reviews River-owned migration seam
-observability      JSON slog + OTel traces/metrics over OTLP/HTTP
-deploy             one immutable OCI app image behind trusted TLS edge
-recovery           PostgreSQL PITR + Keycloak subject continuity + binary integrity restore proof
+runtime        one Go process/replica · same-origin · in-process River workers
+state          PostgreSQL + pgx/v5/pgxpool · structural Organization RLS + composite FKs
+transactions   owner-local · READ COMMITTED + explicit locking · opaque revisions · scoped idempotency
+effects        River InsertTx · repeat-safe · possible acceptance => authoritative reconciliation
+auth H         Keycloak OIDC code+PKCE -> opaque PostgreSQL MPC session + CSRF
+auth A/S       Client Credentials -> audience-bound bearer -> explicit A/S Principal binding
+HTTP           Chi v5 + oapi-codegen strict server + OAD runtime validation
+bytes          private S3-compatible custody + authenticated Go delivery
+migrations     tern/v2 for MPC schema + version-matched River migration tool for River schema
+observability  JSON slog + OTel traces/metrics over OTLP/HTTP
+deploy         immutable OCI image behind trusted TLS edge
+recovery       PITR/restore proof + affirmative continuity witness + fail-closed recovery fence
 ```
 
-Detailed laws, exclusions and falsifiers remain in the D7 owner documents; this roadmap does not duplicate them.
+Detailed laws, exclusions and proof contracts remain in the D7 owners.
 
-## Whole-D7 internal review
+## Whole-D7 review result
 
-Internal composition found five bounded D7 realization seams and **no D0–D6 semantic reopen**. [D7-R1](engineering/rebaseline/D7-R1-WHOLE-STAGE-COHERENCE.md) proposes only:
+Internal review produced five bounded D7-R1 seams. Independent Fable review returned **ACCEPT WITH BOUNDED FIXES** and found one Important gap: the PITR recovery fence was correct once engaged but lacked deterministic automatic arming after rollback. GPT accepted only that blocking finding and D7-R1 now requires timeline continuity to be affirmatively proved using an out-of-rollback-domain witness; absence/mismatch automatically fences external dispatch without a manual restore flag.
 
-```text
-authentication-bootstrap persistence scope
-River-owned migration authority alongside MPC tern migrations
-post-PITR recovery/write fence before external redispatch
-scheme-aware OAD validator ↔ D7-D auth composition
-proof-timing clarification: D7 proof contract != implemented runtime PASS
-```
+Fable's other findings are non-blocking: optional future `chi-server` generation proof and bootstrap-budget hygiene. No D0–D6 reopen or D7 reconstruction is required. Product remains 99/30/H-A-S; Sankhya remains API-Gateway-only; Product implementation remains blocked.
 
-These repairs preserve the 99/30/H-A-S Product surface and all accepted owner semantics.
-
-## Review boundary
-
-The remaining review may challenge material contradictions, missing seams, duplicated authority, impossible proof obligations, overengineering or hidden changes to accepted D0–D6 meaning. It may produce bounded D7 fixes. It may not begin D8, D9 or Product implementation.
+## Closeout boundary
 
 Required sequence:
 
 ```text
-fresh candidate gate
--> isolated independent Fable challenge
--> GPT adjudication
--> bounded fixes + fresh exact-head gate if required
+fresh exact-head gate
 -> operator D7 closeout decision
+-> only after closeout may roadmap open D8
 ```
 
-D8 remains blocked until D7 closes. Reopen D0–D6 only for a material falsifier at the smallest owning authority.
+PR #58 remains Draft and unmerged. D8/D9 remain blocked until authority explicitly changes here.
 
 One coherent gate lands before the next. For task-specific reading, return to [`index.md`](index.md).
