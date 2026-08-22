@@ -115,10 +115,13 @@ rendered artifact reviewed: YES
 operator disposition:          LOCKED
 material changes requested:    NONE
 visual-design decisions locked: NONE
-next dependent block allowed:  B01 Overview
+verification HEAD:             86500b7dea9691891905738eb4cff10fe183617b
+ci / gate:                     #391 SUCCESS / PASS
+Product surface:               99/99 ops · 30/30 Permissions · H/A/S
+bootstrap:                     18827 / 20480 bytes
 ```
 
-This `LOCKED` status is operator authority only; it is not inferred from CI or assistant judgment.
+This `LOCKED` status is operator authority only; CI verifies repository coherence but does not grant the lock.
 
 ## 4. B01 — Overview — NEXT
 
