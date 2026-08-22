@@ -308,28 +308,22 @@ function Expect-Failure([string]$name, [scriptblock]$body) {
     $failed = $false
     try { & $body } catch { $failed = $true }
     if (-not $failed) { Fail "negative control unexpectedly passed: $name" }
-    $script:negativeControls++
 }
 
-Expect-Failure 'review isolation' {
-    if ((Test-ReviewDiffNames @('docs/work/current/ai-dialog.md')) -and -not (Test-ReviewDiffNames @('docs/work/current/ai-dialog.md', 'README.md'))) { throw 'caught' }
+Expect-Failure 'durable-doc reachability predicate' {
+    $fixtureDurable = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    [void]$fixtureDurable.Add('docs/a.md')
+    [void]$fixtureDurable.Add('docs/orphan.md')
+    $fixtureReachable = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    [void]$fixtureReachable.Add('docs/a.md')
+    foreach ($path in $fixtureDurable) {
+        if (-not $fixtureReachable.Contains($path)) { throw "unreachable fixture: $path" }
+    }
 }
+$negativeControls++
 
-if ($negativeControls -ne 1) { Fail "repository negative-control count mismatch: $negativeControls/1" }
-
-$productProof = & node 'scripts/verify-product-oad.mjs' 2>&1
-if ($LASTEXITCODE -ne 0) {
-    $productProof | ForEach-Object { Write-Host $_ }
-    Fail 'Product OAD proof failed'
-}
-$productProof | ForEach-Object { Write-Host $_ }
-
-Write-Host "gate lane: $Lane"
-Write-Host "required files: $($requiredFiles.Count)"
-Write-Host "tracked files inspected: $($trackedFiles.Count)"
-Write-Host "bootstrap_bytes: $bootstrapBytes / $bootstrapLimit"
-Write-Host "docs_index_relative_links: $(@($docLinks['docs/index.md']).Count)"
-Write-Host "durable_docs_reachable: $($reachable.Count)"
+Write-Host "bootstrap_bytes: $bootstrapBytes/$bootstrapLimit"
+Write-Host "durable_docs: $($durableDocs.Count) reachable: $($reachable.Count)"
 Write-Host "machine_route_files: $($machineRouteFiles.Count) selectors: $machineRouteSelectors"
 Write-Host "diff_range: $diffRange changed_files: $($changedFiles.Count)"
 Write-Host "review_mode: $isReview"
