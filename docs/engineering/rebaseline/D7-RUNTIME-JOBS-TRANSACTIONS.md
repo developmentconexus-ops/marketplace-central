@@ -1,8 +1,9 @@
 # D7 — Runtime / Jobs / Transactions
 
-> **Status:** OPEN / ACTIVE — D7-A→D7-E OPERATOR-RATIFIED / WHOLE-D7 REVIEW CONVERGED / OPERATOR CLOSEOUT PENDING  
+> **Status:** ACCEPTED / CLOSED — OPERATOR-RATIFIED  
 > **Program:** Architecture Rebaseline / Technical System Design  
 > **Opened:** 2026-08-21  
+> **Closed:** 2026-08-22  
 > **Parent authorities:** accepted D0–D6 semantics, `ARCHITECTURE.md`, canonical Product OAD, and bounded owner authority routed by `docs/index.md`  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0
 
@@ -12,7 +13,7 @@ D7 defines the smallest target runtime realization capable of executing the alre
 
 D7 owns server/process topology, PostgreSQL isolation/transactions, durable work/effects, session/CSRF/OIDC and machine-token realization, Product HTTP runtime/validation, private byte custody, secrets/configuration, observability, migrations, deployment/health/backup and real-dependency proof seams.
 
-D7 does **not** reopen Product operations, ordinary Permissions, Principal kinds, semantic ownership, frontend interaction meaning or provider/business-system semantics by implementation convenience. D8 golden-flow choreography, D9 adversarial review and Product implementation remain blocked until the roadmap explicitly advances them.
+D7 does **not** reopen Product operations, ordinary Permissions, Principal kinds, semantic ownership, frontend interaction meaning or provider/business-system semantics by implementation convenience. D8 golden-flow choreography, D9 adversarial review and Product implementation advance only when `docs/roadmap.md` explicitly permits them.
 
 ## 2. Imported invariants
 
@@ -41,9 +42,9 @@ D7 does **not** reopen Product operations, ordinary Permissions, Principal kinds
 | D7-C — Durable Work & External Effects | [D7-C](D7-C-DURABLE-WORK-EXTERNAL-EFFECTS.md) | **OPERATOR-RATIFIED** |
 | D7-D — Authentication / Session / CSRF / Machine Tokens | [D7-D](D7-D-AUTHENTICATION-SESSION-CSRF.md) | **OPERATOR-RATIFIED** |
 | D7-E — Operability / Secrets / Migrations / Deployment & Proof | [D7-E](D7-E-OPERABILITY-DEPLOYMENT-PROOF.md) | **OPERATOR-RATIFIED** |
-| D7-R1 — Whole-Stage Coherence Corrections | [D7-R1](D7-R1-WHOLE-STAGE-COHERENCE.md) | **FABLE REVIEWED / GPT ADJUDICATED — BOUNDED FIX APPLIED** |
+| D7-R1 — Whole-Stage Coherence Corrections | [D7-R1](D7-R1-WHOLE-STAGE-COHERENCE.md) | **OPERATOR-RATIFIED / ACCEPTED** |
 
-All five realization slices are ratified. Whole-D7 review found no D0–D6 contradiction and no need to reconstruct D7. D7-R1 contains only the bounded composition repairs that survive review.
+All five realization slices and the bounded whole-stage coherence repair are accepted. Independent review found no D0–D6 contradiction and no need to reconstruct D7.
 
 ## 5. Accepted D7-A — Runtime Envelope & Transaction Ownership
 
@@ -185,21 +186,24 @@ D7 closeout leaves executable falsifiers for at least:
 
 D7 architecture closeout does **not** claim an implemented Product runtime PASS. The current repository intentionally has active runtime population `NONE`. Real PostgreSQL/River/Keycloak/browser/router-validator/object-store execution becomes mandatory for implementation acceptance when the implementation gate opens after D9; mock-only tests cannot substitute for those claims.
 
-## 12. Whole-D7 review result
+## 12. Whole-D7 closeout result
 
 ```text
 internal coherence review        COMPLETE
 independent Fable challenge      ACCEPT WITH BOUNDED FIXES
 GPT adjudication                 CONVERGED
 surviving Important finding      PITR continuity/automatic fence arming — APPLIED
-fresh post-fix repository gate   PASS @ 42c208abdc320538f9222ccb1ccc4d09705f6577
+operator closeout                APPROVED / RATIFIED
 D0–D6 reopen                     NONE
 D7 reconstruction               NONE
 Product                          99 operations / 30 Permissions / H-A-S unchanged
-D8 / D9                          BLOCKED
-Product implementation           BLOCKED
+active Product runtime           NONE
 ```
 
-## 13. Exact next action
+D7 is **ACCEPTED / CLOSED** as target runtime authority and executable proof contract. This closeout does not authorize Product implementation and does not itself integrate the branch into `main`.
 
-**Operator adjudicate/ratify D7 closeout.** Until that explicit decision, D7 remains OPEN / ACTIVE, PR #58 remains unmerged, D8/D9 remain blocked and Product implementation remains blocked.
+## 13. Integration boundary
+
+PR #58 remains the integration vehicle for this accepted D7 authority. Until it lands in `main`, the roadmap must not open D8 on top of unintegrated D7 work.
+
+After integration, revalidate `main`, branches and PR state before opening D8. D9 and Product implementation remain blocked until their own roadmap gates are satisfied.
