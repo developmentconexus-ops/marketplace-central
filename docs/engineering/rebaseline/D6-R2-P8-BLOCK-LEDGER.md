@@ -1,6 +1,6 @@
 # D6-R2 P8 — Structural Wireframe Block Ledger
 
-> **Status:** OPEN / ACTIVE — B00 physical shell + B01 content operator-`LOCKED`; corrected B00 global-IA HTML `CANDIDATE` rendered; OP-READ-01 RESOLVED; B10 SUSPENDED
+> **Status:** OPEN / ACTIVE — B00 App Shell + corrected global IA operator-`LOCKED`; B01 content operator-`LOCKED`; OP-READ-01 RESOLVED; B10 SUSPENDED pending current upstream review
 > **Parent:** [D6-R2 Complete Frontend Realization Closure](D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md)
 > **P4-R1 reopen:** [Global IA / Operational Mass Reopen](D6-R2-P4-R1-GLOBAL-IA-OPERATIONAL-MASS-REOPEN.md)
 > **D5-R2 repair:** [Operational Read Projection Repair](D5-R2-OPERATIONAL-READ-PROJECTION-REPAIR.md)
@@ -27,13 +27,12 @@ interaction needed to prove the block
 
 They do **not** decide final palette, typography, iconography, radius, shadows, illustration, branding polish or final component styling.
 
-## 2. B00 — App Shell + global IA — CORRECTED CANDIDATE
+## 2. B00 — App Shell + global IA — LOCKED
 
-**Physical/context shell:** `LOCKED`.  
-**Global IA grouping/labels:** corrected HTML `CANDIDATE`; awaiting operator review.  
+**Operator adjudication:** `LOCKED` on 2026-08-22 after review of the corrected executable HTML.  
 **Artifact:** [`qualification/d6-r2-wireframes/b00-app-shell.html`](../../../qualification/d6-r2-wireframes/b00-app-shell.html)
 
-The following B00 laws remain locked and were not changed by the rerender:
+The following B00 laws are locked:
 
 ```text
 desktop persistent sidebar ≈264 px
@@ -44,7 +43,7 @@ page-owned content ≈24 px outer padding
 → mobile drawer + stacked local context
 ```
 
-Also preserved:
+Also locked:
 
 - Organization switching clears Marketplace Installation context;
 - organization-wide routes have no ambient marketplace account;
@@ -53,7 +52,7 @@ Also preserved:
 - no-access/stale Organization blocks explicitly;
 - responsive transformation never changes context meaning.
 
-### 2.1 IA-01 corrected grouping — operator-adjudicated direction / rendered candidate
+### 2.1 IA-01 corrected grouping — LOCKED
 
 ```text
 VISÃO GERAL
@@ -87,11 +86,11 @@ CONFIGURAÇÕES
   Configurações
 ```
 
-Existing technical route identities remain where possible; user-facing `Anúncios` may continue to use `/publicacoes/*`, and `Preços` may continue to use `/publicacoes/precos`. The only candidate new route is the organization-wide operational landing `/org/:organizationId/operacao`.
+Existing technical route identities remain where possible; user-facing `Anúncios` may continue to use `/publicacoes/*`, and `Preços` may continue to use `/publicacoes/precos`. The organization-wide operational landing remains the one new frontend route identity candidate, e.g. `/org/:organizationId/operacao`; exact route spelling is frontend navigation authority, not Product API authority.
 
-The rerender deliberately does **not** decide the Visão operacional content. It proves only the destination's place in global IA and its organization-wide context.
+B00 does **not** decide the internal content of Visão operacional. It locks only the destination's place in global IA and its organization-wide context.
 
-## 3. B01 — Overview
+## 3. B01 — Overview — LOCKED
 
 **Content/state hierarchy:** `LOCKED` — operator approved after executable HTML review on 2026-08-22.  
 **Artifact:** [`qualification/d6-r2-wireframes/b01-overview.html`](../../../qualification/d6-r2-wireframes/b01-overview.html)
@@ -99,20 +98,19 @@ The rerender deliberately does **not** decide the Visão operacional content. It
 A04 remains locked as contextual priority:
 
 ```text
-Work known + actionable -> attention expands and leads
-Work known-empty        -> attention collapses; never implies health
+Work known + actionable  -> attention expands and leads
+Work known-empty         -> attention collapses; never implies health
 Work unknown/unavailable -> uncertainty remains visible
-all cases               -> marketplace/account + Performance + Economics orientation remains visible
+all cases                -> marketplace/account + Performance + Economics orientation remains visible
 ```
 
-B01 will later inherit the corrected global navigation. Its content/state lock is not reopened by IA-01.
+B01 inherits the locked B00 global navigation. Its content/state lock is not reopened by IA-01.
 
-## 4. B10 — Preparation — SUSPENDED
+## 4. B10 — Preparation — SUSPENDED CANDIDATE
 
 **Internal pattern:** P6 `DERIVED`; P7 NOT TRIGGERED.  
 **P6 evidence:** [B10 Preparation Reference Study](D6-R2-P6-B10-PREPARATION-REFERENCE-STUDY.md).  
-**Rendered artifact:** [`qualification/d6-r2-wireframes/b10-preparation.html`](../../../qualification/d6-r2-wireframes/b10-preparation.html)  
-**Current disposition:** `SUSPENDED CANDIDATE` — do not operator-lock until corrected global IA is restored.
+**Rendered artifact:** [`qualification/d6-r2-wireframes/b10-preparation.html`](../../../qualification/d6-r2-wireframes/b10-preparation.html)
 
 The B10 internal pattern remains valid evidence:
 
@@ -124,7 +122,7 @@ search/list triage
 → continuation only from admitted current state
 ```
 
-Its previous placement under `OPERAÇÕES` is superseded by `OFERTA > Preparação`.
+Its global placement is now locked as `OFERTA > Preparação`. B10 remains suspended only because the operator requested an upstream Notification architecture evaluation before frontend progression resumes.
 
 ## 5. Operational landing — CANDIDATE CONCEPT ONLY
 
@@ -163,7 +161,7 @@ no global totals inferred from one paginated page
 no N+1 detail fan-out as production baseline
 ```
 
-The operational landing may later compose the repaired owner-local reads, but it acquires no business/write authority.
+The operational landing may later compose repaired owner-local reads, but it acquires no business/write authority.
 
 ## 7. Global-Maximum / YAGNI law
 
@@ -178,18 +176,19 @@ human job + accepted authority
 → no speculative platform capability
 ```
 
-## 8. Corrected B00 operator adjudication gate
-
-The global-frame IA lock is restored only after the operator opens/interacts with the corrected HTML and explicitly adjudicates the navigation.
-
-Possible dispositions:
+## 8. B00-R1 operator adjudication record
 
 ```text
-LOCKED       corrected global IA approved
-CANDIDATE    changes requested or review pending
-FINDING      another material IA contradiction discovered
+rendered artifact reviewed: YES
+operator disposition:       LOCKED
+material changes requested: NONE
+physical/context shell:     LOCKED / unchanged
+corrected global IA:        LOCKED
+visual-design decisions:    NONE
 ```
+
+This closes IA-01. A later material user-model finding may reopen only the smallest affected authority; preference alone does not.
 
 ## 9. Exact next action
 
-Operator opens/interacts with the corrected **B00 App Shell + global IA** and adjudicates the rerendered navigation. Do not render the Visão operacional or resume B10/B20 before corrected B00 is operator-`LOCKED`.
+Pause dependent frontend progression while the operator-requested **Notification architecture assessment** is performed against current D0–D8 + D5-R2/D8-R2 authority. Do not introduce Notification Product semantics, operations, owner, event contract, runtime mechanism or frontend surface until that assessment is operator-adjudicated.
