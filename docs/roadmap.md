@@ -12,11 +12,12 @@
 | Current stage | **D7 — Runtime / Jobs / Transactions — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D6 ACCEPTED / CLOSED** |
 | D7 authority | [D7 Runtime / Jobs / Transactions](engineering/rebaseline/D7-RUNTIME-JOBS-TRANSACTIONS.md) |
+| D7-A | **Runtime Envelope & Transaction Ownership Boundary — CANDIDATE / OPERATOR RATIFICATION PENDING** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **D7-A — derive the smallest runtime/process topology and transaction-ownership boundary before selecting concrete HTTP/job/database mechanisms.** |
+| Exact next action | **Operator adjudicate/ratify D7-A candidate before opening D7-B persistence/isolation realization.** |
 | Implementation | **BLOCKED UNTIL D9** |
 
 ## Stage progression
@@ -31,7 +32,7 @@
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
 | D5 — API | ACCEPTED / CLOSED — bounded D5-R1 browser-auth carrier correction integrated and proved through D6 |
 | D6 — Frontend | **ACCEPTED / CLOSED** |
-| D7 — Runtime / Jobs / Transactions | **OPEN / ACTIVE — D7-A Runtime Envelope next** |
+| D7 — Runtime / Jobs / Transactions | **OPEN / ACTIVE — D7-A candidate pending operator ratification** |
 | D8 — Golden Flows | BLOCKED |
 | D9 — Adversarial Architecture Review | BLOCKED |
 | Implementation | BLOCKED UNTIL D9 |
@@ -63,31 +64,29 @@ Frontend realization remains React + TypeScript strict, TanStack Query, TanStack
 
 D7 owns technical realization for serving/process topology, PostgreSQL structural Organization isolation and transaction boundaries, durable jobs/scheduling/outbox/effect handoff, session/CSRF/OIDC and machine-token mechanics, secrets, observability, migrations and deployment topology required by the admitted transports.
 
-D7 must preserve:
-
-- Organization isolation as a structural invariant;
-- owner-defined Q/C/E/P meaning;
-- accepted Product idempotency/ETag/Problem grammar;
-- no-blind-retry and authoritative reconciliation for ambiguous external effects;
-- provider DTO/protocol isolation;
-- Sankhya sanctioned API Gateway with no Direct Oracle fallback;
-- human session + CSRF with no browser OIDC bearer ownership;
-- A/S bearer resolution independent from Membership/Permission/owner/Governance gates;
-- honest unknown/partial/unavailable state.
+D7 must preserve Organization isolation, owner-defined Q/C/E/P meaning, Product idempotency/ETag/Problem grammar, no-blind-retry/reconciliation, provider protocol isolation, sanctioned Sankhya API Gateway, human session + CSRF, A/S bearer separation and honest unknown/partial/unavailable state.
 
 Pre-vetted candidates such as modular-monolith class, pgx/pgxpool, PostgreSQL RLS, River, OpenTelemetry/OTLP/slog, sqlc, tern, Keycloak and real-dependency test tooling remain **candidates only** until D7 proves a current consumer/property and adjudicates the smallest sufficient mechanism.
 
-## D7-A next gate
+## D7-A candidate
 
-First derive the minimum runtime envelope before dependency selection:
+Current candidate selects the minimum runtime envelope:
 
-1. number/responsibility of server and background processes;
-2. Product API vs Technical Ingress serving boundary;
-3. same-origin human browser/session mediation without a screen-shaped BFF;
-4. owner command transaction ownership and post-commit durable handoff boundary;
-5. shutdown/readiness/health responsibilities needed for correctness.
+```text
+one Go application process per replica
+  -> same-origin frontend/static delivery
+  -> Product API boundary
+  -> Technical Non-Product Ingress boundary
+  -> H session/CSRF/OIDC mediation
+  -> in-process durable worker runner
+  -> PostgreSQL
+```
 
-Use current primary technology evidence only when a concrete D7-A mechanism comparison requires it. Do not infer target runtime from removed code or historical ADR implementation detail.
+Owner consequential command intake uses one owner-local PostgreSQL transaction for canonical owner state plus required idempotency/audit/durable-handoff records. External writes happen only after commit and convergence remains authoritative-reread/reconciliation-driven. Cross-owner business state is never updated through a distributed/shared transaction.
+
+Separate API/worker processes are deferred until measured resource/failure/scaling/security/deployment evidence requires them; microservices remain rejected absent an independent consumer.
+
+Current Go and River primary evidence shows graceful HTTP shutdown, in-process worker execution, transaction-bound job insertion and a later insert-only/split mode are available without forcing another service boundary. River remains a D7-C candidate, not a D7-A dependency selection.
 
 D8–D9 remain blocked. Product implementation remains blocked until D9. Reopen accepted D0–D6 authority only for a material falsifier at the smallest owning stage.
 
