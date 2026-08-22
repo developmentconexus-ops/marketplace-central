@@ -11,13 +11,13 @@
 | Product | **Marketplace Operations Control Plane + Commercial Intelligence** |
 | Current stage | **D6-R2 — Complete Frontend Realization Closure — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED** |
-| D6-R2 authority | [D6-R2 Closure](engineering/rebaseline/D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md) + [P5 Inventory](engineering/rebaseline/D6-R2-P5-SCREEN-SURFACE-INVENTORY.md) + [P8 Ledger](engineering/rebaseline/D6-R2-P8-BLOCK-LEDGER.md) + [B10 P6 Study](engineering/rebaseline/D6-R2-P6-B10-PREPARATION-REFERENCE-STUDY.md) — **P0–P5 DERIVED; B00 + B01 LOCKED; B10 P6 DERIVED / P7 NOT TRIGGERED / HTML CANDIDATE rendered** |
+| D6-R2 authority | [D6-R2 Closure](engineering/rebaseline/D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md) + [P4-R1 IA Reopen](engineering/rebaseline/D6-R2-P4-R1-GLOBAL-IA-OPERATIONAL-MASS-REOPEN.md) + [P5 Inventory](engineering/rebaseline/D6-R2-P5-SCREEN-SURFACE-INVENTORY.md) + [P8 Ledger](engineering/rebaseline/D6-R2-P8-BLOCK-LEDGER.md) — **IA-01 operator-adjudicated direction; OP-READ-01 OPEN; B10 SUSPENDED** |
 | Execution method | [Frontend Product Experience Planning Method v2.1](development/frontend-product-experience-planning-method.md) |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Operator opens/interacts with `qualification/d6-r2-wireframes/b10-preparation.html` and adjudicates B10. Keep B10 CANDIDATE until explicit post-render LOCKED decision; do not render B20 first.** |
+| Exact next action | **Derive and operator-review the smallest OP-READ-01 owner-local read-contract repair. Do not edit canonical OAD before explicit approval; do not re-render B00 or Visão operacional first.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -32,26 +32,42 @@
 | D3 — Communication / Events | ACCEPTED / CLOSED |
 | D4 — External Integrations | ACCEPTED / CLOSED |
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
-| D5 — API | ACCEPTED / CLOSED |
-| D6 — Frontend | **ACCEPTED / CLOSED** |
+| D5 — API | **ACCEPTED / CLOSED — bounded OP-READ-01 repair candidate under analysis; NOT REOPENED yet** |
+| D6 — Frontend | **ACCEPTED / CLOSED — global IA grouping partially reopened only through D6-R2 finding IA-01** |
 | D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED** |
-| D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED** |
-| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00 + B01 LOCKED; B10 CANDIDATE** |
+| D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED; GF-02 must be revalidated if OP-READ-01 changes Product contract** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00 global IA partial reopen; B01 content LOCKED; B10 SUSPENDED; OP-READ-01 OPEN** |
 | Pre-D9 readiness | **BLOCKED** |
 | D9 — Adversarial Architecture Review | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
 
 ## Current D6-R2 result
 
-- P0–P3: **4 actor contexts → 16 needs → 16 complete flows → 99/99 Product coverage**; no invented capability.
-- P4: accepted D6 IA revalidated; **16/16 needs findable, 0 material IA falsifiers**.
-- P5: **1 shell + 35 candidate content homes**; prior 39 D6-B1 states dispositioned; 99 operations remain covered.
-- P8 **B00 App Shell + global IA** and **B01 Overview** are operator-LOCKED after executable HTML review.
-- B10 P6 reference evidence converged on **search/list → selected exact-subject detail**; persistent split-view and full material inline expansion are rejected as baseline; **P7 NOT TRIGGERED**.
-- B10 executable HTML candidate proves exact Installation, explicit SourceInstance/native key, readiness/requirements/correspondence states, revalidation after correspondence effect and continuation only from admitted current state.
-- No Product operation, Permission, owner, bulk capability, readiness score, hidden source default or provider write was invented.
-- Later P6 triggers remain ListingIntent editor, Performance, Sale detail and Fulfillment execution.
-- A01–A03/A05 remain P12 obligations.
+- P0–P3 remain valid: **4 actor contexts → 16 needs → 16 complete flows → 99/99 Product coverage** under the current Product surface.
+- **IA-01 is a material mental-model falsifier**: prior `OPERAÇÕES` mixed pre-sale offer work with post-sale execution.
+- Operator-approved P4-R1 direction is now **OFERTA / OPERAÇÃO / ESTRATÉGIA E INTELIGÊNCIA / CONTROLE / CONFIGURAÇÕES**.
+- User-facing `Publicações` becomes **Anúncios**; **Preços** becomes first-class under Oferta while remaining Offering-owned PriceIntent execution; existing technical routes should remain where possible.
+- `OPERAÇÃO` gains one candidate landing, **Visão operacional**; Vendas, Expedição and Pós-venda remain specialist destinations.
+- Global operational Kanban is rejected: GF-02 crosses Sales, Materialization, Fulfillment, Shipment, PostSale and Work without one transversal workflow owner.
+- Operational landing candidate is a **hybrid action cockpit**: attention/exceptions → normal actionable work → monitoring → specialist entry points.
+- **OP-READ-01** blocks that wireframe: several owner-local collections lack enough triage state/filtering to avoid N+1 detail fan-out or frontend-authored workflow projection.
+- B00 physical/context/responsive shell remains LOCKED; only global grouping/labels are reopened. B01 content/state hierarchy remains LOCKED.
+- B10 internal `search/list → selected exact-subject detail` evidence remains valid but B10 is **SUSPENDED** under `OFERTA > Preparação` until corrected B00 global IA is re-rendered.
+- No Product operation, Permission, semantic owner or OAD has been changed by the finding yet.
+
+## OP-READ-01 guardrail
+
+Preferred repair shape:
+
+```text
+enrich existing owner-local list projections / filters
+preserve semantic owners
+avoid screen-shaped /operational-dashboard
+avoid new OperationalWorkflow authority
+preserve 99-operation census if possible
+```
+
+If the operator approves a Product read-contract repair, reopen only the smallest D5 authority needed, prove the canonical OAD again and revalidate the affected GF-02 properties before frontend wireframing resumes.
 
 ## D8 authority carried forward
 
@@ -63,4 +79,4 @@ Implementation-readiness retains **P2** redeferred to the first qualifying real 
 D6-R2 → Pre-D9 readiness → D9 → Product implementation only after accepted D9
 ```
 
-If D6-R2/readiness changes a D8-relevant invariant through its smallest owner, affected D8 controls must be revalidated before D9. One coherent gate lands before the next. Return to [`index.md`](index.md) for task routing.
+One coherent gate lands before the next. Return to [`index.md`](index.md) for task routing.
