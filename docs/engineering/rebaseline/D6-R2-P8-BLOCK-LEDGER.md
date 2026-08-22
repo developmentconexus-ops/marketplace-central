@@ -1,6 +1,6 @@
 # D6-R2 P8 — Structural Wireframe Block Ledger
 
-> **Status:** OPEN / ACTIVE — B00 + B01 operator-`LOCKED`; B10 P6 DERIVED; P7 NOT TRIGGERED; B10 render is NEXT
+> **Status:** OPEN / ACTIVE — B00 + B01 operator-`LOCKED`; B10 P6 DERIVED / P7 NOT TRIGGERED; B10 HTML `CANDIDATE` rendered
 > **Parent:** [D6-R2 Complete Frontend Realization Closure](D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md)
 > **P5 input:** [Complete Screen / Material-Surface Inventory](D6-R2-P5-SCREEN-SURFACE-INVENTORY.md)
 > **Method:** [Frontend Product Experience Planning Method v2.1](../../development/frontend-product-experience-planning-method.md)
@@ -28,47 +28,26 @@ The static styled image generated during the first B00 attempt is **NON-AUTHORIT
 
 ## 2. B00 — App Shell + global IA
 
-**Status:** `LOCKED` — operator approved after opening/interacting with the executable HTML on 2026-08-22.
+**Status:** `LOCKED` — operator approved after opening/interacting with the executable HTML on 2026-08-22.  
+**Artifact:** [`qualification/d6-r2-wireframes/b00-app-shell.html`](../../../qualification/d6-r2-wireframes/b00-app-shell.html)  
+**P6/P7:** NOT TRIGGERED.
 
-**Artifact:** [`qualification/d6-r2-wireframes/b00-app-shell.html`](../../../qualification/d6-r2-wireframes/b00-app-shell.html)
-
-**P6:** NOT TRIGGERED.  
-**P7:** NOT TRIGGERED.
-
-### 2.1 Locked structural baseline
-
-Desktop:
+Locked baseline:
 
 ```text
-prototype-only evidence strip
-└─ product frame
-   ├─ persistent left sidebar ≈ 264 px
-   │  ├─ Marketplace Central text identity
-   │  ├─ Organization selector — global workspace
-   │  └─ accepted grouped primary navigation
-   └─ main
-      ├─ page header ≈ 64 px
-      │  ├─ current page title
-      │  └─ page-local Marketplace Installation host when admitted/required
-      └─ page-owned content host with ≈ 24 px outer padding
+desktop persistent sidebar ≈264 px
++ Organization as only global workspace
++ page header ≈64 px with page-local Installation host
++ page-owned content ≈24 px outer padding
+→ tablet collapsible navigation
+→ mobile drawer + stacked local context
 ```
 
-Responsive:
-
-```text
-desktop  persistent sidebar
-→ tablet narrower/collapsible navigation
-→ mobile drawer + stacked page-local context
-```
-
-No responsive transition may remove Organization/Installation qualification or change navigation meaning.
-
-### 2.2 Locked IA
+Locked IA remains:
 
 ```text
 VISÃO GERAL
   Visão geral
-
 OPERAÇÕES
   Preparação
   Publicações
@@ -76,7 +55,6 @@ OPERAÇÕES
   Vendas
   Expedição
   Pós-venda
-
 ESTRATÉGIA E INTELIGÊNCIA
   Performance
     Resumo
@@ -84,177 +62,82 @@ ESTRATÉGIA E INTELIGÊNCIA
     Mídia
   Mercado
   Economia
-
 CONTROLE
   Trabalho
   Aprovações
-
 CONFIGURAÇÕES
   Configurações
 ```
 
-No `Dashboard`, `Strategy`, `Analytics`, `Materialização`, `ERP`, generic `Integrações`, global search or permanent global right rail is admitted by B00.
+Locked behavior:
 
-### 2.3 Locked behavior
-
-- navigation changes page/context only; it does not create Product state;
 - Organization switching clears Marketplace Installation context;
-- organization-wide destinations do not show an ambient marketplace account;
-- exact-required destinations show an explicit missing-account state until an Installation is selected;
-- all-or-exact destinations expose `all` only when the page mode admits it;
-- no first/default Marketplace Installation is silently selected;
-- no-access and stale/deep-linked Organization states block explicitly;
-- mobile navigation becomes a drawer without changing IA order or context semantics.
+- organization-wide routes have no ambient marketplace account;
+- exact-required routes block until one exact Installation is selected;
+- all-or-exact routes expose `all` only where admitted;
+- no hidden/default Installation;
+- no-access/stale Organization blocks explicitly;
+- responsive transformation never changes IA/context meaning;
+- no Dashboard/Strategy/Analytics/Materialização/ERP/global search/permanent right rail.
 
-All page-owned content remains outside B00. The lock therefore does **not** decide Overview cards, table layouts, KPI hierarchy, form patterns or any later block structure.
+The lock is structural only; it chooses no visual-design system.
 
-## 3. B00 operator adjudication record
+## 3. B01 — Overview
 
-```text
-rendered artifact reviewed: YES
-operator disposition:          LOCKED
-material changes requested:    NONE
-visual-design decisions locked: NONE
-```
-
-This `LOCKED` status is operator authority only; CI verifies repository coherence but does not grant the lock.
-
-## 4. A04 — Overview priority — OPERATOR-ADJUDICATED
-
-The original static choices A/B/C/D/E were challenged before B01 rendering. The operator approved the following **contextual-priority** law instead of any always-dominant signal:
-
-```text
-if Work is known + actionable
-→ operational-attention region expands and leads the page
-
-if Work is known-empty
-→ operational-attention region collapses to a short explicit known-empty state
-→ it MUST NOT say or imply “everything is healthy”
-
-if Work knowledge is unavailable/unknown
-→ the region remains visible as unavailable/unknown
-→ it MUST NOT infer zero, empty or healthy
-
-in all three cases
-→ a compact marketplace/account + Performance + Economics orientation remains visible
-```
-
-This is **not** a new health model. The Overview remains a read-only composition of admitted owner reads.
-
-### 4.1 Review findings incorporated
-
-1. A pure Work-first page was rejected because an empty Work result could become a false green state if the underlying detection/evidence path is incomplete.
-2. Slow commercial degradation may never produce discrete Work, so the bounded Performance/Economics orientation is a safety net, not decoration.
-3. No alert-triage lifecycle is invented. Current Work authority does **not** admit generic `resolve`, `dismiss` or `close`; B01 may navigate to Work only.
-4. No “verified X minutes ago” or collector-health freshness is fabricated. Such freshness may be displayed only when the owning Product authority actually exposes it.
-5. No health score, hidden total, cross-provider KPI or synthetic dashboard authority is admitted.
-
-A04 is therefore **resolved for B01 hierarchy by operator adjudication**. It does not create a Product capability and does not reopen D0–D8.
-
-## 5. B01 — Overview
-
-**Status:** `LOCKED` — operator approved after opening/interacting with the executable HTML on 2026-08-22.  
+**Status:** `LOCKED` — operator approved after executable HTML review on 2026-08-22.  
 **Homes:** R01.  
 **Artifact:** [`qualification/d6-r2-wireframes/b01-overview.html`](../../../qualification/d6-r2-wireframes/b01-overview.html)  
-**P6:** NOT TRIGGERED.  
-**P7:** NOT TRIGGERED.
+**P6/P7:** NOT TRIGGERED.
 
-### 5.1 Locked structure
-
-B01 inherits the entire locked B00 shell unchanged. Its page-owned content is:
+### 3.1 A04 — operator-adjudicated contextual priority
 
 ```text
-Visão geral
-├─ contextual operational-attention region
-│  ├─ ACTIONABLE            -> expanded preview + navigation to Trabalho
-│  ├─ KNOWN_EMPTY           -> collapsed explicit known-empty state
-│  └─ KNOWLEDGE_UNAVAILABLE -> visible unknown/unavailable state
-└─ balanced orientation — always present
-   ├─ Marketplace / account posture             [MarketplacePortfolio]
-   ├─ per-Installation Performance entry/result [MarketplacePerformanceIntelligence]
-   └─ bounded economic orientation               [CommercialEconomics]
+Work known + actionable
+→ attention expands and leads
+
+Work known-empty
+→ attention collapses
+→ never implies healthy operation
+
+Work unknown/unavailable
+→ uncertainty remains visible
+→ never infers zero/empty/healthy
+
+all cases
+→ marketplace/account + Performance + Economics orientation remains visible
 ```
 
-The Work preview is bounded evidence, not a global inferred count. It exposes no screen-shaped mutation and cannot resolve underlying source truth.
-
-### 5.2 Independent-owner law
-
-Each Overview region remains permission/evidence conditioned independently. Missing one region does not authorize the host page to infer that owner's truth.
+Locked B01 negative controls:
 
 ```text
-not permitted != known empty
-unknown/unavailable != zero
-Work empty != healthy operation
-Performance absent != zero performance
-Economics absent != zero/healthy economics
-```
-
-### 5.3 Responsive law
-
-The B00 responsive shell remains locked. B01 content may stack at narrower widths, but reading priority stays:
-
-```text
-contextual attention state
-→ marketplace/account orientation
-→ Performance orientation
-→ Economics orientation
-```
-
-When Work is `KNOWN_EMPTY`, its collapsed band does not consume dominant vertical space. When Work is `KNOWLEDGE_UNAVAILABLE`, its uncertainty remains visible rather than disappearing.
-
-### 5.4 Locked negative controls
-
-```text
-“Tudo certo” inferred from empty Work
+“Tudo certo” from empty Work
 resolve/dismiss/close Work actions
 frontend-generated collector freshness
 health score
 /dashboard authority
 cross-provider aggregate KPI
-hidden global totals from one paginated list
-owner write authority acquired by composition
+hidden global totals
+write authority acquired by composition
 ```
 
-## 6. B01 operator adjudication record
-
-```text
-rendered artifact reviewed: YES
-operator disposition:          LOCKED
-material changes requested:    NONE
-visual-design decisions locked: NONE
-```
-
-The operator lock covers B01 structure and state hierarchy only. It does not choose final metrics, typography, colors, visual component treatment or a new Product capability.
-
-## 7. B10 — Preparation
+## 4. B10 — Preparation
 
 **Homes:** R10.  
-**Status:** `READY TO RENDER CANDIDATE` — bounded P6 complete; P7 not triggered.  
+**Status:** `CANDIDATE` — executable HTML rendered; awaiting operator review.  
+**Artifact:** [`qualification/d6-r2-wireframes/b10-preparation.html`](../../../qualification/d6-r2-wireframes/b10-preparation.html)  
 **P6:** [DERIVED](D6-R2-P6-B10-PREPARATION-REFERENCE-STUDY.md).  
 **P7:** NOT TRIGGERED.
 
-B10 must support one complete human job without hidden source authority:
+P6 reference evidence converged on **search/list triage → selected exact-subject detail**. Persistent split-view and full material inline expansion are rejected as baseline.
 
-```text
-exact Organization + Marketplace Installation
-→ search admitted source products
-→ select exact SourceInstance + native product key
-→ inspect readiness + publication requirements
-→ resolve/clear correspondence when needed and authorized
-→ re-read readiness
-→ continue to ListingIntent only when current state permits
-```
-
-P6 studied Google Merchant Center, Akeneo, Amazon Seller Central and Mirakl/Lowe's catalog-validation patterns. The evidence converged on **collection/search triage → selected exact-subject detail** for material diagnosis/correction.
-
-### 7.1 Candidate basis selected by P6
+### 4.1 Candidate structural modes
 
 ```text
 SEARCH MODE
-├─ exact Installation page context
+├─ exact Marketplace Installation in B00 local context
 ├─ search input
 ├─ optional explicit SourceInstance narrowing
-└─ structured result list
+└─ structured results
    ├─ source-product presentation
    ├─ SourceInstance + native key
    ├─ compact readiness state
@@ -262,17 +145,53 @@ SEARCH MODE
    └─ open preparation
 
 SELECTED-SUBJECT MODE
-├─ exact source identity
+├─ back to search/results; search context is navigation state
+├─ exact SourceInstance + native key + Installation header
 ├─ readiness / knowledge state
 ├─ publication requirements
-├─ correspondence state + admitted resolve/clear
-├─ explicit re-read/revalidation after consequential resolution
-└─ continuation to ListingIntent when current state permits
+├─ correspondence state
+│  └─ resolve / clear only when Product admits it
+├─ explicit re-read after consequential correspondence effect
+└─ continue to ListingIntent only when current state permits
 ```
 
-A permanent split-view is not baseline: no evidence proves high-frequency product cycling, detail can be deep, and responsive behavior would collapse it anyway. Full inline expansion is also rejected for the material detail because exact identity, requirements, correspondence and recovery need durable selected-subject context.
+The selected subject remains inside the accepted `Preparação` workspace. P9 later binds the exact URL/search carriers; B10 does not invent Product identity.
 
-### 7.2 B10 negative controls
+### 4.2 Executable scenarios
+
+The HTML candidate exposes four structural scenarios:
+
+```text
+READY
+→ requirements known/attended
+→ correspondence resolved
+→ ListingIntent continuation available
+
+MISSING_REQUIREMENTS
+→ readiness partial/known
+→ missing requirements remain explicit
+→ continuation blocked
+
+CORRESPONDENCE_NEEDED
+→ no candidate auto-selected
+→ admitted resolve/clear only
+→ after consequential effect, continuation remains blocked
+→ explicit re-read/revalidation required before assuming convergence
+
+KNOWLEDGE_UNAVAILABLE
+→ unknown/unavailable remains explicit
+→ requirements do not become an empty list
+→ correspondence is not inferred
+→ continuation blocked
+```
+
+The results also include two different SourceInstances to visibly prove that omission of the source filter is multi-source search, not a hidden source default.
+
+### 4.3 Responsive law
+
+B10 inherits B00. On narrow widths, the result collection becomes stacked rows and selected-subject regions become one column. The interface may change arrangement but never drops Installation, SourceInstance or native-key qualification.
+
+### 4.4 B10 negative controls
 
 ```text
 hidden/default SourceInstance
@@ -282,10 +201,20 @@ source product edited as MPC master data
 provider write exposed from Readiness
 frontend-invented readiness percentage/health score
 known-empty collapsed into unknown/unavailable/unsupported
-correspondence resolution represented as generic product edit
+correspondence represented as generic product editing
+blind success after correspondence mutation
 bulk preparation/actions invented without authority/evidence
+permanent split-view promoted without evidence
 ```
 
-## 8. Exact next action
+## 5. B10 operator adjudication gate
 
-Render exactly one executable low-fi HTML B10 `CANDIDATE` from the P6-selected basis. Preserve B00 shell and exact Installation context. Do not introduce P7 alternatives or visual-design decisions. After render, require explicit operator review before B20.
+B10 may become `LOCKED` only after the operator opens/interacts with the HTML candidate and explicitly adjudicates its structure.
+
+```text
+LOCKED       rendered structure approved
+CANDIDATE    changes requested / review pending
+FINDING      material contradiction discovered
+```
+
+Do not render B20 Publications core as baseline before B10 is `LOCKED` unless the operator explicitly authorizes parallel progression.
