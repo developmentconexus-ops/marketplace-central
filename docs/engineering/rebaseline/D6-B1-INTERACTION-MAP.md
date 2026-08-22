@@ -1,6 +1,6 @@
 # D6-B1 — Mapa de Interações do Frontend
 
-> **Status:** CANDIDATO DERIVADO — App Shell aprovado; mapa rederivado após D6-R1 / OAD 99 operações · 30 Permissions; ainda não é ratificação de D6-B1
+> **Status:** OPERATOR-RATIFIED — mapa corrigido após D6-R1 / OAD 99 operações · 30 Permissions
 > **Pai:** `D6-FRONTEND.md`
 > **Autoridade de wire:** `contracts/api/product/openapi.yaml`
 > **Escopo:** frontend Product 1.0; sem mecânicas D7 e sem implementação Product
@@ -346,7 +346,7 @@ Governance não concede Permission do target e AccessRole não vira IdP/provider
 | S126 | Configurações / Política comercial | organization-wide | CommercialEconomics | Get/UpdateCommercialPolicy | `economics.read`, `economics.policy.manage` |
 | S127 | Configurações / Delegações | organization-wide | ControlledActionGovernance | 4 AuthorizationDelegation ops | `governance.manage` |
 
-**Total derivado:** 40 estados de tela/rota (`S00`–`S127` não contíguos) para 99 operações; número de estados não é meta de implementação.
+**Total derivado:** 39 estados de tela/rota (`S00`–`S127` não contíguos) para 99 operações; número de estados não é meta de implementação.
 
 ## 6. Cobertura exata das 99 operações
 

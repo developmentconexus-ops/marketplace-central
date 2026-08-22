@@ -339,7 +339,7 @@ schemas:
   TrafficPerformanceComparisonAvailable:
     type: object
     additionalProperties: false
-    required: [period, coverage, visits, provenance]
+    required: [period, coverage, visits, visits_change, provenance]
     properties:
       period: {$ref: '#/schemas/PerformancePeriod'}
       coverage: {$ref: '#/schemas/AvailablePerformanceEvidenceCoverage'}
@@ -385,7 +385,7 @@ schemas:
   SalesActivityPerformanceComparisonAvailable:
     type: object
     additionalProperties: false
-    required: [period, coverage, sales_count, units_count, provenance]
+    required: [period, coverage, sales_count, units_count, sales_count_change, units_count_change, provenance]
     properties:
       period: {$ref: '#/schemas/PerformancePeriod'}
       coverage: {$ref: '#/schemas/AvailablePerformanceEvidenceCoverage'}
