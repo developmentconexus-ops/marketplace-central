@@ -43,6 +43,8 @@
 
 ## Accepted D8 result carried forward
 
+Owning authority remains [D8 Golden Flows](engineering/rebaseline/D8-GOLDEN-FLOWS.md) + [D8-R1 Proof Closure & Implementation-Readiness Coherence](engineering/rebaseline/D8-R1-PROOF-CLOSURE-COHERENCE.md). The executed probe evidence remains [D8 Controlled Live Probe Protocol](engineering/rebaseline/D8-LIVE-PROBE-PROTOCOL.md) + [D8 Live Probe Evidence](engineering/rebaseline/D8-LIVE-PROBE-EVIDENCE.md).
+
 D8 remains accepted authority and is not reopened by D6-R2 preference.
 
 ```text
