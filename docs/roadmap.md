@@ -18,7 +18,7 @@
 | Product surface | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Operator adjudicate/ratify D7-B before opening D7-C durable-work/effect realization.** |
+| Exact next action | **Operator adjudicate/ratify D7-B; do not open D7-C before that decision.** |
 | Implementation | **BLOCKED UNTIL D9** |
 
 ## Stage progression
