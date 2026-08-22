@@ -17,12 +17,13 @@
 | D7-C | **OPERATOR-RATIFIED** — [authority](engineering/rebaseline/D7-C-DURABLE-WORK-EXTERNAL-EFFECTS.md) |
 | D7-D | **OPERATOR-RATIFIED** — [authority](engineering/rebaseline/D7-D-AUTHENTICATION-SESSION-CSRF.md) |
 | D7-E | **OPERATOR-RATIFIED** — [authority](engineering/rebaseline/D7-E-OPERABILITY-DEPLOYMENT-PROOF.md) |
-| Whole-D7 review | **OPEN / ACTIVE — coherence + executable-proof/adversarial review** |
+| D7-R1 | **Whole-stage coherence corrections — CANDIDATE / INTERNAL REVIEW / FABLE CHALLENGE PENDING** — [candidate](engineering/rebaseline/D7-R1-WHOLE-STAGE-COHERENCE.md) |
+| Whole-D7 review | **OPEN / ACTIVE** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Run whole-D7 coherence + executable-proof/adversarial review over D7-A→D7-E; then independent Fable challenge and GPT adjudication. Do not open D8.** |
+| Exact next action | **Run fresh gate on D7-R1 candidate, then open isolated whole-D7 Fable challenge and adjudicate findings. Do not open D8.** |
 | Implementation | **BLOCKED UNTIL D9** |
 
 ## Stage progression
@@ -37,7 +38,7 @@
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
 | D5 — API | ACCEPTED / CLOSED |
 | D6 — Frontend | **ACCEPTED / CLOSED** |
-| D7 — Runtime / Jobs / Transactions | **OPEN / ACTIVE — D7-A→D7-E ratified; whole-D7 review open** |
+| D7 — Runtime / Jobs / Transactions | **OPEN / ACTIVE — D7-A→D7-E ratified; D7-R1 repair candidate under whole-stage review** |
 | D8 — Golden Flows | BLOCKED |
 | D9 — Adversarial Architecture Review | BLOCKED |
 | Implementation | BLOCKED UNTIL D9 |
@@ -55,7 +56,7 @@ auth H             Keycloak OIDC code+PKCE -> opaque PostgreSQL MPC session + CS
 auth A/S           Client Credentials -> audience-bound bearer -> explicit A/S Principal binding
 HTTP               Chi v5 + oapi-codegen strict server + OAD runtime validation
 bytes              private S3-compatible custody + authenticated Go delivery
-migrations         tern/v2 with separate migration owner
+migrations         tern/v2 for MPC-owned schema; D7-R1 reviews River-owned migration seam
 observability      JSON slog + OTel traces/metrics over OTLP/HTTP
 deploy             one immutable OCI app image behind trusted TLS edge
 recovery           PostgreSQL PITR + Keycloak subject continuity + binary integrity restore proof
@@ -63,15 +64,28 @@ recovery           PostgreSQL PITR + Keycloak subject continuity + binary integr
 
 Detailed laws, exclusions and falsifiers remain in the D7 owner documents; this roadmap does not duplicate them.
 
-## Whole-D7 review boundary
+## Whole-D7 internal review
 
-The review may challenge only material contradictions, missing seams, duplicated authority, impossible proof obligations or hidden changes to accepted D0–D6 meaning. It may produce bounded D7 fixes. It may not begin D8, D9 or Product implementation.
+Internal composition found five bounded D7 realization seams and **no D0–D6 semantic reopen**. [D7-R1](engineering/rebaseline/D7-R1-WHOLE-STAGE-COHERENCE.md) proposes only:
+
+```text
+authentication-bootstrap persistence scope
+River-owned migration authority alongside MPC tern migrations
+post-PITR recovery/write fence before external redispatch
+scheme-aware OAD validator ↔ D7-D auth composition
+proof-timing clarification: D7 proof contract != implemented runtime PASS
+```
+
+These repairs preserve the 99/30/H-A-S Product surface and all accepted owner semantics.
+
+## Review boundary
+
+The remaining review may challenge material contradictions, missing seams, duplicated authority, impossible proof obligations, overengineering or hidden changes to accepted D0–D6 meaning. It may produce bounded D7 fixes. It may not begin D8, D9 or Product implementation.
 
 Required sequence:
 
 ```text
-internal whole-D7 coherence/adversarial review
--> executable-proof-plan review
+fresh candidate gate
 -> isolated independent Fable challenge
 -> GPT adjudication
 -> bounded fixes + fresh exact-head gate if required
