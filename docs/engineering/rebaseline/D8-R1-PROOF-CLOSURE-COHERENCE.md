@@ -1,7 +1,8 @@
 # D8-R1 — Proof Closure & Implementation-Readiness Coherence
 
-> **Status:** OPEN / ACTIVE — INDEPENDENT REVIEW ADJUDICATED; LIVE-PROBE DISPOSITION REQUIRED  
+> **Status:** OPEN / ACTIVE — INDEPENDENT REVIEW ADJUDICATED; LIVE PROBES AUTHORIZED / EXECUTION PENDING  
 > **Parent:** [D8 Golden Flows](D8-GOLDEN-FLOWS.md)  
+> **Execution protocol:** [D8 Controlled Live Probe Protocol](D8-LIVE-PROBE-PROTOCOL.md)  
 > **Candidate reviewed:** `stage/d8-golden-flows @ b3469258348289865a036bc7a946077f79d61faf`  
 > **Independent review:** `review/d8-fable` — `ACCEPT WITH BOUNDED FIXES`  
 > **Accepted prerequisites:** D0–D7 — ACCEPTED / CLOSED  
@@ -34,30 +35,34 @@ No Fable finding requires D0–D7 semantic reopen.
 
 ## 3. D4-deferred probe ledger and D8 closure law
 
-D4 §7 names the real-effect probes whose semantic contracts are accepted but whose first controlled execution was deferred to D8. D8 must not silently drop them, and architecture approval is not authorization to execute them.
+D4 §7 names the real-effect probes whose semantic contracts are accepted but whose first controlled execution was deferred to D8. D8 must not silently drop them, and architecture approval alone is not authorization to execute them.
+
+The operator explicitly authorized controlled real execution on **2026-08-22** so D8 does not close on theory alone. Exact execution safety, preflight, abort and evidence rules are owned by [D8 Controlled Live Probe Protocol](D8-LIVE-PROBE-PROTOCOL.md).
 
 ### 3.1 Canonical probe ledger
 
 | ID | D4-deferred probe | D8 relationship | Current disposition |
 | --- | --- | --- | --- |
-| P1 | first Mercado Livre **Price/Availability effect** + authoritative convergence reread | GF-01; may be discharged by one controlled publication experiment only if the experiment explicitly exercises and records both meanings | **UNRESOLVED — OPERATOR DISPOSITION REQUIRED** |
-| P2 | selected-lane **fiscal / invoice / label progression** | GF-02 | **UNRESOLVED — OPERATOR DISPOSITION REQUIRED** |
-| P3 | first irreversible Sankhya **`313→306` fiscal progression** | GF-02; may share one controlled lane with P2 when separately evidenced in the result | **UNRESOLVED — OPERATOR DISPOSITION REQUIRED** |
-| P4 | first consequential native **Party create/update when needed** | GF-02 Materialization prerequisite | **CONDITIONAL — trigger only if the selected flow actually requires native Party mutation** |
-| P5 | first controlled **alternate-destination/contact realization** before claiming that concrete Sankhya capability | GF-02 | **UNRESOLVED — OPERATOR DISPOSITION REQUIRED** |
-| P6 | any currently unexercised fiscal **branch/component that becomes material** to a selected golden flow | GF-02 | **CONDITIONAL — trigger only when the selected flow makes the branch/component material** |
+| P1 | first Mercado Livre **Price/Availability effect** + authoritative convergence reread | GF-01; may be discharged by one controlled publication experiment only if the experiment explicitly exercises and records both meanings | **OPERATOR_AUTHORIZED — EXECUTION PENDING** |
+| P2 | selected-lane **fiscal / invoice / label progression** | GF-02 | **OPERATOR_AUTHORIZED — EXECUTION PENDING** |
+| P3 | first irreversible Sankhya **`313→306` fiscal progression** | GF-02; may share one controlled lane with P2 when separately evidenced in the result | **OPERATOR_AUTHORIZED — EXECUTION PENDING** |
+| P4 | first consequential native **Party create/update when needed** | GF-02 Materialization prerequisite | **CONDITIONAL — OPERATOR_AUTHORIZED IF TRIGGERED** |
+| P5 | first controlled **alternate-destination/contact realization** before claiming that concrete Sankhya capability | GF-02 | **OPERATOR_AUTHORIZED — EXECUTION PENDING** |
+| P6 | any currently unexercised fiscal **branch/component that becomes material** to a selected golden flow | GF-02 | **CONDITIONAL — OPERATOR_AUTHORIZED IF TRIGGERED** |
 
 D4-R1 separately states that D8 owns the first controlled real Mercado Livre creation/write proof with authoritative reread and shared-User-Product blast-radius verification. That proof may satisfy P1 only when its recorded scope actually includes the Price/Availability effect required by D4; equivalence is never inferred merely because both involve marketplace creation.
 
 ### 3.2 Allowed probe disposition states
 
-For an **unconditional** D8 probe row, exactly one of these must exist before D8 closes:
+For an **unconditional** D8 probe row, exactly one closeout state must exist before D8 closes:
 
 ```text
 EXECUTED_AND_RECORDED
 or
 OPERATOR_RATIFIED_REDEFER(<named later gate>)
 ```
+
+`OPERATOR_AUTHORIZED — EXECUTION PENDING` is an active-work state, not a closeout state.
 
 For a D4 probe whose own authority says **`when needed`** or **`becomes material`**, D8 additionally permits:
 
@@ -71,9 +76,7 @@ This third state is not a convenience defer. It preserves D4's conditional autho
 
 > **D8 cannot close while any unconditional D4-deferred probe is undispositioned, or while any triggered conditional probe is undispositioned.**
 
-No live Mercado Livre write, native Party mutation, destination mutation or irreversible Sankhya fiscal effect is authorized by D8 documentation, Fable review or GPT adjudication. Execution requires separate explicit operator authorization.
-
-A failed real probe narrows/reopens only the smallest implicated capability/authority. It never authorizes Direct Oracle fallback, fabricated known values, customer-master corruption, blind retry or provider-ontology leakage.
+The operator authorization allows the bounded probes defined by the execution protocol; it does **not** authorize writes outside those preconditions/blast-radius/abort rules. A failed real probe narrows/reopens only the smallest implicated capability/authority. It never authorizes Direct Oracle fallback, fabricated known values, customer-master corruption, blind retry or provider-ontology leakage.
 
 ## 4. Post-D8 material-change revalidation law
 
@@ -169,9 +172,9 @@ No separate golden flow is added for onboarding, Availability configuration, acc
 - D7-R1 recovery-falsifier design;
 - explicit D4 probe disposition/closure law.
 
-### D8 may execute only with separate operator authorization
+### D8 live-probe execution — operator authorized
 
-The P1–P6 ledger rows that are selected for `EXECUTED_AND_RECORDED`.
+Execute P1/P2/P3/P5 and any triggered P4/P6 only through the bounded [D8 Controlled Live Probe Protocol](D8-LIVE-PROBE-PROTOCOL.md), then record their authoritative outcomes here. Provider/system credentials remain outside repository/chat evidence.
 
 ### Post-D9 implementation conformance
 
@@ -187,15 +190,16 @@ D0–D7 reopen                          NONE
 Golden-flow set                       3 business + 1 systemic — CONFIRMED
 Product surface                       99 operations / 30 Permissions / H-A-S unchanged
 active Product runtime                NONE
-D8 real-probe ledger                  OPEN — operator disposition required
+D8 live-probe authorization           GRANTED 2026-08-22
+D8 real-probe ledger                  OPEN — EXECUTION / RECORDING PENDING
 D6-R2                                 BLOCKED UNTIL D8 CLOSE
 Pre-D9 readiness contract             BLOCKED UNTIL D6-R2
 D9                                    BLOCKED
 Product implementation                BLOCKED UNTIL D9
 ```
 
-D8 is **not yet closeable** because unconditional live-probe rows P1/P2/P3/P5 remain undispositioned.
+D8 is **not yet closeable** because unconditional live-probe rows P1/P2/P3/P5 are authorized but not yet executed/recorded.
 
 ## 10. Exact next action
 
-**Obtain explicit operator disposition for each currently unresolved D4-deferred D8 probe: either authorize the bounded real probe for execution/recording, or explicitly ratify re-deferral to a named later gate. Resolve conditional P4/P6 only if their triggering condition is present in the selected flow. Do not begin D6-R2, D9 or Product implementation until D8 closes.**
+**Execute the authorized D8 live probes through `D8-LIVE-PROBE-PROTOCOL.md` from the credentialed operator environment, in bounded order and with authoritative reread after every consequential attempt. Record P1/P2/P3/P5 and any triggered P4/P6. Do not begin D6-R2, D9 or Product implementation until D8 closes.**
