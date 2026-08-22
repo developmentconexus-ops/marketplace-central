@@ -13,7 +13,7 @@
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | D6-R2 authority | [Closure](engineering/rebaseline/D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md) + [P4-R1](engineering/rebaseline/D6-R2-P4-R1-GLOBAL-IA-OPERATIONAL-MASS-REOPEN.md) + [P8](engineering/rebaseline/D6-R2-P8-BLOCK-LEDGER.md) — **IA-01 CLOSED; B00/B01 LOCKED; OP-READ-01 RESOLVED; B10 SUSPENDED** |
 | NOTIF-01 design | [Personal Notification Architecture Design](engineering/rebaseline/D6-R2-NOTIF-01-NOTIFICATION-ARCHITECTURE-DESIGN.md) — **OPERATOR-APPROVED DESIGN** |
-| NOTIF-01 plan | [`2026-08-22-personal-notifications-authority-amendments.md`](../docs/superpowers/plans/2026-08-22-personal-notifications-authority-amendments.md) — **READY FOR EXECUTION** |
+| NOTIF-01 plan | [Authority Amendment Plan](engineering/rebaseline/D6-R2-NOTIF-01-AUTHORITY-AMENDMENT-PLAN.md) — **READY FOR EXECUTION** |
 | Product repair | [D5-R2](engineering/rebaseline/D5-R2-OPERATIONAL-READ-PROJECTION-REPAIR.md) — **ACCEPTED / CANONICAL** |
 | GF-02 revalidation | [D8-R2](engineering/rebaseline/D8-R2-OPERATIONAL-READ-REVALIDATION.md) — **ACCEPTED / PASS** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
