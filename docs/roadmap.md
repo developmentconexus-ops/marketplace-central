@@ -9,15 +9,18 @@
 | Field | Current value |
 | --- | --- |
 | Product | **Marketplace Operations Control Plane + Commercial Intelligence** |
-| Current stage | **D8 — Golden Flows — CLOSEOUT RATIFIED / INTEGRATION PENDING** |
-| Accepted baseline | **D0–D8 ACCEPTED / CLOSED on candidate branch** |
-| D8 authority | [D8 Golden Flows](engineering/rebaseline/D8-GOLDEN-FLOWS.md) + [D8-R1 Proof Closure & Implementation-Readiness Coherence](engineering/rebaseline/D8-R1-PROOF-CLOSURE-COHERENCE.md) — **ACCEPTED / CLOSED / OPERATOR-RATIFIED 2026-08-22** |
-| Live-probe execution | [D8 Controlled Live Probe Protocol](engineering/rebaseline/D8-LIVE-PROBE-PROTOCOL.md) — **EXECUTED 2026-08-22**; outcomes in [D8 Live Probe Evidence](engineering/rebaseline/D8-LIVE-PROBE-EVIDENCE.md) |
+| Current stage | **D6-R2 — Complete Frontend Realization Closure — OPEN / ACTIVE** |
+| Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
+| D6-R2 authority | [Closure](engineering/rebaseline/D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md) + [P4-R1](engineering/rebaseline/D6-R2-P4-R1-GLOBAL-IA-OPERATIONAL-MASS-REOPEN.md) + [P8](engineering/rebaseline/D6-R2-P8-BLOCK-LEDGER.md) — **IA-01 CLOSED; B00/B01 LOCKED; OP-READ-01 RESOLVED; B10 SUSPENDED** |
+| Product repair | [D5-R2](engineering/rebaseline/D5-R2-OPERATIONAL-READ-PROJECTION-REPAIR.md) — **ACCEPTED / CANONICAL** |
+| GF-02 revalidation | [D8-R2](engineering/rebaseline/D8-R2-OPERATIONAL-READ-REVALIDATION.md) — **ACCEPTED / PASS** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Evaluate and operator-ratify the D6-R2 frontend-realization method while PR #59 remains the sole D8 integration vehicle. Do not merge without explicit merge authorization; do not open/stack D6-R2 work until D8 is integrated into `main`.** |
+| Exact next action | **Assess a possible Marketplace Central Notification gap against accepted authority. MetalDocs is comparative evidence only; do not alter Product authority or resume dependent frontend blocks before operator adjudication.** |
+| Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
+| D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
 
 ## Stage progression
@@ -31,58 +34,30 @@
 | D4 — External Integrations | ACCEPTED / CLOSED |
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
 | D5 — API | ACCEPTED / CLOSED |
+| D5-R2 — Operational Read Projection Repair | **ACCEPTED / CANONICAL** |
 | D6 — Frontend | **ACCEPTED / CLOSED** |
 | D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED** |
-| D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / PENDING INTEGRATION INTO `main`** |
-| D6-R2 — Complete Frontend Realization Closure | **BLOCKED UNTIL D8 INTEGRATION** |
-| Pre-D9 Implementation Readiness Contract | **BLOCKED UNTIL D6-R2** |
-| D9 — Adversarial Architecture Review | BLOCKED |
-| Implementation | BLOCKED UNTIL D9 |
+| D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED** |
+| D8-R2 — GF-02 Operational Read Revalidation | **ACCEPTED / PASS** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00/B01 LOCKED; B10 SUSPENDED pending Notification assessment** |
+| Pre-D9 readiness | **BLOCKED** |
+| D9 — Adversarial Architecture Review | **BLOCKED** |
+| Implementation | **BLOCKED UNTIL D9** |
 
-## Accepted D8 closure
+## Current D6-R2 result
 
-D8 confirmed the smallest representative falsifiable set:
+- IA-01 is closed: **OFERTA / OPERAÇÃO / ESTRATÉGIA E INTELIGÊNCIA / CONTROLE / CONFIGURAÇÕES**; `Publicações` is **Anúncios** and **Preços** is first-class under Oferta.
+- `OPERAÇÃO` = **Visão operacional / Vendas / Expedição / Pós-venda**; a global cross-owner Kanban is rejected.
+- OP-READ-01 is resolved by D5-R2; Product remains **99/30/H-A-S**. D8-R2 preserves GF-02.
+- **B00 App Shell + corrected global IA and B01 content are LOCKED.** B10 remains valid under `OFERTA > Preparação` but is paused for the requested Notification assessment.
+- MetalDocs Notification direction is evidence, not Marketplace Central authority. Global-Maximum/YAGNI remains binding.
 
-```text
-GF-01  Publication & Marketplace Convergence
-GF-02  Sale → Business System → Fiscal → Fulfillment → Outcome
-GF-03  Performance Evidence Honesty
-SR-01  PITR / Timeline Continuity Recovery
-```
+## D8 authority carried forward
 
-This remains **3 business golden flows + 1 systemic recovery falsifier**, not an exhaustive 99-operation test catalog and not Product implementation. Independent Fable review, GPT adjudication and controlled real probes closed without a D0–D7 semantic reopen.
-
-Final probe disposition:
+D8 remains accepted. Implementation-readiness retains **P2** redeferred to the first qualifying real ML Sale/beta drive and **P5** capability narrowing: contact reference is not a supported full alternate street/fiscal destination override.
 
 ```text
-P1  ML Price/Availability                 PASS_CONVERGED
-P2  ML fiscal/invoice/label               OPERATOR_RATIFIED_REDEFER
-                                           first real open ML Sale / beta-flagged implementation drive
-P3  Sankhya 313→306                       PASS_CONVERGED
-P4  native Party create/update            NOT_TRIGGERED
-P5  alternate destination/contact         CAPABILITY_NOT_PROVEN for full override
-                                           contact reference converged; full destination stays external-required/unsupported
-P6  additional fiscal branch/component    NOT_TRIGGERED
+D6-R2 → Pre-D9 readiness → D9 → Product implementation only after accepted D9
 ```
 
-P5 is a capability narrowing, not a contradiction: the sanctioned Sankhya contact reference survives fiscal progression, but it is not a full street/fiscal destination override. Partner master corruption or duplicate-Party creation remains forbidden. P2 travels forward as an explicit proof obligation and may not silently disappear.
-
-## Approved pre-D9 realization sequence
-
-D8 established that **architecture closure is not by itself implementation-readiness closure**. After D8 is integrated, the accepted sequence is:
-
-```text
-D8 integrated
-→ D6-R2 — Complete Frontend Realization Closure
-→ Pre-D9 Implementation Readiness Contract
-→ D9 — Adversarial Architecture Review
-→ Product implementation only after accepted D9
-```
-
-D6-R2 must complete material route/screen/state/action/API/Permission/wireframe realization against current accepted Product + D7/D8 authority without reopening accepted frontend technologies/topology by preference. The Pre-D9 Implementation Readiness Contract then projects accepted architecture into per-slice outcomes, the complete D6 dependency/import law, negative controls, executable acceptance and explicit exit states so coding agents do not decide material behavior during implementation.
-
-If D6-R2 or the readiness contract legitimately changes an accepted operation, Permission, semantic owner or another material invariant through the smallest owning authority, affected D8 flows/controls must be revalidated before D9 opens. D9 never reviews golden flows derived from superseded authority.
-
-Until PR #59 is explicitly authorized and merged, keep D6-R2 blocked and do not stack its branch on this candidate. After merge, revalidate `main`, branches, PRs and CI first. Product implementation remains blocked until accepted D9.
-
-One coherent gate lands before the next. For task-specific reading, return to [`index.md`](index.md).
+One coherent gate lands before the next. Return to [`index.md`](index.md) for task routing.

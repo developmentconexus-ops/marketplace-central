@@ -14,6 +14,12 @@ pathItems:
         - {name: sale_marketplace_installation_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
         - {name: sale_native_key, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueKey'}}
         - {name: fulfillment_node_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+        - {name: physical_readiness, in: query, required: false, schema: {type: string, enum: [ready, blocked, unknown]}}
+        - {name: separation_state, in: query, required: false, schema: {type: string, enum: [pending, recorded]}}
+        - {name: physical_conference_state, in: query, required: false, schema: {type: string, enum: [pending, recorded]}}
+        - {name: packing_state, in: query, required: false, schema: {type: string, enum: [pending, recorded]}}
+        - {name: dispatch_handoff_state, in: query, required: false, schema: {type: string, enum: [pending, recorded]}}
+        - {name: provider_dispatch_deadline_before, in: query, required: false, schema: {type: string, format: date-time}}
       responses:
         '200': {description: Fulfillment executions., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/FulfillmentExecutionsCollection'}}}}
         '400': {$ref: './components.yaml#/responses/BadRequest'}
@@ -297,6 +303,7 @@ pathItems:
         - {$ref: './components.yaml#/parameters/Limit'}
         - {$ref: './components.yaml#/parameters/Cursor'}
         - {name: native_sale_key, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueKey'}}
+        - {name: state, in: query, required: false, schema: {type: string, enum: [pending, ready, dispatched, delivered, exception, unknown]}}
       responses:
         '200': {description: Shipments., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/ShipmentsCollection'}}}}
         '400': {$ref: './components.yaml#/responses/BadRequest'}
