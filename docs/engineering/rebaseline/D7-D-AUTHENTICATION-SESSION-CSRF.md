@@ -1,11 +1,12 @@
 # D7-D — Authentication / Session / CSRF / Machine Token Realization
 
-> **Status:** CANDIDATE / OPERATOR RATIFICATION PENDING  
+> **Status:** OPERATOR-RATIFIED  
 > **Parent:** `D7-RUNTIME-JOBS-TRANSACTIONS.md`  
 > **Accepted prerequisites:** D7-A + D7-B + D7-C — OPERATOR-RATIFIED  
 > **Parent authority:** accepted D5-R1 Human Browser Authentication Correction + accepted D2 identity/access semantics  
 > **Method:** DevelopmentConexus Engineering Method v1.0.0  
-> **Derived:** 2026-08-22
+> **Derived:** 2026-08-22  
+> **Ratified:** 2026-08-22
 
 ## 1. Purpose
 
@@ -24,164 +25,54 @@ D7-D selects the minimum provider/library/session mechanics needed to make that 
 
 ## 3. First provider profile
 
-### 3.1 Keycloak — SELECT CANDIDATE
+### 3.1 Keycloak — ACCEPTED
 
 Keycloak is selected as the first concrete OIDC/OAuth provider while the application boundary remains standards-based and provider-neutral.
 
-One configured Keycloak issuer/realm is sufficient for the MPC baseline. Exact realm naming, Keycloak version pin, HA topology, backup and upgrade mechanics remain D7-E/deployment concerns.
+Keycloak provides only external authentication/token issuance. MPC keeps canonical Principal, current Principal access eligibility, Organization Membership, RoleAssignment, AccessRole/Permission and business/Governance authorization authority.
 
-Use separate client roles:
+No Keycloak realm role, client role, group or scope becomes an MPC ordinary Permission or business authorization shortcut.
 
-```text
-human web client
-  -> confidential OIDC client
-  -> Standard Flow / Authorization Code enabled
-  -> PKCE S256 required
-  -> Implicit Flow disabled
-  -> Direct Access Grants disabled
-  -> Service Accounts disabled
+Baseline deployment uses one MPC realm/client set, not one realm per Organization. Organization is MPC tenancy, not IdP tenancy.
 
-machine client(s)
-  -> confidential OAuth client
-  -> Service Account / Client Credentials enabled
-  -> Standard Flow disabled
-  -> Implicit Flow disabled
-  -> Direct Access Grants disabled
-  -> access token audience includes https://conexus.fun
-```
+## 4. Human login mechanics — accepted
 
-Keycloak roles/scopes/service-account roles are credential-issuance configuration only. They never map directly to MPC ordinary Permissions or domain authorization.
+### 4.1 Authorization Code + PKCE S256
 
-Production `Full Scope Allowed` is not baseline; machine clients expose only the minimum provider-side token claims required for authentication and audience restriction.
+The browser begins login through a same-origin MPC technical auth route. MPC acts as a confidential OIDC client and performs the Authorization Code exchange server-side.
 
-### 3.2 Current evidence
+Each login transaction creates fresh high-entropy:
 
-Revalidated on 2026-08-22:
+- `state`;
+- OIDC `nonce`;
+- PKCE `code_verifier` and derived `S256` challenge;
+- bounded post-login return target.
 
-- RFC 9700 recommends PKCE even for confidential Authorization Code clients and requires S256-class protection rather than exposing the verifier;
-- current Keycloak documentation supports confidential server-side clients, Standard Flow, required PKCE S256, service accounts, Client Credentials and explicit audience mappers;
-- the current IETF browser-application BCP remains in the RFC Editor queue and continues to strongly favor server-side/BFF-class token isolation for business/sensitive browser applications.
+The login transaction is one-time and short-lived. It may be persisted in PostgreSQL because callbacks may land on another application replica. It stores no end-user password and no reusable browser credential.
 
-Primary sources:
+The callback validates exact one-time `state`, exchanges the code with the stored verifier, verifies the ID token signature/issuer/audience/expiry/nonce through OIDC discovery, and resolves the stable `(issuer, sub)` identity binding to exactly one current MPC human Principal.
 
-- <https://www.rfc-editor.org/rfc/rfc9700>
-- <https://datatracker.ietf.org/doc/draft-ietf-oauth-browser-based-apps/>
-- <https://www.keycloak.org/docs/latest/server_admin/>
+Email, preferred username and display claims never auto-bind or merge Principals.
 
-## 4. Human OIDC login realization
+### 4.2 Human OIDC token lifetime inside MPC
 
-### 4.1 Libraries
+MPC does **not** retain the human access token or refresh token after successful login in the Product 1.0 baseline.
 
-Select:
+After callback validation and Principal binding:
 
-```text
-github.com/coreos/go-oidc/v3/oidc
-golang.org/x/oauth2
-```
+1. validate the OIDC token response and ID token;
+2. establish the MPC ApplicationSession;
+3. discard the human OIDC access/refresh/ID token material from normal application state.
 
-Reasons:
+Reason: the Product browser does not need delegated calls to another OAuth resource server after authentication. Persisting or refreshing IdP tokens would increase secret-bearing state without a current consumer.
 
-- provider discovery and ID-token signature/issuer/audience validation are standard OIDC concerns rather than MPC business code;
-- `x/oauth2` provides per-authorization PKCE verifier generation and S256 challenge/exchange options;
-- `go-oidc` requires nonce validation by the caller, keeping the transaction binding explicit.
+If a later accepted human flow must call an external resource on that human's delegated authority, reopen only this D7-D token-retention boundary.
 
-Exact dependency versions remain implementation-manifest concerns.
+## 5. Human ApplicationSession — accepted
 
-### 4.2 Technical auth surface
+### 5.1 Representation
 
-The baseline same-origin non-Product surface is:
-
-```text
-GET  /_auth/login
-GET  /_auth/callback
-GET  /_auth/csrf
-POST /_auth/logout
-```
-
-These routes are Technical Non-Product auth/session mechanics. They are excluded from the Product OpenAPI/operation census and do not collide with `/access-context` or `/organizations/{organization_id}/...`.
-
-No CORS relaxation is baseline; the browser application and Product API remain same-origin at `https://conexus.fun`.
-
-### 4.3 Login transaction
-
-Starting login creates one short-lived technical login transaction in PostgreSQL containing only:
-
-```text
-one-time login handle digest
-state digest
-OIDC nonce
-PKCE verifier
-bounded relative return path
-created_at / expires_at
-```
-
-The browser receives a separate one-time `__Host-mpc_login` cookie containing the raw random login handle:
-
-```text
-Secure
-HttpOnly
-SameSite=Lax
-Path=/
-no Domain
-short-lived
-```
-
-The transaction is one-time consumed on callback. `state` alone is not treated as the browser binding.
-
-The return target is a validated same-origin relative path, never an arbitrary redirect URI.
-
-### 4.4 Authorization request
-
-The server uses provider discovery and sends an Authorization Code request with:
-
-```text
-scope=openid
-state=<transaction-specific random value>
-nonce=<transaction-specific random value>
-code_challenge=<S256(PKCE verifier)>
-code_challenge_method=S256
-```
-
-Do not request `offline_access` in the human baseline. MPC does not need provider API delegated access merely to authenticate a person.
-
-### 4.5 Callback
-
-Callback processing must, in order:
-
-1. validate and one-time consume the login-handle correlation;
-2. validate exact `state`;
-3. exchange the code server-side using the confidential client and exact registered redirect URI;
-4. verify the returned ID token signature, exact configured issuer, audience/client, expiry and nonce;
-5. resolve stable `(issuer, subject)` to exactly one current MPC human Principal;
-6. require current Principal access eligibility;
-7. create a fresh MPC application session;
-8. clear the temporary login cookie/transaction;
-9. redirect only to the validated relative return path.
-
-Email, username and mutable profile claims never auto-link or identify the MPC Principal.
-
-### 4.6 Human OIDC token minimization
-
-After successful callback validation, the human token response has no continuing MPC consumer.
-
-Therefore baseline behavior is:
-
-- do not expose access, refresh or ID tokens to browser JavaScript;
-- do not persist the human access token;
-- do not persist the human refresh token;
-- do not use a refresh token to keep the MPC session alive;
-- do not call UserInfo merely to duplicate MPC presentation identity;
-- discard the token set after the verified identity binding has established the MPC session.
-
-If a future accepted feature requires delegated provider access on behalf of the human, reopen the smallest D5/D7 auth scope rather than pre-storing tokens now.
-
-## 5. MPC application session
-
-### 5.1 Session handle
-
-Generate at least 256 bits of CSPRNG entropy for each authenticated session handle.
-
-Browser cookie:
+The browser receives only:
 
 ```text
 __Host-mpc_session=<opaque random handle>
@@ -190,226 +81,220 @@ HttpOnly
 SameSite=Lax
 Path=/
 no Domain
-no persistent Max-Age/Expires baseline
 ```
 
-The cookie contains no Principal, Organization, Permission, role, expiry or other decodable state.
+The session handle contains no Principal, Organization, Permission or business state. It is generated from cryptographically secure randomness with at least 256 bits of entropy.
 
-PostgreSQL stores only a cryptographic digest of the raw session handle, never the replayable handle itself.
-
-### 5.2 Session row
-
-The minimal server-side session record contains proportionately:
+PostgreSQL stores only a one-way digest of the presented handle together with bounded mechanism state such as:
 
 ```text
-session_handle_digest
+session_id / digest
 principal_id
-originating_identity_binding reference
 created_at
 last_seen_at
 absolute_expires_at
-revoked_at/revocation reason when applicable
-csrf_token_digest
+idle_expires_at
+rotation lineage when needed
+revoked_at when revoked
 ```
 
-No Organization is embedded as ambient tenant context. Organization Membership and Permission remain current request-time checks.
+A database disclosure therefore does not directly disclose reusable browser session handles.
 
-Session state is platform/identity-access technical state, not an Organization-owned business entity.
+Session state is platform authentication mechanism state, not a Product entity.
 
-### 5.3 Timeouts
+### 5.2 Session lifetime
 
-Baseline security envelope:
+Baseline:
 
 ```text
 idle timeout      30 minutes
-absolute timeout   8 hours
+absolute lifetime 8 hours
 ```
 
-Both are enforced server-side. `last_seen_at` persistence may be conservatively write-coalesced, but the implementation may not silently extend the effective idle bound beyond its documented coalescing tolerance.
+A valid authenticated request may advance the idle deadline without extending the absolute deadline. Implementations should avoid a write on every request by using a bounded touch interval while never accepting a session whose effective idle or absolute deadline has passed.
 
-The session is not indefinitely sliding. After absolute expiry the human must perform a new OIDC authentication.
+The concrete numbers are security/operability defaults, not Product semantics; they may be tightened without Product reopen. Materially lengthening them requires a D7 security review.
 
-These values may become deployment configuration only inside the accepted maximum envelope; loosening the envelope requires an explicit D7 security review rather than an environment-variable accident.
+### 5.3 Rotation and invalidation
 
-### 5.4 Rotation and revocation
+- successful OIDC login creates a fresh handle; pre-login IDs never become authenticated session IDs;
+- logout revokes the current session server-side and expires the cookie;
+- Principal access eligibility is rechecked from current MPC authority on every Product request, so disabling a Principal blocks future access even if the session row remains;
+- session lookup resolves one Principal only; it never caches current Organization Membership/Permission as authority;
+- sensitive identity-administration changes may revoke all sessions for the Principal when the change requires it;
+- no process-memory-only session store is allowed because D7-A permits multiple replicas;
+- Redis is not baseline: PostgreSQL already provides the required shared durable store at current scale.
 
-- a new, unrelated MPC session handle is always minted after successful authentication/reauthentication;
-- temporary pre-auth login state is never upgraded into the authenticated session ID;
-- logout invalidates the server row first and clears the browser cookie;
-- current Principal access-eligibility revocation invalidates use of every existing session on the next request;
-- removal/revocation of the originating `(issuer, subject)` binding invalidates the session on the next request;
-- current Organization Membership/RoleAssignment/Permission changes take effect through normal current authorization checks and do not require cookie claims to expire;
-- automatic periodic session-ID renewal is not baseline because the bounded idle/absolute lifetime and mandatory login-time rotation already satisfy the current consumer without introducing renewal races.
+Global Keycloak Single Logout/back-channel logout is deferred because current MPC sessions do not retain IdP tokens and no accepted requirement says remote IdP logout must instantly revoke every MPC session. A real requirement may reopen the smallest D7-D seam.
 
-Multiple concurrent human sessions are allowed unless a later concrete security/product requirement proves single-session semantics necessary.
+## 6. CSRF / browser request-trust — accepted
 
-## 6. CSRF request-trust realization
+Unsafe human requests (`POST | PUT | PATCH | DELETE`) require both the current HttpOnly session and a current CSRF proof.
 
-### 6.1 Synchronizer token
+### 6.1 Synchronizer-token baseline
 
-Each MPC application session owns one high-entropy synchronizer CSRF token. PostgreSQL stores its digest; the browser obtains the raw value only from authenticated:
+Each ApplicationSession has a cryptographically random server-held CSRF secret/token. A same-origin technical endpoint such as:
 
 ```text
 GET /_auth/csrf
 ```
 
-The response is `Cache-Control: no-store` and the frontend keeps the token only in memory. It is not placed in URL, localStorage, sessionStorage, persisted application state or a readable cookie.
-
-Every human `POST | PUT | PATCH | DELETE` Product request must carry:
+returns the current token only to an already authenticated session. The frontend keeps it in memory and sends:
 
 ```text
-X-CSRF-Token: <session-bound token>
+X-CSRF-Token: <token>
 ```
 
-The server compares the presented value to the current session token in constant time before owner effect.
+on unsafe requests.
 
-The token rotates with the MPC session. It is request trust only: never Principal identity, Membership, Permission, disposition or Governance authorization.
+The token is not placed in a browser-readable cookie, URL, localStorage or sessionStorage.
 
-### 6.2 Standard-library cross-origin defense
+Baseline comparison is constant-time and bound to the current ApplicationSession. Rotate it when the session handle is rotated or security-sensitive reauthentication occurs.
 
-In addition to the required synchronizer token, use Go `net/http.CrossOriginProtection` as defense in depth for browser-exposed unsafe requests.
+### 6.2 Cross-origin defense in depth
 
-The accepted Go floor is already >= 1.25.1, which excludes the initial Go 1.25.0 bypass-pattern vulnerability. No `AddInsecureBypassPattern` is required by the MPC baseline.
+Use Go `net/http.CrossOriginProtection` on state-changing browser routes in addition to the synchronizer token. Same-origin requests are admitted; unsafe cross-origin browser requests fail before owner business effects.
 
-Current standard-library behavior uses `Sec-Fetch-Site` and/or `Origin`/Host checks for unsafe cross-origin browser requests. The synchronizer token remains mandatory because the standard control intentionally allows requests lacking browser metadata headers and D5-R1 already requires `X-CSRF-Token`.
+Public technical endpoints whose protocols legitimately require cross-origin/provider callbacks are not silently exempted from trust validation: they live behind their own D4/D5 Technical Ingress validation and explicit bypass route registration rather than a global CORS relaxation.
 
-Primary evidence:
+Baseline application exposes no wildcard CORS. The first-party frontend and Product API share `https://conexus.fun`.
 
-- <https://pkg.go.dev/net/http#CrossOriginProtection>
-- <https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html>
+## 7. OIDC/OAuth Go libraries — accepted
 
-### 6.3 Safe methods
-
-`GET`, `HEAD` and `OPTIONS` do not perform Product business mutations. Technical login initiation may create bounded ephemeral anti-forgery transaction state but never owner/business state or external effect.
-
-## 7. Logout
-
-`POST /_auth/logout` requires the current H session and valid CSRF trust, invalidates the MPC session server-side and clears `__Host-mpc_session`.
-
-Local MPC logout is the security baseline and does not require retaining an ID/refresh token.
-
-For the selected Keycloak profile the browser may additionally be redirected to the discovered RP-Initiated Logout endpoint using the configured `client_id` and pre-registered `post_logout_redirect_uri`. Absence/failure of provider-wide SSO logout does not resurrect the already-invalid MPC session.
-
-Back-channel logout, global session management UI and persisted ID-token hints are deferred absent a concrete consumer/security requirement.
-
-## 8. Machine bearer realization
-
-### 8.1 Credential issuance
-
-Each independently accountable A/S credential boundary uses its own confidential Keycloak client/service account. A client credential is not a Principal; it binds to exactly one current MPC non-human Principal through explicit technical identity binding.
-
-First-profile client authentication to Keycloak uses standard confidential-client credentials. Exact secret injection/rotation is D7-E. Asymmetric `private_key_jwt`, mTLS and DPoP remain bounded security upgrades, not baseline Product requirements.
-
-RFC 9700 recommends sender-constrained access tokens where feasible, but D5-R1 currently admits an audience-bound bearer carrier. D7-D does not silently change that accepted wire contract; a future sender-constraint requirement is a bounded D5/D7 reopen trigger.
-
-### 8.2 Token validation
-
-Select `github.com/lestrrat-go/jwx/v3` as the bounded JWT/JWK verifier for machine access tokens.
-
-Use only the trusted configured/discovered issuer metadata and JWKS URL. Never follow a JWT-controlled `jku`/key URL.
-
-For every A/S bearer request require, before Principal resolution:
+Use:
 
 ```text
-valid cryptographic signature from trusted JWKS
-allowed configured signing algorithm
-exact configured issuer
-not expired
-not before satisfied when present
-required audience includes https://conexus.fun
-verified stable Keycloak client identity claim
+github.com/coreos/go-oidc/v3/oidc
+golang.org/x/oauth2
 ```
 
-The first Keycloak profile normalizes its verified authorized-client identity (`azp`/equivalent configured provider claim) behind the auth adapter. Product/business code never depends on provider JWT claim spelling.
+for OIDC discovery/ID-token verification and Authorization Code/PKCE exchange respectively.
 
-The verified `(issuer, machine client identity)` binding resolves to exactly one current A or S Principal. It must never resolve H.
+These are protocol/mechanism dependencies only. A thin MPC auth package owns the accepted constraints: issuer/client/redirect configuration, state/nonce/PKCE login transaction, stable Principal binding and session establishment.
 
-Current Principal access eligibility, Organization Membership, allowed Principal kind, ordinary Permission, owner disposition and Governance remain later independent gates.
+Do not build a generic IdP abstraction/framework. Provider-neutral OIDC boundaries plus one Keycloak implementation are sufficient.
 
-Keycloak token roles/scopes never become MPC Permissions.
+## 8. Machine A/S bearer realization — accepted
 
-### 8.3 JWKS caching and key rotation
+### 8.1 Keycloak client credentials
 
-JWKS is cached from the trusted provider metadata endpoint. Unknown `kid`, cache expiry or rotation triggers bounded refresh from that trusted endpoint; inability to establish a valid signing key fails closed.
+Each admitted machine integration/automation credential is a confidential Keycloak client/service account using Client Credentials. Shared human credentials are never reused for machine execution.
 
-Existing validated cached keys may be used according to bounded cache lifetime, but a token is never accepted solely because it parsed successfully.
-
-Machine access tokens remain short-lived and client-credentials responses do not establish a refresh-token path. Exact token lifetime is provider/deployment configuration; D7 proof must establish a bounded revocation window and no indefinite bearer lifetime.
-
-## 9. Authentication libraries and authority fence
-
-Accepted candidate dependency set for D7-D:
+The token must be short-lived and carry an audience including the stable MPC Product audience:
 
 ```text
-github.com/coreos/go-oidc/v3/oidc   human OIDC discovery + ID-token validation
-golang.org/x/oauth2                 Authorization Code exchange + PKCE
-net/http.CrossOriginProtection      cross-origin browser defense in depth
-github.com/lestrrat-go/jwx/v3       machine JWT/JWK verification
+https://conexus.fun
 ```
 
-Do not introduce a generic IAM/policy engine, OAuth proxy, separate BFF service, Redis session store, JWT application-session cookie, browser OAuth SDK or Keycloak adapter that maps provider roles into Product authority.
+Keycloak token/client roles/scopes may support IdP protocol configuration but are not MPC ordinary Permissions.
 
-## 10. Keycloak configuration fence
+### 8.2 Verification
 
-For the first provider profile:
+Use `github.com/lestrrat-go/jwx/v3` for machine JWT/JWKS verification against the configured trusted Keycloak issuer/JWKS boundary.
 
-- exact redirect URI and post-logout redirect URI are pre-registered; wildcard production redirects are not baseline;
-- human client is confidential and PKCE S256 is required;
-- machine clients have service accounts enabled and human Standard Flow disabled;
-- machine tokens receive the explicit MPC audience `https://conexus.fun`;
-- provider roles/scopes are kept minimal and are not authorization inputs to MPC;
-- client secrets/private credentials live outside repository/database/logs and are injected under D7-E;
-- admin/break-glass Keycloak credentials are not application runtime credentials.
+Validate at least:
 
-No realm-per-Organization or client-per-Organization topology is introduced. Organization is MPC authority, not an IdP tenant mapping.
+- accepted signing algorithm/key from trusted JWKS;
+- exact trusted issuer;
+- MPC audience;
+- expiration and not-before/time validity;
+- expected token/client identity claim used by the configured binding;
+- token is not accepted through the H session carrier.
+
+Unknown `kid` triggers bounded JWKS refresh/retry; it does not fall back to unverified decode or an arbitrary JWK URL from the token.
+
+JWKS may be cached in process memory because it is public verification material and can be reacquired. Cache expiry/refresh must not accept a token under a key outside the configured issuer trust boundary.
+
+### 8.3 Machine Principal binding
+
+MPC stores an explicit technical binding from the trusted issuer + machine client identity to exactly one current Principal whose kind is `A` or `S`.
+
+No token claim creates a Principal or selects Organization/Permission dynamically.
+
+After bearer verification:
+
+```text
+trusted machine binding
+  -> exactly one current A/S Principal
+  -> current Principal eligibility
+  -> Organization Membership when required
+  -> allowed Principal kind
+  -> ordinary Permission
+  -> remaining W4/business/Governance gates
+```
+
+A bearer resolving to no binding, multiple bindings or an H Principal fails closed.
+
+## 9. Secrets and credential handling carried to D7-E
+
+D7-D establishes what secrets exist; D7-E decides production injection/rotation mechanics.
+
+Secret-bearing runtime inputs include proportionately:
+
+- Keycloak confidential-client secret for human code exchange;
+- machine client secrets only in the external machine clients that own them, not in the MPC server unless MPC itself needs a distinct client;
+- database runtime credential;
+- provider/business-system adapter credentials already owned by D4 realization;
+- any cryptographic application key later proven necessary.
+
+ApplicationSession handles/CSRF tokens and transient OIDC code/verifier/token material never enter logs/traces/metrics.
+
+## 10. Rejected/deferred alternatives
+
+- browser-held OAuth access/refresh tokens — **REJECT**, contradicts D5-R1;
+- persistent human refresh-token/token cache — **REJECT baseline**, no delegated-resource consumer;
+- stateless JWT MPC browser session — **REJECT baseline**, complicates immediate revocation/current access checks and exposes mechanism claims to the browser without need;
+- in-memory-only session store — **REJECT**, unsafe across allowed replicas/restarts;
+- Redis session store — **REJECT baseline**, second state service without current need;
+- Keycloak roles/groups as MPC Permissions — **REJECT**, violates D2/D5 authority;
+- realm-per-Organization — **REJECT baseline**, duplicates MPC tenancy into IdP mechanism;
+- password/direct-access grant — **REJECT**;
+- OAuth implicit flow — **REJECT**;
+- refresh-token rotation infrastructure for humans — **DEFER** unless human delegated-resource access appears;
+- generic IAM/policy engine — **REJECT**;
+- wildcard cross-origin CORS — **REJECT**;
+- universal auth middleware that treats H cookie and A/S bearer as interchangeable identity sources before carrier-specific validation — **REJECT**.
 
 ## 11. Falsifiable proof contract
 
-D7-D cannot close D7 without executable proof capable of falsifying at least:
+D7-D cannot close without proof design capable of falsifying at least:
 
-1. browser JavaScript can obtain an OIDC access/refresh token;
-2. human access/refresh tokens remain persisted after successful login without a named consumer;
-3. callback with wrong/replayed login handle, `state`, nonce or PKCE verifier establishes a session;
-4. callback accepts wrong issuer, audience, signature or expired ID token;
-5. email/username collision auto-links a Principal;
-6. pre-authentication handle becomes the authenticated session handle;
-7. leaked session-table contents directly reveal a replayable session token;
-8. expired, revoked, disabled-Principal or revoked-binding session remains usable;
-9. unsafe H request without/mismatching `X-CSRF-Token` reaches owner effect;
-10. cross-origin unsafe browser request bypasses both synchronizer and standard cross-origin protection;
-11. session/CSRF token appears in URL, persistent browser storage or logs;
-12. session carries ambient Organization/Permission claims that remain valid after current authority changes;
-13. machine token with wrong issuer/audience/signature/time window is admitted;
-14. JWT-controlled remote key URL can influence signing-key retrieval;
-15. unknown Keycloak machine client resolves by token role/scope instead of explicit MPC binding;
-16. machine bearer resolves to H;
-17. Keycloak role/scope grants an MPC Permission absent current Membership/RoleAssignment authority;
-18. revoked MPC Principal eligibility fails to stop an otherwise valid current session/bearer;
-19. wildcard CORS/redirect configuration expands the same-origin browser baseline;
-20. logout clears only the browser cookie while leaving the server session usable.
+1. browser JavaScript can obtain an OIDC access/refresh token through the normal login flow;
+2. callback with wrong/replayed state, wrong nonce, wrong issuer or wrong audience creates a session;
+3. pre-login/fixated session handle survives successful authentication;
+4. raw session handle stored in PostgreSQL remains directly reusable after a database leak fixture;
+5. expired/revoked/idle-expired session still authenticates;
+6. disabling Principal access eligibility leaves Product access usable through an old session;
+7. unsafe H request without valid session-bound `X-CSRF-Token` reaches owner effect;
+8. cross-origin unsafe H request bypasses request-trust defenses;
+9. Product handler accepts browser bearer for an H Principal;
+10. machine token with wrong issuer/audience/signature/time validity succeeds;
+11. arbitrary token-supplied JWK/JWKS location alters the trust root;
+12. unknown/ambiguous machine client binding succeeds;
+13. A/S bearer resolves to H;
+14. Keycloak role/group/scope grants an MPC Permission absent current MPC RoleAssignment;
+15. server stores persistent human access/refresh tokens despite no admitted consumer;
+16. logs/traces/metrics reveal session, CSRF, OAuth code/verifier/token, client secret or provider credential.
 
-Human/browser proof requires a real browser + real OIDC provider lane; machine validation proof requires real signed provider tokens and key rotation/negative fixtures. Mocks alone do not prove the carrier boundary.
+Real OIDC/Keycloak integration proof is required for callback/token/client-credentials/JWKS claims; pure JWT/session mocks cannot close the slice. CSRF/cookie behavior requires a real HTTP/browser-capable proof seam. D8 will exercise composed Product flows after D7 closes.
 
-## 12. Rejected/deferred alternatives
+## 12. Current evidence basis
 
-- browser Authorization Code + PKCE bearer ownership — **REJECT**, already superseded by D5-R1;
-- JWT/self-contained MPC application session cookie — **REJECT baseline**, revocation/current-access semantics are simpler and safer with opaque server-side state;
-- Redis session store — **REJECT**, PostgreSQL is already the replicated canonical technical store and no latency/scale consumer requires another system;
-- persistent human OIDC refresh-token cache — **REJECT**, no delegated downstream token consumer exists;
-- UserInfo/profile synchronization — **REJECT baseline**, stable `(issuer, sub)` is identity and MPC owns its presentation/access state;
-- Keycloak roles as Product Permissions — **REJECT**;
-- realm/client per Organization — **REJECT**;
-- Direct Access Grant/password grant — **REJECT**;
-- Implicit Flow — **REJECT**;
-- global back-channel logout machinery — **DEFER**, local session invalidation + bounded lifetime satisfies current MPC security need;
-- DPoP/mTLS/private-key JWT for all machine clients — **DEFER bounded security upgrade**, not silently added to the accepted bearer contract.
+Revalidated 2026-08-22 against current primary/security sources:
+
+- OAuth 2.0 Security Best Current Practice, RFC 9700;
+- IETF OAuth browser-based apps BCP draft in RFC Editor queue, recommending BFF/server-side patterns for sensitive business apps;
+- current Keycloak securing-apps/server administration documentation for Authorization Code, service accounts/client credentials, audience and token behavior;
+- Go `net/http.CrossOriginProtection` current standard-library API;
+- OWASP Session Management and CSRF guidance;
+- current `coreos/go-oidc/v3`, `golang.org/x/oauth2` and `lestrrat-go/jwx/v3` APIs.
+
+Exact dependency versions, timeout constants and Keycloak realm export are implementation-manifest/configuration concerns unless a version-specific behavior becomes architectural.
 
 ## 13. Adjudication
 
-**Candidate:** Keycloak as the first OIDC/OAuth provider; server-side Authorization Code + required PKCE S256 using `go-oidc` + `x/oauth2`; one-time PostgreSQL login transaction; human token set discarded after verified `(issuer, sub)` binding; 256-bit opaque hashed server-side MPC session with 30-minute idle / 8-hour absolute limits; session-bound synchronizer `X-CSRF-Token` plus Go `CrossOriginProtection`; local CSRF-protected logout; Keycloak service-account Client Credentials for A/S with exact MPC audience; strict trusted-JWKS JWT validation through `jwx/v3`; explicit machine-client→A/S Principal binding; no IdP role/scope authorization.
+**OPERATOR-RATIFIED:** Keycloak is the first OIDC/OAuth provider; human login uses confidential Authorization Code + PKCE S256 with one-time state/nonce/verifier, server-side ID-token validation and stable `(issuer, sub)` Principal binding; the human OIDC token set is discarded after callback; PostgreSQL stores only digests for opaque MPC sessions with 30-minute idle / 8-hour absolute baseline; unsafe browser requests require a session-bound synchronizer CSRF token plus Go cross-origin protection; A/S use Keycloak Client Credentials with audience-bound JWT verification through trusted JWKS and explicit machine-client → A/S Principal binding. No IdP role becomes MPC Permission.
 
-No Product operation, Permission, Principal kind or semantic owner changes.
-
-If ratified, next is **D7-E — Operability / Secrets / Migrations / Deployment & Proof Baseline**.
+Next is **D7-E — Operability / Secrets / Migrations / Deployment & Proof Baseline**.
 
 Do not begin D8, D9 or Product implementation.
