@@ -9,14 +9,15 @@
 | Field | Current value |
 | --- | --- |
 | Product | **Marketplace Operations Control Plane + Commercial Intelligence** |
-| Current stage | **D8 — Golden Flows — OPEN / ACTIVE — FABLE ADJUDICATED / LIVE-PROBE DISPOSITION REQUIRED** |
+| Current stage | **D8 — Golden Flows — OPEN / ACTIVE — LIVE PROBES AUTHORIZED / EXECUTION PENDING** |
 | Accepted baseline | **D0–D7 ACCEPTED / CLOSED** |
 | D8 authority | [D8 Golden Flows](engineering/rebaseline/D8-GOLDEN-FLOWS.md) + [D8-R1 Proof Closure & Implementation-Readiness Coherence](engineering/rebaseline/D8-R1-PROOF-CLOSURE-COHERENCE.md) — **OPEN / ACTIVE** |
+| Live-probe execution | [D8 Controlled Live Probe Protocol](engineering/rebaseline/D8-LIVE-PROBE-PROTOCOL.md) — **OPERATOR-AUTHORIZED / NOT YET EXECUTED** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Obtain explicit operator disposition for unresolved D4-deferred D8 probes: authorize bounded real execution/recording or explicitly ratify re-deferral to a named later gate. Do not begin D6-R2, D9 or Product implementation until D8 closes.** |
+| Exact next action | **Execute the authorized D8 P1/P2/P3/P5 live probes and any triggered P4/P6 through the controlled protocol from the credentialed operator environment; record authoritative outcomes before D8 close. Do not begin D6-R2, D9 or Product implementation.** |
 | Implementation | **BLOCKED UNTIL D9** |
 
 ## Stage progression
@@ -32,7 +33,7 @@
 | D5 — API | ACCEPTED / CLOSED |
 | D6 — Frontend | **ACCEPTED / CLOSED** |
 | D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED** |
-| D8 — Golden Flows | **OPEN / ACTIVE — FABLE ADJUDICATED / LIVE-PROBE DISPOSITION REQUIRED** |
+| D8 — Golden Flows | **OPEN / ACTIVE — LIVE PROBES AUTHORIZED / EXECUTION PENDING** |
 | D6-R2 — Complete Frontend Realization Closure | **BLOCKED UNTIL D8 CLOSE** |
 | Pre-D9 Implementation Readiness Contract | **BLOCKED UNTIL D6-R2** |
 | D9 — Adversarial Architecture Review | BLOCKED |
@@ -51,9 +52,9 @@ SR-01  PITR / Timeline Continuity Recovery
 
 This is **3 business golden flows + 1 systemic recovery falsifier**, not an exhaustive 99-operation test catalog and not Product implementation. Cross-cutting Organization isolation, auth/access, wire/frontend composition, idempotency/concurrency, durable-effect safety, Governance/Work and knowledge honesty are exercised through these flows rather than becoming extra business journeys by symmetry.
 
-Start from [D8 Golden Flows](engineering/rebaseline/D8-GOLDEN-FLOWS.md). [D8-R1](engineering/rebaseline/D8-R1-PROOF-CLOSURE-COHERENCE.md) supersedes only its bounded proof-closure/revalidation/Governance/dependency-direction seams after independent Fable review and GPT adjudication. Switch to exact prior authority or the canonical OAD only when the candidate flow requires it.
+Start from [D8 Golden Flows](engineering/rebaseline/D8-GOLDEN-FLOWS.md). [D8-R1](engineering/rebaseline/D8-R1-PROOF-CLOSURE-COHERENCE.md) supersedes only its bounded proof-closure/revalidation/Governance/dependency-direction seams after independent Fable review and GPT adjudication. [D8 Controlled Live Probe Protocol](engineering/rebaseline/D8-LIVE-PROBE-PROTOCOL.md) owns the execution safety/evidence contract for the operator-authorized D4-deferred probes. Switch to exact prior authority or the canonical OAD only when the candidate flow requires it.
 
-D4-deferred real Mercado Livre/Sankhya consequential probes remain D8 proof obligations under the D8-R1 ledger. Live/irreversible execution requires separate explicit operator authorization; unconditional rows must be executed/recorded or explicitly operator-redeferred before D8 closes. Conditional rows may be recorded `NOT_TRIGGERED` only when their D4 condition is genuinely absent.
+The live probes are authorized but not yet executed. Unconditional rows P1/P2/P3/P5 must become `EXECUTED_AND_RECORDED` or receive a later explicit operator-ratified re-deferral before D8 closes. Conditional P4/P6 execute if their accepted trigger is present, otherwise they require explicit `NOT_TRIGGERED` evidence. Real provider/system failure may reopen the smallest owning capability; it must never be hidden by a fallback or wider mutation.
 
 ## Approved pre-D9 realization sequence
 
