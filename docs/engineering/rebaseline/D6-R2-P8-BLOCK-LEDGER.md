@@ -1,8 +1,10 @@
 # D6-R2 P8 — Structural Wireframe Block Ledger
 
-> **Status:** OPEN / ACTIVE — B00 physical shell + B01 content operator-`LOCKED`; B00 global IA REOPENED by IA-01; B10 SUSPENDED; OP-READ-01 OPEN
+> **Status:** OPEN / ACTIVE — B00 physical shell + B01 content operator-`LOCKED`; B00 global IA REOPENED by IA-01; OP-READ-01 RESOLVED; corrected B00 render NEXT; B10 SUSPENDED
 > **Parent:** [D6-R2 Complete Frontend Realization Closure](D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md)
 > **P4-R1 reopen:** [Global IA / Operational Mass Reopen](D6-R2-P4-R1-GLOBAL-IA-OPERATIONAL-MASS-REOPEN.md)
+> **D5-R2 repair:** [Operational Read Projection Repair](D5-R2-OPERATIONAL-READ-PROJECTION-REPAIR.md)
+> **D8-R2 revalidation:** [GF-02 Operational Read Revalidation](D8-R2-OPERATIONAL-READ-REVALIDATION.md)
 > **P5 input:** [Complete Screen / Material-Surface Inventory](D6-R2-P5-SCREEN-SURFACE-INVENTORY.md)
 > **Method:** [Frontend Product Experience Planning Method v2.1](../../development/frontend-product-experience-planning-method.md)
 > **Product implementation:** BLOCKED UNTIL accepted D9
@@ -25,11 +27,11 @@ interaction needed to prove the block
 
 They do **not** decide final palette, typography, iconography, radius, shadows, illustration, branding polish or final component styling.
 
-## 2. B00 — App Shell + global IA — PARTIAL REOPEN
+## 2. B00 — App Shell + global IA — PARTIAL REOPEN / RERENDER NEXT
 
 **Physical/context shell:** `LOCKED`.  
 **Global IA grouping/labels:** `REOPENED` by operator-approved finding IA-01.  
-**Artifact under correction:** [`qualification/d6-r2-wireframes/b00-app-shell.html`](../../../qualification/d6-r2-wireframes/b00-app-shell.html)
+**Artifact to correct:** [`qualification/d6-r2-wireframes/b00-app-shell.html`](../../../qualification/d6-r2-wireframes/b00-app-shell.html)
 
 The following B00 laws remain locked:
 
@@ -51,7 +53,7 @@ Also preserved:
 - no-access/stale Organization blocks explicitly;
 - responsive transformation never changes context meaning.
 
-### 2.1 IA-01 candidate grouping — operator-approved direction
+### 2.1 IA-01 grouping — operator-approved direction
 
 ```text
 VISÃO GERAL
@@ -85,9 +87,9 @@ CONFIGURAÇÕES
   Configurações
 ```
 
-This is not yet a corrected B00 `LOCK`: the global-frame artifact must be re-rendered and separately operator-adjudicated after OP-READ-01 is dispositioned.
+This grouping is operator-adjudicated direction but is not yet a restored B00 global-frame `LOCK`: it must be visibly re-rendered and separately reviewed.
 
-Existing technical route identities should remain where possible; user-facing `Anúncios` may continue to use `/publicacoes/*`, and `Preços` may continue to use `/publicacoes/precos`. The only candidate new route is the operational landing.
+Existing technical route identities remain where possible; user-facing `Anúncios` may continue to use `/publicacoes/*`, and `Preços` may continue to use `/publicacoes/precos`. The only candidate new route is the organization-wide operational landing `/org/:organizationId/operacao`.
 
 ## 3. B01 — Overview
 
@@ -122,7 +124,7 @@ search/list triage
 → continuation only from admitted current state
 ```
 
-Its previous placement under `OPERAÇÕES` is superseded by the P4-R1 candidate `OFERTA > Preparação`.
+Its previous placement under `OPERAÇÕES` is superseded by `OFERTA > Preparação`.
 
 ## 5. Operational landing — CANDIDATE CONCEPT ONLY
 
@@ -144,41 +146,40 @@ Operator approved **cockpit hybrid oriented to action**, not one global Kanban:
 
 A global `Nova -> Faturar -> Separar -> Conferir -> Embalar -> Enviar` Kanban is rejected because no cross-owner Product lifecycle owns those columns. A Kanban-like view may later be studied inside Fulfillment/Expedição only.
 
-## 6. OP-READ-01 — BLOCKING FINDING
+## 6. OP-READ-01 — RESOLVED
 
-The operational landing must not be rendered as a baseline while current owner-local collection contracts would force N+1 detail fan-out or frontend-authored business projection.
+[D5-R2](D5-R2-OPERATIONAL-READ-PROJECTION-REPAIR.md) enriches only existing owner-local operational list projections/filters and preserves 99 operations, 30 Permissions, H/A/S, owners and write surface.
 
-Observed gaps:
+[D8-R2](D8-R2-OPERATIONAL-READ-REVALIDATION.md) confirms GF-02 remains coherent: choreography, effect semantics, physical authority and source-domain boundaries are unchanged.
 
-```text
-FulfillmentExecutionListItem
-  lacks separation / physical_conference / packing / dispatch_handoff / dispatch deadline
-  ListFulfillmentExecutions lacks stage/readiness/deadline triage filters
-
-BusinessOrderIntentListItem
-  has external_effect_state but omits convergence
-
-InvoicingIntentListItem
-  has external_effect_state but omits convergence and richer operational correlation
-
-ShipmentListItem
-  has state but omits sale + dispatch_deadline
-  ListShipments lacks state/deadline triage filters
-
-PostSale / Work
-  already have useful lifecycle/queue narrowing
-```
-
-Negative controls:
+Binding negative controls remain:
 
 ```text
 no /operational-dashboard Product endpoint
 no OperationalWorkflow owner
 no cross-owner synthetic lifecycle
+no operational_stage / next_action / priority / total_count
 no global totals inferred from one paginated page
 no N+1 detail fan-out as production baseline
 ```
 
-## 7. Exact next action
+The operational landing may later compose the repaired owner-local reads, but it acquires no business/write authority.
 
-Derive the smallest owner-local **OP-READ-01 repair candidate** and obtain operator approval before editing the canonical OAD. Preserve semantic owners and prefer enrichment of existing list projections/filters; aim to preserve the 99-operation census. After an accepted repair, rerun affected D5 proof + GF-02, then re-render corrected B00 global IA before any dependent block progresses.
+## 7. Global-Maximum / YAGNI law
+
+For every remaining block:
+
+```text
+human job + accepted authority
+→ smallest coherent UX structure
+→ exact owner/wire trace
+→ bounded upstream repair only on material falsifier
+→ no screen-shaped API or parallel frontend truth
+→ no speculative platform capability
+```
+
+## 8. Exact next action
+
+Re-render **B00 App Shell + global IA** only, preserving the locked physical/context/responsive shell and applying the operator-approved IA-01 navigation grouping. The corrected HTML remains `CANDIDATE` until the operator opens/interacts with it and explicitly restores the global-frame `LOCK`.
+
+Do not render the Visão operacional or resume B10/B20 before corrected B00 is operator-`LOCKED`.
