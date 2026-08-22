@@ -33,8 +33,8 @@
 | D4 — External Integrations | ACCEPTED / CLOSED |
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
 | D5 — API | ACCEPTED / CLOSED |
-| D6 — Frontend | ACCEPTED / CLOSED |
-| D7 — Runtime / Jobs / Transactions | ACCEPTED / CLOSED |
+| D6 — Frontend | **ACCEPTED / CLOSED** |
+| D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED** |
 | D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED** |
 | D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — IA-01 partial B00 reopen; B01 content LOCKED; B10 SUSPENDED; OP-READ-01 OPEN** |
 | Pre-D9 readiness | **BLOCKED** |
