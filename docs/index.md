@@ -31,6 +31,7 @@ Pre-standard current-status/read-order prose inside accepted D-stage, architectu
 | Product API semantic laws | [D5 API](engineering/rebaseline/D5-API.md) | D6–D9 |
 | Frontend interaction/authority model, screen→Product capability mapping, frontend topology | [D6 Frontend](engineering/rebaseline/D6-FRONTEND.md) | D7–D9 and removed frontend runtime |
 | Runtime/process topology, PostgreSQL isolation/transactions, durable jobs/effects, auth/session realization, operability | [D7 Runtime / Jobs / Transactions](engineering/rebaseline/D7-RUNTIME-JOBS-TRANSACTIONS.md) | D8–D9 and removed runtime |
+| PostgreSQL Organization isolation, RLS, transaction scope, idempotency persistence, ETag/revision mechanics | [D7-B PostgreSQL Isolation & Transactions](engineering/rebaseline/D7-B-POSTGRESQL-ISOLATION-TRANSACTIONS.md) | D7-C–E and full schema/table census |
 | Current decision-generation reconciliation | [Decision Reconciliation Baseline](engineering/rebaseline/DECISION-RECONCILIATION-BASELINE.md) | all phase history |
 | Stable cross-stage architecture constraints | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | all phase documents |
 | ADR disposition / retirement trigger | [ADR Registry](architecture/decisions/README.md), then only the named ADR | all ADRs |
@@ -96,7 +97,12 @@ Do not select D7 runtime/router/database/deployment mechanics from D6 research.
 
 ## D7 Runtime bounded subpacks
 
-Start from [D7 Runtime / Jobs / Transactions](engineering/rebaseline/D7-RUNTIME-JOBS-TRANSACTIONS.md) plus one exact accepted owner at a time. For process/serving topology use [`../ARCHITECTURE.md`](../ARCHITECTURE.md); for human session/CSRF/OIDC realization switch to [D5-R1 Human Browser Authentication](engineering/rebaseline/D5-R1-HUMAN-BROWSER-AUTHENTICATION.md); for durable cross-owner communication/effects switch to D3 or D4 only when that exact seam is under decision.
+Start from [D7 Runtime / Jobs / Transactions](engineering/rebaseline/D7-RUNTIME-JOBS-TRANSACTIONS.md) plus one exact accepted owner at a time.
+
+- process/serving topology → [`../ARCHITECTURE.md`](../ARCHITECTURE.md);
+- PostgreSQL isolation/transactions → [D7-B PostgreSQL Isolation & Transactions](engineering/rebaseline/D7-B-POSTGRESQL-ISOLATION-TRANSACTIONS.md), switching to D2 or D5 W1/W2 only for an exact ownership/wire question;
+- human session/CSRF/OIDC realization → [D5-R1 Human Browser Authentication](engineering/rebaseline/D5-R1-HUMAN-BROWSER-AUTHENTICATION.md);
+- durable cross-owner communication/effects → D3 or D4 only when that exact seam is under decision.
 
 Do not begin D8 golden-flow choreography or Product implementation from D7 research.
 
