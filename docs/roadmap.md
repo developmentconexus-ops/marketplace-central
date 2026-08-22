@@ -32,7 +32,7 @@
 | D3 — Communication / Events | ACCEPTED / CLOSED |
 | D4 — External Integrations | ACCEPTED / CLOSED |
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
-| D5 — API | **ACCEPTED / CLOSED — bounded OP-READ-01 repair candidate under analysis; NOT REOPENED yet** |
+| D5 — API | ACCEPTED / CLOSED |
 | D6 — Frontend | **ACCEPTED / CLOSED — global IA grouping partially reopened only through D6-R2 finding IA-01** |
 | D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED** |
 | D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED; GF-02 must be revalidated if OP-READ-01 changes Product contract** |
@@ -53,7 +53,7 @@
 - **OP-READ-01** blocks that wireframe: several owner-local collections lack enough triage state/filtering to avoid N+1 detail fan-out or frontend-authored workflow projection.
 - B00 physical/context/responsive shell remains LOCKED; only global grouping/labels are reopened. B01 content/state hierarchy remains LOCKED.
 - B10 internal `search/list → selected exact-subject detail` evidence remains valid but B10 is **SUSPENDED** under `OFERTA > Preparação` until corrected B00 global IA is re-rendered.
-- No Product operation, Permission, semantic owner or OAD has been changed by the finding yet.
+- D5 remains ACCEPTED / CLOSED while OP-READ-01 is only a repair candidate; no Product operation, Permission, semantic owner or OAD has been changed by the finding yet.
 
 ## OP-READ-01 guardrail
 
