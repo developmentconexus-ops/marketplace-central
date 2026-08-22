@@ -1,8 +1,9 @@
 # D6 — Frontend
 
-> **Status:** OPEN / ACTIVE — D6-B1 + D6-B2 OPERATOR-RATIFIED / FINAL D6 INDEPENDENT CHALLENGE NEXT
+> **Status:** ACCEPTED / CLOSED — OPERATOR-RATIFIED / FINAL INDEPENDENT CHALLENGE ADJUDICATED
 > **Program:** Architecture Rebaseline / Technical System Design
 > **Opened:** 2026-08-21
+> **Closed:** 2026-08-21
 > **Parent authorities:** `ARCHITECTURE.md`, accepted D0–D5 semantics, proved bounded D6-R1 amendment, proved bounded D5-R1 human-browser authentication correction, ratified D6-B1 interaction authority, and canonical Product OAD at `contracts/api/product/openapi.yaml`
 > **Method:** DevelopmentConexus Engineering Method v1.0.0
 
@@ -12,7 +13,7 @@ D6 defines the target Marketplace Central frontend interaction model and fronten
 
 React + TypeScript are the accepted browser-client technologies. TanStack Query owns server state. D6-B2 selects TanStack Router for navigation/URL state, `openapi-typescript` for generated Product wire shapes and `openapi-fetch` as the thin typed browser Product transport. D6 consumes Product authority; it does not move business policy into React or generated client code.
 
-D6 does **not** choose the server HTTP router/mux, database/RLS, transaction, worker/queue, Keycloak realm/deployment, runtime/process/deployment mechanics, D8 golden-flow execution choreography or Product implementation. D7–D9 remain blocked and Product implementation remains blocked until accepted D9.
+D6 does **not** choose the server HTTP router/mux, database/RLS, transaction, worker/queue, Keycloak realm/deployment, runtime/process/deployment mechanics, D8 golden-flow execution choreography or Product implementation. D7 is NEXT / NOT STARTED, D8–D9 remain blocked, and Product implementation remains blocked until accepted D9.
 
 ## 2. Imported invariants
 
@@ -73,9 +74,9 @@ Without new evidence D6 does not introduce:
 - generic Analytics/Metric/Strategy client vocabulary;
 - client-owned opportunity score/recommendation/AI explanation.
 
-## 4. Current proved Product input
+## 4. Accepted Product input
 
-The current D6 candidate Product authority is mechanically proved at:
+The accepted D6 Product authority is mechanically proved at:
 
 ```text
 99 Product operations
@@ -460,11 +461,13 @@ Reopen only the smallest D6-B2 decision when a real proof establishes one of the
 
 Preference or technology fashion is not a reopen trigger.
 
-## 10. Exact next D6 work
+## 10. D6 closeout — ACCEPTED / CLOSED
 
 1. D6-B1 interaction authority is operator-ratified.
 2. D6-B2 topology/dependency authority is operator-ratified.
-3. The current D6 candidate must now enter the repository's **independent final D6 challenge** from the exact candidate HEAD, using the isolated review-branch protocol in `docs/development/engineering-rules.md`.
-4. The final reviewer must challenge the combined D5-R1 + D6-R1 + D6-B1 + D6-B2 candidate for Product/frontend coherence, YAGNI, dependency necessity, state/authority leakage, auth/session consumption, generated-wire discipline and D7 boundary violations.
-5. Reviewer output is Evidence, not authority; Round 2 is justified only for a surviving material contradiction after GPT adjudication.
-6. Do not begin D7–D9, implement Product code, close D6 or merge PR #54 without explicit operator authorization.
+3. The isolated final Fable challenge returned **ACCEPT WITH BOUNDED FIXES** and found no Critical finding or material reason to reopen D5-R1, D6-R1, D6-B1, D6-B2, the 99/30 Product surface, the authentication split or the selected frontend profile.
+4. GPT independently adjudicated every material finding. The accepted fixes repaired the default gate entry point, D6-B1 status/count precision and fixed-metric Traffic/Sales comparison-state precision; Retail Media remains intentionally sparse by scope/basis rather than acquiring false metric uniformity. Repository-only reporting observations were not promoted into architecture work.
+5. Fresh executable proof after those bounded fixes confirms the accepted 95/29 D5 baseline, current 99/30 Product surface, H/A/S principal kinds, 28/28 List/Search operations, 7/7 Performance controls, 5/5 authentication controls, deterministic/compilable TypeScript and Go projections, 2/2 Performance-knowledge controls, zero legacy runtime population and the repository negative control.
+6. No material contradiction survives adjudication; a second Fable round is not warranted.
+7. The operator explicitly authorized D6 closeout and PR #54 merge on 2026-08-21.
+8. D7 — Runtime / Jobs / Transactions is **NEXT / NOT STARTED**. Do not begin D8–D9 or implement Product code before accepted D9.
