@@ -1,6 +1,6 @@
 # D6-R2 P8 — Structural Wireframe Block Ledger
 
-> **Status:** OPEN / ACTIVE — B00 operator-`LOCKED`; A04 operator-adjudicated; B01 HTML `CANDIDATE` rendered
+> **Status:** OPEN / ACTIVE — B00 + B01 operator-`LOCKED`; B10 bounded P6 is NEXT
 > **Parent:** [D6-R2 Complete Frontend Realization Closure](D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md)
 > **P5 input:** [Complete Screen / Material-Surface Inventory](D6-R2-P5-SCREEN-SURFACE-INVENTORY.md)
 > **Method:** [Frontend Product Experience Planning Method v2.1](../../development/frontend-product-experience-planning-method.md)
@@ -115,10 +115,6 @@ rendered artifact reviewed: YES
 operator disposition:          LOCKED
 material changes requested:    NONE
 visual-design decisions locked: NONE
-verification HEAD:             ca7370856c2f9403a28a275403995c7e9daa5120
-ci / gate:                     #393 SUCCESS / PASS
-Product surface:               99/99 ops · 30/30 Permissions · H/A/S
-bootstrap:                     18827 / 20480 bytes
 ```
 
 This `LOCKED` status is operator authority only; CI verifies repository coherence but does not grant the lock.
@@ -157,26 +153,26 @@ A04 is therefore **resolved for B01 hierarchy by operator adjudication**. It doe
 
 ## 5. B01 — Overview
 
-**Status:** `CANDIDATE` — rendered; awaiting operator review of the executable HTML.  
+**Status:** `LOCKED` — operator approved after opening/interacting with the executable HTML on 2026-08-22.  
 **Homes:** R01.  
 **Artifact:** [`qualification/d6-r2-wireframes/b01-overview.html`](../../../qualification/d6-r2-wireframes/b01-overview.html)  
 **P6:** NOT TRIGGERED.  
 **P7:** NOT TRIGGERED.
 
-### 5.1 Candidate structure
+### 5.1 Locked structure
 
 B01 inherits the entire locked B00 shell unchanged. Its page-owned content is:
 
 ```text
 Visão geral
 ├─ contextual operational-attention region
-│  ├─ ACTIONABLE          -> expanded preview + navigation to Trabalho
-│  ├─ KNOWN_EMPTY         -> collapsed explicit known-empty state
+│  ├─ ACTIONABLE            -> expanded preview + navigation to Trabalho
+│  ├─ KNOWN_EMPTY           -> collapsed explicit known-empty state
 │  └─ KNOWLEDGE_UNAVAILABLE -> visible unknown/unavailable state
 └─ balanced orientation — always present
-   ├─ Marketplace / account posture       [MarketplacePortfolio]
+   ├─ Marketplace / account posture             [MarketplacePortfolio]
    ├─ per-Installation Performance entry/result [MarketplacePerformanceIntelligence]
-   └─ bounded economic orientation         [CommercialEconomics]
+   └─ bounded economic orientation               [CommercialEconomics]
 ```
 
 The Work preview is bounded evidence, not a global inferred count. It exposes no screen-shaped mutation and cannot resolve underlying source truth.
@@ -206,9 +202,7 @@ contextual attention state
 
 When Work is `KNOWN_EMPTY`, its collapsed band does not consume dominant vertical space. When Work is `KNOWLEDGE_UNAVAILABLE`, its uncertainty remains visible rather than disappearing.
 
-### 5.4 B01 negative controls
-
-B01 must visibly reject:
+### 5.4 Locked negative controls
 
 ```text
 “Tudo certo” inferred from empty Work
@@ -221,16 +215,44 @@ hidden global totals from one paginated list
 owner write authority acquired by composition
 ```
 
-## 6. B01 operator adjudication gate
-
-B01 may become `LOCKED` only after the operator opens/interacts with the HTML artifact and explicitly adjudicates the rendered structure.
-
-Possible dispositions:
+## 6. B01 operator adjudication record
 
 ```text
-LOCKED       explicit operator approval of rendered B01
-CANDIDATE    changes requested or review pending
-FINDING      material contradiction discovered
+rendered artifact reviewed: YES
+operator disposition:          LOCKED
+material changes requested:    NONE
+visual-design decisions locked: NONE
 ```
 
-Do not render B10 Preparation as baseline before B01 is `LOCKED`, unless the operator explicitly authorizes parallel progression. B10 additionally requires its bounded P6 study before rendering.
+The operator lock covers B01 structure and state hierarchy only. It does not choose final metrics, typography, colors, visual component treatment or a new Product capability.
+
+## 7. B10 — Preparation — P6 NEXT
+
+**Homes:** R10.  
+**Status:** `NOT RENDERED` — bounded P6 reference study must complete first.  
+**P6:** TRIGGERED.  
+**P7:** CONDITIONAL after P6.
+
+B10 must support one complete human job without hidden source authority:
+
+```text
+exact Organization + Marketplace Installation
+→ search admitted source products
+→ select exact SourceInstance + native product key
+→ inspect readiness + publication requirements
+→ resolve/clear correspondence when needed and authorized
+→ re-read readiness
+→ continue to ListingIntent only when the current state permits
+```
+
+The real structural uncertainty is whether this search-first, multi-source, readiness-and-resolution task is best represented as:
+
+```text
+split-view / master-detail
+progressive detail inside one workspace
+list/search → dedicated detail state
+```
+
+P6 must study mature products solving analogous catalog-diagnostics/readiness tasks and extract task-pattern evidence rather than visual fashion. If two or more materially credible structures remain after the bounded study, P7 opens; otherwise record why one pattern is sufficient.
+
+Do **not** render B10 HTML until P6 has a durable result and any required P7 adjudication is complete.
