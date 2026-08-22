@@ -9,17 +9,18 @@
 | Field | Current value |
 | --- | --- |
 | Product | **Marketplace Operations Control Plane + Commercial Intelligence** |
-| Current stage | **D7 — Runtime / Jobs / Transactions — OPEN / ACTIVE** |
+| Current stage | **D7 — Runtime / Jobs / Transactions — OPEN / ACTIVE — CLOSEOUT RATIFIED / INTEGRATION PENDING** |
 | Accepted baseline | **D0–D6 ACCEPTED / CLOSED** |
-| D7 authority | [D7 Runtime / Jobs / Transactions](engineering/rebaseline/D7-RUNTIME-JOBS-TRANSACTIONS.md) |
+| D7 authority | [D7 Runtime / Jobs / Transactions](engineering/rebaseline/D7-RUNTIME-JOBS-TRANSACTIONS.md) — **ACCEPTED / CLOSED authority pending integration** |
 | D7-A→D7-E | **OPERATOR-RATIFIED** |
-| D7-R1 | **Whole-stage coherence corrections — FABLE REVIEWED / GPT ADJUDICATED / BOUNDED FIX APPLIED** — [authority candidate](engineering/rebaseline/D7-R1-WHOLE-STAGE-COHERENCE.md) |
-| Whole-D7 review | **CONVERGED / POST-FIX GATE GREEN / OPERATOR CLOSEOUT PENDING** |
+| D7-R1 | **OPERATOR-RATIFIED / ACCEPTED** — [authority](engineering/rebaseline/D7-R1-WHOLE-STAGE-COHERENCE.md) |
+| Whole-D7 review | **COMPLETE / CONVERGED** |
+| Operator closeout | **APPROVED / RATIFIED — 2026-08-22** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Operator adjudicate/ratify D7 closeout. Do not merge PR #58 or open D8 before that decision.** |
+| Exact next action | **Integrate accepted D7 through PR #58 only after explicit merge authorization; then revalidate `main` and only then transition D8 to NEXT / NOT STARTED.** |
 | Implementation | **BLOCKED UNTIL D9** |
 
 ## Stage progression
@@ -34,12 +35,12 @@
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
 | D5 — API | ACCEPTED / CLOSED |
 | D6 — Frontend | **ACCEPTED / CLOSED** |
-| D7 — Runtime / Jobs / Transactions | **OPEN / ACTIVE — operator closeout pending** |
+| D7 — Runtime / Jobs / Transactions | **OPEN / ACTIVE — CLOSEOUT RATIFIED / PENDING INTEGRATION INTO `main`** |
 | D8 — Golden Flows | BLOCKED |
 | D9 — Adversarial Architecture Review | BLOCKED |
 | Implementation | BLOCKED UNTIL D9 |
 
-## Accepted D7 baseline
+## Accepted D7 authority
 
 ```text
 runtime        one Go process/replica · same-origin · in-process River workers
@@ -53,37 +54,22 @@ bytes          private S3-compatible custody + authenticated Go delivery
 migrations     tern/v2 for MPC schema + version-matched River migration tool for River schema
 observability  JSON slog + OTel traces/metrics over OTLP/HTTP
 deploy         immutable OCI image behind trusted TLS edge
-recovery       PITR/restore proof + affirmative continuity witness + fail-closed recovery fence
+recovery       PITR/restore + affirmative out-of-rollback continuity witness + fail-closed recovery fence
 ```
 
-Detailed laws, exclusions and proof contracts remain in the D7 owners.
+Whole-stage internal review and isolated Fable challenge converged without reopening D0–D6. The sole blocking Fable finding — automatic recovery-fence arming after database rollback — was incorporated into D7-R1 and passed the post-fix repository gate. Fable's `chi-server` proof suggestion and bootstrap-budget note remain non-blocking.
 
-## Whole-D7 review result
+## Integration boundary
 
-Internal review produced five bounded D7-R1 seams. Independent Fable review returned **ACCEPT WITH BOUNDED FIXES** and found one Important gap: the PITR recovery fence was correct once engaged but lacked deterministic automatic arming after rollback. GPT accepted only that blocking finding.
+Operator ratification accepts D7 as target runtime authority and proof contract, but does **not** by itself authorize Git merge. PR #58 remains the sole D7 integration vehicle.
 
-D7-R1 now requires timeline continuity to be affirmatively proved using an out-of-rollback-domain witness. Absence, mismatch or unverifiable continuity automatically keeps consequential dispatch fenced; ordinary application boot after PITR cannot depend on a manual restore flag. The eventual implementation proof must exercise that unarmed-restore path.
+Until D7 lands in `main`:
 
-Fable's other findings are non-blocking: optional future `chi-server` generation proof and bootstrap-budget hygiene. No D0–D6 reopen or D7 reconstruction is required. Product remains 99/30/H-A-S; Sankhya remains API-Gateway-only; Product implementation remains blocked.
+- keep the mutable program stage at D7 integration;
+- keep D8 and D9 blocked;
+- keep Product implementation blocked;
+- do not stack D8 work on the unmerged D7 branch.
 
-Post-fix candidate proof at `42c208abdc320538f9222ccb1ccc4d09705f6577` was green before this status-only closeout-routing update:
-
-```text
-Product                     99/99
-Permissions                 30/30
-Principal kinds             H/A/S
-Performance controls        7/7
-Auth controls               5/5
-TS + Go projections         PASS
-legacy runtime population   0
-bootstrap                   18409 / 20480
-gate                        PASS
-```
-
-## Closeout boundary
-
-No reviewer output authorizes closeout. D7 remains OPEN until explicit operator ratification.
-
-After operator approval, update/merge the D7 authority coherently and only then may the roadmap open D8. D9 and Product implementation remain blocked.
+After an authorized merge, revalidate `main`, PRs and branches first. Only then may the roadmap record D7 as integrated `ACCEPTED / CLOSED` and D8 as `NEXT / NOT STARTED`.
 
 One coherent gate lands before the next. For task-specific reading, return to [`index.md`](index.md).
