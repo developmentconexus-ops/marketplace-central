@@ -83,7 +83,7 @@ backup     PostgreSQL base backup + WAL/PITR or managed equivalent + restore pro
 proof      real PostgreSQL/River/Keycloak/browser/router/object-store seams
 ```
 
-The candidate closes D5's `{id}:verb` router constraint and runtime OAD validation without another handwritten Product route/DTO/Permission authority. It keeps private binary bytes out of public buckets and uses no CDN baseline. Provider/Sankhya/OTLP degradation does not automatically make the whole app unready.
+The candidate closes D5's `{id}:verb` router constraint and runtime OAD validation without another handwritten Product route/DTO/Permission authority. Private binary bytes remain outside public buckets and use no CDN baseline. Provider/Sankhya/OTLP degradation does not automatically make the whole app unready.
 
 No Kubernetes/service mesh, Redis, broker, mandatory Collector/Prometheus/ELK stack, Vault dependency, hot config, ORM auto-schema, startup auto-migration, public/persistent presigned object URLs, multi-region or generic IaC platform is admitted.
 
