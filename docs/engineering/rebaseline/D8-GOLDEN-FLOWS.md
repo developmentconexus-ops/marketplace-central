@@ -12,6 +12,8 @@ D8 defines the smallest set of representative **golden flows** needed to prove t
 
 D8 owns flow selection, choreography and proof expectations only. It does **not** reopen accepted Product operations, Permissions, Principal kinds, semantic owners, provider contracts, frontend authority or D7 runtime mechanisms by convenience, and it does not begin Product implementation.
 
+Post-review proof-closure corrections live in [D8-R1 Proof Closure & Implementation-Readiness Coherence](D8-R1-PROOF-CLOSURE-COHERENCE.md). Operator-authorized external execution follows [D8 Controlled Live Probe Protocol](D8-LIVE-PROBE-PROTOCOL.md).
+
 ## 2. Accepted baseline
 
 ```text
@@ -55,7 +57,7 @@ D8 may use:
 - deterministic repository proof;
 - bounded real external-system probes explicitly deferred to D8 by accepted D4 authority.
 
-D4 deferred the first controlled real Mercado Livre publication/write proof and selected Sankhya fiscal/destination progression proof to D8. Those probes require separate explicit operator authorization before any live consequential write. They are external-contract evidence, not a Product-runtime implementation.
+D4 deferred the first controlled real Mercado Livre publication/write proof and selected Sankhya fiscal/destination progression proof to D8. The operator authorized bounded execution on 2026-08-22. Execution still obeys the exact preflight, blast-radius, no-blind-retry and evidence rules in [D8 Controlled Live Probe Protocol](D8-LIVE-PROBE-PROTOCOL.md); authorization is not permission to widen a probe or bypass a failed provider prerequisite.
 
 ### 4.2 Post-D9 implementation conformance
 
@@ -127,7 +129,7 @@ At minimum the proof matrix must be capable of falsifying:
 
 ## 5.5 D8 real external gate
 
-Accepted D4-R1 specifically leaves the **first controlled real Mercado Livre creation/write** to D8. When separately authorized, the probe must include authoritative reread plus shared-User-Product blast-radius verification and must not be used to infer a Product-runtime PASS.
+Accepted D4-R1 specifically leaves the **first controlled real Mercado Livre creation/write** to D8. The operator has authorized bounded execution; the probe must follow `D8-LIVE-PROBE-PROTOCOL.md`, include authoritative reread plus shared-User-Product blast-radius verification, and must not be used to infer a Product-runtime PASS.
 
 ---
 
@@ -211,14 +213,11 @@ GF-02 must preserve all of the following:
 | post-sale refund + reverse shipment | one consequence falsely closes the other |
 | Work close | source-domain condition declared resolved only because Work closed |
 
+[D8-R1](D8-R1-PROOF-CLOSURE-COHERENCE.md) adds the required cross-cutting Governance-currentness variant without creating another golden flow.
+
 ## 6.6 D8 real external gates
 
-Accepted D4 leaves two related first-lane proofs to D8 when separately authorized:
-
-- controlled Destination Realization showing Party/master correctness, progression/invoicing survival, fiscal/XML correctness and no unrelated-state corruption;
-- first selected-lane sanctioned `TOP 313 → TOP 306` fiscal effect with authoritative reread/correlation.
-
-These are irreversible/legal external effects and require explicit operator authorization separate from approval of this architecture document.
+Accepted D4 leaves the controlled Destination Realization, selected-lane fiscal/invoice/label progression and first `TOP 313 → TOP 306` effect to D8. The operator authorized bounded execution; each receives an independent verdict even when one qualifying real Sale safely carries several probes. Exact execution follows `D8-LIVE-PROBE-PROTOCOL.md`.
 
 ---
 
@@ -318,13 +317,13 @@ These controls apply to the selected flows and do not create additional business
 
 | Control | Binding D8 expectation |
 | --- | --- |
-| **Product surface conservation** | remains exactly **99 Product operations / 30 ordinary Permissions / H-A-S only**; a required operation 100 or Permission 31 is a material finding, not an implementation convenience |
+| **Product surface conservation** | remains exactly **99 Product operations / 30 ordinary Permissions / H-A-S only** under the current authority; after a legitimate bounded reopen, D8-R1 requires re-baselining/revalidating affected flows against the then-current accepted surface |
 | **Organization isolation** | path Organization is explicit; secondary references fail closed; eventual implementation must falsify omitted predicates, composite-FK crossing and pooled-scope leakage with real PostgreSQL/RLS |
 | **Authentication / ordinary access** | H session+CSRF and A/S bearer remain distinct; Permission, Principal kind, physical qualification, business disposition and Governance are non-equivalent gates |
 | **Canonical wire / frontend** | every externally invokable step maps to canonical OAD authority; frontend may compose reads but never invent DTO, route, Product operation or cross-owner write authority |
 | **Idempotency / concurrency** | exact replay, changed-fingerprint rejection, opaque revision semantics and stale-precondition behavior survive UI/network retry paths |
 | **Durable external effects** | owner state/handoff atomicity, dispatch marker, possible acceptance→reconciliation and no blind redispatch remain binding; River/job state is mechanism only |
-| **Governance / Work** | Governance authorizes but never executes the target; Work coordinates responsibility but never becomes source truth or generic command bus |
+| **Governance / Work** | Governance authorizes but never executes the target; Work coordinates responsibility but never becomes source truth or generic command bus; D8-R1 supplies the concrete currentness variant |
 | **Knowledge honesty** | unknown/partial/unavailable/unsupported/known-zero stay distinct wherever material; provider/source provenance and freshness are not reconstructed by UI convenience |
 | **Technical exclusion** | no Direct Oracle fallback, generic provider/plugin/workflow authority, Product Ads management, screen-shaped API or generic retry/recovery Product surface appears |
 
@@ -384,9 +383,11 @@ D8 close
 
 D6-R2 is a targeted realization-completeness reopen, not a redesign by preference.
 
+D8-R1 additionally requires bounded revalidation of any affected golden flow if D6-R2/readiness legitimately changes accepted material authority before D9.
+
 ## 12.3 D6-R2 minimum obligations
 
-D6-R2 must derive from current 99/30 + D7 authority rather than from a visual-first exercise. For every material user surface it must close, proportionately:
+D6-R2 must derive from current accepted Product + D7 authority rather than from a visual-first exercise. For every material user surface it must close, proportionately:
 
 ```text
 accepted Product capability / user job
@@ -426,23 +427,9 @@ The implementation may choose local/private mechanics that do not alter accepted
 
 ## 12.5 Import/dependency graph becomes an implementation acceptance property
 
-Accepted D6 direction remains conceptually:
+The complete closed-world dependency direction remains owned by **D6 Frontend §9.4**. D8 does not restate a second authoritative subset. D6-R2/readiness must consume the complete accepted graph and prohibitions, then convert material first-party import directions into enforceable default-deny acceptance when the source tree exists.
 
-```text
-app/routes
-    ↓
-features
-    ↓
-api/<owner-family>
-    ↓
-api/transport
-    ↓
-api/generated
-
-features → ui
-```
-
-The pre-D9 readiness contract must convert material dependency directions into enforceable acceptance rules rather than rely only on prose. Representative forbidden edges include feature-owned raw Product fetches, feature→generated bypass, generic UI→API authority and reverse dependencies from lower transport/generated layers into feature/application semantics.
+Representative defects to reject include feature-owned raw Product fetches, feature→generated bypass, generic UI→API authority and reverse dependencies from transport/generated layers into feature/application semantics. Exact enforcement tool remains implementation-local until a real source tree exists.
 
 ## 12.6 D9 entry challenge
 
@@ -469,10 +456,11 @@ new Permission               NONE
 Product implementation       BLOCKED
 D9                            BLOCKED
 post-D8 realization finding  D6-R2 + Pre-D9 Implementation Readiness Contract
+live external probes         OPERATOR-AUTHORIZED / EXECUTION PENDING
 ```
 
-**Candidate outcome:** `CURRENT STRUCTURE CONFIRMED` with an implementation-readiness completion prerequisite before D9.
+**Candidate outcome:** `CURRENT STRUCTURE CONFIRMED` with D8 live external proof still open and implementation-readiness completion required before D9.
 
 ## 14. Exact next action
 
-**Independently challenge this derived D8 candidate, then adjudicate only material findings against current authority. Do not begin D6-R2, D9 or Product implementation. Do not execute a live Mercado Livre or irreversible Sankhya write without separate explicit operator authorization.**
+**Execute and record the operator-authorized D8 live probes through `D8-LIVE-PROBE-PROTOCOL.md`. Do not begin D6-R2, D9 or Product implementation until D8 closes.**
