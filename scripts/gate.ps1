@@ -202,9 +202,9 @@ $roadmapMarkers = @(
     'D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL',
     'D5 — API | ACCEPTED / CLOSED',
     'D6 — Frontend | **ACCEPTED / CLOSED',
-    'D7 — Runtime / Jobs / Transactions — OPEN / ACTIVE',
-    'D7 — Runtime / Jobs / Transactions | **OPEN / ACTIVE',
-    'D8 — Golden Flows | BLOCKED',
+    'D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED',
+    'D8 — Golden Flows — CLOSEOUT RATIFIED / INTEGRATION PENDING',
+    'D8 — Golden Flows | **ACCEPTED / CLOSED',
     'D9 — Adversarial Architecture Review | BLOCKED',
     'Canonical Product OAD',
     'contracts/api/product/openapi.yaml',
@@ -220,7 +220,7 @@ foreach ($marker in $roadmapMarkers) {
     if (-not $roadmap.Contains($marker)) { Fail "docs/roadmap.md is missing required current truth: $marker" }
 }
 
-foreach ($forbidden in @('D5 — API — OPEN / ACTIVE', 'D5 — API — ACCEPTED / CLOSED', 'D6 — Frontend — OPEN / ACTIVE', 'D7 — Runtime / Jobs / Transactions — OPEN / ACTIVE', 'Exact next action', '<!-- program-status-authority -->')) {
+foreach ($forbidden in @('D5 — API — OPEN / ACTIVE', 'D5 — API — ACCEPTED / CLOSED', 'D6 — Frontend — OPEN / ACTIVE', 'D7 — Runtime / Jobs / Transactions — OPEN / ACTIVE', 'D8 — Golden Flows — OPEN / ACTIVE', 'Exact next action', '<!-- program-status-authority -->')) {
     if ($index.Contains($forbidden)) { Fail "docs/index.md duplicates mutable roadmap state: $forbidden" }
     if ($readme.Contains($forbidden)) { Fail "README.md is not landing-only: $forbidden" }
     if ($agent.Contains($forbidden)) { Fail "AGENTS.md duplicates mutable roadmap state: $forbidden" }
