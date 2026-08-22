@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Marketplace Central — D6-R2 B00 App Shell</title>
+  <style>
+    :root {
+      --paper: #ffffff;
+      --canvas: #f3f3f3;
+      --ink: #111111;
+      --muted: #666666;
+      --line: #bdbdbd;
+      --soft: #e5e5e5;
+      --sidebar: 264px;
+      --header: 64px;
+      --space: 24px;
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--canvas);
+      font: 14px/1.4 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    button, select { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    .prototype-bar {
+      min-height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--ink);
+      background: var(--paper);
+      font-size: 12px;
+    }
+    .prototype-bar strong { letter-spacing: .04em; }
+    .prototype-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .prototype-controls select,
+    .prototype-controls button {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      padding: 5px 8px;
+    }
+    .app {
+      min-height: calc(100vh - 38px);
+      display: grid;
+      grid-template-columns: var(--sidebar) minmax(0, 1fr);
+    }
+    .sidebar {
+      position: sticky;
+      top: 38px;
+      height: calc(100vh - 38px);
+      overflow: auto;
+      border-right: 1px solid var(--ink);
+      background: var(--paper);
+      padding: 18px 14px 14px;
+    }
+    .brand {
+      padding: 3px 8px 14px;
+      font-size: 17px;
+      font-weight: 800;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 14px;
+    }
+    .organization-block { padding: 0 6px 14px; border-bottom: 1px solid var(--line); }
+    .label { display: block; color: var(--muted); font-size: 11px; margin-bottom: 5px; }
+    .organization-select,
+    .installation-select {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--ink);
+      background: var(--paper);
+      padding: 7px 9px;
+    }
+    .nav-group { margin-top: 17px; }
+    .group-label {
+      margin: 0 7px 5px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+    .nav-item {
+      width: 100%;
+      min-height: 36px;
+      border: 0;
+      background: transparent;
+      text-align: left;
+      padding: 8px 9px;
+    }
+    .nav-item:hover { outline: 1px solid var(--line); outline-offset: -1px; }
+    .nav-item.active { background: var(--ink); color: var(--paper); }
+    .nav-item.sub { padding-left: 27px; font-size: 13px; }
+    .sidebar-measure {
+      margin: 22px 6px 0;
+      padding-top: 10px;
+      border-top: 1px dashed var(--line);
+      color: var(--muted);
+      font: 11px ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+    .main { min-width: 0; min-height: calc(100vh - 38px); background: var(--paper); }
+    .header {
+      min-height: var(--header);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(260px, 420px);
+      gap: 20px;
+      align-items: center;
+      padding: 10px var(--space);
+      border-bottom: 1px solid var(--ink);
+      background: var(--paper);
+      position: sticky;
+      top: 38px;
+      z-index: 3;
+    }
+    .title-row { min-width: 0; display: flex; align-items: center; gap: 12px; }
+    .menu-toggle {
+      display: none;
+      width: 38px;
+      height: 36px;
+      border: 1px solid var(--ink);
+      background: var(--paper);
+    }
+    .page-title { margin: 0; font-size: 18px; font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .local-context { min-width: 0; }
+    .context-empty {
+      min-height: 38px;
+      border: 1px dashed var(--line);
+      color: var(--muted);
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .content {
+      padding: 28px var(--space) 40px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+    .structural-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+      color: var(--muted);
+      font: 11px ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+    .structural-meta span { border: 1px solid var(--line); padding: 4px 6px; }
+    .page-frame {
+      border: 1px dashed var(--ink);
+      min-height: 590px;
+      padding: 20px;
+      background: var(--paper);
+    }
+    .page-frame h1 { margin: 0 0 7px; font-size: 24px; }
+    .page-frame p { max-width: 760px; margin: 0; color: var(--muted); }
+    .content-host {
+      margin-top: 24px;
+      min-height: 405px;
+      border: 1px dashed var(--line);
+      display: grid;
+      place-items: center;
+      padding: 28px;
+      text-align: center;
+      color: var(--muted);
+    }
+    .content-host strong { display: block; color: var(--ink); margin-bottom: 8px; }
+    .state-box {
+      margin-top: 20px;
+      border: 2px solid var(--ink);
+      padding: 18px;
+      max-width: 760px;
+      background: var(--paper);
+    }
+    .state-box h2 { margin: 0 0 6px; font-size: 17px; }
+    .state-box p { margin: 0; color: var(--muted); }
+    .context-law {
+      margin-top: 18px;
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .drawer-backdrop { display: none; }
+    .hidden { display: none !important; }
+
+    @media (max-width: 1020px) {
+      :root { --sidebar: 210px; --space: 20px; }
+      .sidebar { padding-left: 10px; padding-right: 10px; }
+      .brand { font-size: 14px; }
+      .header { grid-template-columns: minmax(0, 1fr) minmax(220px, 330px); }
+      .sidebar-measure::after { content: " · tablet baseline"; }
+    }
+
+    @media (max-width: 760px) {
+      :root { --space: 14px; --header: 58px; }
+      .prototype-bar { align-items: flex-start; flex-direction: column; }
+      .app { display: block; }
+      .sidebar {
+        position: fixed;
+        z-index: 20;
+        top: 0;
+        left: 0;
+        width: min(86vw, 310px);
+        height: 100vh;
+        transform: translateX(-105%);
+        transition: transform .12s linear;
+        border-right: 1px solid var(--ink);
+      }
+      body.drawer-open .sidebar { transform: translateX(0); }
+      .drawer-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.18);
+        z-index: 19;
+      }
+      body.drawer-open .drawer-backdrop { display: block; }
+      .header {
+        position: sticky;
+        top: 0;
+        grid-template-columns: 1fr;
+        gap: 7px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+      }
+      .menu-toggle { display: inline-grid; place-items: center; }
+      .page-title { font-size: 16px; }
+      .local-context { padding-left: 50px; }
+      .content { padding-top: 18px; }
+      .page-frame { min-height: 480px; }
+      .sidebar-measure { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="prototype-bar" aria-label="Controles exclusivos do protótipo">
+    <div><strong>D6-R2 · P8 · B00 · CANDIDATE</strong> — wireframe estrutural executável; sem decisões de visual design.</div>
+    <div class="prototype-controls">
+      <label for="scenario">Cenário</label>
+      <select id="scenario">
+        <option value="normal">Normal</option>
+        <option value="no-org">Sem Organização acessível</option>
+        <option value="stale-org">Deep link de Organização inválida</option>
+      </select>
+      <button type="button" id="reset">Restaurar</button>
+    </div>
+  </div>
+
+  <div class="drawer-backdrop" id="drawerBackdrop" aria-hidden="true"></div>
+
+  <div class="app">
+    <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
+      <div class="brand">Marketplace Central</div>
+
+      <div class="organization-block">
+        <label class="label" for="organization">Organização · workspace global</label>
+        <select id="organization" class="organization-select">
+          <option value="org-a">Organização Exemplo A</option>
+          <option value="org-b">Organização Exemplo B</option>
+        </select>
+      </div>
+
+      <nav id="nav">
+        <div class="nav-group">
+          <div class="group-label">Visão geral</div>
+          <button class="nav-item active" data-page="overview" data-title="Visão geral" data-context="organization">Visão geral</button>
+        </div>
+
+        <div class="nav-group">
+          <div class="group-label">Operações</div>
+          <button class="nav-item" data-page="preparation" data-title="Preparação" data-context="exact">Preparação</button>
+          <button class="nav-item" data-page="publications" data-title="Publicações" data-context="exact">Publicações</button>
+          <button class="nav-item" data-page="availability" data-title="Disponibilidade" data-context="all-or-exact">Disponibilidade</button>
+          <button class="nav-item" data-page="sales" data-title="Vendas" data-context="exact">Vendas</button>
+          <button class="nav-item" data-page="fulfillment" data-title="Expedição" data-context="all-or-exact">Expedição</button>
+          <button class="nav-item" data-page="post-sale" data-title="Pós-venda" data-context="all-or-exact">Pós-venda</button>
+        </div>
+
+        <div class="nav-group">
+          <div class="group-label">Estratégia e inteligência</div>
+          <button class="nav-item" data-page="performance" data-title="Performance" data-context="exact">Performance</button>
+          <button class="nav-item sub" data-page="performance-summary" data-title="Performance · Resumo" data-context="exact">Resumo</button>
+          <button class="nav-item sub" data-page="performance-publications" data-title="Performance · Publicações" data-context="exact">Publicações</button>
+          <button class="nav-item sub" data-page="performance-media" data-title="Performance · Mídia" data-context="exact">Mídia</button>
+          <button class="nav-item" data-page="market" data-title="Mercado" data-context="all-or-exact">Mercado</button>
+          <button class="nav-item" data-page="economics" data-title="Economia" data-context="all-or-exact">Economia</button>
+        </div>
+
+        <div class="nav-group">
+          <div class="group-label">Controle</div>
+          <button class="nav-item" data-page="work" data-title="Trabalho" data-context="organization">Trabalho</button>
+          <button class="nav-item" data-page="approvals" data-title="Aprovações" data-context="organization">Aprovações</button>
+        </div>
+
+        <div class="nav-group">
+          <div class="group-label">Configurações</div>
+          <button class="nav-item" data-page="settings" data-title="Configurações" data-context="organization">Configurações</button>
+        </div>
+      </nav>
+
+      <div class="sidebar-measure">desktop sidebar ≈ 264px · persistent</div>
+    </aside>
+
+    <main class="main">
+      <header class="header">
+        <div class="title-row">
+          <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir navegação">☰</button>
+          <h1 class="page-title" id="pageTitle">Visão geral</h1>
+        </div>
+        <div class="local-context" id="localContext">
+          <div class="context-empty">Sem contexto de marketplace nesta rota</div>
+        </div>
+      </header>
+
+      <div class="content">
+        <div class="structural-meta" aria-label="Medidas estruturais candidatas">
+          <span>desktop baseline ≥ 1200px</span>
+          <span>header ≈ 64px</span>
+          <span>content padding ≈ 24px</span>
+          <span>sidebar persistent</span>
+          <span>tablet collapsible</span>
+          <span>mobile drawer</span>
+        </div>
+
+        <section class="page-frame" id="pageFrame" aria-live="polite">
+          <h1 id="frameTitle">Visão geral</h1>
+          <p id="frameDescription">B00 prova apenas o shell global. A composição e a prioridade de conteúdo desta página pertencem aos blocos posteriores.</p>
+
+          <div class="state-box hidden" id="blockedState">
+            <h2 id="blockedTitle">Contexto indisponível</h2>
+            <p id="blockedMessage">O shell deve falhar explicitamente em vez de escolher um contexto por conveniência.</p>
+          </div>
+
+          <div class="content-host" id="contentHost">
+            <div>
+              <strong>PAGE-OWNED CONTENT HOST</strong>
+              Layout interno, cards, tabelas, formulários, KPIs e hierarquia visual estão fora do B00.
+            </div>
+          </div>
+
+          <div class="context-law" id="contextLaw">
+            Regra B00: Organização é o único workspace global. Contexto de conta do marketplace aparece somente quando a rota o admite/requer e nunca substitui autoridade do servidor.
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      const nav = document.getElementById('nav');
+      const pageTitle = document.getElementById('pageTitle');
+      const frameTitle = document.getElementById('frameTitle');
+      const frameDescription = document.getElementById('frameDescription');
+      const localContext = document.getElementById('localContext');
+      const organization = document.getElementById('organization');
+      const scenario = document.getElementById('scenario');
+      const blockedState = document.getElementById('blockedState');
+      const blockedTitle = document.getElementById('blockedTitle');
+      const blockedMessage = document.getElementById('blockedMessage');
+      const contentHost = document.getElementById('contentHost');
+      const menuToggle = document.getElementById('menuToggle');
+      const drawerBackdrop = document.getElementById('drawerBackdrop');
+      const reset = document.getElementById('reset');
+
+      let active = nav.querySelector('.nav-item.active');
+      let installationValue = '';
+
+      const descriptionByPage = {
+        overview: 'B00 prova apenas o shell global. A composição e a prioridade de conteúdo desta página pertencem aos blocos posteriores.',
+        preparation: 'A rota exige conta exata; o shell deve hospedar esse contexto local sem transformar a conta em workspace global.',
+        publications: 'A rota exige conta exata; a navegação global permanece estável enquanto o contexto local muda.',
+        sales: 'A rota exige conta exata e preserva identidade source-qualified; B00 não desenha o detalhe da Venda.',
+        performance: 'Performance exige conta exata. Resumo, Publicações e Mídia permanecem subnavegação aceita.',
+        'performance-summary': 'Performance exige conta exata. B00 prova a localização da subnavegação, não o layout analítico.',
+        'performance-publications': 'Performance exige conta exata. O conteúdo analítico será decidido em bloco posterior.',
+        'performance-media': 'Performance exige conta exata. Nenhum controle de Ads nasce neste shell.',
+        availability: 'A rota admite visão ampla ou uma conta exata. B00 prova o host contextual, não filtros nem tabela.',
+        fulfillment: 'Expedição admite contexto amplo ou exato conforme a subrota. B00 não cria WMS/TMS global.',
+        'post-sale': 'Pós-venda admite contexto amplo ou exato conforme a operação. O shell não cria autoridade de caso genérico.',
+        market: 'Mercado admite contexto amplo ou exato quando aplicável. A lente permanece separada de Performance e Economia.',
+        economics: 'Economia admite contexto amplo ou exato quando aplicável. O shell não cria autoridade Strategy/Analytics.',
+        work: 'Trabalho é organization-wide e continua coordenação, não source truth.',
+        approvals: 'Aprovações é organization-wide e não executa a ação governada.',
+        settings: 'Configurações é agrupamento UX de baixa frequência, nunca semantic owner.'
+      };
+
+      function renderLocalContext(mode) {
+        localContext.innerHTML = '';
+        if (mode === 'organization') {
+          const box = document.createElement('div');
+          box.className = 'context-empty';
+          box.textContent = 'Sem contexto de marketplace nesta rota';
+          localContext.appendChild(box);
+          installationValue = '';
+          return;
+        }
+
+        const wrap = document.createElement('div');
+        const label = document.createElement('label');
+        label.className = 'label';
+        label.setAttribute('for', 'installation');
+        label.textContent = mode === 'exact' ? 'Conta do marketplace · obrigatória nesta rota' : 'Conta do marketplace · filtro contextual opcional';
+
+        const select = document.createElement('select');
+        select.id = 'installation';
+        select.className = 'installation-select';
+
+        if (mode === 'all-or-exact') {
+          select.add(new Option('Todas as contas admitidas pela consulta', 'all'));
+        } else {
+          select.add(new Option('Selecione uma conta…', ''));
+        }
+        select.add(new Option('Mercado Livre · Conta A (exemplo)', 'ml-a'));
+        select.add(new Option('Mercado Livre · Conta B (exemplo)', 'ml-b'));
+
+        select.value = mode === 'all-or-exact' ? (installationValue || 'all') : installationValue;
+        select.addEventListener('change', () => {
+          installationValue = select.value;
+          renderPage();
+        });
+
+        wrap.append(label, select);
+        localContext.appendChild(wrap);
+      }
+
+      function setBlocked(title, message, blocked) {
+        blockedTitle.textContent = title;
+        blockedMessage.textContent = message;
+        blockedState.classList.toggle('hidden', !blocked);
+        contentHost.classList.toggle('hidden', blocked);
+      }
+
+      function renderPage() {
+        const mode = active.dataset.context;
+        const page = active.dataset.page;
+        pageTitle.textContent = active.dataset.title;
+        frameTitle.textContent = active.dataset.title;
+        frameDescription.textContent = descriptionByPage[page] || 'B00 prova somente a posição desta rota no shell global e seu contexto local.';
+
+        if (scenario.value === 'no-org') {
+          setBlocked('Sem Organização acessível', 'Nenhuma rota de negócio recebe contexto implícito. O shell apresenta o estado bloqueado até existir autoridade de acesso válida.', true);
+          localContext.innerHTML = '<div class="context-empty">Contexto local indisponível sem Organização válida</div>';
+          return;
+        }
+
+        if (scenario.value === 'stale-org') {
+          setBlocked('Organização do deep link não é válida para o acesso atual', 'O shell não troca silenciosamente para outra Organização. O usuário deve escolher explicitamente um workspace atualmente acessível.', true);
+          localContext.innerHTML = '<div class="context-empty">Deep link rejeitado / re-resolver acesso</div>';
+          return;
+        }
+
+        renderLocalContext(mode);
+
+        if (mode === 'exact' && !installationValue) {
+          setBlocked('Selecione uma conta do marketplace', 'Esta rota exige uma Marketplace Installation exata. Nenhuma primeira conta/default é escolhida automaticamente.', true);
+        } else {
+          setBlocked('', '', false);
+        }
+      }
+
+      function activate(button) {
+        active.classList.remove('active');
+        active = button;
+        active.classList.add('active');
+        installationValue = '';
+        renderPage();
+        document.body.classList.remove('drawer-open');
+      }
+
+      nav.addEventListener('click', event => {
+        const button = event.target.closest('.nav-item');
+        if (!button) return;
+        activate(button);
+      });
+
+      organization.addEventListener('change', () => {
+        installationValue = '';
+        renderPage();
+      });
+
+      scenario.addEventListener('change', renderPage);
+      menuToggle.addEventListener('click', () => document.body.classList.toggle('drawer-open'));
+      drawerBackdrop.addEventListener('click', () => document.body.classList.remove('drawer-open'));
+      reset.addEventListener('click', () => {
+        scenario.value = 'normal';
+        organization.value = 'org-a';
+        installationValue = '';
+        activate(nav.querySelector('[data-page="overview"]'));
+      });
+
+      renderPage();
+    })();
+  </script>
+</body>
+</html>
