@@ -31,16 +31,14 @@
 | D3 — Communication / Events | ACCEPTED / CLOSED |
 | D4 — External Integrations | ACCEPTED / CLOSED |
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
-| D5 — API | ACCEPTED / CLOSED — bounded D5-R1 browser-auth carrier correction integrated and proved through D6 |
+| D5 — API | ACCEPTED / CLOSED |
 | D6 — Frontend | **ACCEPTED / CLOSED** |
-| D7 — Runtime / Jobs / Transactions | **OPEN / ACTIVE — D7-A operator-ratified; D7-B candidate pending operator ratification** |
+| D7 — Runtime / Jobs / Transactions | **OPEN / ACTIVE — D7-A ratified; D7-B candidate** |
 | D8 — Golden Flows | BLOCKED |
 | D9 — Adversarial Architecture Review | BLOCKED |
 | Implementation | BLOCKED UNTIL D9 |
 
-## Accepted input to D7
-
-D7 inherits, without reopening by preference:
+## D7 accepted inputs
 
 ```text
 Product operations     99
@@ -52,61 +50,30 @@ PostgreSQL             canonical MPC-owned state store
 active runtime         NONE
 ```
 
-Human/machine authentication remains:
+Human browser authentication remains server-side OIDC → Secure HttpOnly application session + CSRF; A/S remain Client Credentials bearer clients. D7 realizes mechanics only and may not move Product/frontend/business authority.
 
-```text
-H browser  -> server-side OIDC login -> Secure HttpOnly application session + CSRF on unsafe requests
-A / S      -> Client Credentials -> audience-bound bearer
-```
+## D7-A accepted
 
-Frontend realization remains React + TypeScript strict, TanStack Query, TanStack Router, `openapi-typescript` and `openapi-fetch`; D7 realizes the server/runtime side without moving Product or frontend authority.
-
-## D7 boundary
-
-D7 owns technical realization for serving/process topology, PostgreSQL structural Organization isolation and transaction boundaries, durable jobs/scheduling/outbox/effect handoff, session/CSRF/OIDC and machine-token mechanics, secrets, observability, migrations and deployment topology required by the admitted transports.
-
-D7 must preserve Organization isolation, owner-defined Q/C/E/P meaning, Product idempotency/ETag/Problem grammar, no-blind-retry/reconciliation, provider protocol isolation, sanctioned Sankhya API Gateway, human session + CSRF, A/S bearer separation and honest unknown/partial/unavailable state.
-
-Pre-vetted candidates such as modular-monolith class, pgx/pgxpool, PostgreSQL RLS, River, OpenTelemetry/OTLP/slog, sqlc, tern, Keycloak and real-dependency test tooling remain candidates until their exact D7 slice establishes a current consumer/property.
-
-## D7-A accepted authority
-
-The operator ratified the minimum runtime envelope:
-
-```text
-one Go application process per replica
-  -> same-origin frontend/static delivery
-  -> Product API boundary
-  -> Technical Non-Product Ingress boundary
-  -> H session/CSRF/OIDC mediation
-  -> in-process durable worker runner
-  -> PostgreSQL
-```
-
-Owner consequential command intake uses one owner-local PostgreSQL transaction for canonical owner state plus required idempotency/audit/durable-handoff records. External writes happen only after commit and convergence remains authoritative-reread/reconciliation-driven. Cross-owner business state is never updated through a distributed/shared transaction.
-
-Separate API/worker processes are deferred until measured resource/failure/scaling/security/deployment evidence requires them; microservices remain rejected absent an independent consumer. River remains a D7-C candidate, not a D7-A dependency selection.
+One Go application process per replica hosts same-origin delivery, Product API, Technical Ingress, human session mediation and in-process durable-worker runner over PostgreSQL. Owner consequential intake commits only owner state plus required technical correctness records; external writes happen after commit. No distributed business transaction spans semantic owners.
 
 ## D7-B candidate
 
-The current D7-B candidate combines complementary structural controls rather than relying on one tenant mechanism:
+[D7-B](engineering/rebaseline/D7-B-POSTGRESQL-ISOLATION-TRANSACTIONS.md) proposes:
 
 ```text
-explicit organization_id on organization-owned rows
-+ composite (organization_id, id) referential integrity
+organization_id on org-owned state/evidence
++ composite Organization FKs
 + transaction-local scope
 + PostgreSQL ENABLE/FORCE RLS
-+ runtime role: non-owner / NOSUPERUSER / NOBYPASSRLS
++ non-owner / NOSUPERUSER / NOBYPASSRLS runtime role
++ READ COMMITTED + explicit row locking
++ opaque random owner revision token
++ org+operation-scoped idempotency record
++ pgx/v5 + pgxpool
 ```
 
-All scoped database work runs inside an explicit transaction so Organization/Principal/technical-routing scope is transaction-local and cannot leak through pooled connection reuse. Organization business/evidence tables accept only exact Organization scope; principal-self and technical-routing are bounded platform modes for `/access-context` and technical bootstrap only.
+Principal-self and technical-routing modes are bounded bootstrap exceptions, never generic cross-tenant business access. Real PostgreSQL negative proof is required for RLS, scope reset, FK isolation, worker scope, revision concurrency and idempotency. ORM/repository abstraction, database-per-Organization, role-per-Organization, global `SERIALIZABLE` and database portability are rejected absent a consumer; `sqlc` and `tern` remain deferred.
 
-The candidate uses `READ COMMITTED` by default with explicit row locking/constraints for protected owner mutations; global `SERIALIZABLE` is rejected without a concrete invariant requiring its retry cost. Strong Product ETags map to persisted opaque random owner revision tokens and never expose `xmin`, counters or timestamps. Required idempotency uses an organization + operation scoped technical record with a semantic fingerprint and exact replay/result correlation in the owner transaction.
-
-`pgx/v5` + `pgxpool` is the candidate direct PostgreSQL primitive. Generic ORM/repository abstraction and database portability are rejected; `sqlc` remains deferred until concrete queries exist and `tern` remains D7-E migration mechanism territory.
-
-D7-B requires real PostgreSQL negative proof for RLS, scope reset, composite FK isolation, worker scope, concurrency, ETag and idempotency before ratification/closeout claims. Mocks are insufficient for those properties.
-
-D8–D9 remain blocked. Product implementation remains blocked until D9. Reopen accepted D0–D6 authority only for a material falsifier at the smallest owning stage.
+D8–D9 remain blocked. Product implementation remains blocked until D9. Reopen D0–D6 only for a material falsifier at the smallest owner.
 
 One coherent gate lands before the next. For task-specific reading, return to [`index.md`](index.md).
