@@ -1,6 +1,6 @@
 # D6-R2 P8 — Structural Wireframe Block Ledger
 
-> **Status:** OPEN / ACTIVE — B00 + B01 operator-`LOCKED`; B10 bounded P6 is NEXT
+> **Status:** OPEN / ACTIVE — B00 + B01 operator-`LOCKED`; B10 P6 DERIVED; P7 NOT TRIGGERED; B10 render is NEXT
 > **Parent:** [D6-R2 Complete Frontend Realization Closure](D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md)
 > **P5 input:** [Complete Screen / Material-Surface Inventory](D6-R2-P5-SCREEN-SURFACE-INVENTORY.md)
 > **Method:** [Frontend Product Experience Planning Method v2.1](../../development/frontend-product-experience-planning-method.md)
@@ -226,12 +226,12 @@ visual-design decisions locked: NONE
 
 The operator lock covers B01 structure and state hierarchy only. It does not choose final metrics, typography, colors, visual component treatment or a new Product capability.
 
-## 7. B10 — Preparation — P6 NEXT
+## 7. B10 — Preparation
 
 **Homes:** R10.  
-**Status:** `NOT RENDERED` — bounded P6 reference study must complete first.  
-**P6:** TRIGGERED.  
-**P7:** CONDITIONAL after P6.
+**Status:** `READY TO RENDER CANDIDATE` — bounded P6 complete; P7 not triggered.  
+**P6:** [DERIVED](D6-R2-P6-B10-PREPARATION-REFERENCE-STUDY.md).  
+**P7:** NOT TRIGGERED.
 
 B10 must support one complete human job without hidden source authority:
 
@@ -242,17 +242,50 @@ exact Organization + Marketplace Installation
 → inspect readiness + publication requirements
 → resolve/clear correspondence when needed and authorized
 → re-read readiness
-→ continue to ListingIntent only when the current state permits
+→ continue to ListingIntent only when current state permits
 ```
 
-The real structural uncertainty is whether this search-first, multi-source, readiness-and-resolution task is best represented as:
+P6 studied Google Merchant Center, Akeneo, Amazon Seller Central and Mirakl/Lowe's catalog-validation patterns. The evidence converged on **collection/search triage → selected exact-subject detail** for material diagnosis/correction.
+
+### 7.1 Candidate basis selected by P6
 
 ```text
-split-view / master-detail
-progressive detail inside one workspace
-list/search → dedicated detail state
+SEARCH MODE
+├─ exact Installation page context
+├─ search input
+├─ optional explicit SourceInstance narrowing
+└─ structured result list
+   ├─ source-product presentation
+   ├─ SourceInstance + native key
+   ├─ compact readiness state
+   ├─ requirements/correspondence signal when known
+   └─ open preparation
+
+SELECTED-SUBJECT MODE
+├─ exact source identity
+├─ readiness / knowledge state
+├─ publication requirements
+├─ correspondence state + admitted resolve/clear
+├─ explicit re-read/revalidation after consequential resolution
+└─ continuation to ListingIntent when current state permits
 ```
 
-P6 must study mature products solving analogous catalog-diagnostics/readiness tasks and extract task-pattern evidence rather than visual fashion. If two or more materially credible structures remain after the bounded study, P7 opens; otherwise record why one pattern is sufficient.
+A permanent split-view is not baseline: no evidence proves high-frequency product cycling, detail can be deep, and responsive behavior would collapse it anyway. Full inline expansion is also rejected for the material detail because exact identity, requirements, correspondence and recovery need durable selected-subject context.
 
-Do **not** render B10 HTML until P6 has a durable result and any required P7 adjudication is complete.
+### 7.2 B10 negative controls
+
+```text
+hidden/default SourceInstance
+first search result silently selected
+Marketplace Installation used as ambient authority
+source product edited as MPC master data
+provider write exposed from Readiness
+frontend-invented readiness percentage/health score
+known-empty collapsed into unknown/unavailable/unsupported
+correspondence resolution represented as generic product edit
+bulk preparation/actions invented without authority/evidence
+```
+
+## 8. Exact next action
+
+Render exactly one executable low-fi HTML B10 `CANDIDATE` from the P6-selected basis. Preserve B00 shell and exact Installation context. Do not introduce P7 alternatives or visual-design decisions. After render, require explicit operator review before B20.
