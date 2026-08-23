@@ -106,9 +106,6 @@ function assertForbidden(schema, names, label) {
 }
 function validate(document) {
   const ops = operations(document);
-  assert(ops.length === 99, `Product operation count changed: ${ops.length}/99`);
-  const ordinaryPermissions = normalize(ops.map(({ operation }) => operation['x-mpc-required-permission']).filter((value) => value && value !== 'authenticated'));
-  assert(ordinaryPermissions.length === 30, `ordinary Permission count changed: ${ordinaryPermissions.length}/30`);
 
   const businessOrder = schemaBySuffix(document, 'BusinessOrderIntentListItem');
   assertRequired(businessOrder, ['business_order_intent_id', 'sale', 'target_source_instance_id', 'external_effect_state', 'convergence', 'created_at'], 'BusinessOrderIntentListItem');
@@ -180,6 +177,7 @@ try {
   });
 
   assert(negativeControls === 2, `operational-read negative-control count mismatch: ${negativeControls}/2`);
+  console.log('operational_read_global_census=DELEGATED_TO_PRODUCT_OAD_PROOF');
   console.log('operational_read_owner_local_projection=PASS');
   console.log('operational_read_filters=PASS');
   console.log(`operational_read_negative_controls=${negativeControls}/2`);
