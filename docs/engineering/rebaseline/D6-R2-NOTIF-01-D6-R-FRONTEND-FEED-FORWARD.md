@@ -1,9 +1,9 @@
 # NOTIF-01 D6-R — Frontend Feed-Forward
 
-> **Status:** OPERATOR-APPROVED DESIGN / WRITTEN-SPEC REVIEW PENDING / P8 NOT LOCKED
-> **Operator approval:** 2026-08-23 — approved the Global-Maximum structural direction derived in chat before artifact authoring
+> **Status:** OPERATOR-APPROVED DESIGN + WRITTEN SPEC / P8 B00-R2 RENDERED CANDIDATE / VISUAL ADJUDICATION REQUIRED
+> **Operator approval:** 2026-08-23 — approved the Global-Maximum structural direction and subsequently approved this written spec before B00-R2 artifact authoring
 > **Parent authority:** [D5-R4 Canonical Product OAD Wire Proof](D6-R2-NOTIF-01-D5-R4-OAD-WIRE-PROOF.md) + [Notification Architecture Design](D6-R2-NOTIF-01-NOTIFICATION-ARCHITECTURE-DESIGN.md) + [Frontend Product Experience Planning Method v2.1](../../development/frontend-product-experience-planning-method.md)
-> **Existing frontend authority:** [D6-R2 P8 Block Ledger](D6-R2-P8-BLOCK-LEDGER.md) — B00/B01 operator-`LOCKED`; B10 suspended
+> **Existing frontend authority:** [D6-R2 P8 Block Ledger](D6-R2-P8-BLOCK-LEDGER.md) — B00/B01 operator-`LOCKED`; B00-R2 rendered candidate; B10 suspended
 > **Product wire:** 104 Product operations · 31 ordinary Permissions · Principal kinds H/A/S
 > **Implementation:** BLOCKED UNTIL accepted D9
 
@@ -116,6 +116,8 @@ A material filtered/paginated awareness surface should not depend on overlay lif
 It overstates awareness as a primary product domain in the mental model and fragments ten small fixed routing slots into unnecessary navigation/route mass.
 
 ## 5. B00-R2 — bounded topbar utility-slot reopen
+
+**Rendered P8 candidate:** [`qualification/d6-r2-wireframes/b00-r2-notifications.html`](../../../qualification/d6-r2-wireframes/b00-r2-notifications.html) — executable low-fidelity HTML; **not operator-`LOCKED` yet**.
 
 The B00 physical/context shell remains binding:
 
@@ -448,21 +450,21 @@ silent resurrection of historically ineligible bindings
 new Product API merely to simplify one screen
 ```
 
-## 16. P8 block order after written-spec review
+## 16. P8 block order after written-spec approval
 
-The next rendered work must be sequential and operator-reviewed:
+Rendered work is sequential and operator-reviewed:
 
 ```text
-B00-R2  topbar bell + preview integration
+B00-R2  topbar bell + preview integration       RENDERED CANDIDATE
   ↓ operator visual adjudication / LOCK or revision
-B11     full personal Inbox
+B11     full personal Inbox                    NOT RENDERED
   ↓ operator visual adjudication / LOCK or revision
-B12     Configurações > Notificações
+B12     Configurações > Notificações           NOT RENDERED
   ↓ operator visual adjudication / LOCK or revision
 P9 exact Screen Contracts / bidirectional wire trace
 ```
 
-The first P8 artifact is executable low-fidelity HTML, not an image or visual-design comp.
+P8 artifacts are executable low-fidelity HTML, not images or visual-design comps.
 
 No later block becomes baseline before the current material block is operator-`LOCKED`, unless the operator explicitly authorizes parallel candidate work.
 
@@ -471,11 +473,12 @@ No later block becomes baseline before the current material block is operator-`L
 ```text
 D5-R4 canonical OAD                      PROVED / CANONICAL 104/31
 D6-R structural direction                OPERATOR-APPROVED
-D6-R written spec                         REVIEW PENDING
-P8 B00-R2                                 NOT RENDERED / NOT LOCKED
+D6-R written spec                         OPERATOR-APPROVED
+P8 B00-R2                                 RENDERED CANDIDATE / NOT LOCKED
+B11 / B12                                 NOT RENDERED
 D7-R                                      BLOCKED BY D6-R
 D8-R                                      BLOCKED BY D7-R
 Product implementation                    BLOCKED UNTIL D9
 ```
 
-**Exact next action:** operator reviews this written D6-R record. If unchanged, render only the first P8 block, B00-R2 topbar bell + bounded recent-Inbox preview, as executable low-fidelity HTML for visual adjudication. Do not render B11/B12 as baseline, begin D7-R/D8-R, merge PR #61 or implement Product code first.
+**Exact next action:** operator visually adjudicates only the rendered B00-R2 topbar bell + bounded recent-Inbox preview. Do not render B11/B12 as baseline, begin D7-R/D8-R, resume B10, merge PR #61 or implement Product code before this visual gate closes, unless the operator explicitly authorizes parallel candidate work.
