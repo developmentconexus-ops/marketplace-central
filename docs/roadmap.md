@@ -12,12 +12,12 @@
 | Current stage | **D6-R2 — Complete Frontend Realization Closure — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | D6-R2 | [Closure](engineering/rebaseline/D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md) + [P4-R1](engineering/rebaseline/D6-R2-P4-R1-GLOBAL-IA-OPERATIONAL-MASS-REOPEN.md) + [P8](engineering/rebaseline/D6-R2-P8-BLOCK-LEDGER.md) — **B00/B01 LOCKED; B10 SUSPENDED** |
-| NOTIF-01 | [D0-R](engineering/rebaseline/D6-R2-NOTIF-01-D0-R-TRIGGER-SCOPE-CORRECTION.md) **ACCEPTED** · [D1-R](engineering/rebaseline/D6-R2-NOTIF-01-D1-R-PRODUCER-ROUTING-BOUNDARY-CORRECTION.md) + [Semantic Closure](engineering/rebaseline/D6-R2-NOTIF-01-D1-R-SEMANTIC-CLOSURE.md) **FINAL CANDIDATE / VERIFIED** |
+| NOTIF-01 | [D0-R](engineering/rebaseline/D6-R2-NOTIF-01-D0-R-TRIGGER-SCOPE-CORRECTION.md) **ACCEPTED** · [D1-R](engineering/rebaseline/D6-R2-NOTIF-01-D1-R-SEMANTIC-CLOSURE.md) **ACCEPTED** · [D2-R](engineering/rebaseline/D6-R2-NOTIF-01-D2-R-IDENTITY-DATA-OWNERSHIP.md) **CANDIDATE** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Operator adjudicates final NOTIF-01 D1-R. Do not begin D2-R/D3/OAD/B00/B10 first.** |
+| Exact next action | **Operator adjudicates only NOTIF-01 D2-R identity/data ownership. Do not open D3/OAD/B00/B10 first.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -27,8 +27,8 @@
 | Stage / gate | Status |
 | --- | --- |
 | D0 — Product / System Definition | ACCEPTED / CLOSED; **NOTIF-01 D0-R ACCEPTED** |
-| D1 — Domains / Boundaries | ACCEPTED / CLOSED; **NOTIF-01 D1-R FINAL CANDIDATE / VERIFIED** |
-| D2 — Identity / Tenant / Data Ownership | ACCEPTED / CLOSED; **NOTIF-01 prior candidate SUSPENDED / D2-R BLOCKED** |
+| D1 — Domains / Boundaries | ACCEPTED / CLOSED; **NOTIF-01 D1-R ACCEPTED** |
+| D2 — Identity / Tenant / Data Ownership | ACCEPTED / CLOSED; **NOTIF-01 D2-R CANDIDATE** |
 | D3 — Communication / Events | ACCEPTED / CLOSED; NOTIF-01 reopen BLOCKED |
 | D4 — External Integrations | ACCEPTED / CLOSED |
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
@@ -38,18 +38,17 @@
 | D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED** |
 | D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED** |
 | D8-R2 — GF-02 Operational Read Revalidation | **ACCEPTED / PASS** |
-| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00/B01 LOCKED; B10 SUSPENDED; NOTIF-01 D1-R final gate** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00/B01 LOCKED; B10 SUSPENDED; NOTIF-01 D2-R gate** |
 | Pre-D9 readiness | **BLOCKED** |
 | D9 — Adversarial Architecture Review | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
 
 ## Current result
 
-- H3, Trigger/Audience Census, D0-R and all 14 family semantic contracts are operator-approved.
-- D1-R final candidate: **10 explicit producer edges → 14 awareness families → one Personal Notifications owner**.
-- DIRECT_SOURCE and OWNER_DERIVED recipient meaning stays with producers; ORG_ROUTED exact-human configuration belongs to Personal Notifications.
-- Two bounded per-recipient suppression laws only: source alert→assigned Work; Sale attention→richer Post-Sale continuation for the same consequence/recipient.
-- No `AnyDomain` fan-out, Permission-implied responsibility, hidden subtype routing, generic subscription/dedup DSL, broker or Product implementation.
+- H3, census, D0-R, 14 family contracts and D1-R are operator-approved.
+- D2-R candidate: opaque NotificationID; exact Organization/human recipient; stable kinds; closed typed source union; owner-local occurrence key; truthful source time; read/archive lifecycle; `(Organization, NotificationKind)` routing; two bounded suppression correlations.
+- `AUTHORIZATION_ACTION_REQUIRED` uses pending `AuthorizationTargetRef`; `AUTHORIZATION_DECISION_RESULT` uses `AuthorizationDecisionRef`.
+- No universal entity/Event/Reconciliation ID, synthetic Sale/Shipment ID, Permission-implied routing, generic payload/dedup DSL, broker or Product implementation.
 
 ```text
 D6-R2 → Pre-D9 readiness → D9 → Product implementation only after accepted D9
