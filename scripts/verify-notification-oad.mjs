@@ -37,6 +37,18 @@ const ORG_ROUTED_KINDS = [
   'SHIPMENT_EXCEPTION',
   'POST_SALE_ATTENTION',
 ];
+const SOURCE_READ_ELIGIBILITY = {
+  MARKETPLACE_INSTALLATION_ATTENTION: 'portfolio.read',
+  AVAILABILITY_ATTENTION: 'availability.read',
+  ECONOMIC_RECONCILIATION_ATTENTION: 'economics.read',
+  NEW_MARKETPLACE_SALE: 'sales.read',
+  SALE_ATTENTION: 'sales.read',
+  MATERIALIZATION_ATTENTION: 'materialization.read',
+  FULFILLMENT_ACTIONABLE: 'fulfillment.read',
+  FULFILLMENT_ATTENTION: 'fulfillment.read',
+  SHIPMENT_EXCEPTION: 'fulfillment.read',
+  POST_SALE_ATTENTION: 'post_sale.read',
+};
 const NOTIFICATION_IDS = [
   'ListMyNotifications',
   'UpdateMyNotificationAwarenessState',
@@ -53,6 +65,11 @@ function normalize(values) { return [...new Set(values)].sort(); }
 function sameSet(actual, expected, label) {
   const a = normalize(actual);
   const e = normalize(expected);
+  assert(JSON.stringify(a) === JSON.stringify(e), `${label} mismatch\nactual=${JSON.stringify(a)}\nexpected=${JSON.stringify(e)}`);
+}
+function sameObject(actual, expected, label) {
+  const a = Object.fromEntries(Object.entries(actual ?? {}).sort(([left], [right]) => left.localeCompare(right)));
+  const e = Object.fromEntries(Object.entries(expected ?? {}).sort(([left], [right]) => left.localeCompare(right)));
   assert(JSON.stringify(a) === JSON.stringify(e), `${label} mismatch\nactual=${JSON.stringify(a)}\nexpected=${JSON.stringify(e)}`);
 }
 function run(command, args) {
@@ -156,8 +173,13 @@ function validate(document) {
   assert(setRoute.operation['x-mpc-semantic-owner'] === 'PersonalNotifications', 'SetNotificationRoute owner must be PersonalNotifications');
   assert(candidates.operation['x-mpc-semantic-owner'] === 'IdentityAccess', 'recipient candidate owner must be IdentityAccess');
 
-  for (const entry of [listMine, updateMine]) assert(entry.operation['x-mpc-required-permission'] === 'authenticated', `${entry.operation.operationId} must have no ordinary Permission`);
+  for (const entry of [listMine, updateMine]) {
+    assert(entry.operation['x-mpc-required-permission'] === 'authenticated', `${entry.operation.operationId} must have no ordinary Permission`);
+    assert(entry.operation['x-mpc-self-recipient'] === true, `${entry.operation.operationId} must remain exact self-recipient`);
+    assert(entry.operation['x-mpc-require-current-organization-membership'] === true, `${entry.operation.operationId} must require current Organization Membership`);
+  }
   for (const entry of [listRoutes, candidates, setRoute]) assert(entry.operation['x-mpc-required-permission'] === 'notifications.manage', `${entry.operation.operationId} must require notifications.manage`);
+  sameObject(setRoute.operation['x-mpc-route-recipient-source-read-eligibility'], SOURCE_READ_ELIGIBILITY, 'SetNotificationRoute source-read eligibility');
 
   const ordinaryPermissions = normalize(all.map((entry) => entry.operation['x-mpc-required-permission']).filter((value) => value !== 'authenticated'));
   assert(ordinaryPermissions.length === 31, `ordinary Permission vocabulary must be 31, found ${ordinaryPermissions.length}`);
@@ -242,15 +264,20 @@ function negativeProof(document) {
     byId(operations(candidate), 'UpdateMyNotificationAwarenessState').operation.parameters.push({ name: 'Idempotency-Key', in: 'header', required: true, schema: { type: 'string' } });
   });
   expectFailure('notifications.read appears', document, (candidate) => {
-    const all = operations(candidate);
-    byId(all, 'ListMyNotifications').operation['x-mpc-required-permission'] = 'notifications.read';
+    byId(operations(candidate), 'ListMyNotifications').operation['x-mpc-required-permission'] = 'notifications.read';
   });
   expectFailure('F14 points to decision identity', document, (candidate) => {
     const notification = schemaBySuffix(candidate, 'Notification');
     const f14 = branchByKind(candidate, notification, 'AUTHORIZATION_DECISION_RESULT');
     f14.properties.source_ref = { type: 'object', properties: { authorization_decision_id: { type: 'string' } } };
   });
-  assert(negativeControls === 6, `NOTIF-01 negative-control count must be 6, found ${negativeControls}`);
+  expectFailure('self Inbox loses exact-recipient law', document, (candidate) => {
+    byId(operations(candidate), 'ListMyNotifications').operation['x-mpc-self-recipient'] = false;
+  });
+  expectFailure('route source-read eligibility drifts', document, (candidate) => {
+    byId(operations(candidate), 'SetNotificationRoute').operation['x-mpc-route-recipient-source-read-eligibility'].POST_SALE_ATTENTION = 'sales.read';
+  });
+  assert(negativeControls === 8, `NOTIF-01 negative-control count must be 8, found ${negativeControls}`);
 }
 
 try {
@@ -262,7 +289,7 @@ try {
   negativeProof(document);
   console.log(`notification_oad_operations=${result.all.length}/104`);
   console.log(`notification_oad_permissions=${result.ordinaryPermissions.length}/31`);
-  console.log(`notification_oad_negative_controls=${negativeControls}/6`);
+  console.log(`notification_oad_negative_controls=${negativeControls}/8`);
   console.log('notification_oad=PASS');
 } finally {
   rmSync(temp, { recursive: true, force: true });
