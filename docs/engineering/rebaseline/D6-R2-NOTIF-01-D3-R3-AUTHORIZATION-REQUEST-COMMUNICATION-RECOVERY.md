@@ -228,7 +228,7 @@ Binding laws:
 - never fall back to all admins, all `governance.decide` holders, Organization owner, request initiator or routing configuration;
 - never fabricate a F13 recipient;
 - unavailable eligibility resolution is not known-empty;
-- a persistently blocking known-empty condition is a Governance-owned material actionable condition, not a silent queue state.
+- a known-empty set that blocks the required human authorization path is a Governance-owned material actionable condition; D3 does not invent a grace-period, default recipient or timeout to make the condition disappear.
 
 D0 requires material actionable conditions not to become ownerless. Governance therefore feeds the already-accepted domain → Operational Work boundary:
 
