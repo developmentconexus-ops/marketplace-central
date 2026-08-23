@@ -12,12 +12,12 @@
 | Current stage | **D6-R2 — Complete Frontend Realization Closure — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | D6-R2 | [Closure](engineering/rebaseline/D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md) + [P4-R1](engineering/rebaseline/D6-R2-P4-R1-GLOBAL-IA-OPERATIONAL-MASS-REOPEN.md) + [P8](engineering/rebaseline/D6-R2-P8-BLOCK-LEDGER.md) + [B10 P6](engineering/rebaseline/D6-R2-P6-B10-PREPARATION-REFERENCE-STUDY.md) — **B00/B01/B00-R2/B11/B12 LOCKED; B10 SUSPENDED; NOTIF-01 P9 OPEN / BLOCKED BY P9-F1** |
-| NOTIF-01 | D0-R→D5-R4 accepted/proved; [D6-R](engineering/rebaseline/D6-R2-NOTIF-01-D6-R-FRONTEND-FEED-FORWARD.md) spec approved; [P8 ratification](engineering/rebaseline/D6-R2-NOTIF-01-D6-R-P8-RATIFICATION.md) **OPERATOR-RATIFIED**; [P9-F1](engineering/rebaseline/D6-R2-NOTIF-01-D6-R-P9-F1-ACTIONABLE-GOVERNANCE-CONTEXT.md) **MATERIAL FALSIFIER / OPERATOR ADJUDICATION REQUIRED** |
+| NOTIF-01 | [D2-R3](engineering/rebaseline/D6-R2-NOTIF-01-D2-R3-RATIFICATION.md) + [D2-R4](engineering/rebaseline/D6-R2-NOTIF-01-D2-R4-RATIFICATION.md) + [D2-R5](engineering/rebaseline/D6-R2-NOTIF-01-D2-R5-RATIFICATION.md) **ACCEPTED** · [D3-R](engineering/rebaseline/D6-R2-NOTIF-01-D3-R-RATIFICATION.md) **ACCEPTED** · [D3-R1](engineering/rebaseline/D6-R2-NOTIF-01-D3-R1-PRESENTATION-FEED-FORWARD-REVALIDATION.md) + [D3-R2](engineering/rebaseline/D6-R2-NOTIF-01-D3-R2-TYPED-RESULT-CONTINUATION-FEED-FORWARD.md) **PASS** · [D5-F4](engineering/rebaseline/D6-R2-NOTIF-01-D5-F4-RECIPIENT-DISCOVERY-GLOBAL-MAXIMUM.md) + [D5-R3](engineering/rebaseline/D6-R2-NOTIF-01-D5-R3-RATIFICATION.md) **OPERATOR-RATIFIED** · [D5-R4](engineering/rebaseline/D6-R2-NOTIF-01-D5-R4-OAD-WIRE-PROOF.md) **PROVED** · [D6-R](engineering/rebaseline/D6-R2-NOTIF-01-D6-R-FRONTEND-FEED-FORWARD.md) + [P8 ratification](engineering/rebaseline/D6-R2-NOTIF-01-D6-R-P8-RATIFICATION.md) **APPROVED/LOCKED** · [P9-F1](engineering/rebaseline/D6-R2-NOTIF-01-D6-R-P9-F1-ACTIONABLE-GOVERNANCE-CONTEXT.md) **MATERIAL FALSIFIER / OPERATOR ADJUDICATION REQUIRED** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **104 Product operations · 31 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Operator adjudicates only NOTIF-01 P9-F1: add one purpose-bounded Governance actionable-authorization projection for current human decision principals, reusable by `/aprovacoes` and F13. Canonical OAD remains 104/31 until ratified. Do not freeze P9, begin D7-R/D8-R, resume B10 or implement Product code first.** |
+| Exact next action | **Operator adjudicates only NOTIF-01 P9-F1: one purpose-bounded Governance actionable-authorization projection for current human decision principals, reused by `/aprovacoes` and F13. OAD remains 104/31 until ratified. Do not freeze P9, begin D7-R/D8-R, resume B10 or implement Product code first.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -25,7 +25,7 @@
 ## Stage progression
 
 | Stage / gate | Status |
-| ---| --- |
+| --- | --- |
 | D0 — Product / System Definition | ACCEPTED / CLOSED; NOTIF-01 D0-R ACCEPTED |
 | D1 — Domains / Boundaries | ACCEPTED / CLOSED; NOTIF-01 D1-R ACCEPTED |
 | D2 — Identity / Tenant / Data Ownership | ACCEPTED / CLOSED; NOTIF-01 D2-R/R2/R3/R4/R5 ACCEPTED |
@@ -46,10 +46,10 @@
 ## Current result
 
 - Canonical OAD remains **104/31**; historical 95/29 + 99/30 proof remains intact.
-- B00-R2, B11 and B12 are operator-`LOCKED`; their reviewed HTML snapshots remain unchanged evidence.
-- P9 trace exposed a real Governance operability gap: `AUTHORIZATION_ACTION_REQUIRED` carries target identity, while `CreateAuthorizationDecision` requires exact current target revision and no current actionable-decision read exists.
+- B00-R2, B11 and B12 are operator-`LOCKED`; reviewed HTML snapshots remain unchanged evidence.
+- P9 found a Governance operability gap: F13 carries target identity, while `CreateAuthorizationDecision` requires exact current target revision and no current actionable-decision read exists.
 - W4 keeps `governance.decide`, `governance.read` and target-owner reads independent; hidden Permission implication is forbidden.
-- P9-F1 recommends one H-only `governance.decide` purpose-bounded read/projection, provisionally `ListMyActionableAuthorizations`; if ratified, the smallest Product consequence is **105 operations / 31 Permissions**.
+- P9-F1 recommends one H-only `governance.decide` purpose-bounded projection, provisionally `ListMyActionableAuthorizations`; if ratified, consequence is **105 operations / 31 Permissions**.
 - No P8 layout reopen is required. D7-R/D8-R and Product implementation remain blocked.
 
 ```text
