@@ -44,6 +44,20 @@ paths:
     $ref: './paths-access-performance.yaml#/pathItems/AssignAccessRole'
   '/organizations/{organization_id}/members/{principal_id}:revoke-access-role':
     $ref: './paths-access-performance.yaml#/pathItems/RevokeAccessRole'
+
+  # NOTIF-01 paths start
+  '/organizations/{organization_id}/notifications':
+    $ref: './paths-notifications.yaml#/pathItems/MyNotifications'
+  '/organizations/{organization_id}/notifications/{notification_id}':
+    $ref: './paths-notifications.yaml#/pathItems/MyNotification'
+  '/organizations/{organization_id}/notification-routes':
+    $ref: './paths-notifications.yaml#/pathItems/NotificationRoutes'
+  '/organizations/{organization_id}/notification-routes/{notification_kind}':
+    $ref: './paths-notifications.yaml#/pathItems/NotificationRoute'
+  '/organizations/{organization_id}/notification-route-recipient-candidates':
+    $ref: './paths-notifications.yaml#/pathItems/NotificationRouteRecipientCandidates'
+  # NOTIF-01 paths end
+
   '/organizations/{organization_id}/marketplace-installations':
     $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/MarketplaceInstallations'
   '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}':
