@@ -1,9 +1,9 @@
 # NOTIF-01 D6-R — Frontend Feed-Forward
 
-> **Status:** OPERATOR-APPROVED DESIGN + WRITTEN SPEC / P8 B00-R2 + B11 OPERATOR-`LOCKED` / B12 NEXT
+> **Status:** OPERATOR-APPROVED DESIGN + WRITTEN SPEC / P8 B00-R2 + B11 OPERATOR-`LOCKED` / B12 RENDERED CANDIDATE / VISUAL ADJUDICATION REQUIRED
 > **Operator approval:** 2026-08-23 — approved the Global-Maximum structural direction, approved this written spec before artifact authoring, visually `LOCKED` B00-R2 after rendered HTML review, and visually `LOCKED` B11 after rendered full-Inbox review
 > **Parent authority:** [D5-R4 Canonical Product OAD Wire Proof](D6-R2-NOTIF-01-D5-R4-OAD-WIRE-PROOF.md) + [Notification Architecture Design](D6-R2-NOTIF-01-NOTIFICATION-ARCHITECTURE-DESIGN.md) + [Frontend Product Experience Planning Method v2.1](../../development/frontend-product-experience-planning-method.md)
-> **Existing frontend authority:** [D6-R2 P8 Block Ledger](D6-R2-P8-BLOCK-LEDGER.md) — B00/B01/B00-R2/B11 operator-`LOCKED`; B10 suspended; B12 next
+> **Existing frontend authority:** [D6-R2 P8 Block Ledger](D6-R2-P8-BLOCK-LEDGER.md) — B00/B01/B00-R2/B11 operator-`LOCKED`; B10 suspended; B12 rendered candidate
 > **Product wire:** 104 Product operations · 31 ordinary Permissions · Principal kinds H/A/S
 > **Implementation:** BLOCKED UNTIL accepted D9
 
@@ -274,6 +274,8 @@ Unavailable never renders as known-empty.
 
 ## 8. Configurações > Notificações
 
+**Rendered P8 candidate:** [`qualification/d6-r2-wireframes/b12-notification-routing-settings.html`](../../../qualification/d6-r2-wireframes/b12-notification-routing-settings.html) — executable low-fidelity HTML; **not operator-`LOCKED` yet**.
+
 ### 8.1 Access and placement
 
 The routing-settings destination is visible/usable only when current access includes `notifications.manage`.
@@ -461,7 +463,7 @@ B00-R2  topbar bell + preview integration       LOCKED
   ↓
 B11     full personal Inbox                    LOCKED
   ↓
-B12     Configurações > Notificações           NEXT / NOT RENDERED
+B12     Configurações > Notificações           RENDERED CANDIDATE
   ↓ operator visual adjudication / LOCK or revision
 P9 exact Screen Contracts / bidirectional wire trace
 ```
@@ -478,10 +480,10 @@ D6-R structural direction                OPERATOR-APPROVED
 D6-R written spec                         OPERATOR-APPROVED
 P8 B00-R2                                 OPERATOR-LOCKED
 P8 B11                                    OPERATOR-LOCKED
-P8 B12                                    NEXT / NOT RENDERED
+P8 B12                                    RENDERED CANDIDATE / NOT LOCKED
 D7-R                                      BLOCKED BY D6-R
 D8-R                                      BLOCKED BY D7-R
 Product implementation                    BLOCKED UNTIL D9
 ```
 
-**Exact next action:** render only B12 — `Configurações > Notificações` routing Settings — as executable low-fidelity HTML for operator visual adjudication, inheriting locked B00/B00-R2/B11 structure. Do not begin D7-R/D8-R, resume B10, merge PR #61 or implement Product code before B12 closes, unless the operator explicitly authorizes parallel candidate work.
+**Exact next action:** operator visually adjudicates only B12 — `Configurações > Notificações` routing Settings — from the rendered executable low-fidelity HTML. Do not begin D7-R/D8-R, resume B10, merge PR #61 or implement Product code before B12 closes, unless the operator explicitly authorizes parallel candidate work.
