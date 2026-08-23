@@ -1,0 +1,907 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Marketplace Central — D6-R2 B11 Personal Inbox</title>
+  <style>
+    :root {
+      --paper: #ffffff;
+      --canvas: #f3f3f3;
+      --ink: #111111;
+      --muted: #666666;
+      --line: #bdbdbd;
+      --soft: #e8e8e8;
+      --sidebar: 264px;
+      --header: 64px;
+      --space: 24px;
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--canvas);
+      font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    button, select { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+    .hidden { display: none !important; }
+
+    .prototype-bar {
+      min-height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--ink);
+      background: var(--paper);
+      font-size: 12px;
+    }
+    .prototype-bar strong { letter-spacing: .04em; }
+    .prototype-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .prototype-controls select,
+    .prototype-controls button {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      padding: 5px 8px;
+    }
+
+    .app {
+      min-height: calc(100vh - 38px);
+      display: grid;
+      grid-template-columns: var(--sidebar) minmax(0, 1fr);
+    }
+    .sidebar {
+      position: sticky;
+      top: 38px;
+      height: calc(100vh - 38px);
+      overflow: auto;
+      border-right: 1px solid var(--ink);
+      background: var(--paper);
+      padding: 18px 14px 14px;
+    }
+    .brand {
+      padding: 3px 8px 14px;
+      font-size: 17px;
+      font-weight: 800;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 14px;
+    }
+    .organization-block { padding: 0 6px 14px; border-bottom: 1px solid var(--line); }
+    .label { display: block; color: var(--muted); font-size: 11px; margin-bottom: 5px; }
+    .organization-select {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--ink);
+      background: var(--paper);
+      padding: 7px 9px;
+    }
+    .nav-group { margin-top: 17px; }
+    .group-label {
+      margin: 0 7px 5px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+    .nav-item {
+      width: 100%;
+      min-height: 36px;
+      border: 0;
+      background: transparent;
+      text-align: left;
+      padding: 8px 9px;
+    }
+    .nav-item:hover { outline: 1px solid var(--line); outline-offset: -1px; }
+    .nav-item.sub { padding-left: 27px; font-size: 13px; }
+    .sidebar-measure {
+      margin: 22px 6px 0;
+      padding-top: 10px;
+      border-top: 1px dashed var(--line);
+      color: var(--muted);
+      font: 11px ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+
+    .main { min-width: 0; min-height: calc(100vh - 38px); background: var(--paper); }
+    .header {
+      min-height: var(--header);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(260px, 420px) auto;
+      gap: 16px;
+      align-items: center;
+      padding: 10px var(--space);
+      border-bottom: 1px solid var(--ink);
+      background: var(--paper);
+      position: sticky;
+      top: 38px;
+      z-index: 10;
+    }
+    .title-row { min-width: 0; display: flex; align-items: center; gap: 12px; }
+    .menu-toggle {
+      display: none;
+      width: 38px;
+      height: 36px;
+      border: 1px solid var(--ink);
+      background: var(--paper);
+    }
+    .page-title { margin: 0; font-size: 18px; font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .local-context { min-width: 0; }
+    .context-empty {
+      min-height: 38px;
+      border: 1px dashed var(--line);
+      color: var(--muted);
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .notification-utility { position: relative; justify-self: end; }
+    .notification-bell {
+      min-width: 74px;
+      min-height: 40px;
+      border: 1px solid var(--ink);
+      background: var(--paper);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 6px 9px;
+    }
+    .bell-presence {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      border: 1px solid var(--ink);
+      background: var(--ink);
+    }
+    .bell-state-text { font-size: 11px; white-space: nowrap; }
+    .mini-preview {
+      position: absolute;
+      top: calc(100% + 9px);
+      right: 0;
+      width: min(360px, calc(100vw - 28px));
+      border: 2px solid var(--ink);
+      background: var(--paper);
+      z-index: 30;
+    }
+    .mini-preview h2 { margin: 0; padding: 12px; font-size: 15px; border-bottom: 1px solid var(--line); }
+    .mini-preview-item { padding: 11px 12px; border-bottom: 1px solid var(--line); }
+    .mini-preview-item strong { display: block; margin-bottom: 3px; }
+    .mini-preview-item span { color: var(--muted); font-size: 12px; }
+    .mini-preview-foot { padding: 10px 12px; color: var(--muted); font-size: 12px; }
+
+    .content {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px var(--space) 48px;
+    }
+    .structural-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 18px;
+      color: var(--muted);
+      font: 11px ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+    .structural-meta span { border: 1px solid var(--line); padding: 4px 6px; }
+
+    .inbox-shell { border: 1px solid var(--ink); background: var(--paper); }
+    .inbox-heading {
+      padding: 22px 22px 18px;
+      border-bottom: 1px solid var(--ink);
+    }
+    .inbox-heading h1 { margin: 0 0 5px; font-size: 25px; }
+    .inbox-heading p { margin: 0; color: var(--muted); max-width: 760px; }
+
+    .filter-stack { border-bottom: 1px solid var(--ink); }
+    .lens-row,
+    .filter-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 12px 18px;
+    }
+    .lens-row { border-bottom: 1px solid var(--line); }
+    .lens-label { color: var(--muted); min-width: 72px; font-size: 12px; }
+    .lens-button {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      padding: 6px 10px;
+    }
+    .lens-button.active { border-color: var(--ink); outline: 1px solid var(--ink); }
+    .filter-row select {
+      min-height: 36px;
+      max-width: 430px;
+      width: min(100%, 430px);
+      border: 1px solid var(--ink);
+      background: var(--paper);
+      padding: 6px 8px;
+    }
+
+    .knowledge-region {
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .knowledge-card {
+      border: 2px solid var(--ink);
+      padding: 18px;
+      background: var(--paper);
+    }
+    .knowledge-card h2 { margin: 0 0 6px; font-size: 17px; }
+    .knowledge-card p { margin: 0; color: var(--muted); }
+
+    .notice {
+      margin: 14px 18px 0;
+      border: 1px solid var(--ink);
+      padding: 11px 12px;
+      background: var(--paper);
+    }
+    .notice strong { display: block; margin-bottom: 3px; }
+    .notice p { margin: 0; color: var(--muted); }
+
+    .inbox-list { list-style: none; margin: 0; padding: 0; }
+    .inbox-item {
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr) auto;
+      gap: 12px;
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .state-marker {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 1px solid var(--ink);
+      margin-top: 5px;
+      background: var(--paper);
+    }
+    .inbox-item.unread .state-marker { background: var(--ink); }
+    .item-main { min-width: 0; }
+    .item-kicker {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .item-kicker .state-word { color: var(--ink); font-weight: 750; }
+    .item-title { margin: 5px 0 4px; font-size: 16px; font-weight: 760; }
+    .item-outcome { margin: 0 0 6px; font-weight: 650; }
+    .item-meta { color: var(--muted); font-size: 12px; }
+    .item-meta span { display: inline-block; margin-right: 12px; }
+    .item-actions {
+      min-width: 150px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      align-items: stretch;
+    }
+    .item-actions button {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      padding: 6px 9px;
+      text-align: left;
+    }
+    .item-actions .primary { border-color: var(--ink); }
+
+    .pagination-region {
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+    #loadMore {
+      min-height: 38px;
+      border: 1px solid var(--ink);
+      background: var(--paper);
+      padding: 7px 14px;
+    }
+    .cursor-note { color: var(--muted); font-size: 11px; }
+
+    .drawer-backdrop { display: none; }
+
+    @media (max-width: 1020px) {
+      :root { --sidebar: 210px; --space: 20px; }
+      .sidebar { padding-left: 10px; padding-right: 10px; }
+      .brand { font-size: 14px; }
+      .header { grid-template-columns: minmax(0, 1fr) minmax(220px, 330px) auto; gap: 12px; }
+      .bell-state-text { display: none; }
+      .notification-bell { min-width: 42px; }
+    }
+
+    @media (max-width: 760px) {
+      :root { --space: 14px; --header: 58px; }
+      .prototype-bar { align-items: flex-start; flex-direction: column; }
+      .app { display: block; }
+      .sidebar {
+        position: fixed;
+        z-index: 40;
+        top: 0;
+        left: 0;
+        width: min(86vw, 310px);
+        height: 100vh;
+        transform: translateX(-105%);
+        transition: transform .12s linear;
+        border-right: 1px solid var(--ink);
+      }
+      body.drawer-open .sidebar { transform: translateX(0); }
+      .drawer-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.18);
+        z-index: 39;
+      }
+      body.drawer-open .drawer-backdrop { display: block; }
+      .header {
+        position: sticky;
+        top: 0;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 7px 10px;
+      }
+      .title-row { grid-column: 1; grid-row: 1; }
+      .notification-utility { grid-column: 2; grid-row: 1; }
+      .local-context { grid-column: 1 / -1; grid-row: 2; padding-left: 50px; }
+      .menu-toggle { display: inline-grid; place-items: center; }
+      .page-title { font-size: 16px; }
+      .content { padding-top: 18px; }
+      .inbox-item {
+        grid-template-columns: 14px minmax(0, 1fr);
+      }
+      .item-actions {
+        grid-column: 2;
+        min-width: 0;
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+      .item-actions button { flex: 1 1 132px; }
+      .filter-row { align-items: flex-start; flex-direction: column; }
+      .filter-row select { max-width: none; }
+      .mini-preview {
+        position: fixed;
+        top: 62px;
+        right: 7px;
+        left: 7px;
+        width: auto;
+      }
+    }
+  </style>
+</head>
+<body
+  data-p8-status="candidate"
+  data-surface="R128"
+  data-representation="structured-list"
+  data-responsive-law="mobile-stacked-inbox-actions"
+  data-not-rendered="B12"
+>
+  <div class="prototype-bar" aria-label="Controles exclusivos do protótipo">
+    <div><strong>D6-R2 · P8 · B11 · CANDIDATE</strong> — full personal Inbox; inherits operator-LOCKED B00/B00-R2.</div>
+    <div class="prototype-controls">
+      <label for="scenario">Cenário</label>
+      <select id="scenario">
+        <option value="populated">Populado</option>
+        <option value="known-empty">Conhecido vazio</option>
+        <option value="request-unavailable">Consulta indisponível</option>
+        <option value="stale-awareness-write">Write de awareness stale</option>
+        <option value="source-access-denied">Origem sem acesso atual</option>
+        <option value="organization-switch">Troca de Organização</option>
+      </select>
+      <button id="resetPrototype" type="button">Restaurar</button>
+    </div>
+  </div>
+
+  <div class="drawer-backdrop" id="drawerBackdrop" aria-hidden="true"></div>
+
+  <div class="app">
+    <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
+      <div class="brand">Marketplace Central</div>
+      <div class="organization-block">
+        <label class="label" for="organization">Organização · workspace global</label>
+        <select id="organization" class="organization-select">
+          <option value="org-a">Organização Exemplo A</option>
+          <option value="org-b">Organização Exemplo B</option>
+        </select>
+      </div>
+
+      <nav id="nav">
+        <div class="nav-group">
+          <div class="group-label">Visão geral</div>
+          <button class="nav-item" type="button">Visão geral</button>
+        </div>
+        <div class="nav-group">
+          <div class="group-label">Oferta</div>
+          <button class="nav-item" type="button">Preparação</button>
+          <button class="nav-item" type="button">Anúncios</button>
+          <button class="nav-item" type="button">Preços</button>
+          <button class="nav-item" type="button">Disponibilidade</button>
+        </div>
+        <div class="nav-group">
+          <div class="group-label">Operação</div>
+          <button class="nav-item" type="button">Visão operacional</button>
+          <button class="nav-item" type="button">Vendas</button>
+          <button class="nav-item" type="button">Expedição</button>
+          <button class="nav-item" type="button">Pós-venda</button>
+        </div>
+        <div class="nav-group">
+          <div class="group-label">Estratégia e inteligência</div>
+          <button class="nav-item" type="button">Performance</button>
+          <button class="nav-item sub" type="button">Resumo</button>
+          <button class="nav-item sub" type="button">Anúncios</button>
+          <button class="nav-item sub" type="button">Mídia</button>
+          <button class="nav-item" type="button">Mercado</button>
+          <button class="nav-item" type="button">Economia</button>
+        </div>
+        <div class="nav-group">
+          <div class="group-label">Controle</div>
+          <button class="nav-item" type="button">Trabalho</button>
+          <button class="nav-item" type="button">Aprovações</button>
+        </div>
+        <div class="nav-group">
+          <div class="group-label">Configurações</div>
+          <button class="nav-item" type="button">Configurações</button>
+        </div>
+      </nav>
+      <div class="sidebar-measure">locked global sidebar · no Inbox destination</div>
+    </aside>
+
+    <main class="main">
+      <header class="header">
+        <div class="title-row">
+          <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir navegação">☰</button>
+          <h1 class="page-title">Notificações</h1>
+        </div>
+        <div class="local-context">
+          <div class="context-empty">Inbox pessoal · escopo da Organização atual</div>
+        </div>
+        <div class="notification-utility">
+          <button
+            id="notificationBell"
+            class="notification-bell"
+            type="button"
+            aria-label="Abrir preview de notificações"
+            aria-expanded="false"
+            data-operation="ListMyNotifications"
+          >
+            <span aria-hidden="true">◉</span>
+            <span class="bell-presence" aria-hidden="true"></span>
+            <span class="bell-state-text">Não lidas</span>
+          </button>
+          <section id="miniPreview" class="mini-preview hidden" aria-label="Preview recente de notificações">
+            <h2>Notificações recentes</h2>
+            <div class="mini-preview-item"><strong>Nova venda</strong><span>Pedido #ML-1048 · agora</span></div>
+            <div class="mini-preview-item"><strong>Expedição requer atenção</strong><span>Venda #ML-1039 · 12 min</span></div>
+            <div class="mini-preview-foot">B00-R2 permanece o preview bounded; esta página é o Inbox completo.</div>
+          </section>
+        </div>
+      </header>
+
+      <div class="content">
+        <div class="structural-meta" aria-label="Metadados estruturais">
+          <span>B11 · R128</span>
+          <span>Organization-scoped utility route</span>
+          <span>structured list</span>
+          <span>cursor pagination</span>
+          <span>B12 not rendered</span>
+        </div>
+
+        <section
+          id="fullInbox"
+          class="inbox-shell"
+          data-surface="R128"
+          data-operation="ListMyNotifications"
+          aria-labelledby="inboxTitle"
+        >
+          <header class="inbox-heading">
+            <h1 id="inboxTitle">Notificações</h1>
+            <p>Consulte sua awareness pessoal nesta Organização, ajuste somente estado de leitura/arquivo e continue para a verdade atual da origem quando autorizado.</p>
+          </header>
+
+          <div class="filter-stack" aria-label="Filtros do Inbox">
+            <div class="lens-row" aria-label="Lente de arquivo">
+              <span class="lens-label">Arquivo</span>
+              <button type="button" class="lens-button active" data-archive-lens="active">Ativas</button>
+              <button type="button" class="lens-button" data-archive-lens="archived">Arquivadas</button>
+            </div>
+            <div class="lens-row" aria-label="Lente de leitura">
+              <span class="lens-label">Leitura</span>
+              <button type="button" class="lens-button active" data-read-lens="all">Todas</button>
+              <button type="button" class="lens-button" data-read-lens="unread">Não lidas</button>
+              <button type="button" class="lens-button" data-read-lens="read">Lidas</button>
+            </div>
+            <div class="filter-row">
+              <label for="kindFilter" class="lens-label">Tipo</label>
+              <select id="kindFilter" data-filter="notification_kind">
+                <option value="all">Todos os tipos admitidos</option>
+                <option value="MARKETPLACE_INSTALLATION_ATTENTION">Canal requer atenção</option>
+                <option value="OFFERING_ASYNC_ACTION_RESULT">Resultado de ação de oferta</option>
+                <option value="AVAILABILITY_ATTENTION">Disponibilidade requer atenção</option>
+                <option value="ECONOMIC_RECONCILIATION_ATTENTION">Reconciliação econômica</option>
+                <option value="NEW_MARKETPLACE_SALE">Nova venda</option>
+                <option value="SALE_ATTENTION">Venda requer atenção</option>
+                <option value="MATERIALIZATION_ATTENTION">Materialização requer atenção</option>
+                <option value="FULFILLMENT_ACTIONABLE">Expedição acionável</option>
+                <option value="FULFILLMENT_ATTENTION">Expedição requer atenção</option>
+                <option value="SHIPMENT_EXCEPTION">Exceção de envio</option>
+                <option value="POST_SALE_ATTENTION">Pós-venda requer atenção</option>
+                <option value="WORK_ASSIGNMENT">Trabalho atribuído</option>
+                <option value="AUTHORIZATION_ACTION_REQUIRED">Aprovação requerida</option>
+                <option value="AUTHORIZATION_DECISION_RESULT">Resultado de aprovação</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="noticeHost" aria-live="polite"></div>
+
+          <div id="knownEmpty" class="knowledge-region hidden" data-knowledge-state="known-empty">
+            <div class="knowledge-card">
+              <h2>Nenhuma notificação neste recorte</h2>
+              <p>A consulta foi concluída com sucesso e não retornou awareness correspondente aos filtros atuais.</p>
+            </div>
+          </div>
+
+          <div id="unavailable" class="knowledge-region hidden" data-knowledge-state="unavailable">
+            <div class="knowledge-card">
+              <h2>Não foi possível conhecer seu Inbox agora</h2>
+              <p>Este estado é indisponível, não vazio. Preserve o contexto e tente a leitura novamente.</p>
+            </div>
+          </div>
+
+          <div id="staleFailureMarker" class="hidden" data-failure="stale-awareness-write"></div>
+          <div id="sourceDeniedMarker" class="hidden" data-failure="source-access-denied"></div>
+
+          <ol id="inboxList" class="inbox-list" aria-live="polite"></ol>
+
+          <div class="pagination-region" id="paginationRegion">
+            <button id="loadMore" type="button" data-cursor-source="next_cursor">Carregar mais</button>
+            <span class="cursor-note" id="cursorNote">Continuação por cursor opaco; nenhum total global é inferido.</span>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      const organization = document.getElementById('organization');
+      const scenario = document.getElementById('scenario');
+      const inboxList = document.getElementById('inboxList');
+      const knownEmpty = document.getElementById('knownEmpty');
+      const unavailable = document.getElementById('unavailable');
+      const paginationRegion = document.getElementById('paginationRegion');
+      const loadMore = document.getElementById('loadMore');
+      const cursorNote = document.getElementById('cursorNote');
+      const kindFilter = document.getElementById('kindFilter');
+      const noticeHost = document.getElementById('noticeHost');
+      const notificationBell = document.getElementById('notificationBell');
+      const miniPreview = document.getElementById('miniPreview');
+      const menuToggle = document.getElementById('menuToggle');
+      const drawerBackdrop = document.getElementById('drawerBackdrop');
+      const resetPrototype = document.getElementById('resetPrototype');
+      const archiveButtons = [...document.querySelectorAll('[data-archive-lens]')];
+      const readButtons = [...document.querySelectorAll('[data-read-lens]')];
+
+      const labelByKind = {
+        MARKETPLACE_INSTALLATION_ATTENTION: 'Canal requer atenção',
+        OFFERING_ASYNC_ACTION_RESULT: 'Resultado de ação de oferta',
+        AVAILABILITY_ATTENTION: 'Disponibilidade requer atenção',
+        ECONOMIC_RECONCILIATION_ATTENTION: 'Reconciliação econômica',
+        NEW_MARKETPLACE_SALE: 'Nova venda',
+        SALE_ATTENTION: 'Venda requer atenção',
+        MATERIALIZATION_ATTENTION: 'Materialização requer atenção',
+        FULFILLMENT_ACTIONABLE: 'Expedição acionável',
+        FULFILLMENT_ATTENTION: 'Expedição requer atenção',
+        SHIPMENT_EXCEPTION: 'Exceção de envio',
+        POST_SALE_ATTENTION: 'Pós-venda requer atenção',
+        WORK_ASSIGNMENT: 'Trabalho atribuído',
+        AUTHORIZATION_ACTION_REQUIRED: 'Aprovação requerida',
+        AUTHORIZATION_DECISION_RESULT: 'Resultado de aprovação'
+      };
+
+      const initialPage = [
+        {
+          id: 'n-100',
+          kind: 'NEW_MARKETPLACE_SALE',
+          title: 'Venda #ML-1048',
+          read: false,
+          archived: false,
+          occurred: '13:18',
+          created: '13:18',
+          source: '/vendas/ML-1048'
+        },
+        {
+          id: 'n-101',
+          kind: 'OFFERING_ASYNC_ACTION_RESULT',
+          title: 'Alteração de preço · Anúncio 45031',
+          read: false,
+          archived: false,
+          occurred: '12:48',
+          created: '12:50',
+          offeringOutcome: 'converged',
+          source: '/publicacoes/precos'
+        },
+        {
+          id: 'n-102',
+          kind: 'AUTHORIZATION_DECISION_RESULT',
+          title: 'Alteração comercial · Produto 8821',
+          read: true,
+          archived: false,
+          occurred: '11:22',
+          created: '11:23',
+          authorizationOutcome: 'authorize',
+          source: '/publicacoes/intencoes/li-32'
+        },
+        {
+          id: 'n-103',
+          kind: 'FULFILLMENT_ATTENTION',
+          title: 'Execução de expedição #FX-220',
+          read: true,
+          archived: false,
+          occurred: '10:07',
+          created: '10:07',
+          source: '/expedicao/execucoes/FX-220'
+        }
+      ];
+
+      const secondPage = [
+        {
+          id: 'n-104',
+          kind: 'POST_SALE_ATTENTION',
+          title: 'Pós-venda #PS-48',
+          read: true,
+          archived: false,
+          occurred: 'ontem 17:14',
+          created: 'ontem 17:15',
+          source: '/pos-venda/PS-48'
+        },
+        {
+          id: 'n-105',
+          kind: 'WORK_ASSIGNMENT',
+          title: 'Trabalho #W-991 atribuído a você',
+          read: true,
+          archived: true,
+          occurred: 'ontem 15:31',
+          created: 'ontem 15:31',
+          source: '/trabalho/W-991'
+        }
+      ];
+
+      let notifications = structuredClone(initialPage);
+      let archiveLens = 'active';
+      let readLens = 'all';
+      let nextCursor = 'cursor-page-2';
+      let staleConsumed = false;
+      let sourceDeniedConsumed = false;
+
+      function outcomeText(item) {
+        if (item.kind === 'OFFERING_ASYNC_ACTION_RESULT') {
+          return `Resultado: ${item.offeringOutcome === 'converged' ? 'convergiu' : item.offeringOutcome}`;
+        }
+        if (item.kind === 'AUTHORIZATION_DECISION_RESULT') {
+          return `Decisão: ${item.authorizationOutcome === 'authorize' ? 'autorizada' : 'rejeitada'}`;
+        }
+        return '';
+      }
+
+      function filteredItems() {
+        return notifications.filter(item => {
+          if (archiveLens === 'active' && item.archived) return false;
+          if (archiveLens === 'archived' && !item.archived) return false;
+          if (readLens === 'unread' && item.read) return false;
+          if (readLens === 'read' && !item.read) return false;
+          if (kindFilter.value !== 'all' && item.kind !== kindFilter.value) return false;
+          return true;
+        });
+      }
+
+      function itemTemplate(item) {
+        const outcome = outcomeText(item);
+        const actionRead = item.read
+          ? `<button type="button" data-action="mark-unread" data-notification-id="${item.id}" data-operation="UpdateMyNotificationAwarenessState">Marcar como não lida</button>`
+          : `<button type="button" data-action="mark-read" data-notification-id="${item.id}" data-operation="UpdateMyNotificationAwarenessState">Marcar como lida</button>`;
+        const actionArchive = item.archived
+          ? `<button type="button" data-action="restore" data-notification-id="${item.id}" data-operation="UpdateMyNotificationAwarenessState">Restaurar</button>`
+          : `<button type="button" data-action="archive" data-notification-id="${item.id}" data-operation="UpdateMyNotificationAwarenessState">Arquivar</button>`;
+        const typedAttrs = item.kind === 'OFFERING_ASYNC_ACTION_RESULT'
+          ? `data-offering-outcome="${item.offeringOutcome}"`
+          : item.kind === 'AUTHORIZATION_DECISION_RESULT'
+            ? `data-authorization-outcome="${item.authorizationOutcome}"`
+            : '';
+
+        return `
+          <li class="inbox-item ${item.read ? '' : 'unread'}" data-kind="${item.kind}" ${typedAttrs} data-notification-id="${item.id}">
+            <span class="state-marker" aria-hidden="true"></span>
+            <div class="item-main">
+              <div class="item-kicker">
+                <span>${labelByKind[item.kind]}</span>
+                <span class="state-word">${item.read ? 'Lida' : 'Não lida'}</span>
+                <span>${item.archived ? 'Arquivada' : 'Ativa'}</span>
+              </div>
+              <div class="item-title">${item.title}</div>
+              ${outcome ? `<p class="item-outcome">${outcome}</p>` : ''}
+              <div class="item-meta">
+                <span>Ocorreu: ${item.occurred}</span>
+                <span>Awareness criada: ${item.created}</span>
+              </div>
+            </div>
+            <div class="item-actions">
+              <button type="button" class="primary" data-action="open-source" data-notification-id="${item.id}">Abrir origem</button>
+              ${actionRead}
+              ${actionArchive}
+            </div>
+          </li>`;
+      }
+
+      function renderNotice(title, message, kind = 'info') {
+        noticeHost.innerHTML = `<div class="notice" data-notice-kind="${kind}"><strong>${title}</strong><p>${message}</p></div>`;
+      }
+
+      function clearNotice() { noticeHost.innerHTML = ''; }
+
+      function renderInbox() {
+        const unavailableScenario = scenario.value === 'request-unavailable';
+        const items = unavailableScenario ? [] : filteredItems();
+        inboxList.innerHTML = items.map(itemTemplate).join('');
+        unavailable.classList.toggle('hidden', !unavailableScenario);
+        knownEmpty.classList.toggle('hidden', unavailableScenario || items.length !== 0);
+        paginationRegion.classList.toggle('hidden', unavailableScenario || items.length === 0);
+        loadMore.disabled = !nextCursor;
+        cursorNote.textContent = nextCursor
+          ? 'Há continuação por cursor opaco disponível.'
+          : 'Fim da continuação conhecida para este recorte.';
+      }
+
+      function applyAwarenessMutation(action, notificationId) {
+        const item = notifications.find(candidate => candidate.id === notificationId);
+        if (!item) return;
+
+        if (scenario.value === 'stale-awareness-write' && !staleConsumed) {
+          staleConsumed = true;
+          renderNotice(
+            'A notificação mudou desde sua leitura',
+            'O write foi rejeitado pela precondition. Seu contexto foi preservado; reveja o estado atual antes de tentar novamente.',
+            'stale-awareness-write'
+          );
+          return;
+        }
+
+        if (action === 'mark-read') item.read = true;
+        if (action === 'mark-unread') item.read = false;
+        if (action === 'archive') item.archived = true;
+        if (action === 'restore') item.archived = false;
+        clearNotice();
+        renderInbox();
+      }
+
+      function handleSourceOpen(notificationId) {
+        const item = notifications.find(candidate => candidate.id === notificationId);
+        if (!item) return;
+
+        if (scenario.value === 'source-access-denied' && !sourceDeniedConsumed) {
+          sourceDeniedConsumed = true;
+          renderNotice(
+            'A origem não está disponível para seu acesso atual',
+            'A Notification continua existindo, mas a navegação reautorizou a origem e falhou fechada. Nenhum estado de leitura foi alterado.',
+            'source-access-denied'
+          );
+          return;
+        }
+
+        renderNotice(
+          'Continuação para a origem',
+          `Protótipo navegaria para ${item.source} após reautorizar o owner atual. Abrir a origem não altera leitura nem arquivo.`,
+          'source-open'
+        );
+      }
+
+      function invalidateInboxContext() {
+        miniPreview.classList.add('hidden');
+        notificationBell.setAttribute('aria-expanded', 'false');
+        notifications = structuredClone(initialPage);
+        archiveLens = 'active';
+        readLens = 'all';
+        nextCursor = 'cursor-page-2';
+        kindFilter.value = 'all';
+        staleConsumed = false;
+        sourceDeniedConsumed = false;
+        archiveButtons.forEach(button => button.classList.toggle('active', button.dataset.archiveLens === 'active'));
+        readButtons.forEach(button => button.classList.toggle('active', button.dataset.readLens === 'all'));
+        clearNotice();
+        renderInbox();
+      }
+
+      archiveButtons.forEach(button => button.addEventListener('click', () => {
+        archiveLens = button.dataset.archiveLens;
+        archiveButtons.forEach(candidate => candidate.classList.toggle('active', candidate === button));
+        renderInbox();
+      }));
+
+      readButtons.forEach(button => button.addEventListener('click', () => {
+        readLens = button.dataset.readLens;
+        readButtons.forEach(candidate => candidate.classList.toggle('active', candidate === button));
+        renderInbox();
+      }));
+
+      kindFilter.addEventListener('change', renderInbox);
+
+      inboxList.addEventListener('click', event => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+        const action = button.dataset.action;
+        const id = button.dataset.notificationId;
+        if (action === 'open-source') {
+          handleSourceOpen(id);
+          return;
+        }
+        applyAwarenessMutation(action, id);
+      });
+
+      loadMore.addEventListener('click', () => {
+        if (!nextCursor) return;
+        notifications.push(...structuredClone(secondPage));
+        nextCursor = null;
+        renderInbox();
+      });
+
+      notificationBell.addEventListener('click', () => {
+        const open = miniPreview.classList.toggle('hidden') === false;
+        notificationBell.setAttribute('aria-expanded', String(open));
+      });
+
+      organization.addEventListener('change', () => {
+        invalidateInboxContext();
+        if (scenario.value === 'organization-switch') {
+          renderNotice(
+            'Organização alterada',
+            'Cursor, filtros transitórios, preview e fixtures do Inbox anterior foram invalidados antes de apresentar a nova Organização.',
+            'organization-switch'
+          );
+        }
+      });
+
+      scenario.addEventListener('change', () => {
+        staleConsumed = false;
+        sourceDeniedConsumed = false;
+        clearNotice();
+        if (scenario.value === 'known-empty') {
+          notifications = [];
+          nextCursor = null;
+        } else {
+          notifications = structuredClone(initialPage);
+          nextCursor = 'cursor-page-2';
+        }
+        if (scenario.value === 'organization-switch') {
+          miniPreview.classList.remove('hidden');
+          notificationBell.setAttribute('aria-expanded', 'true');
+        } else {
+          miniPreview.classList.add('hidden');
+          notificationBell.setAttribute('aria-expanded', 'false');
+        }
+        renderInbox();
+      });
+
+      menuToggle.addEventListener('click', () => document.body.classList.toggle('drawer-open'));
+      drawerBackdrop.addEventListener('click', () => document.body.classList.remove('drawer-open'));
+
+      resetPrototype.addEventListener('click', () => {
+        scenario.value = 'populated';
+        organization.value = 'org-a';
+        invalidateInboxContext();
+      });
+
+      renderInbox();
+    })();
+  </script>
+</body>
+</html>
