@@ -50,10 +50,10 @@
 - B00-R2, B11 and B12 are operator-`LOCKED`; their reviewed HTML snapshots remain unchanged evidence.
 - B12's ratified meaning is exact-human **future personal Notification recipient routing** per fixed ORG_ROUTED kind; it is not Permission assignment, Work assignment or source authorization.
 - B12 proof remains `10/10`, `INLINE_ROW`, `notifications.manage`, `access.read FORBIDDEN`, candidate disclosure `MINIMAL`, configured-empty `FORBIDDEN`, `PASS`.
-- The two D6-R P12 assumptions remain explicitly OPEN: candidate-directory scale without search and bounded-preview sufficiency.
+- P12 assumptions remain OPEN: candidate-directory scale without search and bounded-preview sufficiency.
 - No Product operation, Permission or runtime authority changed by P8 ratification.
-- NOTIF-01 D7-R remains blocked until D6-R P9 closes; then the accepted sequence remains D6-R → D7-R → D8-R → resume dependent D6-R2.
-- No Product implementation before accepted D9.
+- NOTIF-01 D7-R remains blocked until D6-R P9 closes; then D6-R → D7-R → D8-R → resume dependent D6-R2.
+- No Product implementation before D9.
 
 ```text
 D6-R2 → Pre-D9 readiness → D9 → Product implementation only after accepted D9
