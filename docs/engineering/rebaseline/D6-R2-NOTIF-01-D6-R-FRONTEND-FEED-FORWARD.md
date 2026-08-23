@@ -1,9 +1,9 @@
 # NOTIF-01 D6-R — Frontend Feed-Forward
 
-> **Status:** OPERATOR-APPROVED DESIGN + WRITTEN SPEC / P8 B00-R2 OPERATOR-`LOCKED` / B11 NEXT
-> **Operator approval:** 2026-08-23 — approved the Global-Maximum structural direction, approved this written spec before artifact authoring, and visually `LOCKED` B00-R2 after rendered HTML review
+> **Status:** OPERATOR-APPROVED DESIGN + WRITTEN SPEC / P8 B00-R2 + B11 OPERATOR-`LOCKED` / B12 NEXT
+> **Operator approval:** 2026-08-23 — approved the Global-Maximum structural direction, approved this written spec before artifact authoring, visually `LOCKED` B00-R2 after rendered HTML review, and visually `LOCKED` B11 after rendered full-Inbox review
 > **Parent authority:** [D5-R4 Canonical Product OAD Wire Proof](D6-R2-NOTIF-01-D5-R4-OAD-WIRE-PROOF.md) + [Notification Architecture Design](D6-R2-NOTIF-01-NOTIFICATION-ARCHITECTURE-DESIGN.md) + [Frontend Product Experience Planning Method v2.1](../../development/frontend-product-experience-planning-method.md)
-> **Existing frontend authority:** [D6-R2 P8 Block Ledger](D6-R2-P8-BLOCK-LEDGER.md) — B00/B01/B00-R2 operator-`LOCKED`; B10 suspended; B11 next
+> **Existing frontend authority:** [D6-R2 P8 Block Ledger](D6-R2-P8-BLOCK-LEDGER.md) — B00/B01/B00-R2/B11 operator-`LOCKED`; B10 suspended; B12 next
 > **Product wire:** 104 Product operations · 31 ordinary Permissions · Principal kinds H/A/S
 > **Implementation:** BLOCKED UNTIL accepted D9
 
@@ -199,6 +199,8 @@ The preview is intentionally bounded; it is not an infinite-scroll Inbox and has
 Opening a source **does not implicitly mark the Notification read**. Navigation and awareness mutation remain separate semantics; source navigation re-enters current source authorization.
 
 ## 7. Full personal Inbox
+
+**Rendered P8 artifact:** [`qualification/d6-r2-wireframes/b11-notifications-inbox.html`](../../../qualification/d6-r2-wireframes/b11-notifications-inbox.html) — executable low-fidelity HTML; **operator-`LOCKED` on 2026-08-23**.
 
 ### 7.1 Representation
 
@@ -457,9 +459,9 @@ Rendered work is sequential and operator-reviewed:
 ```text
 B00-R2  topbar bell + preview integration       LOCKED
   ↓
-B11     full personal Inbox                    NEXT / NOT RENDERED
-  ↓ operator visual adjudication / LOCK or revision
-B12     Configurações > Notificações           NOT RENDERED
+B11     full personal Inbox                    LOCKED
+  ↓
+B12     Configurações > Notificações           NEXT / NOT RENDERED
   ↓ operator visual adjudication / LOCK or revision
 P9 exact Screen Contracts / bidirectional wire trace
 ```
@@ -475,11 +477,11 @@ D5-R4 canonical OAD                      PROVED / CANONICAL 104/31
 D6-R structural direction                OPERATOR-APPROVED
 D6-R written spec                         OPERATOR-APPROVED
 P8 B00-R2                                 OPERATOR-LOCKED
-P8 B11                                    NEXT / NOT RENDERED
-P8 B12                                    NOT RENDERED / BLOCKED BY B11
+P8 B11                                    OPERATOR-LOCKED
+P8 B12                                    NEXT / NOT RENDERED
 D7-R                                      BLOCKED BY D6-R
 D8-R                                      BLOCKED BY D7-R
 Product implementation                    BLOCKED UNTIL D9
 ```
 
-**Exact next action:** render only B11 — full personal Inbox — as executable low-fidelity HTML for operator visual adjudication, inheriting locked B00/B00-R2 structure. Do not render B12 as baseline, begin D7-R/D8-R, resume B10, merge PR #61 or implement Product code before B11 closes, unless the operator explicitly authorizes parallel candidate work.
+**Exact next action:** render only B12 — `Configurações > Notificações` routing Settings — as executable low-fidelity HTML for operator visual adjudication, inheriting locked B00/B00-R2/B11 structure. Do not begin D7-R/D8-R, resume B10, merge PR #61 or implement Product code before B12 closes, unless the operator explicitly authorizes parallel candidate work.
