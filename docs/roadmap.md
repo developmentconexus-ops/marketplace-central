@@ -26,22 +26,22 @@
 
 | Stage / gate | Status |
 | --- | --- |
-| D0 — Product / System Definition | ACCEPTED / CLOSED; NOTIF-01 D0-R ACCEPTED |
-| D1 — Domains / Boundaries | ACCEPTED / CLOSED; NOTIF-01 D1-R ACCEPTED |
-| D2 — Identity / Tenant / Data Ownership | ACCEPTED / CLOSED; NOTIF-01 D2-R/R2/R3/R4/R5 ACCEPTED |
-| D3 — Communication / Events | ACCEPTED / CLOSED; NOTIF-01 D3-R ACCEPTED / D3-R1+R2 PASS |
-| D4 — External Integrations | ACCEPTED / CLOSED |
-| D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
-| D5 — API | ACCEPTED / CLOSED; NOTIF-01 D5-R3 ACCEPTED / D5-R4 OAD 104/31 PROVED |
-| D5-R2 — Operational Read Projection Repair | ACCEPTED / CANONICAL |
-| D6 — Frontend | ACCEPTED / CLOSED; NOTIF-01 P8 LOCKED / P9-F1 OPEN |
-| D7 — Runtime / Jobs / Transactions | ACCEPTED / CLOSED; NOTIF-01 D7-R BLOCKED BY D6-R |
-| D8 — Golden Flows | ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED; NOTIF-01 D8-R BLOCKED BY D7-R |
-| D8-R2 — GF-02 Operational Read Revalidation | ACCEPTED / PASS |
+| D0 — Product / System Definition | **ACCEPTED / CLOSED; NOTIF-01 D0-R ACCEPTED** |
+| D1 — Domains / Boundaries | **ACCEPTED / CLOSED; NOTIF-01 D1-R ACCEPTED** |
+| D2 — Identity / Tenant / Data Ownership | **ACCEPTED / CLOSED; NOTIF-01 D2-R/R2/R3/R4/R5 ACCEPTED** |
+| D3 — Communication / Events | **ACCEPTED / CLOSED; NOTIF-01 D3-R ACCEPTED / D3-R1+R2 PASS** |
+| D4 — External Integrations | **ACCEPTED / CLOSED** |
+| D4-R1 — Publication Input / Listing Authoring | **ACCEPTED / CANONICAL** |
+| D5 — API | **ACCEPTED / CLOSED; NOTIF-01 D5-R3 ACCEPTED / D5-R4 OAD 104/31 PROVED** |
+| D5-R2 — Operational Read Projection Repair | **ACCEPTED / CANONICAL** |
+| D6 — Frontend | **ACCEPTED / CLOSED; NOTIF-01 P8 LOCKED / P9-F1 OPEN** |
+| D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED; NOTIF-01 D7-R BLOCKED BY D6-R** |
+| D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED; NOTIF-01 D8-R BLOCKED BY D7-R** |
+| D8-R2 — GF-02 Operational Read Revalidation | **ACCEPTED / PASS** |
 | D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — NOTIF-01 P9 BLOCKED BY P9-F1** |
-| Pre-D9 readiness | BLOCKED |
-| D9 — Adversarial Architecture Review | BLOCKED |
-| Implementation | BLOCKED UNTIL D9 |
+| Pre-D9 readiness | **BLOCKED** |
+| D9 — Adversarial Architecture Review | **BLOCKED** |
+| Implementation | **BLOCKED UNTIL D9** |
 
 ## Current result
 
