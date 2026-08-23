@@ -12,12 +12,12 @@
 | Current stage | **D6-R2 — Complete Frontend Realization Closure — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | D6-R2 authority | [Closure](engineering/rebaseline/D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md) + [P4-R1](engineering/rebaseline/D6-R2-P4-R1-GLOBAL-IA-OPERATIONAL-MASS-REOPEN.md) + [P8](engineering/rebaseline/D6-R2-P8-BLOCK-LEDGER.md) — **B00/B01 LOCKED; B10 SUSPENDED** |
-| NOTIF-01 | [Design](engineering/rebaseline/D6-R2-NOTIF-01-NOTIFICATION-ARCHITECTURE-DESIGN.md) + [Reference Study](engineering/rebaseline/D6-R2-NOTIF-01-REFERENCE-STUDY.md) + [Authority Amendment](engineering/rebaseline/D6-R2-NOTIF-01-AUTHORITY-AMENDMENT.md) — **multi-owner trigger/audience correction under operator review; D2 suspended** |
+| NOTIF-01 | [Design](engineering/rebaseline/D6-R2-NOTIF-01-NOTIFICATION-ARCHITECTURE-DESIGN.md) + [Reference Study / Census](engineering/rebaseline/D6-R2-NOTIF-01-REFERENCE-STUDY.md) + [Authority Amendment](engineering/rebaseline/D6-R2-NOTIF-01-AUTHORITY-AMENDMENT.md) — **H3 approved; Trigger + Audience Census CANDIDATE; D2 suspended** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Operator adjudicates H3: curated Product-defined notification kinds from explicit source owners + bounded Organization routing to exact human Principals. Do not continue D2/D3/OAD/B00/B10 before this decision.** |
+| Exact next action | **Operator adjudicates NOTIF-01 Trigger + Audience Census: 14 curated Product awareness families + DIRECT_SOURCE / OWNER_DERIVED / ORG_ROUTED audience strategies and noise/suppression laws. Do not correct D0/D1/D2 or open D3/OAD/B00/B10 before approval.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -38,7 +38,7 @@
 | D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED** |
 | D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED** |
 | D8-R2 — GF-02 Operational Read Revalidation | **ACCEPTED / PASS** |
-| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00/B01 LOCKED; B10 SUSPENDED; NOTIF-01 reference-study gate** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00/B01 LOCKED; B10 SUSPENDED; NOTIF-01 census gate** |
 | Pre-D9 readiness | **BLOCKED** |
 | D9 — Adversarial Architecture Review | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -46,10 +46,11 @@
 ## Current result
 
 - Global IA remains locked and OP-READ-01 remains resolved.
-- Operator evidence falsified Work-only notification origin; D2's Work-only source model is suspended.
-- Reference study converges on curated multi-category alerts, explicit audience resolution, and source reread rather than notification-as-truth.
-- Recommended H3: explicit producer-owner occurrences → Product-defined NotificationKind → direct or bounded Organization routing → exact human Principal Notifications.
-- No generic `AnyDomain` fan-out, Permission-implied responsibility, external broker, or Product implementation.
+- Work-only notification origin is falsified; D2 Work-only source model remains suspended.
+- H3 is operator-approved: curated Product-defined kinds from explicit source-owner occurrences with bounded exact-human audience resolution.
+- Census candidate spans channel attention, Offering async results, Availability, Economics, Sales, Materialization, Fulfillment, Shipment, Post-Sale, Work and Governance while rejecting event-per-CRUD/raw-provider/runtime noise.
+- Audience candidate: DIRECT_SOURCE, OWNER_DERIVED or ORG_ROUTED; Permission is eligibility only, never responsibility by itself.
+- No generic `AnyDomain` fan-out, external broker or Product implementation.
 
 ```text
 D6-R2 → Pre-D9 readiness → D9 → Product implementation only after accepted D9
