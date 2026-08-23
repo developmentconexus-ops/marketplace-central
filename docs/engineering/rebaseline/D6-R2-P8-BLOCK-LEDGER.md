@@ -1,6 +1,6 @@
 # D6-R2 P8 — Structural Wireframe Block Ledger
 
-> **Status:** OPEN / ACTIVE — B00 App Shell + corrected global IA operator-`LOCKED`; B01 content operator-`LOCKED`; B00-R2 Notification utility operator-`LOCKED`; OP-READ-01 RESOLVED; B10 SUSPENDED; B11 NEXT
+> **Status:** OPEN / ACTIVE — B00 App Shell + corrected global IA operator-`LOCKED`; B01 content operator-`LOCKED`; B00-R2 Notification utility operator-`LOCKED`; B11 Personal Inbox **RENDERED CANDIDATE / VISUAL ADJUDICATION REQUIRED**; OP-READ-01 RESOLVED; B10 SUSPENDED
 > **Parent:** [D6-R2 Complete Frontend Realization Closure](D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md)
 > **P4-R1 reopen:** [Global IA / Operational Mass Reopen](D6-R2-P4-R1-GLOBAL-IA-OPERATIONAL-MASS-REOPEN.md)
 > **D5-R2 repair:** [Operational Read Projection Repair](D5-R2-OPERATIONAL-READ-PROJECTION-REPAIR.md)
@@ -107,7 +107,7 @@ G00-E topbar Notification utility slot
 → unread-known-present / unread-known-empty / knowledge-unavailable distinction
 → bounded U01 recent-Inbox preview
 → explicit source continuation separate from awareness mutation
-→ B11 "Ver todas" continuation placeholder only
+→ B11 "Ver todas" continuation
 ```
 
 Locked structural laws:
@@ -120,7 +120,56 @@ Locked structural laws:
 - explicit `Marcar como lida` changes only Notification awareness state;
 - Organization switch closes incompatible preview state before new Organization awareness is presented;
 - desktop preserves title + page-local context + bell; mobile preserves menu + title + bell with local context below;
-- B11 full Inbox and B12 routing Settings remain separate later blocks and were not locked by this adjudication.
+- B11 full Inbox and B12 routing Settings are separate blocks and were not locked by the B00-R2 adjudication.
+
+No final visual-design decision is implied by the grayscale HTML treatment.
+
+### 2.3 B11 — Full Personal Inbox — RENDERED CANDIDATE / NOT LOCKED
+
+**Approved structural direction:** [NOTIF-01 D6-R Frontend Feed-Forward](D6-R2-NOTIF-01-D6-R-FRONTEND-FEED-FORWARD.md).  
+**Rendered artifact:** [`qualification/d6-r2-wireframes/b11-notifications-inbox.html`](../../../qualification/d6-r2-wireframes/b11-notifications-inbox.html).  
+**Structural verifier:** `scripts/verify-d6-r-b11-inbox-wireframe.mjs`.  
+**First complete GREEN candidate:** `90409e6bc7adb711c63a0ef7ed8f0b52ced761c8` — repository full gate PASS.  
+**Operator visual adjudication:** **REQUIRED**.  
+**Operator `LOCK`:** **NO — not yet adjudicated from rendered HTML**.
+
+The rendered candidate inherits B00/B00-R2 and realizes only R128 full personal Inbox:
+
+```text
+Organization-scoped utility route outside sidebar
+→ structured vertical awareness list
+→ Ativas | Arquivadas
+→ Todas | Não lidas | Lidas
+→ closed NotificationKind filter
+→ cursor continuation
+→ explicit source continuation
+→ explicit read/unread + archive/restore awareness mutation
+```
+
+Candidate structural laws shown in the HTML:
+
+- structured list, not table/grid;
+- all fourteen accepted NotificationKinds are filterable; no source-family/filter DSL;
+- F02 and F14 typed result examples are statically inspectable and visibly rendered;
+- no text search, unread count, `total_count`, mark-all-read, bulk archive, severity/priority or saved views;
+- `Abrir origem` remains separate from awareness mutation and simulates current source re-authorization;
+- read/unread and archive/restore mutate only Notification awareness state and preserve stale-write recovery;
+- known-empty is distinct from request-unavailable;
+- stale awareness write and source-access-denied remain explicit recoverable states;
+- Organization switch invalidates preview, cursor and transient Inbox state before presenting the new Organization;
+- narrow widths stack item actions without hiding source continuation or awareness controls;
+- B12 `Configurações > Notificações` is **not rendered**.
+
+Executable proof reports:
+
+```text
+d6_r_b11_status=CANDIDATE
+d6_r_b11_representation=STRUCTURED_LIST
+d6_r_b11_notification_kinds=14/14
+d6_r_b11_totals_bulk_search=FORBIDDEN
+d6_r_b11_b12=NOT_RENDERED
+d6_r_b11_wireframe=PASS
+```
 
 No final visual-design decision is implied by the grayscale HTML treatment.
 
@@ -138,7 +187,7 @@ Work unknown/unavailable -> uncertainty remains visible
 all cases                -> marketplace/account + Performance + Economics orientation remains visible
 ```
 
-B01 inherits the locked B00 global navigation. Its content/state lock is not reopened by IA-01 or by B00-R2.
+B01 inherits the locked B00 global navigation. Its content/state lock is not reopened by IA-01, B00-R2 or B11.
 
 ## 4. B10 — Preparation — SUSPENDED CANDIDATE
 
@@ -156,7 +205,7 @@ search/list triage
 → continuation only from admitted current state
 ```
 
-Its global placement is now locked as `OFERTA > Preparação`. B10 remains suspended while the accepted NOTIF-01 dependency chain completes D6-R → D7-R → D8-R; the immediate frontend gate is B11, not B10 progression.
+Its global placement is now locked as `OFERTA > Preparação`. B10 remains suspended while the accepted NOTIF-01 dependency chain completes D6-R → D7-R → D8-R; the immediate frontend gate is operator adjudication of B11.
 
 ## 5. Operational landing — CANDIDATE CONCEPT ONLY
 
@@ -231,7 +280,17 @@ operator disposition:       LOCKED
 material changes requested: NONE
 bounded utility slot:       LOCKED
 bell + U01 preview:         LOCKED
-B11 / B12:                  NOT LOCKED / NOT RENDERED BY THIS GATE
+B11 / B12:                  NOT LOCKED BY THIS GATE
+visual-design decisions:    NONE
+```
+
+### 8.3 B11
+
+```text
+rendered artifact reviewed: NO / PENDING OPERATOR
+operator disposition:       PENDING
+structural verifier:        PASS
+B12:                        NOT RENDERED
 visual-design decisions:    NONE
 ```
 
@@ -239,6 +298,6 @@ A later material user-model finding may reopen only the smallest affected author
 
 ## 9. Exact next action
 
-Render **only B11 — full personal Inbox** as the next executable low-fidelity P8 block, inheriting the locked B00/B00-R2 shell and the approved D6-R Inbox structure.
+Operator visually adjudicates **only B11 — full personal Inbox** from the rendered executable low-fidelity HTML. Valid dispositions are revision/finding or explicit operator `LOCK` of the B11 structure.
 
-Do **not** render B12 as baseline, begin D7-R/D8-R, resume B10, merge PR #61 or implement Product code before B11 is visually adjudicated, unless the operator explicitly authorizes parallel candidate work under the frontend method.
+Do **not** render B12 as baseline, begin D7-R/D8-R, resume B10, merge PR #61 or implement Product code before this B11 visual gate closes, unless the operator explicitly authorizes parallel candidate work under the frontend method.
