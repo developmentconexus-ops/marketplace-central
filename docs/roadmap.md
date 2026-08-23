@@ -12,16 +12,16 @@
 | Current stage | **D6-R2 — Complete Frontend Realization Closure — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | D6-R2 authority | [Closure](engineering/rebaseline/D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md) + [P4-R1](engineering/rebaseline/D6-R2-P4-R1-GLOBAL-IA-OPERATIONAL-MASS-REOPEN.md) + [P8](engineering/rebaseline/D6-R2-P8-BLOCK-LEDGER.md) — **B00/B01 LOCKED; B10 SUSPENDED** |
-| NOTIF-01 design | [Architecture Design](engineering/rebaseline/D6-R2-NOTIF-01-NOTIFICATION-ARCHITECTURE-DESIGN.md) — **OPERATOR-APPROVED** |
-| NOTIF-01 authority | [Authority Amendment](engineering/rebaseline/D6-R2-NOTIF-01-AUTHORITY-AMENDMENT.md) — **D0+D1 ACCEPTED; D2 CANDIDATE; D3+ BLOCKED** |
-| NOTIF-01 plan | [Authority Amendment Plan](engineering/rebaseline/D6-R2-NOTIF-01-AUTHORITY-AMENDMENT-PLAN.md) — **ACTIVE / TASK 3** |
+| NOTIF-01 design | [Architecture Design](engineering/rebaseline/D6-R2-NOTIF-01-NOTIFICATION-ARCHITECTURE-DESIGN.md) — **OPERATOR-APPROVED baseline; trigger scope under bounded correction** |
+| NOTIF-01 study | [Global Notification Reference Study](engineering/rebaseline/D6-R2-NOTIF-01-REFERENCE-STUDY.md) — **CANDIDATE / operator review required** |
+| NOTIF-01 authority | [Authority Amendment](engineering/rebaseline/D6-R2-NOTIF-01-AUTHORITY-AMENDMENT.md) — **D0+D1 accepted narrow baseline; trigger-scope correction OPEN; D2 candidate SUSPENDED** |
 | Product repair | [D5-R2](engineering/rebaseline/D5-R2-OPERATIONAL-READ-PROJECTION-REPAIR.md) — **ACCEPTED / CANONICAL** |
 | GF-02 revalidation | [D8-R2](engineering/rebaseline/D8-R2-OPERATIONAL-READ-REVALIDATION.md) — **ACCEPTED / PASS** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Operator adjudicates only NOTIF-01 D2 Notification identity/data ownership. Do not open D3, edit OAD, alter B00 for the bell, or resume B10/B20 before explicit D2 approval.** |
+| Exact next action | **Operator reviews the NOTIF-01 reference study and H3 direction: curated multi-owner Product notification kinds + explicit audience routing. Do not continue D2/D3, edit OAD, alter B00 for the bell, or resume B10/B20 before this adjudication.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -30,9 +30,9 @@
 
 | Stage / gate | Status |
 | --- | --- |
-| D0 — Product / System Definition | ACCEPTED / CLOSED; **NOTIF-01 bounded amendment ACCEPTED** |
-| D1 — Domains / Boundaries | ACCEPTED / CLOSED; **NOTIF-01 bounded owner/edge ACCEPTED** |
-| D2 — Identity / Tenant / Data Ownership | ACCEPTED / CLOSED; **NOTIF-01 bounded amendment CANDIDATE** |
+| D0 — Product / System Definition | ACCEPTED / CLOSED; **NOTIF-01 bounded trigger-scope correction OPEN** |
+| D1 — Domains / Boundaries | ACCEPTED / CLOSED; **NOTIF-01 bounded producer/routing correction OPEN** |
+| D2 — Identity / Tenant / Data Ownership | ACCEPTED / CLOSED; **NOTIF-01 candidate SUSPENDED pending trigger/audience re-derivation** |
 | D3 — Communication / Events | ACCEPTED / CLOSED; NOTIF-01 reopen BLOCKED |
 | D4 — External Integrations | ACCEPTED / CLOSED |
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
@@ -42,7 +42,7 @@
 | D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED** |
 | D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED** |
 | D8-R2 — GF-02 Operational Read Revalidation | **ACCEPTED / PASS** |
-| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00/B01 LOCKED; B10 SUSPENDED; NOTIF-01 D2 candidate** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00/B01 LOCKED; B10 SUSPENDED; NOTIF-01 reference study gate** |
 | Pre-D9 readiness | **BLOCKED** |
 | D9 — Adversarial Architecture Review | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -50,9 +50,11 @@
 ## Current D6-R2 result
 
 - Global IA remains operator-locked: **OFERTA / OPERAÇÃO / ESTRATÉGIA E INTELIGÊNCIA / CONTROLE / CONFIGURAÇÕES**; OP-READ-01 remains resolved by D5-R2/D8-R2.
-- NOTIF-01 D0 admits Personal Notification Inbox; D1 admits only `Personal Notifications` + `Operational Work → Personal Notifications`.
-- D2 candidate defines opaque NotificationID, exact Organization + human Principal recipient, typed Work correlation, occurrence-specific dedup identity, `read_at`/`archived_at`, and stable historical recipient semantics.
-- D3+, OAD, bell/Inbox frontend authority and Product implementation remain blocked. Global-Maximum/YAGNI remains binding.
+- Operator evidence falsified the assumption that only assigned `Operational Work` should originate Personal Notifications.
+- Reference evidence from Shopify, Amazon Seller Central, Mercado Livre and ShipStation converges on curated multi-category alerts, explicit recipient/audience handling, and source reread rather than notification-as-truth.
+- Recommended H3: Product-defined notification kinds from explicit producer owners + bounded Organization routing to exact human Principals; no generic AnyDomain fan-out.
+- The prior D2 Work-only source model is suspended until trigger/audience scope is ratified and D0/D1 are corrected.
+- OAD remains **99/30/H-A-S**; frontend/runtime implementation remains blocked. Global-Maximum/YAGNI remains binding.
 
 ## D8 authority carried forward
 
