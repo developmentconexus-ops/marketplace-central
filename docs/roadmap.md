@@ -15,6 +15,7 @@
 | NOTIF-01 | [Design](engineering/rebaseline/D6-R2-NOTIF-01-NOTIFICATION-ARCHITECTURE-DESIGN.md) + [Reference Study](engineering/rebaseline/D6-R2-NOTIF-01-REFERENCE-STUDY.md) + [Authority Amendment](engineering/rebaseline/D6-R2-NOTIF-01-AUTHORITY-AMENDMENT.md) — **multi-owner trigger/audience correction under operator review; D2 suspended** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
+| Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
 | Exact next action | **Operator adjudicates H3: curated Product-defined notification kinds from explicit source owners + bounded Organization routing to exact human Principals. Do not continue D2/D3/OAD/B00/B10 before this decision.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
