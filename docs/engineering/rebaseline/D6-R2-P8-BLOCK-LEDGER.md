@@ -1,6 +1,6 @@
 # D6-R2 P8 — Structural Wireframe Block Ledger
 
-> **Status:** OPEN / ACTIVE — B00 App Shell + corrected global IA operator-`LOCKED`; B01 content operator-`LOCKED`; B00-R2 Notification utility operator-`LOCKED`; B11 Personal Inbox operator-`LOCKED`; B12 Notification Routing Settings NEXT / NOT RENDERED; OP-READ-01 RESOLVED; B10 SUSPENDED
+> **Status:** OPEN / ACTIVE — B00 App Shell + global IA operator-`LOCKED`; B01 operator-`LOCKED`; B00-R2 Notification utility operator-`LOCKED`; B11 Personal Inbox operator-`LOCKED`; B12 Notification Routing Settings **RENDERED CANDIDATE / VISUAL ADJUDICATION REQUIRED**; OP-READ-01 RESOLVED; B10 SUSPENDED
 > **Parent:** [D6-R2 Complete Frontend Realization Closure](D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md)
 > **P4-R1 reopen:** [Global IA / Operational Mass Reopen](D6-R2-P4-R1-GLOBAL-IA-OPERATIONAL-MASS-REOPEN.md)
 > **D5-R2 repair:** [Operational Read Projection Repair](D5-R2-OPERATIONAL-READ-PROJECTION-REPAIR.md)
@@ -10,11 +10,11 @@
 > **Method:** [Frontend Product Experience Planning Method v2.1](../../development/frontend-product-experience-planning-method.md)
 > **Product implementation:** BLOCKED UNTIL accepted D9
 
-## 1. P8 artifact law for Marketplace Central
+## 1. P8 artifact law
 
-P8 wireframes are **executable low-fidelity HTML structural prototypes**, not visual-design comps and not static images.
+P8 artifacts are **executable low-fidelity HTML structural prototypes**, not visual-design comps and not static images.
 
-They decide only material UX structure:
+They decide:
 
 ```text
 shell / region placement
@@ -30,18 +30,18 @@ They do **not** decide final palette, typography, iconography, radius, shadows, 
 
 ## 2. B00 — App Shell + global IA — LOCKED
 
-**Operator adjudication:** `LOCKED` on 2026-08-22 after review of the corrected executable HTML.  
+**Operator adjudication:** `LOCKED` on 2026-08-22.  
 **Artifact:** [`qualification/d6-r2-wireframes/b00-app-shell.html`](../../../qualification/d6-r2-wireframes/b00-app-shell.html)
 
-The following B00 laws are locked:
+Locked physical/context laws:
 
 ```text
 desktop persistent sidebar ≈264 px
-Organization is the only global workspace
+Organization = only global workspace
 page header ≈64 px with page-local Installation host
 page-owned content ≈24 px outer padding
-→ tablet collapsible navigation
-→ mobile drawer + stacked local context
+tablet collapsible navigation
+mobile drawer + stacked local context
 ```
 
 Also locked:
@@ -53,7 +53,7 @@ Also locked:
 - no-access/stale Organization blocks explicitly;
 - responsive transformation never changes context meaning.
 
-### 2.1 IA-01 corrected grouping — LOCKED
+### 2.1 Global IA — LOCKED
 
 ```text
 VISÃO GERAL
@@ -87,53 +87,48 @@ CONFIGURAÇÕES
   Configurações
 ```
 
-Existing technical route identities remain where possible; user-facing `Anúncios` may continue to use `/publicacoes/*`, and `Preços` may continue to use `/publicacoes/precos`. The organization-wide operational landing remains the one new frontend route identity candidate, e.g. `/org/:organizationId/operacao`; exact route spelling is frontend navigation authority, not Product API authority.
+Notifications does not become another global sidebar mass.
 
-B00 does **not** decide the internal content of Visão operacional. It locks only the destination's place in global IA and its organization-wide context.
+### 2.2 B00-R2 — Notification utility slot — LOCKED
 
-### 2.2 B00-R2 — Notification utility-slot reopen — LOCKED
-
-**Approved design:** [NOTIF-01 D6-R Frontend Feed-Forward](D6-R2-NOTIF-01-D6-R-FRONTEND-FEED-FORWARD.md).  
-**Rendered artifact:** [`qualification/d6-r2-wireframes/b00-r2-notifications.html`](../../../qualification/d6-r2-wireframes/b00-r2-notifications.html).  
-**Structural verifier:** `scripts/verify-d6-r-b00-r2-wireframe.mjs` — first GREEN artifact commit `c725b89a9f652cc3628eb158684b067ae80696d3` passed the repository full gate.  
+**Artifact:** [`qualification/d6-r2-wireframes/b00-r2-notifications.html`](../../../qualification/d6-r2-wireframes/b00-r2-notifications.html).  
+**Structural verifier:** `scripts/verify-d6-r-b00-r2-wireframe.mjs`.  
 **Operator visual adjudication:** **APPROVED 2026-08-23**.  
-**Operator `LOCK`:** **YES — bounded topbar bell + U01 preview structure**.
+**Operator `LOCK`:** **YES**.
 
-The locked B00-R2 structure preserves the already-locked B00 sidebar, Organization workspace and page-local Installation model and adds only:
+Locked structure:
 
 ```text
 G00-E topbar Notification utility slot
 → Organization-scoped bell
-→ unread-known-present / unread-known-empty / knowledge-unavailable distinction
+→ unread-known-present / unread-known-empty / knowledge-unavailable
 → bounded U01 recent-Inbox preview
 → explicit source continuation separate from awareness mutation
 → B11 "Ver todas" continuation
 ```
 
-Locked structural laws:
+Locked laws:
 
-- no new global sidebar destination;
+- no global sidebar destination;
 - self-Inbox bell does not depend on `notifications.manage`;
-- unread presence is a dot/presence state, never a numeric count inferred from pagination;
-- request unavailable is visibly distinct from known-empty;
+- unread presence is a dot/presence state, never an inferred number;
+- unavailable is not known-empty;
 - `Abrir origem` does not implicitly mark read;
-- explicit `Marcar como lida` changes only Notification awareness state;
-- Organization switch closes incompatible preview state before new Organization awareness is presented;
-- desktop preserves title + page-local context + bell; mobile preserves menu + title + bell with local context below;
-- B11 full Inbox and B12 routing Settings are separate blocks and were not locked by the B00-R2 adjudication.
+- awareness mutation changes only Notification state;
+- Organization switch closes/invalidate incompatible Notification context;
+- desktop and mobile preserve the B00 context model.
 
-No final visual-design decision is implied by the grayscale HTML treatment.
+The reviewed HTML remains a `CANDIDATE` snapshot; the operator `LOCK` lives in this ledger so the reviewed evidence is not rewritten after adjudication.
 
 ### 2.3 B11 — Full Personal Inbox — LOCKED
 
-**Approved structural direction:** [NOTIF-01 D6-R Frontend Feed-Forward](D6-R2-NOTIF-01-D6-R-FRONTEND-FEED-FORWARD.md).  
-**Rendered artifact:** [`qualification/d6-r2-wireframes/b11-notifications-inbox.html`](../../../qualification/d6-r2-wireframes/b11-notifications-inbox.html).  
+**Artifact:** [`qualification/d6-r2-wireframes/b11-notifications-inbox.html`](../../../qualification/d6-r2-wireframes/b11-notifications-inbox.html).  
 **Structural verifier:** `scripts/verify-d6-r-b11-inbox-wireframe.mjs`.  
-**First complete GREEN candidate:** `90409e6bc7adb711c63a0ef7ed8f0b52ced761c8` — repository full gate PASS.  
+**First complete GREEN candidate:** `90409e6bc7adb711c63a0ef7ed8f0b52ced761c8`.  
 **Operator visual adjudication:** **APPROVED 2026-08-23**.  
 **Operator `LOCK`:** **YES — R128 full personal Inbox structure**.
 
-The locked B11 structure inherits B00/B00-R2 and realizes only R128 full personal Inbox:
+Locked structure:
 
 ```text
 Organization-scoped utility route outside sidebar
@@ -146,21 +141,19 @@ Organization-scoped utility route outside sidebar
 → explicit read/unread + archive/restore awareness mutation
 ```
 
-Locked structural laws:
+Locked laws:
 
 - structured list, not table/grid;
-- all fourteen accepted NotificationKinds are filterable; no source-family/filter DSL;
-- F02 and F14 typed result examples are statically inspectable and visibly rendered;
+- all 14 accepted NotificationKinds are filterable;
+- F02/F14 typed outcomes are present when applicable;
 - no text search, unread count, `total_count`, mark-all-read, bulk archive, severity/priority or saved views;
-- `Abrir origem` remains separate from awareness mutation and re-enters current source authorization;
-- read/unread and archive/restore mutate only Notification awareness state and preserve stale-write recovery;
-- known-empty is distinct from request-unavailable;
-- stale awareness write and source-access-denied remain explicit recoverable states;
-- Organization switch invalidates preview, cursor and transient Inbox state before presenting the new Organization;
-- narrow widths stack item actions without hiding source continuation or awareness controls;
-- B12 `Configurações > Notificações` remains a separate, not-yet-rendered block.
+- source navigation and awareness mutation remain separate;
+- known-empty != unavailable;
+- stale awareness write and current-source denied states are recoverable;
+- Organization switch invalidates preview/cursor/transient Inbox state;
+- mobile stacks actions without hiding material controls.
 
-Executable proof reports:
+Executable proof:
 
 ```text
 d6_r_b11_status=CANDIDATE
@@ -171,16 +164,71 @@ d6_r_b11_b12=NOT_RENDERED
 d6_r_b11_wireframe=PASS
 ```
 
-The verifier intentionally reports the reviewed artifact snapshot as `CANDIDATE`; the operator `LOCK` lives in this authority ledger and does not mutate the HTML after review.
+The proof reports the reviewed HTML snapshot as `CANDIDATE`; the operator `LOCK` is authority in this ledger.
+
+### 2.4 B12 — Notification Routing Settings — RENDERED CANDIDATE / NOT LOCKED
+
+**Approved structural direction:** [NOTIF-01 D6-R Frontend Feed-Forward](D6-R2-NOTIF-01-D6-R-FRONTEND-FEED-FORWARD.md).  
+**Rendered artifact:** [`qualification/d6-r2-wireframes/b12-notification-routing-settings.html`](../../../qualification/d6-r2-wireframes/b12-notification-routing-settings.html).  
+**Structural verifier:** `scripts/verify-d6-r-b12-routing-settings-wireframe.mjs`.  
+**First complete GREEN candidate:** `ae18ba0a9aa0faa4ea866e035c312e08b1e9c111` — repository full gate PASS.  
+**Operator visual adjudication:** **REQUIRED**.  
+**Operator `LOCK`:** **NO**.
+
+Rendered candidate structure:
+
+```text
+Configurações > Notificações
+→ notifications.manage-conditioned local Settings destination
+→ exactly 10 fixed ORG_ROUTED route rows
+→ Configurado | Sem configuração de destinatários
+→ inline row editor
+→ IdentityAccess candidate directory: principal_id + display_name only
+→ cursor continuation for candidates
+→ SetNotificationRoute with If-Match
+→ explicit save / cancel / remove configuration
+```
+
+Candidate laws shown in the HTML:
+
+- Notifications remains inside the existing `Configurações` mass; no new global sidebar mass;
+- `ListNotificationRoutes` owns current route presentation through PersonalNotifications;
+- `ListNotificationRouteRecipientCandidates` remains an IdentityAccess purpose-bound discovery projection;
+- candidate discovery is usability, **not** route-write authorization;
+- selector exposes only `principal_id + display_name`; no `access.read`, roles, Permissions or IdP state;
+- the Product-defined set is exactly 10 ORG_ROUTED kinds;
+- `UNCONFIGURED` is shown as **Sem configuração de destinatários**;
+- `CONFIGURED([])` and generic disabled-switch semantics are forbidden;
+- editor expands inline in the affected row; no mandatory modal/drawer baseline;
+- `SetNotificationRoute` carries `If-Match` and save-time server revalidation;
+- save-time recipient rejection preserves the draft and identifies the selection needing correction without Permission disclosure;
+- a historical recipient absent from current candidates is rendered only as **Destinatário não elegível · configuração anterior**, never as an opaque ID or invented identity;
+- candidate continuation is cursor-based; no candidate-search API/platform is introduced preventively;
+- unavailable route truth is distinct from ten unconfigured routes;
+- Organization switch invalidates editor, candidate pages and route state before presenting the new Organization;
+- mobile stacks route rows/editor/actions without changing authority meaning.
+
+Executable proof:
+
+```text
+d6_r_b12_status=CANDIDATE
+d6_r_b12_route_slots=10/10
+d6_r_b12_editor=INLINE_ROW
+d6_r_b12_permission=notifications.manage
+d6_r_b12_access_read=FORBIDDEN
+d6_r_b12_candidate_disclosure=MINIMAL
+d6_r_b12_configured_empty=FORBIDDEN
+d6_r_b12_wireframe=PASS
+```
 
 No final visual-design decision is implied by the grayscale HTML treatment.
 
 ## 3. B01 — Overview — LOCKED
 
-**Content/state hierarchy:** `LOCKED` — operator approved after executable HTML review on 2026-08-22.  
-**Artifact:** [`qualification/d6-r2-wireframes/b01-overview.html`](../../../qualification/d6-r2-wireframes/b01-overview.html)
+**Artifact:** [`qualification/d6-r2-wireframes/b01-overview.html`](../../../qualification/d6-r2-wireframes/b01-overview.html).  
+**Operator adjudication:** `LOCKED` on 2026-08-22.
 
-A04 remains locked as contextual priority:
+Locked contextual priority:
 
 ```text
 Work known + actionable  -> attention expands and leads
@@ -189,53 +237,29 @@ Work unknown/unavailable -> uncertainty remains visible
 all cases                -> marketplace/account + Performance + Economics orientation remains visible
 ```
 
-B01 inherits the locked B00 global navigation. Its content/state lock is not reopened by IA-01, B00-R2 or B11.
-
 ## 4. B10 — Preparation — SUSPENDED CANDIDATE
 
-**Internal pattern:** P6 `DERIVED`; P7 NOT TRIGGERED.  
-**P6 evidence:** [B10 Preparation Reference Study](D6-R2-P6-B10-PREPARATION-REFERENCE-STUDY.md).  
-**Rendered artifact:** [`qualification/d6-r2-wireframes/b10-preparation.html`](../../../qualification/d6-r2-wireframes/b10-preparation.html)
+**P6:** `DERIVED`; P7 NOT TRIGGERED.  
+**Artifact:** [`qualification/d6-r2-wireframes/b10-preparation.html`](../../../qualification/d6-r2-wireframes/b10-preparation.html).
 
-The B10 internal pattern remains valid evidence:
-
-```text
-search/list triage
-→ selected exact-subject detail
-→ readiness / requirements / correspondence
-→ explicit reread after consequential correspondence effect
-→ continuation only from admitted current state
-```
-
-Its global placement is now locked as `OFERTA > Preparação`. B10 remains suspended while the accepted NOTIF-01 dependency chain completes D6-R → D7-R → D8-R; the immediate frontend gate is B12 rendering and visual adjudication.
+Its internal search/list → exact-subject detail → readiness/correspondence → explicit reread pattern remains valid evidence, and its global placement remains `OFERTA > Preparação`. It stays suspended while NOTIF-01 closes D6-R → D7-R → D8-R.
 
 ## 5. Operational landing — CANDIDATE CONCEPT ONLY
 
-Operator approved **cockpit hybrid oriented to action**, not one global Kanban:
+Operator-approved concept remains the action-oriented hybrid cockpit:
 
 ```text
 1. PRECISA DE ATENÇÃO
-   explicit exception / Work / ambiguity / post-sale attention
-
 2. TRABALHO OPERACIONAL NORMAL
-   normal actionable execution
-
 3. ACOMPANHAMENTO
-   in-progress / dispatched / delivered without immediate action
-
 4. SPECIALIST ENTRY POINTS
-   Vendas · Expedição · Pós-venda · Trabalho
 ```
 
-A global `Nova -> Faturar -> Separar -> Conferir -> Embalar -> Enviar` Kanban is rejected because no cross-owner Product lifecycle owns those columns. A Kanban-like view may later be studied inside Fulfillment/Expedição only.
+One global cross-owner Kanban remains rejected.
 
 ## 6. OP-READ-01 — RESOLVED
 
-[D5-R2](D5-R2-OPERATIONAL-READ-PROJECTION-REPAIR.md) enriches only existing owner-local operational list projections/filters and preserved the then-current 99-operation / 30-Permission Product surface without changing owners or write surface.
-
-[D8-R2](D8-R2-OPERATIONAL-READ-REVALIDATION.md) confirms GF-02 remains coherent: choreography, effect semantics, physical authority and source-domain boundaries are unchanged.
-
-Binding negative controls remain:
+[D5-R2](D5-R2-OPERATIONAL-READ-PROJECTION-REPAIR.md) and [D8-R2](D8-R2-OPERATIONAL-READ-REVALIDATION.md) remain binding. Negative controls remain:
 
 ```text
 no /operational-dashboard Product endpoint
@@ -246,11 +270,7 @@ no global totals inferred from one paginated page
 no N+1 detail fan-out as production baseline
 ```
 
-The operational landing may later compose repaired owner-local reads, but it acquires no business/write authority.
-
 ## 7. Global-Maximum / YAGNI law
-
-For every remaining block:
 
 ```text
 human job + accepted authority
@@ -282,7 +302,6 @@ operator disposition:       LOCKED
 material changes requested: NONE
 bounded utility slot:       LOCKED
 bell + U01 preview:         LOCKED
-B11 / B12:                  NOT LOCKED BY THIS GATE
 visual-design decisions:    NONE
 ```
 
@@ -293,7 +312,16 @@ rendered artifact reviewed: YES
 operator disposition:       LOCKED
 material changes requested: NONE
 R128 full Inbox structure:  LOCKED
-B12:                        NOT LOCKED BY THIS GATE
+visual-design decisions:    NONE
+```
+
+### 8.4 B12
+
+```text
+rendered artifact reviewed: NO / PENDING OPERATOR
+operator disposition:       PENDING
+structural verifier:        PASS
+D7-R:                       BLOCKED
 visual-design decisions:    NONE
 ```
 
@@ -301,6 +329,6 @@ A later material user-model finding may reopen only the smallest affected author
 
 ## 9. Exact next action
 
-Render **only B12 — `Configurações > Notificações` routing Settings** as executable low-fidelity HTML, inheriting the locked B00/B00-R2/B11 authority, then stop for operator visual adjudication.
+Operator visually adjudicates **only B12 — `Configurações > Notificações` routing Settings** from the rendered executable low-fidelity HTML. Valid dispositions are revision/finding or explicit operator `LOCK`.
 
-Do **not** begin D7-R/D8-R, resume B10, merge PR #61 or implement Product code before B12 closes, unless the operator explicitly authorizes parallel candidate work under the frontend method.
+Do **not** begin D7-R/D8-R, resume B10, merge PR #61 or implement Product code before this B12 visual gate closes, unless the operator explicitly authorizes parallel candidate work under the frontend method.
