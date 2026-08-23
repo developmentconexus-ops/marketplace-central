@@ -1,8 +1,8 @@
 # NOTIF-01 D1-R — Family Semantic Closure
 
-> **Status:** FAMILY CONTRACTS OPERATOR-APPROVED / D1-R FINAL ADJUDICATION NEXT
+> **Status:** D1-R OPERATOR-RATIFIED / ACCEPTED
 > **Approved artifact:** [Notification Family Semantic Contracts](D6-R2-NOTIF-01-NOTIFICATION-FAMILY-SEMANTIC-CONTRACTS.md), blob `13618d9a6d0c8583e0c669b9aee6dd2f84014995`
-> **Parent candidate:** [D1-R Producer Edges & Notification Routing Boundary Correction](D6-R2-NOTIF-01-D1-R-PRODUCER-ROUTING-BOUNDARY-CORRECTION.md)
+> **Parent authority:** [D1-R Producer Edges & Notification Routing Boundary Correction](D6-R2-NOTIF-01-D1-R-PRODUCER-ROUTING-BOUNDARY-CORRECTION.md)
 > **Product wire:** unchanged — 99 Product operations · 30 ordinary Permissions · Principal kinds H/A/S
 > **Implementation:** BLOCKED UNTIL accepted D9
 
@@ -42,7 +42,7 @@ AUTHORIZATION_ACTION_REQUIRED
 AUTHORIZATION_DECISION_RESULT
 ```
 
-Fourteen is a derived result, not a protected count. Before D2-R, a family must split if a subtype proves materially different source authority, human job, audience strategy, deep-link continuation, repeat law or interaction. Generic `reason:string` or hidden routing logic may not conceal that difference.
+Fourteen is a derived result, not a protected count. Before D2-R closes, a family must split if a subtype proves materially different source authority, human job, audience strategy, deep-link continuation, repeat law or interaction. Generic `reason:string` or hidden routing logic may not conceal that difference.
 
 ## 2. Binding D1-R clarification A — Materialization audience
 
@@ -90,9 +90,9 @@ The rule is per-recipient and bounded to this proved overlap. It does not create
 
 The previously approved source-alert → `WORK_ASSIGNMENT` replacement remains a separate bounded suppression case.
 
-## 4. Final D1-R candidate after semantic closure
+## 4. Accepted D1-R boundary result
 
-Read the parent D1-R with this closure record. Its final candidate meaning is:
+The accepted D1-R authority is the parent D1-R read together with this closure record:
 
 ```text
 10 explicit source-owner → Personal Notifications edges
@@ -109,7 +109,7 @@ Personal Notifications owns awareness vocabulary/lifecycle, bounded A3 routing c
 
 ## 5. Negative controls
 
-D1-R must still fail if it introduces:
+D1-R fails if a downstream design introduces:
 
 - `AnyDomain → Personal Notifications`;
 - provider webhook/topic → Product Notification directly;
@@ -128,10 +128,10 @@ H3 / Trigger + Audience Census       OPERATOR-APPROVED
 D0-R Product scope                   ACCEPTED
 14 family semantic contracts         OPERATOR-APPROVED
 D1-R semantic clarifications A/B     OPERATOR-APPROVED
-D1-R final boundary authority        READY FOR OPERATOR REVIEW
-D2-R                                 BLOCKED
+D1-R final boundary authority        ACCEPTED / OPERATOR-RATIFIED
+D2-R                                 OPEN / NEXT
 D3 / D5 / D6 / D7 / D8             BLOCKED for NOTIF-01
 Product implementation               BLOCKED UNTIL D9
 ```
 
-**Exact next action:** operator adjudicates the final D1-R boundary authority as the parent D1-R plus this semantic closure. Do not begin D2-R before explicit D1-R ratification.
+**Exact next action:** rederive only D2-R Notification identity/data ownership against the accepted ten-edge / fourteen-family / three-audience-strategy model. Do not open D3 or edit the OAD before D2-R is operator-ratified.
