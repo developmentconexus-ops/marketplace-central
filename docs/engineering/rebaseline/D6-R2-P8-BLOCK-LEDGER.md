@@ -1,6 +1,6 @@
 # D6-R2 P8 — Structural Wireframe Block Ledger
 
-> **Status:** OPEN / ACTIVE — B00 App Shell + corrected global IA operator-`LOCKED`; B01 content operator-`LOCKED`; B00-R2 Notification utility **RENDERED CANDIDATE / VISUAL ADJUDICATION REQUIRED**; OP-READ-01 RESOLVED; B10 SUSPENDED
+> **Status:** OPEN / ACTIVE — B00 App Shell + corrected global IA operator-`LOCKED`; B01 content operator-`LOCKED`; B00-R2 Notification utility operator-`LOCKED`; OP-READ-01 RESOLVED; B10 SUSPENDED; B11 NEXT
 > **Parent:** [D6-R2 Complete Frontend Realization Closure](D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md)
 > **P4-R1 reopen:** [Global IA / Operational Mass Reopen](D6-R2-P4-R1-GLOBAL-IA-OPERATIONAL-MASS-REOPEN.md)
 > **D5-R2 repair:** [Operational Read Projection Repair](D5-R2-OPERATIONAL-READ-PROJECTION-REPAIR.md)
@@ -91,15 +91,15 @@ Existing technical route identities remain where possible; user-facing `Anúncio
 
 B00 does **not** decide the internal content of Visão operacional. It locks only the destination's place in global IA and its organization-wide context.
 
-### 2.2 B00-R2 — Notification utility-slot reopen — RENDERED CANDIDATE / NOT LOCKED
+### 2.2 B00-R2 — Notification utility-slot reopen — LOCKED
 
 **Approved design:** [NOTIF-01 D6-R Frontend Feed-Forward](D6-R2-NOTIF-01-D6-R-FRONTEND-FEED-FORWARD.md).  
 **Rendered artifact:** [`qualification/d6-r2-wireframes/b00-r2-notifications.html`](../../../qualification/d6-r2-wireframes/b00-r2-notifications.html).  
 **Structural verifier:** `scripts/verify-d6-r-b00-r2-wireframe.mjs` — first GREEN artifact commit `c725b89a9f652cc3628eb158684b067ae80696d3` passed the repository full gate.  
-**Operator visual adjudication:** **REQUIRED**.  
-**Operator `LOCK`:** **NO — not yet adjudicated from rendered HTML**.
+**Operator visual adjudication:** **APPROVED 2026-08-23**.  
+**Operator `LOCK`:** **YES — bounded topbar bell + U01 preview structure**.
 
-The rendered candidate preserves the already-locked B00 sidebar, Organization workspace and page-local Installation model and adds only:
+The locked B00-R2 structure preserves the already-locked B00 sidebar, Organization workspace and page-local Installation model and adds only:
 
 ```text
 G00-E topbar Notification utility slot
@@ -110,17 +110,17 @@ G00-E topbar Notification utility slot
 → B11 "Ver todas" continuation placeholder only
 ```
 
-Candidate structural laws shown in the HTML:
+Locked structural laws:
 
 - no new global sidebar destination;
 - self-Inbox bell does not depend on `notifications.manage`;
 - unread presence is a dot/presence state, never a numeric count inferred from pagination;
 - request unavailable is visibly distinct from known-empty;
 - `Abrir origem` does not implicitly mark read;
-- explicit `Marcar como lida` changes only Notification awareness fixture state;
+- explicit `Marcar como lida` changes only Notification awareness state;
 - Organization switch closes incompatible preview state before new Organization awareness is presented;
 - desktop preserves title + page-local context + bell; mobile preserves menu + title + bell with local context below;
-- B11 full Inbox and B12 routing Settings are **not rendered** in this block.
+- B11 full Inbox and B12 routing Settings remain separate later blocks and were not locked by this adjudication.
 
 No final visual-design decision is implied by the grayscale HTML treatment.
 
@@ -138,7 +138,7 @@ Work unknown/unavailable -> uncertainty remains visible
 all cases                -> marketplace/account + Performance + Economics orientation remains visible
 ```
 
-B01 inherits the locked B00 global navigation. Its content/state lock is not reopened by IA-01 or by the bounded B00-R2 utility-slot candidate.
+B01 inherits the locked B00 global navigation. Its content/state lock is not reopened by IA-01 or by B00-R2.
 
 ## 4. B10 — Preparation — SUSPENDED CANDIDATE
 
@@ -156,7 +156,7 @@ search/list triage
 → continuation only from admitted current state
 ```
 
-Its global placement is now locked as `OFERTA > Preparação`. B10 remains suspended while the accepted NOTIF-01 dependency chain completes D6-R → D7-R → D8-R; the immediate gate is operator visual adjudication of B00-R2, not B10 progression.
+Its global placement is now locked as `OFERTA > Preparação`. B10 remains suspended while the accepted NOTIF-01 dependency chain completes D6-R → D7-R → D8-R; the immediate frontend gate is B11, not B10 progression.
 
 ## 5. Operational landing — CANDIDATE CONCEPT ONLY
 
@@ -210,7 +210,9 @@ human job + accepted authority
 → no speculative platform capability
 ```
 
-## 8. B00-R1 operator adjudication record
+## 8. Operator adjudication records
+
+### 8.1 B00-R1
 
 ```text
 rendered artifact reviewed: YES
@@ -221,10 +223,22 @@ corrected global IA:        LOCKED
 visual-design decisions:    NONE
 ```
 
-This closes IA-01. A later material user-model finding may reopen only the smallest affected authority; preference alone does not.
+### 8.2 B00-R2
+
+```text
+rendered artifact reviewed: YES
+operator disposition:       LOCKED
+material changes requested: NONE
+bounded utility slot:       LOCKED
+bell + U01 preview:         LOCKED
+B11 / B12:                  NOT LOCKED / NOT RENDERED BY THIS GATE
+visual-design decisions:    NONE
+```
+
+A later material user-model finding may reopen only the smallest affected authority; preference alone does not.
 
 ## 9. Exact next action
 
-Operator visually adjudicates **only B00-R2** from the rendered executable low-fidelity HTML. The valid dispositions are revision/finding or explicit operator `LOCK` of the bounded topbar bell + U01 preview structure.
+Render **only B11 — full personal Inbox** as the next executable low-fidelity P8 block, inheriting the locked B00/B00-R2 shell and the approved D6-R Inbox structure.
 
-Do **not** render B11/B12 as baseline, begin D7-R/D8-R, resume B10, merge PR #61 or implement Product code before this B00-R2 visual gate closes, unless the operator explicitly authorizes parallel candidate work under the frontend method.
+Do **not** render B12 as baseline, begin D7-R/D8-R, resume B10, merge PR #61 or implement Product code before B11 is visually adjudicated, unless the operator explicitly authorizes parallel candidate work under the frontend method.
