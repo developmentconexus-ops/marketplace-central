@@ -45,6 +45,7 @@ For every material authorization episode that enters Governance:
 one stable AuthorizationRequest identity
 → one immutable reviewed authorization basis/context
 → current decision eligibility remains Governance-owned and revocable
+→ material current validity is revalidated semantically, not inferred from generic resource drift
 → zero or one terminal AuthorizationDecision
 → terminal history is never rewritten into another episode
 → later reauthorization creates a new AuthorizationRequest identity
@@ -90,38 +91,93 @@ BusinessOrderIntent
 InvoicingIntent
 ```
 
-The request preserves:
+The request preserves a closed target identity and enough immutable source-owner-derived provenance to identify the reviewed business action/scope for this authorization episode.
+
+A source-owner resource revision/ETag may be retained as **evidence of what was observed**, but it is not `AuthorizationRequest` identity and is not automatically the semantic validity predicate for authorization.
+
+Why:
 
 ```text
-closed target identity
-+ exact target revision/basis reviewed for this authorization episode
-+ intended/authorized target-scope information already required by Governance
+irrelevant source-resource field changes
+→ may change a whole-resource revision/ETag
+→ must not automatically force reapproval
 ```
 
-The target identity/revision is not request identity. It is the immutable business target anchor of that request episode.
+D0 explicitly requires materiality-based authorization validity. Therefore target-resource revision and authorization-basis validity are separate meanings.
 
 No arbitrary `{entity_type, entity_id}` graph is introduced.
 
-## 7. Authorization review-context snapshot
+## 7. Authorization review/basis snapshot
 
 A human must be able to understand what exact material action/context is being authorized, and later history must explain what was reviewed without reconstructing mutable current state.
 
-Therefore each request retains one **immutable, bounded, typed authorization review-context snapshot**.
+Therefore each request retains one **immutable, bounded, typed authorization review/basis snapshot**.
 
 Laws:
 
-1. the action owner remains authority for the source business meaning used to author the snapshot;
+1. the action owner remains authority for source business meaning used to author the snapshot;
 2. Governance owns retention of the authorization-purpose snapshot after accepting the request;
 3. the snapshot is typed by the closed governed-target/action family; no generic payload/metadata/JSON bag;
-4. it contains only information materially needed to understand/authorize the request under the accepted action semantics;
-5. it is not a general target read projection and grants no source-owner read capability;
-6. it never becomes current source truth after creation;
-7. if materially governing source context changes enough that the reviewed basis is no longer valid, the existing request is invalidated or a new authorization episode is required rather than silently rewriting the snapshot;
-8. non-material presentation drift does not by itself require a new request.
+4. it contains only information materially needed to understand/authorize the request under accepted action semantics;
+5. it may preserve policy/evidence/scope provenance when material to why authorization was required, without making Governance owner of those underlying policies/facts;
+6. it is not a general target read projection and grants no source-owner read capability;
+7. it never becomes current source truth after creation;
+8. if materially governing context changes enough that the reviewed basis is no longer valid, the request is invalidated or a new authorization episode is required rather than silently rewriting the snapshot;
+9. non-material presentation/resource drift does not by itself require a new request.
 
 Exact field schemas are deliberately not D2 authority. D3/D5/D6 must derive the minimum typed per-target review contracts after D2-R6 closes.
 
-## 8. Requester / initiator lineage
+## 8. Request concurrency vs material authorization validity
+
+This distinction is binding.
+
+### 8.1 Request concurrency
+
+`AuthorizationRequest` has an owner-local revision for stale-write/concurrent-decision protection.
+
+Later D5 may encode this with standard conditional semantics such as an ETag/`If-Match` on the **AuthorizationRequest representation itself**.
+
+This protects cases such as:
+
+```text
+João and Maria can both decide AR-501
+→ both read request revision R3
+→ João decides first, request becomes DECIDED / R4
+→ Maria's stale R3 decision cannot create a second decision
+```
+
+D2 does not select the HTTP carrier.
+
+### 8.2 Material authorization validity
+
+A request's business target may change without every change being material to the authorization basis. Conversely, authority/policy/evidence context may change materially even when the target's own coarse revision does not.
+
+Therefore:
+
+> **A generic target-resource ETag is not the authorization validity oracle.**
+
+Before a decision is committed, Governance must still revalidate:
+
+```text
+request is PENDING
++ current Principal is still authorized to decide
++ the preserved authorization episode is still materially valid enough to decide
+```
+
+When current source/business meaning is needed for that last predicate, Governance uses the already-accepted action-owner semantic boundary; the action owner evaluates material source/business validity under its own authority.
+
+The exact Q/C/E communication and recovery contract is D3 feed-forward after D2-R6. Delayed/lost event delivery may not be the sole authority for current validity.
+
+If material validity fails, the request does not silently retarget/rewrite itself; it becomes invalid or a later new authorization episode is created.
+
+This preserves D0's two simultaneous laws:
+
+```text
+irrelevant drift → no needless reapproval
+material governing drift → no stale authorization
+```
+
+## 9. Requester / initiator lineage
 
 The request preserves exact accountable Principal lineage supplied by the action owner when materially available:
 
@@ -135,11 +191,11 @@ It may be H/A/S according to the originating action. Human-only Notification res
 
 Email, username, role name and Permission are never requester identity.
 
-## 9. Lifecycle — candidate
+## 10. Lifecycle — candidate
 
 D2-R6 admits the smallest lifecycle required by known consumers.
 
-### 9.1 `PENDING`
+### 10.1 `PENDING`
 
 The request has been accepted by Governance and no terminal `AuthorizationDecision` exists.
 
@@ -147,13 +203,13 @@ The request has been accepted by Governance and no terminal `AuthorizationDecisi
 
 - a currently eligible human necessarily exists;
 - the request is visible to every holder of `governance.decide`;
-- the target is still executable;
+- the target is executable;
 - a Notification has been delivered;
-- the request can be decided without current Governance revalidation.
+- the request can be decided without current Governance + material-validity revalidation.
 
-Current eligible decision Principals are dynamic Governance-owned meaning and may change while the request identity remains stable.
+Current eligible decision Principals are dynamic Governance-owned meaning and may change while request identity remains stable.
 
-### 9.2 `DECIDED`
+### 10.2 `DECIDED`
 
 Exactly one `AuthorizationDecision` has been committed for the request.
 
@@ -168,29 +224,29 @@ The historical request remains `DECIDED` even if the resulting authorization lat
 
 If new human authorization is required, create a new `AuthorizationRequest`.
 
-### 9.3 `INVALIDATED`
+### 10.3 `INVALIDATED`
 
 A pending request may terminate without a human decision when its authorization episode can no longer truthfully be decided under the preserved review/basis context.
 
 Known invalidation classes are bounded to:
 
 ```text
-target_withdrawn_or_no_longer_seeks_authorization
-material_target/governing-context invalidation
+target withdrawn / no longer seeks authorization
+material source/governing-context invalidation
 authorization-context invalidation
 ```
 
-Routine changes in which individual Principals are currently eligible to decide do **not** automatically invalidate the request; Governance may simply recompute the current decision-Principal set.
+Routine changes in which individual Principals are currently eligible to decide do **not** automatically invalidate the request; Governance may recompute the current decision-Principal set.
 
-Invalidation preserves enough typed provenance to explain why the request became terminal without fabricating a `reject` decision. Exact wire/error/event spelling belongs later.
+Invalidation preserves enough typed provenance to explain why the request became terminal without fabricating a `reject` decision. Exact wire/event spelling belongs later.
 
 An invalidated request is never reopened. A legitimate later authorization episode gets a new ID.
 
-### 9.4 No baseline expiry state
+### 10.4 No baseline expiry state
 
 No generic `expired` lifecycle is admitted merely by symmetry. Time-based authorization expiry may be added only if a governing product rule/consumer proves it.
 
-## 10. Reauthorization lineage
+## 11. Reauthorization lineage
 
 Material reauthorization is a known consumer, so D2-R6 preserves a bounded optional predecessor link:
 
@@ -213,7 +269,7 @@ initial authorization request
 
 without inferring the relationship from timestamps/titles.
 
-## 11. Duplicate intake / same-vs-different law
+## 12. Duplicate intake / same-vs-different law
 
 Retry/recovery of the **same semantic authorization episode** must resolve to the same `AuthorizationRequest`; it must not mint duplicates because transport was retried.
 
@@ -221,7 +277,7 @@ A **new** request is required when Governance/action-owner semantics establish a
 
 Exact idempotency carrier, request anchor, persistence and ambiguous-intake recovery are D3/D5/D7 work. D2 freezes only the semantic same-vs-different property.
 
-## 12. `AuthorizationDecision` feed-forward
+## 13. `AuthorizationDecision` feed-forward
 
 Existing `AuthorizationDecision` remains canonical and distinct.
 
@@ -233,14 +289,16 @@ AuthorizationDecision
 → preserves deciding Principal
 → preserves authorize | reject outcome
 → preserves exact authorization/authority context required for historical explanation
-→ preserves exact target/scope snapshot of the request episode
+→ preserves the immutable reviewed target/scope/basis from that request episode
 ```
 
 A Decision does not become a mutable `pending` object.
 
+The client should not need to reconstruct a current target-resource ETag merely to identify what was reviewed; later D5 derives the exact command contract from `AuthorizationRequest` identity/revision and the D3 current-validity revalidation contract.
+
 Later revocation/reapproval/execution invalidation never edits the historical decision outcome.
 
-## 13. Notification feed-forward
+## 14. Notification feed-forward
 
 This D2 repair changes only source identity semantics needed for later D3/D5/D6 derivation.
 
@@ -255,9 +313,9 @@ because the human is being told that **this exact pending authorization episode*
 
 `AUTHORIZATION_DECISION_RESULT` does not automatically move to `AuthorizationRequestRef`; its accepted requester continuation may remain target-oriented so a requester is not forced to gain Governance-history access.
 
-No Notification stores the request review snapshot, target current state, ETag, Permission set or authority context.
+No Notification stores the request review snapshot, target current state, concurrency validator, Permission set or authority context.
 
-## 14. Authority fences
+## 15. Authority fences
 
 `AuthorizationRequest` does not own or grant:
 
@@ -276,7 +334,7 @@ provider/business-system protocol
 
 Possession of `AuthorizationRequestID` grants nothing.
 
-## 15. YAGNI / excluded structure
+## 16. YAGNI / excluded structure
 
 D2-R6 does **not** admit:
 
@@ -297,7 +355,7 @@ approval SLA/expiry
 
 If a future named consumer proves one of those meanings, reopen the smallest responsible authority then.
 
-## 16. Adversarial checks
+## 17. Adversarial checks
 
 The candidate fails if:
 
@@ -307,18 +365,22 @@ The candidate fails if:
 - current approver eligibility becomes immutable recipient identity on the request;
 - request snapshot becomes source-owner current truth or generic target mirror;
 - request identity grants `governance.read`, target-owner read/write or execution authority;
+- every source-resource ETag change forces reapproval regardless of materiality;
+- material governing drift is ignored merely because a target-resource revision did not change;
 - every delegation/member change invalidates the request by default;
 - a human `reject` is fabricated merely because the request became invalid before decision;
 - reauthorization lineage requires a generic relationship graph;
 - D2 selects HTTP paths, operation count, database schema or runtime topology.
 
-## 17. Candidate decision
+## 18. Candidate decision
 
 **Recommendation:** ACCEPT D2-R6 with the model above.
 
-The repair introduces exactly one missing canonical business identity under the already-correct Governance boundary and one bounded predecessor relation justified by the known reauthorization case. It preserves essential authorization lifecycle complexity while avoiding a generic workflow/case abstraction.
+The repair introduces exactly one missing canonical business identity under the already-correct Governance boundary and one bounded predecessor relation justified by the known reauthorization case. It also separates request concurrency from material authorization validity so we preserve both no-stale-authorization and no-needless-reapproval laws.
 
-## 18. Gate
+This is essential authorization complexity, not a generic workflow abstraction.
+
+## 19. Gate
 
 ```text
 D1-R2 boundary revalidation       PASS / CURRENT STRUCTURE CONFIRMED
