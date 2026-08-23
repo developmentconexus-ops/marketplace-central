@@ -1,20 +1,19 @@
 # NOTIF-01 — Personal Notifications Authority Amendment
 
-> **Status:** OPEN — D0 ACCEPTED / D1 OWNER-BOUNDARY CANDIDATE / OPERATOR ADJUDICATION REQUIRED
+> **Status:** OPEN — D0 ACCEPTED / D1 ACCEPTED / D2 IDENTITY-DATA-OWNERSHIP CANDIDATE / OPERATOR ADJUDICATION REQUIRED
 > **Trigger:** operator-approved [Personal Notification Architecture Design](D6-R2-NOTIF-01-NOTIFICATION-ARCHITECTURE-DESIGN.md)
 > **Execution plan:** [NOTIF-01 Authority Amendment Plan](D6-R2-NOTIF-01-AUTHORITY-AMENDMENT-PLAN.md)
-> **Current accepted authority:** D0 NOTIF-01 amendment is accepted; D1+ remain unchanged except where a later NOTIF-01 section is explicitly operator-ratified
 > **Current Product wire:** unchanged — 99 Product operations · 30 ordinary Permissions · Principal kinds H/A/S
 > **Product implementation:** BLOCKED UNTIL accepted D9
 
 ## 1. Amendment law
 
-NOTIF-01 is a bounded frontend-discovered Product gap. It does not rewrite accepted stage history and it does not grant later-stage decisions early.
+NOTIF-01 is a bounded frontend-discovered Product gap. It does not rewrite accepted stage history or grant later-stage decisions early.
 
 ```text
 D0 scope — ACCEPTED
-→ D1 owner/boundaries — CANDIDATE
-→ D2 identity/data ownership — BLOCKED
+→ D1 owner/boundaries — ACCEPTED
+→ D2 identity/data ownership — CANDIDATE
 → D3 communication/events — BLOCKED
 → D5 Product wire — BLOCKED
 → D6 frontend — BLOCKED
@@ -24,202 +23,194 @@ D0 scope — ACCEPTED
 
 ---
 
-# D0 bounded amendment — Personal Notification Inbox
-
-## 2. Product 1.0 scope addition — ACCEPTED
+# D0 bounded amendment — Personal Notification Inbox — ACCEPTED
 
 Product 1.0 adds **Personal Notification Inbox** as a bounded supporting capability of the Marketplace Operations Control Plane.
 
 Purpose:
 
-> allow an exact human Principal to discover personally relevant committed MPC facts, retain personal awareness state, and navigate back toward the current source authority without turning Notification into the source fact, workflow, authorization, audit record or acknowledgement of that fact.
+> allow an exact human Principal to discover personally relevant committed MPC facts, retain personal awareness state, and navigate back toward current source authority without Notification becoming source fact, workflow, authorization, audit record or acknowledgement.
 
-This capability is additive to Marketplace Operations + Commercial Intelligence. It does not alter the accepted marketplace operating lifecycle, source-system authority model, Work lifecycle, Governance model, fulfillment model or commercial-intelligence authority.
+MPC owns Notification awareness state only: Notification existence, recipient, unread/read, active/archived, and bounded source correlation. Reading or archiving changes Notification only; it never resolves Work or mutates/acknowledges source truth.
 
-## 3. Product-level authority — ACCEPTED
-
-MPC **OWNS** Personal Notification awareness state for the recipient, bounded to:
-
-```text
-personal Notification existence
-recipient
-unread / read state
-archived / active-Inbox state
-source correlation sufficient to explain/navigate the awareness item
-```
-
-Notification is distinct from originating business truth, Operational Work obligation/resolution, Governance authorization/decision, Audit/history authority, source-object access, and acknowledgement that the originating fact was read, accepted or resolved.
-
-Reading or archiving a Notification changes only Notification awareness state. It never resolves Work and never mutates or acknowledges the source condition by authority.
-
-## 4. Launch-V1 human need and first required trigger — ACCEPTED
+Initial Launch-V1 trigger:
 
 ```text
 Operational Work becomes explicitly assigned or reassigned
-→ to an exact human Principal
+→ exact human Principal
 → that human must be able to discover the resulting personal Notification
 ```
 
-The originating Work remains the actionable obligation and source of its own responsibility/assignment/escalation/resolution semantics.
+The Inbox is Organization-scoped, human-Principal-targeted, not cross-Organization, not a human-style A/S Inbox, and never a source-access grant. D0 requires no exact unread aggregate count.
 
-D0 does **not** authorize generic notifications for every sale, listing, shipment, provider event, CRUD change, Work role/group, approval or asynchronous outcome. Further trigger classes require later bounded evidence and owning-authority review.
-
-## 5. Recipient, Organization and access posture — ACCEPTED
-
-Personal Notification Inbox is Organization-scoped, targeted to an exact human Principal, not a cross-Organization/global feed, not a human-style Inbox for A/S Principals, and never a grant of source access.
-
-When a human follows a Notification to its source, current source authorization remains authoritative. Losing source access does not retroactively erase the recipient's Notification awareness history.
-
-Exact identity representation, persistence ownership, RLS/isolation mechanics and source-reference shape belong to D2/D7.
-
-## 6. Minimal Product outcome / no count requirement — ACCEPTED
-
-Launch V1 requires durable distinction between unread/read and active/archived Notification state.
-
-D0 does **not** require an exact unread aggregate count. A later frontend may surface only the truthful existence of one-or-more unread Notifications. A numeric badge/count requires separate authoritative aggregate evidence if later proven necessary.
-
-D0 does not select route shape, topbar structure, API operations, Permission names, event mechanics, River jobs, SSE, `LISTEN/NOTIFY`, tables or schemas.
-
-## 7. Explicit Launch-V1 non-goals — ACCEPTED
-
-```text
-seen state
-numeric unread aggregate
-mark-all-read
-bulk archive
-notification preferences
-per-kind user subscriptions
-digests
-e-mail notifications
-mobile/web push
-generic notification template platform
-generic EventStore/pub-sub platform
-external broker
-cross-Organization Inbox
-A/S human-style Inbox
-generic entity/reference graph
-Notification-triggered source mutation
-```
-
-## 8. D0 negative controls — ACCEPTED
-
-The target must fail review if it attempts to:
-
-1. reuse Operational Work itself as the personal Inbox;
-2. make Notification read/archive resolve or mutate Work/source truth;
-3. make Notification an Audit or acknowledgement authority;
-4. infer source access from possession of a Notification;
-5. create a cross-Organization Inbox;
-6. expose a human-style Inbox to A/S Principals by symmetry;
-7. make e-mail/push/preferences/subscriptions a Launch-V1 gate;
-8. create a generic Notification/subscription/event platform before a proved consumer requires it;
-9. preserve the 99-operation/30-Permission census by forcing Notification into unrelated capabilities.
+Accepted D0 non-goals remain: `seen`, numeric unread aggregate, mark-all-read, bulk archive, preferences, subscriptions, digests, e-mail/push, generic templates, generic EventStore/pub-sub, external broker, cross-Organization Inbox, A/S human Inbox, generic entity graph, and Notification-triggered source mutation.
 
 ---
 
-# D1 bounded amendment — Personal Notifications semantic owner
+# D1 bounded amendment — Personal Notifications semantic owner — ACCEPTED
 
-## 9. Supporting semantic owner — CANDIDATE
+**Personal Notifications** is a small supporting semantic owner inside the modular-monolith direction. It owns only the personal-awareness lifecycle, exact recipient reference, unread/read, active/archived, and Notification-local source correlation required for explanation/navigation/deduplication.
 
-Add **Personal Notifications** as a small supporting semantic owner. This is a semantic boundary inside the accepted modular-monolith direction; it does **not** imply a service, database, process or deployment boundary.
+It does not own originating business meaning, Work responsibility/assignment/escalation/closure, Governance authorization, source access, Audit/history authority, delivery channels, generic subscriptions/preferences/templates, or cross-owner workflow progression.
 
-Personal Notifications owns only:
-
-```text
-Notification personal-awareness lifecycle
-exact recipient Principal reference
-unread / read state
-active-Inbox / archived state
-Notification-local source correlation needed for explanation/navigation/deduplication
-```
-
-It explicitly does not own:
-
-```text
-originating business meaning or source resolution
-Work responsibility / assignment / escalation / closure
-Governance authorization or decision semantics
-source-object access
-Audit/history authority
-delivery channels such as e-mail/push
-generic subscriptions/preferences/templates
-cross-owner workflow progression
-```
-
-The boundary exists because personal awareness has an independent lifecycle (`unread/read`, `active/archived`) and cannot truthfully be absorbed by Operational Work without making Work responsible for non-actionable awareness.
-
-## 10. Minimal semantic edge — CANDIDATE
-
-The only admitted baseline business edge is:
+The only admitted baseline semantic edge is:
 
 ```text
 Operational Work → Personal Notifications
 ```
 
-Meaning:
+Work remains authority for assignment/reassignment and the actionable obligation. Personal Notifications never changes Work state, and producers never write Personal Notifications private state.
 
-> when Operational Work commits an assignment or reassignment occurrence to an exact human Principal, that committed Work-owned fact may make the Work personally relevant to that recipient; Personal Notifications owns whether/how that occurrence is represented as Notification awareness state.
+D1 admits no `AnyDomain → Personal Notifications`, Notifications→all-domains, event-per-CRUD fan-out, role/group broadcast, generic subscription routing, workflow/event hub or generic task domain. Future producer edges require a bounded D1 reopen proving exact recipient, independent awareness value, stable occurrence identity and no source-owner distortion.
 
-Ownership does not move:
+D1 deliberately does not choose Q/C/E/P, event names, identity/schema, API, Permission, River or realtime.
 
-- Work remains authority for the assignment/reassignment and the actionable obligation;
-- Personal Notifications never changes Work state;
-- Notification read/archive never closes or acknowledges Work;
-- the producer never writes Personal Notifications private state.
+---
 
-D1 does not choose whether the edge is Q/C/E/P, an event name, job payload, transaction mechanism or HTTP call. Those belong to D3/D7/D5.
+# D2 bounded amendment — Notification identity and data ownership
 
-## 11. No generic fan-out owner — CANDIDATE
+## 2. Canonical Notification identity — CANDIDATE
 
-D1 does **not** admit:
+`Notification` is MPC-owned canonical durable state under **Personal Notifications** and receives one stable opaque **NotificationID**.
+
+Binding identity laws:
+
+- NotificationID is non-business-semantic and non-reusable;
+- it does not encode Organization, Principal, Work, kind, timestamp or lifecycle state;
+- Notification identity does not change when read/archive state changes;
+- Notification identity does not change when the source Work later changes;
+- a reassignment never retargets or rewrites an earlier Notification: it creates a distinct source occurrence and, when D3 later admits delivery, a distinct Notification for the new recipient.
+
+Exact UUID/ULID/database encoding remains later realization.
+
+## 3. Organization ownership and recipient identity — CANDIDATE
+
+Every Notification belongs to exactly one canonical `Organization` isolation scope and references exactly one canonical MPC `Principal` as recipient.
+
+For the Product 1.0 Inbox behavior admitted by D0:
 
 ```text
-AnyDomain → Personal Notifications
-Notifications → all domains
-event-per-CRUD notification fan-out
-role/group broadcast semantics
-generic subscription-driven routing
+recipient Principal kind = human
 ```
 
-Future trigger owners (for example Governance or asynchronous action outcomes) require a bounded D1 reopen proving all of:
+Recipient identity is the canonical Principal identity, never e-mail, username, display name, OIDC subject or role name by convenience.
 
-1. a committed producer-owned fact;
-2. an exact human recipient without a generic subscription engine;
-3. independent personal-awareness value rather than duplicate noise;
-4. a stable occurrence discriminator;
-5. no distortion of the originating owner's responsibility.
+The recipient attached to one Notification is historical and stable. Later Work reassignment, Membership/RoleAssignment change, Principal disablement or source-access revocation does not rewrite the Notification into another recipient or another Organization.
 
-## 12. D1 forbidden boundary violations — CANDIDATE
+Current Product access remains separately authoritative: retained Notification history does not allow a disabled/non-member Principal to bypass current access gates.
 
-The target must fail review if it makes Personal Notifications:
+## 4. Minimal canonical Notification state — CANDIDATE
 
-1. a workflow/event hub;
-2. a generic task/ticket owner;
-3. a source-business-truth or source-resolution authority;
-4. a cross-owner mutable entity shared with producers;
-5. a platform-wide polymorphic entity/reference graph;
-6. an access-grant mechanism;
-7. a delivery-channel platform by symmetry;
-8. a reason to merge Work and Notification lifecycles.
+The smallest durable state is:
 
-## 13. D1 coherence result — CANDIDATE
+```text
+notification_id
+organization_id
+recipient_principal_id
+kind
+source_work_ref
+source_occurrence_discriminator
+created_at
+read_at?
+archived_at?
+revision
+```
 
-The D1 addition is the smallest boundary coherent with accepted authority:
+Semantics:
 
-- Notification has independent recipient-facing state and lifecycle;
-- Operational Work cannot absorb that lifecycle without violating its actionable-work charter;
-- only one proved producer edge is admitted now;
-- mechanism remains separate from authority;
-- the owner remains supporting and narrow rather than becoming a generic communications platform.
+```text
+read_at = null       → unread
+read_at != null      → read
+archived_at = null   → active Inbox
+archived_at != null  → archived
+```
 
-No D2 identity/schema, D3 communication form, D5 operation/Permission, D6 UI realization or D7 mechanism becomes accepted through this D1 candidate.
+`created_at` is the Notification occurrence creation time owned by Personal Notifications; it is not silently substituted for the Work occurrence time.
 
-## 14. Gate
+`revision` is owner-local concurrency lineage for later safe Product mutation. D2 requires stable stale-write distinguishability but does not choose ETag/header/wire/database representation; D5/D7 own those mechanics.
+
+No canonical `seen`, delivered, dismissed, acknowledged, resolved, severity, priority or generic status field is admitted.
+
+## 5. Typed Work source reference — CANDIDATE
+
+Because the only accepted D1 producer is Operational Work, the baseline source correlation is an explicit **typed Work reference**, not a generic entity reference or polymorphic platform graph.
+
+```text
+source_work_ref
+```
+
+references the accepted canonical Work identity in the same Organization scope. It does not transfer Work authority to Personal Notifications and does not grant the recipient source access.
+
+Do **not** introduce a `source_ref` union yet. A broader closed union becomes admissible only after a second producer owner is separately accepted by D1.
+
+Personal Notifications may retain only the source correlation needed to explain/deduplicate/navigate the awareness item. Current Work business state must not be copied into Notification as a second current authority merely to avoid a source read.
+
+## 6. Source occurrence discriminator and duplicate identity — CANDIDATE
+
+A Notification generated from Work assignment/reassignment must correlate to one particular committed Work-owned assignment occurrence, not merely to current `(work_id, recipient)` state.
+
+Therefore `source_occurrence_discriminator` must be stable enough that:
+
+```text
+same Work occurrence delivered twice
+→ same semantic Notification
+
+distinct reassignment occurrence
+→ distinct semantic Notification
+
+a Work assigned to A, later B, later A again
+→ the two assignments to A remain distinct occurrences
+```
+
+D2 does **not** invent a universal EventID. D3 must bind this discriminator to the smallest durable Work-owned occurrence semantics that satisfy recoverability and deduplication.
+
+## 7. Write authority and history — CANDIDATE
+
+Personal Notifications is the only write authority for Notification lifecycle state.
+
+- Operational Work owns the source assignment/reassignment fact.
+- Identity/access owns canonical Principal and Organization access state.
+- Personal Notifications stores references; it does not mutate either authority.
+- Notification read/archive history is not evidence that Work/source truth was read, accepted, acknowledged or resolved.
+- Historical Notification meaning is not rewritten merely because current source state/access changed.
+
+Deletion/retention policy is not selected by this amendment; target behavior must not silently erase material Notification history merely as a side effect of Work reassignment or access revocation.
+
+## 8. D2 isolation and reference laws — CANDIDATE
+
+- cross-Organization Notification references are invalid;
+- `source_work_ref` must stay within the Notification Organization scope;
+- Notification ownership must not be inferred from Work, recipient e-mail, Installation or process-global context;
+- recipient scoping is a Product-access requirement, but exact PostgreSQL/RLS enforcement remains D7;
+- typed references follow accepted D2 law; no universal `{entity_type, entity_id}` graph is introduced.
+
+## 9. D2 negative controls — CANDIDATE
+
+The target must fail review if it:
+
+1. derives NotificationID from Work/Principal/time or recycles it;
+2. uses e-mail/username/role as recipient identity instead of Principal;
+3. changes an existing Notification recipient when Work is reassigned;
+4. deduplicates only by `(work_id, recipient)` and therefore collapses two distinct assignment occurrences;
+5. creates a generic source-entity graph before another producer is accepted;
+6. copies current Work state into Notification as second authority;
+7. treats Notification possession as source access;
+8. deletes/rewrites history merely because Membership, access or current Work assignment changed;
+9. adds `seen`, delivered, acknowledged, severity or generic workflow status by symmetry;
+10. chooses table/RLS/API/event/River/SSE mechanics inside D2.
+
+## 10. D2 coherence result — CANDIDATE
+
+This model follows accepted D2 laws: canonical identity follows the new D1 owner; Organization remains the isolation root; Principal remains the canonical actor identity; typed references avoid a universal entity graph; historical meaning is stable; and one meaning has one write authority.
+
+No D3 communication form, D5 wire/Permission, D6 UI realization or D7 persistence/runtime mechanism becomes accepted through this D2 candidate.
+
+## 11. Gate
 
 ```text
 D0 NOTIF-01 amendment     ACCEPTED
-D1 owner/boundary         READY FOR OPERATOR REVIEW
-D2 amendment              BLOCKED
+D1 owner/boundary         ACCEPTED
+D2 identity/data ownership READY FOR OPERATOR REVIEW
 D3 amendment              BLOCKED
 D5 Product/OAD change     BLOCKED
 D6 bell/Inbox authority   BLOCKED
@@ -228,4 +219,4 @@ D8 proof amendment        BLOCKED
 Product implementation    BLOCKED UNTIL D9
 ```
 
-**Exact next action:** operator adjudicates this D1 supporting semantic owner and the single `Operational Work → Personal Notifications` edge. If approved, mark D1 accepted and open only the bounded D2 identity/data-ownership gate.
+**Exact next action:** operator adjudicates this D2 Notification identity/data-ownership candidate only. If approved, mark D2 accepted and open only the bounded D3 trigger/communication gate.
