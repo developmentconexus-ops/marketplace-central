@@ -12,12 +12,12 @@
 | Current stage | **D6-R2 — Complete Frontend Realization Closure — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | D6-R2 | [Closure](engineering/rebaseline/D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md) + [P4-R1](engineering/rebaseline/D6-R2-P4-R1-GLOBAL-IA-OPERATIONAL-MASS-REOPEN.md) + [P8](engineering/rebaseline/D6-R2-P8-BLOCK-LEDGER.md) — **B00/B01 LOCKED; B10 SUSPENDED** |
-| NOTIF-01 | D0-R + D1-R + D2-R/R2 + [D2-R3](engineering/rebaseline/D6-R2-NOTIF-01-D2-R3-RATIFICATION.md) + [D2-R4](engineering/rebaseline/D6-R2-NOTIF-01-D2-R4-RATIFICATION.md) + [D2-R5](engineering/rebaseline/D6-R2-NOTIF-01-D2-R5-RATIFICATION.md) **ACCEPTED** · [D3-R](engineering/rebaseline/D6-R2-NOTIF-01-D3-R-RATIFICATION.md) **ACCEPTED** · [D3-R1](engineering/rebaseline/D6-R2-NOTIF-01-D3-R1-PRESENTATION-FEED-FORWARD-REVALIDATION.md) + [D3-R2](engineering/rebaseline/D6-R2-NOTIF-01-D3-R2-TYPED-RESULT-CONTINUATION-FEED-FORWARD.md) **PASS** · [D5-F4](engineering/rebaseline/D6-R2-NOTIF-01-D5-F4-RECIPIENT-DISCOVERY-GLOBAL-MAXIMUM.md) + [D5-R3](engineering/rebaseline/D6-R2-NOTIF-01-D5-R3-RATIFICATION.md) **ACCEPTED / OPERATOR-RATIFIED** |
+| NOTIF-01 | D0-R→D5-R3 **ACCEPTED** · D3-R1/R2 **PASS** · [D5-F4](engineering/rebaseline/D6-R2-NOTIF-01-D5-F4-RECIPIENT-DISCOVERY-GLOBAL-MAXIMUM.md) **OPERATOR-RATIFIED** · [D5-R4 OAD proof](engineering/rebaseline/D6-R2-NOTIF-01-D5-R4-OAD-WIRE-PROOF.md) **PROVED / CANONICAL** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
-| Product surface | **99 Product operations · 30 ordinary Permissions · Principal kinds H / A / S only** |
+| Product surface | **104 Product operations · 31 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Author and executably prove the canonical NOTIF-01 OAD amendment for exactly 5 operations + `notifications.manage` → derived 104/31. No Product implementation.** |
+| Exact next action | **Execute only NOTIF-01 D6-R frontend feed-forward: bell + personal Inbox + routing settings + bounded B00 topbar utility-slot reopen. Do not begin D7-R/D8-R or Product implementation first.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -32,24 +32,24 @@
 | D3 — Communication / Events | ACCEPTED / CLOSED; **NOTIF-01 D3-R ACCEPTED / D3-R1+R2 PASS** |
 | D4 — External Integrations | ACCEPTED / CLOSED |
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
-| D5 — API | ACCEPTED / CLOSED; **NOTIF-01 D5-R3 OPERATOR-RATIFIED / OAD AUTHORING ACTIVE** |
+| D5 — API | ACCEPTED / CLOSED; **NOTIF-01 D5-R3 ACCEPTED / D5-R4 OAD 104/31 PROVED** |
 | D5-R2 — Operational Read Projection Repair | **ACCEPTED / CANONICAL** |
-| D6 — Frontend | **ACCEPTED / CLOSED** |
-| D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED** |
-| D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED** |
+| D6 — Frontend | **ACCEPTED / CLOSED; NOTIF-01 D6-R NEXT** |
+| D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED; NOTIF-01 D7-R BLOCKED BY D6-R** |
+| D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED; NOTIF-01 D8-R BLOCKED BY D7-R** |
 | D8-R2 — GF-02 Operational Read Revalidation | **ACCEPTED / PASS** |
-| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00/B01 LOCKED; B10 SUSPENDED; NOTIF-01 OAD gate** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00/B01 LOCKED; B10 SUSPENDED; NOTIF-01 D6-R NEXT** |
 | Pre-D9 readiness | **BLOCKED** |
 | D9 — Adversarial Architecture Review | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
 
 ## Current result
 
-- NOTIF-01 D5-R3 is operator-ratified: **5 operations** + one new `notifications.manage`; derived wire consequence **104 operations / 31 Permissions**, counts non-goals.
-- Recipient discovery is an H-only IdentityAccess Q under `notifications.manage`; only `principal_id` + `display_name`; no `access.read`, role/Permission disclosure or write authority.
-- Inbox filtering is bounded to accepted `NotificationKind`; F02/F14 use only their typed immutable outcomes; F14 continues through `AuthorizationTargetRef`.
-- ORG_ROUTED writes revalidate exact human/Organization/Membership/Product eligibility + kind-specific source-read eligibility; Permission never selects recipients and discovery never authorizes writes.
-- Canonical OAD remains **99/30** until the separate wire-authoring/proof gate passes. No Product implementation.
+- Canonical OAD is **104/31**: historical 95/29 and 99/30 non-regression proofs survive; current TypeScript/Go projections and split auth proof pass.
+- NOTIF-01 focused wire proof passes **104/104 operations · 31/31 Permissions · 8/8 negative controls**.
+- Five admitted operations: `ListMyNotifications`, `UpdateMyNotificationAwarenessState`, `ListNotificationRoutes`, `ListNotificationRouteRecipientCandidates`, `SetNotificationRoute`; only new ordinary Permission is `notifications.manage`.
+- Recipient discovery remains IdentityAccess-owned/minimal; self Inbox has no `notifications.read`; route writes revalidate current recipient/source-read eligibility; F02/F14 typed outcomes and F14 `AuthorizationTargetRef` remain binding.
+- D6-R→D7-R→D8-R→resume dependent D6-R2. No Product implementation before accepted D9.
 
 ```text
 D6-R2 → Pre-D9 readiness → D9 → Product implementation only after accepted D9
