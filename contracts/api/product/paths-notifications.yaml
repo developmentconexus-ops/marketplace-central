@@ -139,7 +139,7 @@ schemas:
   NotificationArchiveState: {type: string, enum: [active, archived]}
   NotificationReadStateFilter: {type: string, enum: [all, unread, read], default: all}
   NotificationArchiveStateFilter: {type: string, enum: [active, archived], default: active}
-  SubjectDisplayLabel: {type: string, minLength: 1, description: Immutable notification-safe human presentation snapshot; never source identity, authorization or current source truth.}
+  SubjectDisplayLabel: {type: string, minLength: 1, description: 'Immutable notification-safe human presentation snapshot; never source identity, authorization or current source truth.'}
   OfferingAsyncResultOutcome: {type: string, enum: [converged, rejected, ambiguous, divergent]}
   AuthorizationDecisionOutcome: {type: string, enum: [authorize, reject]}
 
