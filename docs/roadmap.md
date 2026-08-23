@@ -26,17 +26,22 @@
 
 | Stage / gate | Status |
 | --- | --- |
-| D0 | ACCEPTED / CLOSED; **NOTIF-01 D0-R ACCEPTED** |
-| D1 | ACCEPTED / CLOSED; **NOTIF-01 D1-R FINAL CANDIDATE** |
-| D2 | ACCEPTED / CLOSED; **NOTIF-01 prior candidate SUSPENDED / D2-R BLOCKED** |
-| D3 | ACCEPTED / CLOSED; NOTIF-01 reopen BLOCKED |
-| D4 + D4-R1 | ACCEPTED / CLOSED / CANONICAL |
-| D5 + D5-R2 | ACCEPTED / CLOSED / CANONICAL |
-| D6 | ACCEPTED / CLOSED |
-| D7 | ACCEPTED / CLOSED |
-| D8 + D8-R2 | **ACCEPTED / CLOSED / OPERATOR-RATIFIED / INTEGRATED; R2 PASS** |
-| D6-R2 | **OPEN / ACTIVE — B00/B01 LOCKED; B10 SUSPENDED; NOTIF-01 D1-R final gate** |
-| Pre-D9 / D9 / implementation | **BLOCKED / BLOCKED / BLOCKED UNTIL D9** |
+| D0 — Product / System Definition | ACCEPTED / CLOSED; **NOTIF-01 D0-R ACCEPTED** |
+| D1 — Domains / Boundaries | ACCEPTED / CLOSED; **NOTIF-01 D1-R FINAL CANDIDATE** |
+| D2 — Identity / Tenant / Data Ownership | ACCEPTED / CLOSED; **NOTIF-01 prior candidate SUSPENDED / D2-R BLOCKED** |
+| D3 — Communication / Events | ACCEPTED / CLOSED; NOTIF-01 reopen BLOCKED |
+| D4 — External Integrations | ACCEPTED / CLOSED |
+| D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
+| D5 — API | ACCEPTED / CLOSED |
+| D5-R2 — Operational Read Projection Repair | **ACCEPTED / CANONICAL** |
+| D6 — Frontend | **ACCEPTED / CLOSED** |
+| D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED** |
+| D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED** |
+| D8-R2 — GF-02 Operational Read Revalidation | **ACCEPTED / PASS** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00/B01 LOCKED; B10 SUSPENDED; NOTIF-01 D1-R final gate** |
+| Pre-D9 readiness | **BLOCKED** |
+| D9 — Adversarial Architecture Review | **BLOCKED** |
+| Implementation | **BLOCKED UNTIL D9** |
 
 ## Current result
 
