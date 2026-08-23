@@ -48,7 +48,7 @@
 - Canonical OAD is **104/31**: historical 95/29 and 99/30 non-regression proofs survive; current TypeScript/Go projections and split auth proof pass.
 - NOTIF-01 focused wire proof passes **104/104 operations · 31/31 Permissions · 8/8 negative controls**.
 - D6-R spec is operator-approved. The first sequential P8 block, **B00-R2**, is rendered as executable low-fi HTML; structural proof passes with global sidebar delta `0`, numeric unread count forbidden and B11/B12 not rendered.
-- Exact pre-checkpoint rendered-candidate HEAD `97eed882460ea898ff3d0c2b983a8e1d91eb0af4`: **CI #541 SUCCESS · pr-title #600 SUCCESS · repository full gate PASS**. Roadmap checkpoint metadata was then refreshed without changing B00-R2 artifact or Product authority.
+- Final visual-gate checkpoint `80f897f2eae593e513cf8292086685095d07c497`: **CI #543 SUCCESS · pr-title #602 SUCCESS · repository full gate PASS**.
 - B00-R2 remains **CANDIDATE / NOT LOCKED** until explicit operator visual adjudication of the rendered HTML.
 - D6-R→D7-R→D8-R→resume dependent D6-R2. No Product implementation before accepted D9.
 
