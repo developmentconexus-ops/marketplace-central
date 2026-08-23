@@ -1,9 +1,9 @@
 # NOTIF-01 D6-R — Frontend Feed-Forward
 
-> **Status:** OPERATOR-APPROVED DESIGN + WRITTEN SPEC / P8 B00-R2 RENDERED CANDIDATE / VISUAL ADJUDICATION REQUIRED
-> **Operator approval:** 2026-08-23 — approved the Global-Maximum structural direction and subsequently approved this written spec before B00-R2 artifact authoring
+> **Status:** OPERATOR-APPROVED DESIGN + WRITTEN SPEC / P8 B00-R2 OPERATOR-`LOCKED` / B11 NEXT
+> **Operator approval:** 2026-08-23 — approved the Global-Maximum structural direction, approved this written spec before artifact authoring, and visually `LOCKED` B00-R2 after rendered HTML review
 > **Parent authority:** [D5-R4 Canonical Product OAD Wire Proof](D6-R2-NOTIF-01-D5-R4-OAD-WIRE-PROOF.md) + [Notification Architecture Design](D6-R2-NOTIF-01-NOTIFICATION-ARCHITECTURE-DESIGN.md) + [Frontend Product Experience Planning Method v2.1](../../development/frontend-product-experience-planning-method.md)
-> **Existing frontend authority:** [D6-R2 P8 Block Ledger](D6-R2-P8-BLOCK-LEDGER.md) — B00/B01 operator-`LOCKED`; B00-R2 rendered candidate; B10 suspended
+> **Existing frontend authority:** [D6-R2 P8 Block Ledger](D6-R2-P8-BLOCK-LEDGER.md) — B00/B01/B00-R2 operator-`LOCKED`; B10 suspended; B11 next
 > **Product wire:** 104 Product operations · 31 ordinary Permissions · Principal kinds H/A/S
 > **Implementation:** BLOCKED UNTIL accepted D9
 
@@ -11,7 +11,7 @@
 
 D6-R feeds the accepted Personal Notifications Product authority forward into frontend experience authority without reopening Product semantics, global IA or runtime mechanics.
 
-It decides the candidate human structure for:
+It decides the human structure for:
 
 ```text
 B00-R2 bounded topbar utility-slot reopen
@@ -28,7 +28,7 @@ It does **not**:
 - select React implementation details beyond accepted D6 architecture;
 - select D7 PostgreSQL/River/SSE mechanics;
 - add visual-design authority such as palette, typography, iconography, radius, shadow or branding polish;
-- set any P8 block to `LOCKED` before rendered HTML inspection and explicit operator adjudication.
+- set any later P8 block to `LOCKED` before rendered HTML inspection and explicit operator adjudication.
 
 ## 2. P0–P3 bounded authority result
 
@@ -117,7 +117,7 @@ It overstates awareness as a primary product domain in the mental model and frag
 
 ## 5. B00-R2 — bounded topbar utility-slot reopen
 
-**Rendered P8 candidate:** [`qualification/d6-r2-wireframes/b00-r2-notifications.html`](../../../qualification/d6-r2-wireframes/b00-r2-notifications.html) — executable low-fidelity HTML; **not operator-`LOCKED` yet**.
+**Rendered P8 artifact:** [`qualification/d6-r2-wireframes/b00-r2-notifications.html`](../../../qualification/d6-r2-wireframes/b00-r2-notifications.html) — executable low-fidelity HTML; **operator-`LOCKED` on 2026-08-23**.
 
 The B00 physical/context shell remains binding:
 
@@ -131,7 +131,7 @@ mobile drawer + stacked local context
 
 Only one bounded utility slot is added to the page header.
 
-Desktop structural candidate:
+Locked desktop structure:
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
@@ -139,7 +139,7 @@ Desktop structural candidate:
 └──────────────────────────────────────────────────────────────┘
 ```
 
-Mobile structural candidate:
+Locked mobile structure:
 
 ```text
 ┌─────────────────────────────────┐
@@ -455,9 +455,9 @@ new Product API merely to simplify one screen
 Rendered work is sequential and operator-reviewed:
 
 ```text
-B00-R2  topbar bell + preview integration       RENDERED CANDIDATE
-  ↓ operator visual adjudication / LOCK or revision
-B11     full personal Inbox                    NOT RENDERED
+B00-R2  topbar bell + preview integration       LOCKED
+  ↓
+B11     full personal Inbox                    NEXT / NOT RENDERED
   ↓ operator visual adjudication / LOCK or revision
 B12     Configurações > Notificações           NOT RENDERED
   ↓ operator visual adjudication / LOCK or revision
@@ -474,11 +474,12 @@ No later block becomes baseline before the current material block is operator-`L
 D5-R4 canonical OAD                      PROVED / CANONICAL 104/31
 D6-R structural direction                OPERATOR-APPROVED
 D6-R written spec                         OPERATOR-APPROVED
-P8 B00-R2                                 RENDERED CANDIDATE / NOT LOCKED
-B11 / B12                                 NOT RENDERED
+P8 B00-R2                                 OPERATOR-LOCKED
+P8 B11                                    NEXT / NOT RENDERED
+P8 B12                                    NOT RENDERED / BLOCKED BY B11
 D7-R                                      BLOCKED BY D6-R
 D8-R                                      BLOCKED BY D7-R
 Product implementation                    BLOCKED UNTIL D9
 ```
 
-**Exact next action:** operator visually adjudicates only the rendered B00-R2 topbar bell + bounded recent-Inbox preview. Do not render B11/B12 as baseline, begin D7-R/D8-R, resume B10, merge PR #61 or implement Product code before this visual gate closes, unless the operator explicitly authorizes parallel candidate work.
+**Exact next action:** render only B11 — full personal Inbox — as executable low-fidelity HTML for operator visual adjudication, inheriting locked B00/B00-R2 structure. Do not render B12 as baseline, begin D7-R/D8-R, resume B10, merge PR #61 or implement Product code before B11 closes, unless the operator explicitly authorizes parallel candidate work.
