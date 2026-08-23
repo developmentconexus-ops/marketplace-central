@@ -1,0 +1,272 @@
+pathItems:
+  MyNotifications:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListMyNotifications
+      summary: List my personal notifications in the current organization
+      description: Returns current non-superseded personal awareness ordered by created_at descending with a stable tie-breaker. Request failure never means an empty inbox.
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: authenticated
+      x-mpc-self-recipient: true
+      x-mpc-require-current-organization-membership: true
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: PersonalNotifications
+      parameters:
+        - {name: archive_state, in: query, required: false, schema: {$ref: '#/schemas/NotificationArchiveStateFilter'}}
+        - {name: read_state, in: query, required: false, schema: {$ref: '#/schemas/NotificationReadStateFilter'}}
+        - {name: notification_kind, in: query, required: false, style: form, explode: true, schema: {type: array, minItems: 1, uniqueItems: true, items: {$ref: '#/schemas/NotificationKind'}}}
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+      responses:
+        '200': {description: Current personal notifications., content: {'application/json': {schema: {$ref: '#/schemas/NotificationsCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  MyNotification:
+    parameters:
+      - {$ref: './components.yaml#/parameters/OrganizationId'}
+      - {$ref: '#/parameters/NotificationId'}
+    patch:
+      operationId: UpdateMyNotificationAwarenessState
+      summary: Update my notification awareness state
+      x-mpc-operation-class: C
+      x-mpc-required-permission: authenticated
+      x-mpc-self-recipient: true
+      x-mpc-require-current-organization-membership: true
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: PersonalNotifications
+      parameters: [{$ref: './components.yaml#/parameters/IfMatch'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: '#/schemas/UpdateNotificationAwarenessStateRequest'}}}}
+      responses:
+        '200': {description: Updated personal notification., headers: {ETag: {$ref: './components.yaml#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/Notification'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '412': {$ref: './components.yaml#/responses/PreconditionFailed'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '428': {$ref: './components.yaml#/responses/PreconditionRequired'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  NotificationRoutes:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListNotificationRoutes
+      summary: List current organization notification routes
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: notifications.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: PersonalNotifications
+      responses:
+        '200': {description: Current Product-defined ORG_ROUTED slots., content: {'application/json': {schema: {$ref: '#/schemas/NotificationRoutesView'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  NotificationRoute:
+    parameters:
+      - {$ref: './components.yaml#/parameters/OrganizationId'}
+      - {$ref: '#/parameters/OrgRoutedNotificationKind'}
+    patch:
+      operationId: SetNotificationRoute
+      summary: Set one current organization notification route desired state
+      description: Candidate discovery is usability only. Every configured recipient is revalidated at write time before the route revision and eligibility epoch are accepted.
+      x-mpc-operation-class: C
+      x-mpc-required-permission: notifications.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: PersonalNotifications
+      x-mpc-route-recipient-source-read-eligibility:
+        MARKETPLACE_INSTALLATION_ATTENTION: portfolio.read
+        AVAILABILITY_ATTENTION: availability.read
+        ECONOMIC_RECONCILIATION_ATTENTION: economics.read
+        NEW_MARKETPLACE_SALE: sales.read
+        SALE_ATTENTION: sales.read
+        MATERIALIZATION_ATTENTION: materialization.read
+        FULFILLMENT_ACTIONABLE: fulfillment.read
+        FULFILLMENT_ATTENTION: fulfillment.read
+        SHIPMENT_EXCEPTION: fulfillment.read
+        POST_SALE_ATTENTION: post_sale.read
+      parameters: [{$ref: './components.yaml#/parameters/IfMatch'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: '#/schemas/NotificationRouteDesiredState'}}}}
+      responses:
+        '200': {description: Current notification route., headers: {ETag: {$ref: './components.yaml#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/NotificationRouteView'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '412': {$ref: './components.yaml#/responses/PreconditionFailed'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '428': {$ref: './components.yaml#/responses/PreconditionRequired'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  NotificationRouteRecipientCandidates:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListNotificationRouteRecipientCandidates
+      summary: List current eligible human notification-route recipient candidates
+      description: Purpose-bounded IdentityAccess projection for human recipient selection. It does not authorize SetNotificationRoute and exposes no role, Permission or IdP state.
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: notifications.manage
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: IdentityAccess
+      parameters: [{$ref: './components.yaml#/parameters/Limit'}, {$ref: './components.yaml#/parameters/Cursor'}]
+      responses:
+        '200': {description: Current eligible human recipient candidates., content: {'application/json': {schema: {$ref: '#/schemas/NotificationRouteRecipientCandidatesCollectionView'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+parameters:
+  NotificationId: {name: notification_id, in: path, required: true, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+  OrgRoutedNotificationKind: {name: notification_kind, in: path, required: true, schema: {$ref: '#/schemas/OrgRoutedNotificationKind'}}
+
+schemas:
+  NotificationKind:
+    type: string
+    enum: [MARKETPLACE_INSTALLATION_ATTENTION, OFFERING_ASYNC_ACTION_RESULT, AVAILABILITY_ATTENTION, ECONOMIC_RECONCILIATION_ATTENTION, NEW_MARKETPLACE_SALE, SALE_ATTENTION, MATERIALIZATION_ATTENTION, FULFILLMENT_ACTIONABLE, FULFILLMENT_ATTENTION, SHIPMENT_EXCEPTION, POST_SALE_ATTENTION, WORK_ASSIGNMENT, AUTHORIZATION_ACTION_REQUIRED, AUTHORIZATION_DECISION_RESULT]
+  OrgRoutedNotificationKind:
+    type: string
+    enum: [MARKETPLACE_INSTALLATION_ATTENTION, AVAILABILITY_ATTENTION, ECONOMIC_RECONCILIATION_ATTENTION, NEW_MARKETPLACE_SALE, SALE_ATTENTION, MATERIALIZATION_ATTENTION, FULFILLMENT_ACTIONABLE, FULFILLMENT_ATTENTION, SHIPMENT_EXCEPTION, POST_SALE_ATTENTION]
+  NotificationReadState: {type: string, enum: [unread, read]}
+  NotificationArchiveState: {type: string, enum: [active, archived]}
+  NotificationReadStateFilter: {type: string, enum: [all, unread, read], default: all}
+  NotificationArchiveStateFilter: {type: string, enum: [active, archived], default: active}
+  SubjectDisplayLabel: {type: string, minLength: 1, description: Immutable notification-safe human presentation snapshot; never source identity, authorization or current source truth.}
+  OfferingAsyncResultOutcome: {type: string, enum: [converged, rejected, ambiguous, divergent]}
+  AuthorizationDecisionOutcome: {type: string, enum: [authorize, reject]}
+
+  MarketplaceInstallationSourceRef: {type: object, additionalProperties: false, required: [kind, marketplace_installation_id], properties: {kind: {const: marketplace_installation}, marketplace_installation_id: {$ref: './components.yaml#/schemas/OpaqueId'}}}
+  ListingIntentSourceRef: {type: object, additionalProperties: false, required: [kind, listing_intent_id], properties: {kind: {const: listing_intent}, listing_intent_id: {$ref: './components.yaml#/schemas/OpaqueId'}}}
+  PriceIntentSourceRef: {type: object, additionalProperties: false, required: [kind, price_intent_id], properties: {kind: {const: price_intent}, price_intent_id: {$ref: './components.yaml#/schemas/OpaqueId'}}}
+  OfferingIntentSourceRef: {oneOf: [{$ref: '#/schemas/ListingIntentSourceRef'}, {$ref: '#/schemas/PriceIntentSourceRef'}]}
+  AvailabilityPreCreationSourceRef: {type: object, additionalProperties: false, required: [kind, listing_intent_id], properties: {kind: {const: pre_creation_listing_intent}, listing_intent_id: {$ref: './components.yaml#/schemas/OpaqueId'}}}
+  MarketplaceListingSourceRef: {type: object, additionalProperties: false, required: [kind, listing], properties: {kind: {const: marketplace_listing}, listing: {$ref: './components.yaml#/schemas/MarketplaceListingRef'}}}
+  AvailabilityTargetSourceRef: {oneOf: [{$ref: '#/schemas/AvailabilityPreCreationSourceRef'}, {$ref: '#/schemas/MarketplaceListingSourceRef'}]}
+  EconomicAttributionSourceRef: {type: object, additionalProperties: false, required: [kind, economic_attribution_id], properties: {kind: {const: economic_attribution}, economic_attribution_id: {$ref: './components.yaml#/schemas/OpaqueId'}}}
+  MarketplaceSaleSourceRef: {type: object, additionalProperties: false, required: [kind, sale], properties: {kind: {const: marketplace_sale}, sale: {$ref: './components.yaml#/schemas/MarketplaceSaleRef'}}}
+  EconomicAttentionSourceRef: {oneOf: [{$ref: '#/schemas/EconomicAttributionSourceRef'}, {$ref: '#/schemas/MarketplaceSaleSourceRef'}]}
+  BusinessOrderIntentSourceRef: {type: object, additionalProperties: false, required: [kind, business_order_intent_id], properties: {kind: {const: business_order_intent}, business_order_intent_id: {$ref: './components.yaml#/schemas/OpaqueId'}}}
+  InvoicingIntentSourceRef: {type: object, additionalProperties: false, required: [kind, invoicing_intent_id], properties: {kind: {const: invoicing_intent}, invoicing_intent_id: {$ref: './components.yaml#/schemas/OpaqueId'}}}
+  MaterializationIntentSourceRef: {oneOf: [{$ref: '#/schemas/BusinessOrderIntentSourceRef'}, {$ref: '#/schemas/InvoicingIntentSourceRef'}]}
+  FulfillmentExecutionSourceRef: {type: object, additionalProperties: false, required: [kind, fulfillment_execution_id], properties: {kind: {const: fulfillment_execution}, fulfillment_execution_id: {$ref: './components.yaml#/schemas/OpaqueId'}}}
+  MarketplaceShipmentSourceRef: {type: object, additionalProperties: false, required: [kind, shipment], properties: {kind: {const: marketplace_shipment}, shipment: {$ref: './components.yaml#/schemas/MarketplaceShipmentRef'}}}
+  PostSaleResolutionSourceRef: {type: object, additionalProperties: false, required: [kind, post_sale_resolution_id], properties: {kind: {const: post_sale_resolution}, post_sale_resolution_id: {$ref: './components.yaml#/schemas/OpaqueId'}}}
+  WorkSourceRef: {type: object, additionalProperties: false, required: [kind, work_id], properties: {kind: {const: work}, work_id: {$ref: './components.yaml#/schemas/OpaqueId'}}}
+  AuthorizationTargetRef: {oneOf: [{$ref: '#/schemas/ListingIntentSourceRef'}, {$ref: '#/schemas/PriceIntentSourceRef'}, {$ref: '#/schemas/BusinessOrderIntentSourceRef'}, {$ref: '#/schemas/InvoicingIntentSourceRef'}]}
+
+  NotificationMarketplaceInstallationAttention:
+    type: object
+    additionalProperties: false
+    required: [notification_id, kind, subject_display_label, source_ref, source_occurred_at, created_at, read_state, archive_state, etag]
+    properties: {notification_id: {$ref: './components.yaml#/schemas/OpaqueId'}, kind: {const: MARKETPLACE_INSTALLATION_ATTENTION}, subject_display_label: {$ref: '#/schemas/SubjectDisplayLabel'}, source_ref: {$ref: '#/schemas/MarketplaceInstallationSourceRef'}, source_occurred_at: {$ref: './components.yaml#/schemas/Instant'}, created_at: {$ref: './components.yaml#/schemas/Instant'}, read_state: {$ref: '#/schemas/NotificationReadState'}, archive_state: {$ref: '#/schemas/NotificationArchiveState'}, etag: {$ref: './components.yaml#/schemas/StrongETag'}}
+  NotificationOfferingAsyncActionResult:
+    type: object
+    additionalProperties: false
+    required: [notification_id, kind, subject_display_label, source_ref, source_occurred_at, created_at, read_state, archive_state, etag, offering_async_result_outcome]
+    properties: {notification_id: {$ref: './components.yaml#/schemas/OpaqueId'}, kind: {const: OFFERING_ASYNC_ACTION_RESULT}, subject_display_label: {$ref: '#/schemas/SubjectDisplayLabel'}, source_ref: {$ref: '#/schemas/OfferingIntentSourceRef'}, source_occurred_at: {$ref: './components.yaml#/schemas/Instant'}, created_at: {$ref: './components.yaml#/schemas/Instant'}, read_state: {$ref: '#/schemas/NotificationReadState'}, archive_state: {$ref: '#/schemas/NotificationArchiveState'}, etag: {$ref: './components.yaml#/schemas/StrongETag'}, offering_async_result_outcome: {$ref: '#/schemas/OfferingAsyncResultOutcome'}}
+  NotificationAvailabilityAttention:
+    type: object
+    additionalProperties: false
+    required: [notification_id, kind, subject_display_label, source_ref, source_occurred_at, created_at, read_state, archive_state, etag]
+    properties: {notification_id: {$ref: './components.yaml#/schemas/OpaqueId'}, kind: {const: AVAILABILITY_ATTENTION}, subject_display_label: {$ref: '#/schemas/SubjectDisplayLabel'}, source_ref: {$ref: '#/schemas/AvailabilityTargetSourceRef'}, source_occurred_at: {$ref: './components.yaml#/schemas/Instant'}, created_at: {$ref: './components.yaml#/schemas/Instant'}, read_state: {$ref: '#/schemas/NotificationReadState'}, archive_state: {$ref: '#/schemas/NotificationArchiveState'}, etag: {$ref: './components.yaml#/schemas/StrongETag'}}
+  NotificationEconomicReconciliationAttention:
+    type: object
+    additionalProperties: false
+    required: [notification_id, kind, subject_display_label, source_ref, source_occurred_at, created_at, read_state, archive_state, etag]
+    properties: {notification_id: {$ref: './components.yaml#/schemas/OpaqueId'}, kind: {const: ECONOMIC_RECONCILIATION_ATTENTION}, subject_display_label: {$ref: '#/schemas/SubjectDisplayLabel'}, source_ref: {$ref: '#/schemas/EconomicAttentionSourceRef'}, source_occurred_at: {$ref: './components.yaml#/schemas/Instant'}, created_at: {$ref: './components.yaml#/schemas/Instant'}, read_state: {$ref: '#/schemas/NotificationReadState'}, archive_state: {$ref: '#/schemas/NotificationArchiveState'}, etag: {$ref: './components.yaml#/schemas/StrongETag'}}
+  NotificationNewMarketplaceSale:
+    type: object
+    additionalProperties: false
+    required: [notification_id, kind, subject_display_label, source_ref, source_occurred_at, created_at, read_state, archive_state, etag]
+    properties: {notification_id: {$ref: './components.yaml#/schemas/OpaqueId'}, kind: {const: NEW_MARKETPLACE_SALE}, subject_display_label: {$ref: '#/schemas/SubjectDisplayLabel'}, source_ref: {$ref: '#/schemas/MarketplaceSaleSourceRef'}, source_occurred_at: {$ref: './components.yaml#/schemas/Instant'}, created_at: {$ref: './components.yaml#/schemas/Instant'}, read_state: {$ref: '#/schemas/NotificationReadState'}, archive_state: {$ref: '#/schemas/NotificationArchiveState'}, etag: {$ref: './components.yaml#/schemas/StrongETag'}}
+  NotificationSaleAttention:
+    type: object
+    additionalProperties: false
+    required: [notification_id, kind, subject_display_label, source_ref, source_occurred_at, created_at, read_state, archive_state, etag]
+    properties: {notification_id: {$ref: './components.yaml#/schemas/OpaqueId'}, kind: {const: SALE_ATTENTION}, subject_display_label: {$ref: '#/schemas/SubjectDisplayLabel'}, source_ref: {$ref: '#/schemas/MarketplaceSaleSourceRef'}, source_occurred_at: {$ref: './components.yaml#/schemas/Instant'}, created_at: {$ref: './components.yaml#/schemas/Instant'}, read_state: {$ref: '#/schemas/NotificationReadState'}, archive_state: {$ref: '#/schemas/NotificationArchiveState'}, etag: {$ref: './components.yaml#/schemas/StrongETag'}}
+  NotificationMaterializationAttention:
+    type: object
+    additionalProperties: false
+    required: [notification_id, kind, subject_display_label, source_ref, source_occurred_at, created_at, read_state, archive_state, etag]
+    properties: {notification_id: {$ref: './components.yaml#/schemas/OpaqueId'}, kind: {const: MATERIALIZATION_ATTENTION}, subject_display_label: {$ref: '#/schemas/SubjectDisplayLabel'}, source_ref: {$ref: '#/schemas/MaterializationIntentSourceRef'}, source_occurred_at: {$ref: './components.yaml#/schemas/Instant'}, created_at: {$ref: './components.yaml#/schemas/Instant'}, read_state: {$ref: '#/schemas/NotificationReadState'}, archive_state: {$ref: '#/schemas/NotificationArchiveState'}, etag: {$ref: './components.yaml#/schemas/StrongETag'}}
+  NotificationFulfillmentActionable:
+    type: object
+    additionalProperties: false
+    required: [notification_id, kind, subject_display_label, source_ref, source_occurred_at, created_at, read_state, archive_state, etag]
+    properties: {notification_id: {$ref: './components.yaml#/schemas/OpaqueId'}, kind: {const: FULFILLMENT_ACTIONABLE}, subject_display_label: {$ref: '#/schemas/SubjectDisplayLabel'}, source_ref: {$ref: '#/schemas/FulfillmentExecutionSourceRef'}, source_occurred_at: {$ref: './components.yaml#/schemas/Instant'}, created_at: {$ref: './components.yaml#/schemas/Instant'}, read_state: {$ref: '#/schemas/NotificationReadState'}, archive_state: {$ref: '#/schemas/NotificationArchiveState'}, etag: {$ref: './components.yaml#/schemas/StrongETag'}}
+  NotificationFulfillmentAttention:
+    type: object
+    additionalProperties: false
+    required: [notification_id, kind, subject_display_label, source_ref, source_occurred_at, created_at, read_state, archive_state, etag]
+    properties: {notification_id: {$ref: './components.yaml#/schemas/OpaqueId'}, kind: {const: FULFILLMENT_ATTENTION}, subject_display_label: {$ref: '#/schemas/SubjectDisplayLabel'}, source_ref: {$ref: '#/schemas/FulfillmentExecutionSourceRef'}, source_occurred_at: {$ref: './components.yaml#/schemas/Instant'}, created_at: {$ref: './components.yaml#/schemas/Instant'}, read_state: {$ref: '#/schemas/NotificationReadState'}, archive_state: {$ref: '#/schemas/NotificationArchiveState'}, etag: {$ref: './components.yaml#/schemas/StrongETag'}}
+  NotificationShipmentException:
+    type: object
+    additionalProperties: false
+    required: [notification_id, kind, subject_display_label, source_ref, source_occurred_at, created_at, read_state, archive_state, etag]
+    properties: {notification_id: {$ref: './components.yaml#/schemas/OpaqueId'}, kind: {const: SHIPMENT_EXCEPTION}, subject_display_label: {$ref: '#/schemas/SubjectDisplayLabel'}, source_ref: {$ref: '#/schemas/MarketplaceShipmentSourceRef'}, source_occurred_at: {$ref: './components.yaml#/schemas/Instant'}, created_at: {$ref: './components.yaml#/schemas/Instant'}, read_state: {$ref: '#/schemas/NotificationReadState'}, archive_state: {$ref: '#/schemas/NotificationArchiveState'}, etag: {$ref: './components.yaml#/schemas/StrongETag'}}
+  NotificationPostSaleAttention:
+    type: object
+    additionalProperties: false
+    required: [notification_id, kind, subject_display_label, source_ref, source_occurred_at, created_at, read_state, archive_state, etag]
+    properties: {notification_id: {$ref: './components.yaml#/schemas/OpaqueId'}, kind: {const: POST_SALE_ATTENTION}, subject_display_label: {$ref: '#/schemas/SubjectDisplayLabel'}, source_ref: {$ref: '#/schemas/PostSaleResolutionSourceRef'}, source_occurred_at: {$ref: './components.yaml#/schemas/Instant'}, created_at: {$ref: './components.yaml#/schemas/Instant'}, read_state: {$ref: '#/schemas/NotificationReadState'}, archive_state: {$ref: '#/schemas/NotificationArchiveState'}, etag: {$ref: './components.yaml#/schemas/StrongETag'}}
+  NotificationWorkAssignment:
+    type: object
+    additionalProperties: false
+    required: [notification_id, kind, subject_display_label, source_ref, source_occurred_at, created_at, read_state, archive_state, etag]
+    properties: {notification_id: {$ref: './components.yaml#/schemas/OpaqueId'}, kind: {const: WORK_ASSIGNMENT}, subject_display_label: {$ref: '#/schemas/SubjectDisplayLabel'}, source_ref: {$ref: '#/schemas/WorkSourceRef'}, source_occurred_at: {$ref: './components.yaml#/schemas/Instant'}, created_at: {$ref: './components.yaml#/schemas/Instant'}, read_state: {$ref: '#/schemas/NotificationReadState'}, archive_state: {$ref: '#/schemas/NotificationArchiveState'}, etag: {$ref: './components.yaml#/schemas/StrongETag'}}
+  NotificationAuthorizationActionRequired:
+    type: object
+    additionalProperties: false
+    required: [notification_id, kind, subject_display_label, source_ref, source_occurred_at, created_at, read_state, archive_state, etag]
+    properties: {notification_id: {$ref: './components.yaml#/schemas/OpaqueId'}, kind: {const: AUTHORIZATION_ACTION_REQUIRED}, subject_display_label: {$ref: '#/schemas/SubjectDisplayLabel'}, source_ref: {$ref: '#/schemas/AuthorizationTargetRef'}, source_occurred_at: {$ref: './components.yaml#/schemas/Instant'}, created_at: {$ref: './components.yaml#/schemas/Instant'}, read_state: {$ref: '#/schemas/NotificationReadState'}, archive_state: {$ref: '#/schemas/NotificationArchiveState'}, etag: {$ref: './components.yaml#/schemas/StrongETag'}}
+  NotificationAuthorizationDecisionResult:
+    type: object
+    additionalProperties: false
+    required: [notification_id, kind, subject_display_label, source_ref, source_occurred_at, created_at, read_state, archive_state, etag, authorization_decision_outcome]
+    properties: {notification_id: {$ref: './components.yaml#/schemas/OpaqueId'}, kind: {const: AUTHORIZATION_DECISION_RESULT}, subject_display_label: {$ref: '#/schemas/SubjectDisplayLabel'}, source_ref: {$ref: '#/schemas/AuthorizationTargetRef'}, source_occurred_at: {$ref: './components.yaml#/schemas/Instant'}, created_at: {$ref: './components.yaml#/schemas/Instant'}, read_state: {$ref: '#/schemas/NotificationReadState'}, archive_state: {$ref: '#/schemas/NotificationArchiveState'}, etag: {$ref: './components.yaml#/schemas/StrongETag'}, authorization_decision_outcome: {$ref: '#/schemas/AuthorizationDecisionOutcome'}}
+
+  Notification:
+    oneOf: [{$ref: '#/schemas/NotificationMarketplaceInstallationAttention'}, {$ref: '#/schemas/NotificationOfferingAsyncActionResult'}, {$ref: '#/schemas/NotificationAvailabilityAttention'}, {$ref: '#/schemas/NotificationEconomicReconciliationAttention'}, {$ref: '#/schemas/NotificationNewMarketplaceSale'}, {$ref: '#/schemas/NotificationSaleAttention'}, {$ref: '#/schemas/NotificationMaterializationAttention'}, {$ref: '#/schemas/NotificationFulfillmentActionable'}, {$ref: '#/schemas/NotificationFulfillmentAttention'}, {$ref: '#/schemas/NotificationShipmentException'}, {$ref: '#/schemas/NotificationPostSaleAttention'}, {$ref: '#/schemas/NotificationWorkAssignment'}, {$ref: '#/schemas/NotificationAuthorizationActionRequired'}, {$ref: '#/schemas/NotificationAuthorizationDecisionResult'}]
+  NotificationsCollection:
+    type: object
+    additionalProperties: false
+    required: [notifications]
+    properties: {notifications: {type: array, items: {$ref: '#/schemas/Notification'}}, next_cursor: {$ref: './components.yaml#/schemas/OpaqueKey'}}
+  UpdateNotificationAwarenessStateRequest:
+    type: object
+    additionalProperties: false
+    minProperties: 1
+    properties: {read_state: {$ref: '#/schemas/NotificationReadState'}, archive_state: {$ref: '#/schemas/NotificationArchiveState'}}
+
+  NotificationRouteConfigured: {type: object, additionalProperties: false, required: [state, recipient_principal_ids], properties: {state: {const: configured}, recipient_principal_ids: {type: array, minItems: 1, uniqueItems: true, items: {$ref: './components.yaml#/schemas/OpaqueId'}}}}
+  NotificationRouteUnconfigured: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unconfigured}}}
+  NotificationRouteDesiredState: {oneOf: [{$ref: '#/schemas/NotificationRouteConfigured'}, {$ref: '#/schemas/NotificationRouteUnconfigured'}]}
+  NotificationRouteView:
+    type: object
+    additionalProperties: false
+    required: [notification_kind, desired, etag]
+    properties: {notification_kind: {$ref: '#/schemas/OrgRoutedNotificationKind'}, desired: {$ref: '#/schemas/NotificationRouteDesiredState'}, etag: {$ref: './components.yaml#/schemas/StrongETag'}}
+  NotificationRoutesView:
+    type: object
+    additionalProperties: false
+    required: [routes]
+    properties: {routes: {type: array, minItems: 10, maxItems: 10, items: {$ref: '#/schemas/NotificationRouteView'}}}
+
+  NotificationRouteRecipientCandidateView:
+    type: object
+    additionalProperties: false
+    required: [principal_id, display_name]
+    properties: {principal_id: {$ref: './components.yaml#/schemas/OpaqueId'}, display_name: {type: string, minLength: 1}}
+  NotificationRouteRecipientCandidatesCollectionView:
+    type: object
+    additionalProperties: false
+    required: [recipient_candidates]
+    properties: {recipient_candidates: {type: array, items: {$ref: '#/schemas/NotificationRouteRecipientCandidateView'}}, next_cursor: {$ref: './components.yaml#/schemas/OpaqueKey'}}
