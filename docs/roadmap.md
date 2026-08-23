@@ -11,13 +11,13 @@
 | Product | **Marketplace Operations Control Plane + Commercial Intelligence** |
 | Current stage | **D6-R2 — Complete Frontend Realization Closure — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
-| D6-R2 | [Closure](engineering/rebaseline/D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md) + [P4-R1](engineering/rebaseline/D6-R2-P4-R1-GLOBAL-IA-OPERATIONAL-MASS-REOPEN.md) + [P8](engineering/rebaseline/D6-R2-P8-BLOCK-LEDGER.md) + [B10 P6](engineering/rebaseline/D6-R2-P6-B10-PREPARATION-REFERENCE-STUDY.md) — **B00/B01/B00-R2/B11 LOCKED; B10 SUSPENDED; B12 RENDERED CANDIDATE / VISUAL ADJUDICATION REQUIRED** |
-| NOTIF-01 | D0-R + D1-R + D2-R/R2 + [D2-R3](engineering/rebaseline/D6-R2-NOTIF-01-D2-R3-RATIFICATION.md) + [D2-R4](engineering/rebaseline/D6-R2-NOTIF-01-D2-R4-RATIFICATION.md) + [D2-R5](engineering/rebaseline/D6-R2-NOTIF-01-D2-R5-RATIFICATION.md) **ACCEPTED** · [D3-R](engineering/rebaseline/D6-R2-NOTIF-01-D3-R-RATIFICATION.md) **ACCEPTED** · [D3-R1](engineering/rebaseline/D6-R2-NOTIF-01-D3-R1-PRESENTATION-FEED-FORWARD-REVALIDATION.md) + [D3-R2](engineering/rebaseline/D6-R2-NOTIF-01-D3-R2-TYPED-RESULT-CONTINUATION-FEED-FORWARD.md) **PASS** · [D5-F4](engineering/rebaseline/D6-R2-NOTIF-01-D5-F4-RECIPIENT-DISCOVERY-GLOBAL-MAXIMUM.md) + [D5-R3](engineering/rebaseline/D6-R2-NOTIF-01-D5-R3-RATIFICATION.md) **OPERATOR-RATIFIED** · [D5-R4](engineering/rebaseline/D6-R2-NOTIF-01-D5-R4-OAD-WIRE-PROOF.md) **PROVED / CANONICAL** · [D6-R](engineering/rebaseline/D6-R2-NOTIF-01-D6-R-FRONTEND-FEED-FORWARD.md) **SPEC APPROVED; B00-R2+B11 LOCKED; B12 RENDERED CANDIDATE** |
+| D6-R2 | [Closure](engineering/rebaseline/D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md) + [P4-R1](engineering/rebaseline/D6-R2-P4-R1-GLOBAL-IA-OPERATIONAL-MASS-REOPEN.md) + [P8](engineering/rebaseline/D6-R2-P8-BLOCK-LEDGER.md) + [B10 P6](engineering/rebaseline/D6-R2-P6-B10-PREPARATION-REFERENCE-STUDY.md) — **B00/B01/B00-R2/B11/B12 LOCKED; B10 SUSPENDED; NOTIF-01 P9 NEXT** |
+| NOTIF-01 | D0-R + D1-R + D2-R/R2 + [D2-R3](engineering/rebaseline/D6-R2-NOTIF-01-D2-R3-RATIFICATION.md) + [D2-R4](engineering/rebaseline/D6-R2-NOTIF-01-D2-R4-RATIFICATION.md) + [D2-R5](engineering/rebaseline/D6-R2-NOTIF-01-D2-R5-RATIFICATION.md) **ACCEPTED** · [D3-R](engineering/rebaseline/D6-R2-NOTIF-01-D3-R-RATIFICATION.md) **ACCEPTED** · [D3-R1](engineering/rebaseline/D6-R2-NOTIF-01-D3-R1-PRESENTATION-FEED-FORWARD-REVALIDATION.md) + [D3-R2](engineering/rebaseline/D6-R2-NOTIF-01-D3-R2-TYPED-RESULT-CONTINUATION-FEED-FORWARD.md) **PASS** · [D5-F4](engineering/rebaseline/D6-R2-NOTIF-01-D5-F4-RECIPIENT-DISCOVERY-GLOBAL-MAXIMUM.md) + [D5-R3](engineering/rebaseline/D6-R2-NOTIF-01-D5-R3-RATIFICATION.md) **OPERATOR-RATIFIED** · [D5-R4](engineering/rebaseline/D6-R2-NOTIF-01-D5-R4-OAD-WIRE-PROOF.md) **PROVED / CANONICAL** · [D6-R](engineering/rebaseline/D6-R2-NOTIF-01-D6-R-FRONTEND-FEED-FORWARD.md) **SPEC APPROVED** · [D6-R P8 ratification](engineering/rebaseline/D6-R2-NOTIF-01-D6-R-P8-RATIFICATION.md) **OPERATOR-RATIFIED; B00-R2+B11+B12 LOCKED; P9 NEXT** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **104 Product operations · 31 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Operator visually adjudicates only P8 B12 — `Configurações > Notificações` routing Settings — from `qualification/d6-r2-wireframes/b12-notification-routing-settings.html`. Do not begin D7-R/D8-R, resume B10 or implement Product code first.** |
+| Exact next action | **Derive NOTIF-01 P9 exact Screen Contracts / bidirectional wire trace for locked G00-E/U01, R128 and R129. Bind material reads/writes/states to frontend route/context, semantic owner, exact `operationId`, Permission/authenticated-self rule, client class, identity/scope, stale/error behavior and source/effect trace. Do not begin D7-R/D8-R, resume B10 or implement Product code first.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -34,11 +34,11 @@
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
 | D5 — API | ACCEPTED / CLOSED; **NOTIF-01 D5-R3 ACCEPTED / D5-R4 OAD 104/31 PROVED** |
 | D5-R2 — Operational Read Projection Repair | **ACCEPTED / CANONICAL** |
-| D6 — Frontend | **ACCEPTED / CLOSED; NOTIF-01 B00-R2 + B11 LOCKED / B12 VISUAL REVIEW** |
+| D6 — Frontend | **ACCEPTED / CLOSED; NOTIF-01 P8 B00-R2+B11+B12 OPERATOR-LOCKED / P9 NEXT** |
 | D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED; NOTIF-01 D7-R BLOCKED BY D6-R** |
 | D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED; NOTIF-01 D8-R BLOCKED BY D7-R** |
 | D8-R2 — GF-02 Operational Read Revalidation | **ACCEPTED / PASS** |
-| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00/B01/B00-R2/B11 LOCKED; B10 SUSPENDED; B12 RENDERED CANDIDATE / VISUAL ADJUDICATION REQUIRED** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00/B01/B00-R2/B11/B12 LOCKED; B10 SUSPENDED; NOTIF-01 P9 NEXT** |
 | Pre-D9 readiness | **BLOCKED** |
 | D9 — Adversarial Architecture Review | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -47,11 +47,12 @@
 
 - Canonical OAD remains **104/31** with historical 95/29 and 99/30 non-regression proof intact.
 - NOTIF-01 Product proof remains **104/104 operations · 31/31 Permissions · 8/8 negative controls**.
-- B00-R2 and B11 are operator-`LOCKED`; their reviewed HTML snapshots remain unchanged evidence.
-- B12 routing Settings is a **RENDERED CANDIDATE**: exactly 10 Product-defined route slots, `notifications.manage`-conditioned local Settings destination, inline row editor, purpose-bound IdentityAccess recipient discovery, cursor continuation, If-Match stale-write protection and explicit validation/recovery states.
-- B12 proof reports `10/10`, `INLINE_ROW`, `notifications.manage`, `access.read FORBIDDEN`, candidate disclosure `MINIMAL`, configured-empty `FORBIDDEN`, `PASS`.
-- No Product operation, Permission or runtime authority changed by D6-R rendering.
-- D7-R remains blocked until B12 is operator-adjudicated; then the accepted sequence remains D6-R → D7-R → D8-R → resume dependent D6-R2.
+- B00-R2, B11 and B12 are operator-`LOCKED`; their reviewed HTML snapshots remain unchanged evidence.
+- B12's ratified meaning is exact-human **future personal Notification recipient routing** per fixed ORG_ROUTED kind; it is not Permission assignment, Work assignment or source authorization.
+- B12 proof remains `10/10`, `INLINE_ROW`, `notifications.manage`, `access.read FORBIDDEN`, candidate disclosure `MINIMAL`, configured-empty `FORBIDDEN`, `PASS`.
+- The two D6-R P12 assumptions remain explicitly OPEN: candidate-directory scale without search and bounded-preview sufficiency.
+- No Product operation, Permission or runtime authority changed by P8 ratification.
+- NOTIF-01 D7-R remains blocked until D6-R P9 closes; then the accepted sequence remains D6-R → D7-R → D8-R → resume dependent D6-R2.
 - No Product implementation before accepted D9.
 
 ```text
