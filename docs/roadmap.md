@@ -45,8 +45,8 @@
 
 ## Current result
 
-- Counts are consequences, never constraints. The final NOTIF-01 candidate requires **five** public operations and one new `notifications.manage` Permission; if ratified and later authored/proved in the canonical OAD, the derived wire consequence is **104 Product operations / 31 ordinary Permissions**.
-- `ListNotificationRouteRecipientCandidates` is H-only, Organization-scoped, owned by IdentityAccess, gated by `notifications.manage`, and exposes only current eligible human `principal_id` + `display_name`; it does not imply `access.read`, disclose `role_keys`/Permissions or authorize the route write.
+- Final NOTIF-01 candidate: **5 operations** + `notifications.manage`; ratified wire consequence: **104 operations / 31 Permissions**. Counts remain consequences.
+- Recipient discovery: H-only IdentityAccess Q under `notifications.manage`; returns only current eligible human `principal_id` + `display_name`; no `access.read`, roles/Permissions or write authority.
 - `ListMyNotifications` admits bounded filtering by one-or-more Product-defined `NotificationKind` values; no generic filter DSL/source-family identity.
 - D2-R5 is accepted: F02/F14 retain only their typed immutable result atoms, and F14 continues through `AuthorizationTargetRef` rather than granting broad `governance.read` merely for Notification navigation.
 - D3-R2 PASS proves those D2-R5 atoms/continuation fit the existing source-owner committed-fact `E` topology with no new communication form, owner, broker or generic payload.
