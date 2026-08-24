@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const d8rPath = resolve(root, 'docs/engineering/rebaseline/D6-R2-NOTIF-01-D8-R-AUTHORIZATION-REQUEST-GOLDEN-FLOW-REVALIDATION.md');
 const d7rPath = resolve(root, 'docs/engineering/rebaseline/D6-R2-NOTIF-01-D7-R-AUTHORIZATION-REQUEST-RUNTIME-REPAIR.md');
+const repairPath = resolve(root, 'docs/engineering/rebaseline/D6-R2-FABLE-R1-D5-R7-AUTHORIZATION-DECISION-W1-CARRIER-REPAIR.md');
 let negativeControls = 0;
 
 function fail(message) { throw new Error(message); }
@@ -12,11 +13,14 @@ function assert(condition, message) { if (!condition) fail(message); }
 function requireText(text, fragment, label) {
   assert(text.includes(fragment), `${label} missing required authority fragment: ${fragment}`);
 }
-function assertD7Prerequisite(text) {
+function assertD7Prerequisite(text, repair) {
   requireText(text, '> **Status:** OPERATOR-RATIFIED / ACCEPTED', 'D7-R prerequisite');
   requireText(text, 'D7R_IDEMPOTENCY_SCOPE:ORGANIZATION_PRINCIPAL_OPERATION_KEY', 'D7-R prerequisite');
-  requireText(text, 'D7R_REPLAY_ORDER:IDEMPOTENCY_BEFORE_IF_MATCH', 'D7-R prerequisite');
+  requireText(text, 'D7R_REPLAY_ORDER:IDEMPOTENCY_BEFORE_IF_MATCH', 'historical D7-R replay snapshot');
   requireText(text, 'D7R_PROOF_CLASS:STRUCTURAL_AUTHORITY_ONLY_NOT_RUNTIME_PROOF', 'D7-R prerequisite');
+  requireText(repair, 'D5R7_W1_CARRIER:TYPED_REQUEST_ETAG', 'D5-R7 current carrier');
+  requireText(repair, 'D5R7_REPLAY_ORDER:IDEMPOTENCY_BEFORE_REVISION_PRECONDITION', 'D5-R7 current replay law');
+  requireText(repair, 'D5R7_SUPERSEDES:D5R6_P9_D7R_D8R_CARRIER_ONLY', 'D5-R7 bounded supersession');
 }
 function assertD8Authority(text) {
   const required = [
@@ -78,9 +82,11 @@ function negativeProof(text) {
 
 assert(existsSync(d7rPath), 'accepted D7-R authority document missing');
 assert(existsSync(d8rPath), 'D8-R authority document missing; operator-ratified D8-R has not been recorded');
+assert(existsSync(repairPath), 'D5-R7 W1 carrier repair missing');
 const d7r = readFileSync(d7rPath, 'utf8');
 const d8r = readFileSync(d8rPath, 'utf8');
-assertD7Prerequisite(d7r);
+const repair = readFileSync(repairPath, 'utf8');
+assertD7Prerequisite(d7r, repair);
 assertD8Authority(d8r);
 negativeProof(d8r);
 
@@ -89,6 +95,7 @@ console.log('authorization_request_d8r_golden_flow_set=3_BUSINESS_PLUS_SR01_UNCH
 console.log('authorization_request_d8r_affected=GF01_GF02_SR01');
 console.log('authorization_request_d8r_gf03=NOT_MATERIALLY_AFFECTED');
 console.log('authorization_request_d8r_product_surface=106_31_HAS');
+console.log('authorization_request_d8r_replay_order=IDEMPOTENCY_BEFORE_REVISION_PRECONDITION_VIA_D5R7');
 console.log('authorization_request_d8r_live_probes=NOT_REOPENED');
 console.log('authorization_request_d8r_pitr=IDEMPOTENCY_NOT_CONTINUITY_ORACLE');
 console.log('authorization_request_d8r_proof_class=STRUCTURAL_AUTHORITY_ONLY');
