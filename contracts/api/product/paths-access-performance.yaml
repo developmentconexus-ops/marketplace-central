@@ -96,7 +96,7 @@ schemas:
   PermissionView:
     type: string
     description: Effective ordinary Product Permission vocabulary visible through access reads; authenticated remains a special non-Permission condition.
-    enum: [access.read, access.manage, portfolio.read, portfolio.manage, readiness.read, readiness.manage, offering.read, listing.manage, price.manage, availability.read, availability.manage, market.read, performance.read, economics.read, economics.policy.manage, economics.reconcile, governance.read, governance.decide, governance.manage, sales.read, sales.manage, materialization.read, materialization.resolve, fulfillment.read, fulfillment.execute, fulfillment.manage, post_sale.read, post_sale.manage, work.read, work.manage]
+    enum: [access.read, access.manage, portfolio.read, portfolio.manage, readiness.read, readiness.manage, offering.read, listing.manage, price.manage, availability.read, availability.manage, market.read, performance.read, economics.read, economics.policy.manage, economics.reconcile, governance.read, governance.decide, governance.manage, sales.read, sales.manage, materialization.read, materialization.resolve, fulfillment.read, fulfillment.execute, fulfillment.manage, post_sale.read, post_sale.manage, work.read, work.manage, notifications.manage]
 
   AccessContextView:
     type: object

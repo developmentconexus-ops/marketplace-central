@@ -1,0 +1,202 @@
+pathItems:
+  Work:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListWork
+      summary: List operational work
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: work.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: OperationalWork
+      parameters:
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+        - {name: lifecycle, in: query, required: false, schema: {type: string, enum: [open, on_hold, closed]}}
+        - {name: responsibility_role_key, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueKey'}}
+        - {name: assigned_principal_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+        - {name: assignment_state, in: query, required: false, schema: {type: string, enum: [assigned, unassigned]}}
+        - {name: origin_kind, in: query, required: false, schema: {type: string, enum: [readiness, listing_intent, price_intent, marketplace_sale, business_order_intent, fulfillment_execution, shipment, post_sale_resolution, economic_attribution, authorization_decision, authorization_request]}}
+      responses:
+        '200': {description: Operational work., content: {'application/json': {schema: {$ref: '#/schemas/WorkCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  WorkItem:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/WorkId'}]
+    get:
+      operationId: GetWork
+      summary: Get operational work
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: work.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: OperationalWork
+      responses:
+        '200': {$ref: '#/responses/WorkOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  AssignWork:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/WorkId'}]
+    post:
+      operationId: AssignWork
+      summary: Assign work
+      x-mpc-operation-class: C
+      x-mpc-required-permission: work.manage
+      x-mpc-principal-kinds: [H, A]
+      x-mpc-semantic-owner: OperationalWork
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/AssignWorkRequest'}}}}
+      responses:
+        '200': {$ref: '#/responses/WorkMutationOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  ClearWorkAssignment:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/WorkId'}]
+    post:
+      operationId: ClearWorkAssignment
+      summary: Clear work assignment
+      x-mpc-operation-class: C
+      x-mpc-required-permission: work.manage
+      x-mpc-principal-kinds: [H, A]
+      x-mpc-semantic-owner: OperationalWork
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EtagOnlyRequest'}}}}
+      responses:
+        '200': {$ref: '#/responses/WorkMutationOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  HoldWork:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/WorkId'}]
+    post:
+      operationId: HoldWork
+      summary: Hold work
+      x-mpc-operation-class: C
+      x-mpc-required-permission: work.manage
+      x-mpc-principal-kinds: [H, A]
+      x-mpc-semantic-owner: OperationalWork
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EtagOnlyRequest'}}}}
+      responses:
+        '200': {$ref: '#/responses/WorkMutationOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  ResumeWork:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/WorkId'}]
+    post:
+      operationId: ResumeWork
+      summary: Resume work
+      x-mpc-operation-class: C
+      x-mpc-required-permission: work.manage
+      x-mpc-principal-kinds: [H, A]
+      x-mpc-semantic-owner: OperationalWork
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EtagOnlyRequest'}}}}
+      responses:
+        '200': {$ref: '#/responses/WorkMutationOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  EscalateWork:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/WorkId'}]
+    post:
+      operationId: EscalateWork
+      summary: Escalate work
+      x-mpc-operation-class: C
+      x-mpc-required-permission: work.manage
+      x-mpc-principal-kinds: [H, A]
+      x-mpc-semantic-owner: OperationalWork
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EscalateWorkRequest'}}}}
+      responses:
+        '200': {$ref: '#/responses/WorkMutationOk'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+responses:
+  WorkOk: {description: Current operational work., headers: {ETag: {$ref: './components.yaml#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/Work'}}}}
+  WorkMutationOk: {description: Current work and validator., content: {'application/json': {schema: {$ref: '#/schemas/WorkMutationResult'}}}}
+
+schemas:
+  WorkOriginAuthorizationRequest:
+    type: object
+    additionalProperties: false
+    required: [kind, authorization_request_id]
+    properties: {kind: {const: authorization_request}, authorization_request_id: {$ref: './components.yaml#/schemas/OpaqueId'}}
+
+  WorkOrigin:
+    oneOf:
+      - {$ref: './components.yaml#/schemas/WorkOriginReadiness'}
+      - {$ref: './components.yaml#/schemas/WorkOriginListingIntent'}
+      - {$ref: './components.yaml#/schemas/WorkOriginPriceIntent'}
+      - {$ref: './components.yaml#/schemas/WorkOriginMarketplaceSale'}
+      - {$ref: './components.yaml#/schemas/WorkOriginBusinessOrder'}
+      - {$ref: './components.yaml#/schemas/WorkOriginFulfillment'}
+      - {$ref: './components.yaml#/schemas/WorkOriginShipment'}
+      - {$ref: './components.yaml#/schemas/WorkOriginPostSale'}
+      - {$ref: './components.yaml#/schemas/WorkOriginEconomicAttribution'}
+      - {$ref: './components.yaml#/schemas/WorkOriginAuthorizationDecision'}
+      - {$ref: '#/schemas/WorkOriginAuthorizationRequest'}
+
+  Work:
+    type: object
+    additionalProperties: false
+    required: [work_id, origin, responsibility_role_key, assignment, lifecycle, created_at]
+    properties:
+      work_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      origin: {$ref: '#/schemas/WorkOrigin'}
+      responsibility_role_key: {$ref: './components.yaml#/schemas/OpaqueKey'}
+      assignment: {$ref: './components.yaml#/schemas/WorkAssignment'}
+      lifecycle: {type: string, enum: [open, on_hold, closed]}
+      escalation_responsibility_role_key: {$ref: './components.yaml#/schemas/OpaqueKey'}
+      created_at: {$ref: './components.yaml#/schemas/Instant'}
+      closed_at: {$ref: './components.yaml#/schemas/Instant'}
+
+  WorkListItem:
+    type: object
+    additionalProperties: false
+    required: [work_id, origin, responsibility_role_key, assignment, lifecycle, created_at]
+    properties:
+      work_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      origin: {$ref: '#/schemas/WorkOrigin'}
+      responsibility_role_key: {$ref: './components.yaml#/schemas/OpaqueKey'}
+      assignment: {$ref: './components.yaml#/schemas/WorkAssignment'}
+      lifecycle: {type: string, enum: [open, on_hold, closed]}
+      created_at: {$ref: './components.yaml#/schemas/Instant'}
+
+  WorkCollection:
+    type: object
+    additionalProperties: false
+    required: [work]
+    properties:
+      work: {type: array, items: {$ref: '#/schemas/WorkListItem'}}
+      next_cursor: {$ref: './components.yaml#/schemas/OpaqueKey'}
+
+  WorkMutationResult:
+    type: object
+    additionalProperties: false
+    required: [work, work_etag]
+    properties: {work: {$ref: '#/schemas/Work'}, work_etag: {$ref: './components.yaml#/schemas/StrongETag'}}

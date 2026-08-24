@@ -1,0 +1,307 @@
+pathItems:
+  AuthorizationRequests:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListMyActionableAuthorizationRequests
+      summary: List my currently actionable authorization requests
+      description: Returns only pending requests the exact current human Principal is currently eligible to decide in this Organization. Failure or loss of actionability never means historical Governance read access.
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: governance.decide
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: ControlledActionGovernance
+      parameters: [{$ref: './components.yaml#/parameters/Limit'}, {$ref: './components.yaml#/parameters/Cursor'}]
+      responses:
+        '200': {description: Current actionable authorization requests., content: {'application/json': {schema: {$ref: '#/schemas/ActionableAuthorizationRequestsCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  AuthorizationRequest:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: '#/parameters/AuthorizationRequestId'}]
+    get:
+      operationId: GetMyActionableAuthorizationRequest
+      summary: Get one authorization request I can currently decide
+      description: Purpose-bounded current-actionability read. Possession of the request ID or a Notification grants no access. The response ETag is the AuthorizationRequest owner-local concurrency validator, not a target-resource validity oracle.
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: governance.decide
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: ControlledActionGovernance
+      responses:
+        '200': {description: Current actionable authorization request., headers: {ETag: {$ref: './components.yaml#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/ActionableAuthorizationRequestView'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  DecideAuthorizationRequest:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: '#/parameters/AuthorizationRequestId'}]
+    post:
+      operationId: CreateAuthorizationDecision
+      summary: Decide one currently actionable authorization request
+      description: The client supplies the human outcome, the AuthorizationRequest owner-local strong validator as typed request data, and the idempotency carrier. Governance revalidates current request state, exact human eligibility and material authorization-basis validity before committing a Decision.
+      x-mpc-operation-class: C
+      x-mpc-required-permission: governance.decide
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: ControlledActionGovernance
+      parameters: [{$ref: './components.yaml#/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: '#/schemas/CreateAuthorizationDecisionRequest'}}}}
+      responses:
+        '201': {$ref: '#/responses/AuthorizationDecisionCreated'}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '503': {$ref: '#/responses/AuthorizationValidityUnavailable'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  AuthorizationDecisions:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListAuthorizationDecisions
+      summary: List authorization decisions
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: governance.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: ControlledActionGovernance
+      parameters:
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+        - {name: decided_from, in: query, required: false, schema: {type: string, format: date-time}}
+        - {name: decided_before, in: query, required: false, schema: {type: string, format: date-time}}
+      responses:
+        '200': {description: Authorization decisions., content: {'application/json': {schema: {$ref: '#/schemas/AuthorizationDecisionsCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  AuthorizationDecision:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}, {$ref: './components.yaml#/parameters/AuthorizationDecisionId'}]
+    get:
+      operationId: GetAuthorizationDecision
+      summary: Get authorization decision
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: governance.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: ControlledActionGovernance
+      responses:
+        '200': {description: Authorization decision., content: {'application/json': {schema: {$ref: '#/schemas/AuthorizationDecision'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+parameters:
+  AuthorizationRequestId: {name: authorization_request_id, in: path, required: true, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+
+responses:
+  AuthorizationDecisionCreated: {description: Authorization decision created., headers: {Location: {$ref: './components.yaml#/headers/Location'}}, content: {'application/json': {schema: {$ref: '#/schemas/AuthorizationDecision'}}}}
+  AuthorizationValidityUnavailable: {description: Current material authorization-basis validity cannot be established sufficiently to decide now. The request remains pending and no Decision is recorded., content: {'application/problem+json': {schema: {$ref: '#/schemas/AuthorizationValidityUnavailableProblem'}}}}
+
+schemas:
+  AuthorizationRequestRef:
+    type: object
+    additionalProperties: false
+    required: [kind, authorization_request_id]
+    properties: {kind: {const: authorization_request}, authorization_request_id: {$ref: './components.yaml#/schemas/OpaqueId'}}
+
+  AuthorizationListingIntentTargetRef: {type: object, additionalProperties: false, required: [kind, listing_intent_id], properties: {kind: {const: listing_intent}, listing_intent_id: {$ref: './components.yaml#/schemas/OpaqueId'}}}
+  AuthorizationPriceIntentTargetRef: {type: object, additionalProperties: false, required: [kind, price_intent_id], properties: {kind: {const: price_intent}, price_intent_id: {$ref: './components.yaml#/schemas/OpaqueId'}}}
+  AuthorizationBusinessOrderTargetRef: {type: object, additionalProperties: false, required: [kind, business_order_intent_id], properties: {kind: {const: business_order_intent}, business_order_intent_id: {$ref: './components.yaml#/schemas/OpaqueId'}}}
+  AuthorizationInvoicingTargetRef: {type: object, additionalProperties: false, required: [kind, invoicing_intent_id], properties: {kind: {const: invoicing_intent}, invoicing_intent_id: {$ref: './components.yaml#/schemas/OpaqueId'}}}
+  AuthorizationRequestTargetRef: {oneOf: [{$ref: '#/schemas/AuthorizationListingIntentTargetRef'}, {$ref: '#/schemas/AuthorizationPriceIntentTargetRef'}, {$ref: '#/schemas/AuthorizationBusinessOrderTargetRef'}, {$ref: '#/schemas/AuthorizationInvoicingTargetRef'}]}
+
+  ListingIntentAuthorizationReviewBasis:
+    type: object
+    additionalProperties: false
+    required: [kind, listing_intent_id, source_product, target, desired]
+    properties:
+      kind: {const: listing_intent}
+      listing_intent_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      source_product: {$ref: './components.yaml#/schemas/SourceProductRef'}
+      target: {$ref: './components.yaml#/schemas/ListingIntentTarget'}
+      desired: {$ref: './components.yaml#/schemas/ListingIntentDesired'}
+      requirements_revision: {$ref: './components.yaml#/schemas/OpaqueKey'}
+
+  PriceAuthorizationCurrentObservation:
+    type: object
+    additionalProperties: false
+    required: [price, observed_at]
+    properties: {price: {$ref: './components.yaml#/schemas/Money'}, observed_at: {$ref: './components.yaml#/schemas/Instant'}}
+
+  PriceIntentAuthorizationReviewBasis:
+    type: object
+    additionalProperties: false
+    required: [kind, price_intent_id, target, desired_price]
+    properties:
+      kind: {const: price_intent}
+      price_intent_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      target: {$ref: './components.yaml#/schemas/PriceIntentTarget'}
+      desired_price: {$ref: './components.yaml#/schemas/Money'}
+      current_price_observation: {$ref: '#/schemas/PriceAuthorizationCurrentObservation'}
+      expected_economics: {$ref: './components.yaml#/schemas/ExpectedEconomics'}
+      minimum_contribution_margin_rate: {$ref: './components.yaml#/schemas/ExactDecimalString'}
+
+  BusinessOrderIntentAuthorizationReviewBasis:
+    type: object
+    additionalProperties: false
+    required: [kind, business_order_intent_id, sale_snapshot, target_source_instance_id, party_resolution, destination_realization]
+    properties:
+      kind: {const: business_order_intent}
+      business_order_intent_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      sale_snapshot: {$ref: './components.yaml#/schemas/MarketplaceSale'}
+      target_source_instance_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      party_resolution: {$ref: './components.yaml#/schemas/PartyResolution'}
+      destination_realization: {$ref: './components.yaml#/schemas/DestinationRealization'}
+
+  InvoicingBusinessOrderSnapshot:
+    type: object
+    additionalProperties: false
+    required: [business_order_intent_id, target_source_instance_id, party_resolution, destination_realization]
+    properties:
+      business_order_intent_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      target_source_instance_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      party_resolution: {$ref: './components.yaml#/schemas/PartyResolution'}
+      destination_realization: {$ref: './components.yaml#/schemas/DestinationRealization'}
+
+  InvoicingIntentAuthorizationReviewBasis:
+    type: object
+    additionalProperties: false
+    required: [kind, invoicing_intent_id, sale_snapshot, business_order_snapshot]
+    properties:
+      kind: {const: invoicing_intent}
+      invoicing_intent_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      sale_snapshot: {$ref: './components.yaml#/schemas/MarketplaceSale'}
+      business_order_snapshot: {$ref: '#/schemas/InvoicingBusinessOrderSnapshot'}
+      fulfillment_execution_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+
+  AuthorizationReviewBasis:
+    oneOf: [{$ref: '#/schemas/ListingIntentAuthorizationReviewBasis'}, {$ref: '#/schemas/PriceIntentAuthorizationReviewBasis'}, {$ref: '#/schemas/BusinessOrderIntentAuthorizationReviewBasis'}, {$ref: '#/schemas/InvoicingIntentAuthorizationReviewBasis'}]
+
+  ActionableAuthorizationRequestListItem:
+    type: object
+    additionalProperties: false
+    required: [authorization_request_id, target, subject_display_label, created_at]
+    properties:
+      authorization_request_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      target: {$ref: '#/schemas/AuthorizationRequestTargetRef'}
+      subject_display_label: {type: string, minLength: 1, description: Immutable authorization-purpose human presentation snapshot; not source identity or current source truth.}
+      created_at: {$ref: './components.yaml#/schemas/Instant'}
+
+  ActionableAuthorizationRequestsCollection:
+    type: object
+    additionalProperties: false
+    required: [authorization_requests]
+    properties:
+      authorization_requests: {type: array, items: {$ref: '#/schemas/ActionableAuthorizationRequestListItem'}}
+      next_cursor: {$ref: './components.yaml#/schemas/OpaqueKey'}
+
+  ActionableListingIntentAuthorizationRequest:
+    type: object
+    additionalProperties: false
+    required: [authorization_request_id, target, subject_display_label, review_basis, created_at]
+    properties:
+      authorization_request_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      target: {$ref: '#/schemas/AuthorizationListingIntentTargetRef'}
+      subject_display_label: {type: string, minLength: 1}
+      review_basis: {$ref: '#/schemas/ListingIntentAuthorizationReviewBasis'}
+      created_at: {$ref: './components.yaml#/schemas/Instant'}
+
+  ActionablePriceIntentAuthorizationRequest:
+    type: object
+    additionalProperties: false
+    required: [authorization_request_id, target, subject_display_label, review_basis, created_at]
+    properties:
+      authorization_request_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      target: {$ref: '#/schemas/AuthorizationPriceIntentTargetRef'}
+      subject_display_label: {type: string, minLength: 1}
+      review_basis: {$ref: '#/schemas/PriceIntentAuthorizationReviewBasis'}
+      created_at: {$ref: './components.yaml#/schemas/Instant'}
+
+  ActionableBusinessOrderIntentAuthorizationRequest:
+    type: object
+    additionalProperties: false
+    required: [authorization_request_id, target, subject_display_label, review_basis, created_at]
+    properties:
+      authorization_request_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      target: {$ref: '#/schemas/AuthorizationBusinessOrderTargetRef'}
+      subject_display_label: {type: string, minLength: 1}
+      review_basis: {$ref: '#/schemas/BusinessOrderIntentAuthorizationReviewBasis'}
+      created_at: {$ref: './components.yaml#/schemas/Instant'}
+
+  ActionableInvoicingIntentAuthorizationRequest:
+    type: object
+    additionalProperties: false
+    required: [authorization_request_id, target, subject_display_label, review_basis, created_at]
+    properties:
+      authorization_request_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      target: {$ref: '#/schemas/AuthorizationInvoicingTargetRef'}
+      subject_display_label: {type: string, minLength: 1}
+      review_basis: {$ref: '#/schemas/InvoicingIntentAuthorizationReviewBasis'}
+      created_at: {$ref: './components.yaml#/schemas/Instant'}
+
+  ActionableAuthorizationRequestView:
+    oneOf: [{$ref: '#/schemas/ActionableListingIntentAuthorizationRequest'}, {$ref: '#/schemas/ActionablePriceIntentAuthorizationRequest'}, {$ref: '#/schemas/ActionableBusinessOrderIntentAuthorizationRequest'}, {$ref: '#/schemas/ActionableInvoicingIntentAuthorizationRequest'}]
+
+  CreateAuthorizationDecisionRequest:
+    type: object
+    additionalProperties: false
+    required: [etag, outcome]
+    properties:
+      etag: {$ref: './components.yaml#/schemas/StrongETag'}
+      outcome: {type: string, enum: [authorize, reject]}
+
+  AuthorizationDecision:
+    type: object
+    additionalProperties: false
+    required: [authorization_decision_id, authorization_request_id, target, review_basis, outcome, decided_by_principal_id, decided_at]
+    properties:
+      authorization_decision_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      authorization_request_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      target: {$ref: '#/schemas/AuthorizationRequestTargetRef'}
+      review_basis: {$ref: '#/schemas/AuthorizationReviewBasis'}
+      outcome: {type: string, enum: [authorize, reject]}
+      decided_by_principal_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      decided_at: {$ref: './components.yaml#/schemas/Instant'}
+    oneOf:
+      - {properties: {target: {$ref: '#/schemas/AuthorizationListingIntentTargetRef'}, review_basis: {$ref: '#/schemas/ListingIntentAuthorizationReviewBasis'}}}
+      - {properties: {target: {$ref: '#/schemas/AuthorizationPriceIntentTargetRef'}, review_basis: {$ref: '#/schemas/PriceIntentAuthorizationReviewBasis'}}}
+      - {properties: {target: {$ref: '#/schemas/AuthorizationBusinessOrderTargetRef'}, review_basis: {$ref: '#/schemas/BusinessOrderIntentAuthorizationReviewBasis'}}}
+      - {properties: {target: {$ref: '#/schemas/AuthorizationInvoicingTargetRef'}, review_basis: {$ref: '#/schemas/InvoicingIntentAuthorizationReviewBasis'}}}
+
+  AuthorizationDecisionListItem:
+    type: object
+    additionalProperties: false
+    required: [authorization_decision_id, authorization_request_id, target, outcome, decided_at]
+    properties:
+      authorization_decision_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      authorization_request_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      target: {$ref: '#/schemas/AuthorizationRequestTargetRef'}
+      outcome: {type: string, enum: [authorize, reject]}
+      decided_at: {$ref: './components.yaml#/schemas/Instant'}
+
+  AuthorizationDecisionsCollection:
+    type: object
+    additionalProperties: false
+    required: [authorization_decisions]
+    properties:
+      authorization_decisions: {type: array, items: {$ref: '#/schemas/AuthorizationDecisionListItem'}}
+      next_cursor: {$ref: './components.yaml#/schemas/OpaqueKey'}
+
+  AuthorizationValidityUnavailableProblem:
+    type: object
+    additionalProperties: false
+    required: [type, title, status]
+    properties:
+      type: {const: 'https://conexus.fun/marketplace-central/problems/product/authorization-validity-unavailable'}
+      title: {type: string}
+      status: {const: 503}
+      detail: {type: string}
+      instance: {type: string, format: uri-reference}

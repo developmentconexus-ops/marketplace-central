@@ -774,8 +774,8 @@ schemas:
   BusinessOrderIntentListItem:
     type: object
     additionalProperties: false
-    required: [business_order_intent_id, sale, target_source_instance_id, external_effect_state, created_at]
-    properties: {business_order_intent_id: {$ref: '#/schemas/OpaqueId'}, sale: {$ref: '#/schemas/MarketplaceSaleRef'}, target_source_instance_id: {$ref: '#/schemas/OpaqueId'}, external_effect_state: {type: string, enum: [not_attempted, pending, accepted, rejected, ambiguous]}, created_at: {$ref: '#/schemas/Instant'}}
+    required: [business_order_intent_id, sale, target_source_instance_id, external_effect_state, convergence, created_at]
+    properties: {business_order_intent_id: {$ref: '#/schemas/OpaqueId'}, sale: {$ref: '#/schemas/MarketplaceSaleRef'}, target_source_instance_id: {$ref: '#/schemas/OpaqueId'}, external_effect_state: {type: string, enum: [not_attempted, pending, accepted, rejected, ambiguous]}, convergence: {type: string, enum: [pending, converged, divergent, unknown, not_applicable]}, created_at: {$ref: '#/schemas/Instant'}}
   BusinessOrderIntentsCollection:
     type: object
     additionalProperties: false
@@ -797,13 +797,13 @@ schemas:
   InvoicingIntent:
     type: object
     additionalProperties: false
-    required: [invoicing_intent_id, business_order_intent_id, external_effect_state, convergence, created_at]
-    properties: {invoicing_intent_id: {$ref: '#/schemas/OpaqueId'}, business_order_intent_id: {$ref: '#/schemas/OpaqueId'}, fulfillment_execution_id: {$ref: '#/schemas/OpaqueId'}, external_effect_state: {type: string, enum: [not_attempted, pending, accepted, rejected, ambiguous]}, native_fiscal_document_key: {$ref: '#/schemas/OpaqueKey'}, convergence: {type: string, enum: [pending, converged, divergent, unknown, not_applicable]}, created_at: {$ref: '#/schemas/Instant'}}
+    required: [invoicing_intent_id, sale, business_order_intent_id, external_effect_state, convergence, created_at]
+    properties: {invoicing_intent_id: {$ref: '#/schemas/OpaqueId'}, sale: {$ref: '#/schemas/MarketplaceSaleRef'}, business_order_intent_id: {$ref: '#/schemas/OpaqueId'}, fulfillment_execution_id: {$ref: '#/schemas/OpaqueId'}, external_effect_state: {type: string, enum: [not_attempted, pending, accepted, rejected, ambiguous]}, native_fiscal_document_key: {$ref: '#/schemas/OpaqueKey'}, convergence: {type: string, enum: [pending, converged, divergent, unknown, not_applicable]}, created_at: {$ref: '#/schemas/Instant'}}
   InvoicingIntentListItem:
     type: object
     additionalProperties: false
-    required: [invoicing_intent_id, business_order_intent_id, external_effect_state, created_at]
-    properties: {invoicing_intent_id: {$ref: '#/schemas/OpaqueId'}, business_order_intent_id: {$ref: '#/schemas/OpaqueId'}, external_effect_state: {type: string, enum: [not_attempted, pending, accepted, rejected, ambiguous]}, created_at: {$ref: '#/schemas/Instant'}}
+    required: [invoicing_intent_id, sale, business_order_intent_id, external_effect_state, convergence, created_at]
+    properties: {invoicing_intent_id: {$ref: '#/schemas/OpaqueId'}, sale: {$ref: '#/schemas/MarketplaceSaleRef'}, business_order_intent_id: {$ref: '#/schemas/OpaqueId'}, fulfillment_execution_id: {$ref: '#/schemas/OpaqueId'}, external_effect_state: {type: string, enum: [not_attempted, pending, accepted, rejected, ambiguous]}, convergence: {type: string, enum: [pending, converged, divergent, unknown, not_applicable]}, created_at: {$ref: '#/schemas/Instant'}}
   InvoicingIntentsCollection:
     type: object
     additionalProperties: false
@@ -834,8 +834,8 @@ schemas:
   FulfillmentExecutionListItem:
     type: object
     additionalProperties: false
-    required: [fulfillment_execution_id, sale, scope, physical_readiness, created_at]
-    properties: {fulfillment_execution_id: {$ref: '#/schemas/OpaqueId'}, sale: {$ref: '#/schemas/MarketplaceSaleRef'}, scope: {$ref: '#/schemas/FulfillmentScope'}, fulfillment_node_id: {$ref: '#/schemas/OpaqueId'}, physical_readiness: {type: string, enum: [ready, blocked, unknown]}, created_at: {$ref: '#/schemas/Instant'}}
+    required: [fulfillment_execution_id, sale, scope, separation, physical_conference, packing, dispatch_handoff, physical_readiness, created_at]
+    properties: {fulfillment_execution_id: {$ref: '#/schemas/OpaqueId'}, sale: {$ref: '#/schemas/MarketplaceSaleRef'}, scope: {$ref: '#/schemas/FulfillmentScope'}, fulfillment_node_id: {$ref: '#/schemas/OpaqueId'}, separation: {$ref: '#/schemas/FulfillmentCheckpoint'}, physical_conference: {$ref: '#/schemas/FulfillmentCheckpoint'}, packing: {$ref: '#/schemas/FulfillmentCheckpoint'}, dispatch_handoff: {$ref: '#/schemas/FulfillmentCheckpoint'}, physical_readiness: {type: string, enum: [ready, blocked, unknown]}, provider_dispatch_deadline: {$ref: '#/schemas/Instant'}, created_at: {$ref: '#/schemas/Instant'}}
   FulfillmentExecutionsCollection:
     type: object
     additionalProperties: false
@@ -896,7 +896,7 @@ schemas:
     type: object
     additionalProperties: false
     required: [shipment, state, observed_at]
-    properties: {shipment: {$ref: '#/schemas/MarketplaceShipmentRef'}, state: {type: string, enum: [pending, ready, dispatched, delivered, exception, unknown]}, observed_at: {$ref: '#/schemas/Instant'}}
+    properties: {shipment: {$ref: '#/schemas/MarketplaceShipmentRef'}, sale: {$ref: '#/schemas/MarketplaceSaleRef'}, state: {type: string, enum: [pending, ready, dispatched, delivered, exception, unknown]}, dispatch_deadline: {$ref: '#/schemas/Instant'}, observed_at: {$ref: '#/schemas/Instant'}}
   ShipmentsCollection:
     type: object
     additionalProperties: false

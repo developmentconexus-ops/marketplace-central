@@ -418,6 +418,8 @@ pathItems:
         - {name: sale_marketplace_installation_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
         - {name: sale_native_key, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueKey'}}
         - {name: source_instance_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+        - {name: external_effect_state, in: query, required: false, schema: {type: string, enum: [not_attempted, pending, accepted, rejected, ambiguous]}}
+        - {name: convergence, in: query, required: false, schema: {type: string, enum: [pending, converged, divergent, unknown, not_applicable]}}
       responses:
         '200': {description: Business order intents., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/BusinessOrderIntentsCollection'}}}}
         '400': {$ref: './components.yaml#/responses/BadRequest'}
@@ -509,6 +511,8 @@ pathItems:
         - {$ref: './components.yaml#/parameters/Limit'}
         - {$ref: './components.yaml#/parameters/Cursor'}
         - {name: business_order_intent_id, in: query, required: false, schema: {$ref: './components.yaml#/schemas/OpaqueId'}}
+        - {name: external_effect_state, in: query, required: false, schema: {type: string, enum: [not_attempted, pending, accepted, rejected, ambiguous]}}
+        - {name: convergence, in: query, required: false, schema: {type: string, enum: [pending, converged, divergent, unknown, not_applicable]}}
       responses:
         '200': {description: Invoicing intents., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/InvoicingIntentsCollection'}}}}
         '400': {$ref: './components.yaml#/responses/BadRequest'}

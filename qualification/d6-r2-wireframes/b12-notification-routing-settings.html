@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Marketplace Central — D6-R2 B12 Notification Routing Settings</title>
+  <style>
+    :root {
+      --paper:#fff;
+      --canvas:#f3f3f3;
+      --ink:#111;
+      --muted:#666;
+      --line:#bbb;
+      --soft:#e9e9e9;
+      --sidebar:264px;
+      --space:24px;
+    }
+    * { box-sizing:border-box; }
+    html,body { min-height:100%; }
+    body { margin:0; color:var(--ink); background:var(--canvas); font:14px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    button,input,select { font:inherit; color:inherit; }
+    button { cursor:pointer; }
+    button:focus-visible,input:focus-visible,select:focus-visible { outline:3px solid var(--ink); outline-offset:2px; }
+    .hidden { display:none!important; }
+    .prototype-bar { min-height:38px; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:7px 12px; border-bottom:1px solid var(--ink); background:var(--paper); font-size:12px; }
+    .prototype-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .prototype-controls select,.prototype-controls button { border:1px solid var(--line); background:var(--paper); padding:5px 8px; }
+    .app { min-height:calc(100vh - 38px); display:grid; grid-template-columns:var(--sidebar) minmax(0,1fr); }
+    .sidebar { position:sticky; top:38px; height:calc(100vh - 38px); overflow:auto; border-right:1px solid var(--ink); background:var(--paper); padding:18px 14px; }
+    .brand { padding:3px 8px 14px; border-bottom:1px solid var(--line); margin-bottom:14px; font-size:17px; font-weight:800; }
+    .organization-block { padding:0 6px 14px; border-bottom:1px solid var(--line); }
+    .label,.group-label { color:var(--muted); font-size:11px; }
+    .organization-select { width:100%; min-height:38px; border:1px solid var(--ink); background:var(--paper); padding:7px 9px; }
+    .nav-group { margin-top:17px; }
+    .group-label { margin:0 7px 5px; font-size:10px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; }
+    .nav-item { width:100%; min-height:36px; border:0; background:transparent; text-align:left; padding:8px 9px; }
+    .nav-item.sub { padding-left:27px; font-size:13px; }
+    .nav-item.active { background:var(--ink); color:var(--paper); }
+    .sidebar-note { margin:22px 6px 0; border-top:1px dashed var(--line); padding-top:10px; color:var(--muted); font:11px ui-monospace,monospace; }
+    .main { min-width:0; background:var(--paper); }
+    .header { min-height:64px; display:grid; grid-template-columns:minmax(0,1fr) minmax(260px,420px) auto; gap:16px; align-items:center; padding:10px var(--space); border-bottom:1px solid var(--ink); position:sticky; top:38px; z-index:10; background:var(--paper); }
+    .title-row { display:flex; align-items:center; gap:12px; min-width:0; }
+    .page-title { margin:0; font-size:18px; }
+    .menu-toggle { display:none; width:38px; height:36px; border:1px solid var(--ink); background:var(--paper); }
+    .context-empty { min-height:38px; display:flex; align-items:center; justify-content:center; border:1px dashed var(--line); color:var(--muted); padding:8px 10px; text-align:center; }
+    .notification-utility { position:relative; justify-self:end; }
+    .notification-bell { min-height:40px; border:1px solid var(--ink); background:var(--paper); padding:6px 9px; display:flex; align-items:center; gap:7px; }
+    .bell-dot { width:9px; height:9px; border-radius:50%; background:var(--ink); }
+    .mini-preview { position:absolute; top:calc(100% + 8px); right:0; width:min(360px,calc(100vw - 28px)); border:2px solid var(--ink); background:var(--paper); z-index:30; }
+    .mini-preview h2 { margin:0; padding:11px 12px; border-bottom:1px solid var(--line); font-size:15px; }
+    .mini-preview div { padding:10px 12px; border-bottom:1px solid var(--line); }
+    .content { max-width:1180px; margin:0 auto; padding:28px var(--space) 48px; }
+    .structural-meta { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; color:var(--muted); font:11px ui-monospace,monospace; }
+    .structural-meta span { border:1px solid var(--line); padding:4px 6px; }
+    .settings-shell { border:1px solid var(--ink); background:var(--paper); }
+    .settings-heading { padding:22px; border-bottom:1px solid var(--ink); }
+    .breadcrumb { color:var(--muted); font-size:12px; margin-bottom:8px; }
+    .settings-heading h1 { margin:0 0 6px; font-size:25px; }
+    .settings-heading p { margin:0; max-width:820px; color:var(--muted); }
+    .settings-note { margin:16px 18px 0; padding:11px 12px; border:1px solid var(--line); color:var(--muted); }
+    .route-list { list-style:none; margin:18px; padding:0; border:1px solid var(--ink); }
+    .route-row { border-bottom:1px solid var(--line); background:var(--paper); }
+    .route-row:last-child { border-bottom:0; }
+    .route-summary { display:grid; grid-template-columns:minmax(190px,1.1fr) minmax(180px,1fr) minmax(160px,.8fr) auto; gap:14px; align-items:center; padding:14px; }
+    .route-kind { font-weight:750; }
+    .route-kind small { display:block; color:var(--muted); font-weight:400; margin-top:3px; }
+    .recipient-summary { display:flex; gap:6px; flex-wrap:wrap; min-width:0; }
+    .recipient-chip { border:1px solid var(--line); padding:4px 7px; background:var(--paper); }
+    .recipient-chip.ineligible { border-style:dashed; }
+    .route-state { color:var(--muted); }
+    .route-state strong { color:var(--ink); }
+    .edit-button { min-height:34px; border:1px solid var(--ink); background:var(--paper); padding:6px 10px; }
+    .route-editor { margin:0 14px 14px; border:2px solid var(--ink); padding:16px; background:var(--paper); }
+    .editor-heading { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:14px; }
+    .editor-heading h2 { margin:0 0 4px; font-size:17px; }
+    .editor-heading p { margin:0; color:var(--muted); }
+    .close-editor { border:1px solid var(--line); background:var(--paper); min-width:34px; min-height:34px; }
+    .editor-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(220px,.7fr); gap:18px; }
+    .candidate-box,.draft-box { border:1px solid var(--line); padding:13px; min-width:0; }
+    .candidate-box h3,.draft-box h3 { margin:0 0 5px; font-size:14px; }
+    .candidate-box > p,.draft-box > p { margin:0 0 12px; color:var(--muted); font-size:12px; }
+    .candidate-list { display:grid; gap:7px; }
+    .candidate-option { display:grid; grid-template-columns:auto minmax(0,1fr); gap:8px; align-items:start; padding:7px; border:1px solid var(--line); }
+    .candidate-option.error { border:2px solid var(--ink); }
+    .candidate-option small { color:var(--muted); display:block; margin-top:2px; }
+    .candidate-error { margin-top:4px; font-size:12px; font-weight:700; }
+    .load-candidates { margin-top:10px; min-height:34px; border:1px solid var(--ink); background:var(--paper); padding:6px 10px; }
+    .draft-recipient { display:flex; justify-content:space-between; gap:8px; align-items:center; border:1px dashed var(--line); padding:8px; margin-bottom:7px; }
+    .draft-recipient button { border:1px solid var(--line); background:var(--paper); padding:4px 7px; }
+    .editor-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; padding-top:13px; border-top:1px solid var(--line); }
+    .editor-actions button { min-height:36px; border:1px solid var(--line); background:var(--paper); padding:7px 10px; }
+    .editor-actions .primary { border-color:var(--ink); }
+    .editor-actions .remove { margin-left:auto; border-color:var(--ink); }
+    .notice { margin:14px 18px 0; border:1px solid var(--ink); padding:11px 12px; }
+    .notice strong { display:block; margin-bottom:3px; }
+    .notice p { margin:0; color:var(--muted); }
+    .knowledge-region { padding:18px; }
+    .knowledge-card { border:2px solid var(--ink); padding:18px; }
+    .knowledge-card h2 { margin:0 0 6px; font-size:17px; }
+    .knowledge-card p { margin:0; color:var(--muted); }
+    .drawer-backdrop { display:none; }
+
+    @media (max-width:1020px) {
+      :root { --sidebar:210px; --space:20px; }
+      .sidebar { padding-left:10px; padding-right:10px; }
+      .header { grid-template-columns:minmax(0,1fr) minmax(220px,330px) auto; gap:12px; }
+      .route-summary { grid-template-columns:minmax(180px,1fr) minmax(160px,1fr) auto; }
+      .route-state { grid-column:2; }
+      .edit-button { grid-column:3; grid-row:1 / span 2; }
+    }
+    @media (max-width:760px) {
+      :root { --space:14px; }
+      .prototype-bar { align-items:flex-start; flex-direction:column; }
+      .app { display:block; }
+      .sidebar { position:fixed; z-index:40; top:0; left:0; width:min(86vw,310px); height:100vh; transform:translateX(-105%); transition:transform .12s linear; }
+      body.drawer-open .sidebar { transform:translateX(0); }
+      .drawer-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.18); z-index:39; }
+      body.drawer-open .drawer-backdrop { display:block; }
+      .header { top:0; grid-template-columns:minmax(0,1fr) auto; gap:7px 10px; }
+      .title-row { grid-column:1; grid-row:1; }
+      .notification-utility { grid-column:2; grid-row:1; }
+      .local-context { grid-column:1 / -1; grid-row:2; padding-left:50px; }
+      .menu-toggle { display:inline-grid; place-items:center; }
+      .route-list { margin:12px; }
+      .route-summary { grid-template-columns:1fr; gap:8px; }
+      .route-state,.edit-button { grid-column:auto; grid-row:auto; }
+      .edit-button { width:100%; }
+      .route-editor { margin:0 10px 10px; }
+      .editor-grid { grid-template-columns:1fr; }
+      .editor-actions { flex-direction:column; }
+      .editor-actions .remove { margin-left:0; }
+      .editor-actions button { width:100%; }
+      .mini-preview { position:fixed; top:62px; left:7px; right:7px; width:auto; }
+    }
+  </style>
+</head>
+<body data-p8-status="candidate" data-surface="R129" data-responsive-law="mobile-stacked-route-editor">
+  <div class="prototype-bar" aria-label="Controles exclusivos do protótipo">
+    <div><strong>D6-R2 · P8 · B12 · CANDIDATE</strong> — Configurações &gt; Notificações; B00/B00-R2/B11 permanecem LOCKED.</div>
+    <div class="prototype-controls">
+      <label for="scenario">Cenário</label>
+      <select id="scenario">
+        <option value="configured">Rota configurada</option>
+        <option value="unconfigured">Rota sem configuração</option>
+        <option value="historical-ineligible">Destinatário anterior inelegível</option>
+        <option value="validation-rejected">Destinatário rejeitado no save</option>
+        <option value="stale-route-write">Write stale</option>
+        <option value="request-unavailable">Consulta indisponível</option>
+        <option value="organization-switch">Troca de Organização</option>
+        <option value="candidate-pagination">Paginação de candidatos</option>
+      </select>
+      <button id="resetPrototype" type="button">Restaurar</button>
+    </div>
+  </div>
+
+  <div class="drawer-backdrop" id="drawerBackdrop" aria-hidden="true"></div>
+
+  <div class="app">
+    <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
+      <div class="brand">Marketplace Central</div>
+      <div class="organization-block">
+        <label class="label" for="organization">Organização · workspace global</label>
+        <select id="organization" class="organization-select">
+          <option value="org-a">Organização Exemplo A</option>
+          <option value="org-b">Organização Exemplo B</option>
+        </select>
+      </div>
+      <nav>
+        <div class="nav-group"><div class="group-label">Visão geral</div><button class="nav-item" type="button">Visão geral</button></div>
+        <div class="nav-group"><div class="group-label">Oferta</div><button class="nav-item" type="button">Preparação</button><button class="nav-item" type="button">Anúncios</button><button class="nav-item" type="button">Preços</button><button class="nav-item" type="button">Disponibilidade</button></div>
+        <div class="nav-group"><div class="group-label">Operação</div><button class="nav-item" type="button">Visão operacional</button><button class="nav-item" type="button">Vendas</button><button class="nav-item" type="button">Expedição</button><button class="nav-item" type="button">Pós-venda</button></div>
+        <div class="nav-group"><div class="group-label">Estratégia e inteligência</div><button class="nav-item" type="button">Performance</button><button class="nav-item sub" type="button">Resumo</button><button class="nav-item sub" type="button">Anúncios</button><button class="nav-item sub" type="button">Mídia</button><button class="nav-item" type="button">Mercado</button><button class="nav-item" type="button">Economia</button></div>
+        <div class="nav-group"><div class="group-label">Controle</div><button class="nav-item" type="button">Trabalho</button><button class="nav-item" type="button">Aprovações</button></div>
+        <div class="nav-group"><div class="group-label">Configurações</div><button class="nav-item active" type="button">Configurações</button></div>
+      </nav>
+      <div class="sidebar-note">locked global sidebar · Notificações é destino local de Configurações</div>
+    </aside>
+
+    <main class="main">
+      <header class="header">
+        <div class="title-row">
+          <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir navegação">☰</button>
+          <h1 class="page-title">Configurações</h1>
+        </div>
+        <div class="local-context"><div class="context-empty">Configuração Organization-scoped · sem contexto de Installation</div></div>
+        <div class="notification-utility">
+          <button id="notificationBell" class="notification-bell" type="button" aria-label="Abrir preview de notificações" aria-expanded="false">
+            <span aria-hidden="true">◉</span><span class="bell-dot" aria-hidden="true"></span><span>Notificações</span>
+          </button>
+          <section id="miniPreview" class="mini-preview hidden" aria-label="Preview recente de notificações">
+            <h2>Notificações recentes</h2><div><strong>Nova venda</strong><br><small>Venda #ML-1048 · agora</small></div><div><small>Preview B00-R2 permanece bounded.</small></div>
+          </section>
+        </div>
+      </header>
+
+      <div class="content">
+        <div class="structural-meta" aria-label="Metadados estruturais">
+          <span>B12 · R129</span><span>10 fixed ORG_ROUTED slots</span><span>inline row editor</span><span>notifications.manage</span><span>no visual-design authority</span>
+        </div>
+
+        <section
+          id="notificationSettings"
+          class="settings-shell"
+          data-surface="R129"
+          data-settings-destination="notifications"
+          data-required-permission="notifications.manage"
+          data-route-owner="PersonalNotifications"
+          aria-labelledby="settingsTitle"
+        >
+          <header class="settings-heading">
+            <div class="breadcrumb">Configurações &gt; Notificações</div>
+            <h1 id="settingsTitle">Notificações</h1>
+            <p>Defina quais pessoas recebem cada uma das dez famílias operacionais roteáveis do Product. A lista de pessoas serve para descoberta humana; a validação final acontece novamente ao salvar.</p>
+          </header>
+
+          <div class="settings-note">Cada tipo tem exatamente uma configuração atual: <strong>Configurado</strong> com uma ou mais pessoas, ou <strong>Sem configuração de destinatários</strong>. Remover configuração não equivale a salvar uma lista vazia.</div>
+          <div id="noticeHost" aria-live="polite"></div>
+
+          <div id="settingsUnavailable" class="knowledge-region hidden" data-knowledge-state="unavailable">
+            <div class="knowledge-card"><h2>Não foi possível conhecer as rotas agora</h2><p>Indisponibilidade não é tratada como dez rotas sem configuração. Preserve o contexto e tente a leitura novamente.</p></div>
+          </div>
+
+          <div id="validationRejectedMarker" class="hidden" data-failure="validation-rejected"></div>
+          <div id="staleRouteWriteMarker" class="hidden" data-failure="stale-route-write"></div>
+          <span id="historicalStaticMarker" class="hidden" data-recipient-state="historical-ineligible">Destinatário não elegível · configuração anterior</span>
+
+          <ol id="routeList" class="route-list" data-operation="ListNotificationRoutes">
+            <li class="route-row" data-route-kind="MARKETPLACE_INSTALLATION_ATTENTION" data-route-state="configured">
+              <div class="route-summary"><div class="route-kind">Canal do marketplace requer atenção<small>Instalação / canal</small></div><div class="recipient-summary" data-recipient-summary></div><div class="route-state" data-route-state-label></div><button class="edit-button" type="button" data-action="edit-route">Editar</button></div>
+            </li>
+            <li class="route-row" data-route-kind="AVAILABILITY_ATTENTION" data-route-state="unconfigured">
+              <div class="route-summary"><div class="route-kind">Disponibilidade requer atenção<small>Oferta / disponibilidade</small></div><div class="recipient-summary" data-recipient-summary></div><div class="route-state" data-route-state-label></div><button class="edit-button" type="button" data-action="edit-route">Editar</button></div>
+            </li>
+            <li class="route-row" data-route-kind="ECONOMIC_RECONCILIATION_ATTENTION" data-route-state="configured">
+              <div class="route-summary"><div class="route-kind">Reconciliação econômica requer atenção<small>Economia</small></div><div class="recipient-summary" data-recipient-summary></div><div class="route-state" data-route-state-label></div><button class="edit-button" type="button" data-action="edit-route">Editar</button></div>
+            </li>
+            <li class="route-row" data-route-kind="NEW_MARKETPLACE_SALE" data-route-state="configured">
+              <div class="route-summary"><div class="route-kind">Nova venda<small>Vendas</small></div><div class="recipient-summary" data-recipient-summary></div><div class="route-state" data-route-state-label></div><button class="edit-button" type="button" data-action="edit-route">Editar</button></div>
+            </li>
+            <li class="route-row" data-route-kind="SALE_ATTENTION" data-route-state="configured">
+              <div class="route-summary"><div class="route-kind">Venda requer atenção<small>Vendas</small></div><div class="recipient-summary" data-recipient-summary></div><div class="route-state" data-route-state-label></div><button class="edit-button" type="button" data-action="edit-route">Editar</button></div>
+            </li>
+            <li class="route-row" data-route-kind="MATERIALIZATION_ATTENTION" data-route-state="unconfigured">
+              <div class="route-summary"><div class="route-kind">Materialização requer atenção<small>Materialização</small></div><div class="recipient-summary" data-recipient-summary></div><div class="route-state" data-route-state-label></div><button class="edit-button" type="button" data-action="edit-route">Editar</button></div>
+            </li>
+            <li class="route-row" data-route-kind="FULFILLMENT_ACTIONABLE" data-route-state="configured">
+              <div class="route-summary"><div class="route-kind">Expedição acionável<small>Expedição</small></div><div class="recipient-summary" data-recipient-summary></div><div class="route-state" data-route-state-label></div><button class="edit-button" type="button" data-action="edit-route">Editar</button></div>
+            </li>
+            <li class="route-row" data-route-kind="FULFILLMENT_ATTENTION" data-route-state="configured">
+              <div class="route-summary"><div class="route-kind">Expedição requer atenção<small>Expedição</small></div><div class="recipient-summary" data-recipient-summary></div><div class="route-state" data-route-state-label></div><button class="edit-button" type="button" data-action="edit-route">Editar</button></div>
+            </li>
+            <li class="route-row" data-route-kind="SHIPMENT_EXCEPTION" data-route-state="configured">
+              <div class="route-summary"><div class="route-kind">Exceção de envio<small>Envio</small></div><div class="recipient-summary" data-recipient-summary></div><div class="route-state" data-route-state-label></div><button class="edit-button" type="button" data-action="edit-route">Editar</button></div>
+            </li>
+            <li class="route-row" data-route-kind="POST_SALE_ATTENTION" data-route-state="configured">
+              <div class="route-summary"><div class="route-kind">Pós-venda requer atenção<small>Pós-venda</small></div><div class="recipient-summary" data-recipient-summary></div><div class="route-state" data-route-state-label></div><button class="edit-button" type="button" data-action="edit-route">Editar</button></div>
+            </li>
+          </ol>
+
+          <section
+            id="routeEditor"
+            class="route-editor hidden"
+            data-editor-mode="inline-row"
+            data-operation="SetNotificationRoute"
+            data-precondition="If-Match"
+            data-etag-source="current-route-etag"
+            aria-labelledby="editorTitle"
+          >
+            <div class="editor-heading">
+              <div><h2 id="editorTitle">Editar rota</h2><p id="editorSubtitle">A alteração afeta apenas ocorrências futuras.</p></div>
+              <button id="closeEditor" class="close-editor" type="button" aria-label="Fechar edição">×</button>
+            </div>
+
+            <div class="editor-grid">
+              <div
+                id="recipientCandidates"
+                class="candidate-box"
+                data-operation="ListNotificationRouteRecipientCandidates"
+                data-recipient-owner="IdentityAccess"
+                data-candidate-fields="principal_id display_name"
+                data-candidate-authority="discovery-not-authorization"
+              >
+                <h3>Pessoas elegíveis atuais</h3>
+                <p>Selecionar alguém aqui não garante que o save será aceito. A elegibilidade específica do tipo é revalidada no write.</p>
+                <div id="candidateList" class="candidate-list"></div>
+                <button id="loadMoreCandidates" class="load-candidates" type="button" data-cursor-source="next_cursor">Carregar mais pessoas</button>
+              </div>
+
+              <div class="draft-box">
+                <h3>Rascunho da rota</h3>
+                <p>O rascunho permanece local até um save aceito.</p>
+                <div id="historicalRecipients"></div>
+                <div id="draftSummary"></div>
+              </div>
+            </div>
+
+            <div class="editor-actions">
+              <button id="cancelEdit" type="button">Cancelar</button>
+              <button id="saveRoute" class="primary" type="button" data-action="save-route">Salvar</button>
+              <button id="removeConfiguration" class="remove" type="button" data-action="remove-configuration" data-desired-state="unconfigured">Remover configuração</button>
+            </div>
+          </section>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      const organization = document.getElementById('organization');
+      const scenario = document.getElementById('scenario');
+      const routeList = document.getElementById('routeList');
+      const routeEditor = document.getElementById('routeEditor');
+      const editorTitle = document.getElementById('editorTitle');
+      const candidateList = document.getElementById('candidateList');
+      const loadMoreCandidates = document.getElementById('loadMoreCandidates');
+      const historicalRecipients = document.getElementById('historicalRecipients');
+      const draftSummary = document.getElementById('draftSummary');
+      const noticeHost = document.getElementById('noticeHost');
+      const settingsUnavailable = document.getElementById('settingsUnavailable');
+      const notificationBell = document.getElementById('notificationBell');
+      const miniPreview = document.getElementById('miniPreview');
+      const menuToggle = document.getElementById('menuToggle');
+      const drawerBackdrop = document.getElementById('drawerBackdrop');
+      const resetPrototype = document.getElementById('resetPrototype');
+
+      const routeLabels = {
+        MARKETPLACE_INSTALLATION_ATTENTION: 'Canal do marketplace requer atenção',
+        AVAILABILITY_ATTENTION: 'Disponibilidade requer atenção',
+        ECONOMIC_RECONCILIATION_ATTENTION: 'Reconciliação econômica requer atenção',
+        NEW_MARKETPLACE_SALE: 'Nova venda',
+        SALE_ATTENTION: 'Venda requer atenção',
+        MATERIALIZATION_ATTENTION: 'Materialização requer atenção',
+        FULFILLMENT_ACTIONABLE: 'Expedição acionável',
+        FULFILLMENT_ATTENTION: 'Expedição requer atenção',
+        SHIPMENT_EXCEPTION: 'Exceção de envio',
+        POST_SALE_ATTENTION: 'Pós-venda requer atenção'
+      };
+
+      const initialRoutes = {
+        MARKETPLACE_INSTALLATION_ATTENTION: { state:'configured', recipients:['p-ana','p-bruno'], etag:'r1' },
+        AVAILABILITY_ATTENTION: { state:'unconfigured', recipients:[], etag:'r2' },
+        ECONOMIC_RECONCILIATION_ATTENTION: { state:'configured', recipients:['p-ana'], etag:'r3' },
+        NEW_MARKETPLACE_SALE: { state:'configured', recipients:['p-bruno'], etag:'r4' },
+        SALE_ATTENTION: { state:'configured', recipients:['p-carla'], etag:'r5' },
+        MATERIALIZATION_ATTENTION: { state:'unconfigured', recipients:[], etag:'r6' },
+        FULFILLMENT_ACTIONABLE: { state:'configured', recipients:['p-diego'], etag:'r7' },
+        FULFILLMENT_ATTENTION: { state:'configured', recipients:['p-diego'], etag:'r8' },
+        SHIPMENT_EXCEPTION: { state:'configured', recipients:['p-diego'], etag:'r9' },
+        POST_SALE_ATTENTION: { state:'configured', recipients:['p-ana'], etag:'r10' }
+      };
+
+      const candidatePages = [
+        [
+          { principal_id:'p-ana', display_name:'Ana Martins' },
+          { principal_id:'p-bruno', display_name:'Bruno Lima' },
+          { principal_id:'p-carla', display_name:'Carla Souza' },
+          { principal_id:'p-diego', display_name:'Diego Alves' }
+        ],
+        [
+          { principal_id:'p-elisa', display_name:'Elisa Rocha' },
+          { principal_id:'p-fernanda', display_name:'Fernanda Reis' }
+        ]
+      ];
+
+      let routes;
+      let loadedCandidates;
+      let candidatePage;
+      let nextCandidateCursor;
+      let activeKind = null;
+      let selectedRecipients = new Set();
+      let historicalDraftIds = new Set();
+      let validationConsumed = false;
+      let staleConsumed = false;
+
+      function cloneRoutes() {
+        return Object.fromEntries(Object.entries(initialRoutes).map(([kind, route]) => [kind, { state:route.state, recipients:[...route.recipients], etag:route.etag }]));
+      }
+
+      function candidateName(id) {
+        return loadedCandidates.find(candidate => candidate.principal_id === id)?.display_name || null;
+      }
+
+      function renderNotice(title, message, kind='info') {
+        noticeHost.innerHTML = `<div class="notice" data-notice-kind="${kind}"><strong>${title}</strong><p>${message}</p></div>`;
+      }
+
+      function clearNotice() { noticeHost.innerHTML = ''; }
+
+      function renderRouteRows() {
+        document.querySelectorAll('.route-row').forEach(row => {
+          const kind = row.dataset.routeKind;
+          const route = routes[kind];
+          row.dataset.routeState = route.state;
+          const recipientHost = row.querySelector('[data-recipient-summary]');
+          const stateHost = row.querySelector('[data-route-state-label]');
+          recipientHost.innerHTML = '';
+
+          if (route.state === 'unconfigured') {
+            recipientHost.innerHTML = '<span class="recipient-chip">—</span>';
+            stateHost.innerHTML = '<strong>Sem configuração de destinatários</strong>';
+            return;
+          }
+
+          for (const id of route.recipients) {
+            const name = candidateName(id);
+            const chip = document.createElement('span');
+            chip.className = `recipient-chip${name ? '' : ' ineligible'}`;
+            if (name) {
+              chip.textContent = name;
+            } else {
+              chip.dataset.recipientState = 'historical-ineligible';
+              chip.textContent = 'Destinatário não elegível · configuração anterior';
+            }
+            recipientHost.appendChild(chip);
+          }
+          stateHost.innerHTML = '<strong>Configurado</strong>';
+        });
+      }
+
+      function renderCandidateSelector() {
+        candidateList.innerHTML = loadedCandidates.map(candidate => {
+          const checked = selectedRecipients.has(candidate.principal_id) ? 'checked' : '';
+          return `<label class="candidate-option" data-candidate-id="${candidate.principal_id}">
+            <input type="checkbox" value="${candidate.principal_id}" ${checked} />
+            <span><strong>${candidate.display_name}</strong><small>Pessoa elegível atual para seleção.</small><span class="candidate-error hidden"></span></span>
+          </label>`;
+        }).join('');
+        loadMoreCandidates.classList.toggle('hidden', !nextCandidateCursor);
+      }
+
+      function renderDraft() {
+        const selectedNames = [...selectedRecipients].map(id => candidateName(id)).filter(Boolean);
+        draftSummary.innerHTML = selectedNames.length
+          ? selectedNames.map(name => `<div class="draft-recipient"><span>${name}</span><span>Selecionado</span></div>`).join('')
+          : '<div class="draft-recipient"><span>Nenhum destinatário atual selecionado</span><span>Rascunho</span></div>';
+
+        historicalRecipients.innerHTML = [...historicalDraftIds].map(id =>
+          `<div class="draft-recipient" data-recipient-state="historical-ineligible"><span>Destinatário não elegível · configuração anterior</span><button type="button" data-drop-historical="${id}">Remover do novo rascunho</button></div>`
+        ).join('');
+      }
+
+      function openRouteEditor(kind) {
+        activeKind = kind;
+        validationConsumed = false;
+        staleConsumed = false;
+        const route = routes[kind];
+        selectedRecipients = new Set(route.recipients.filter(id => candidateName(id)));
+        historicalDraftIds = new Set(route.recipients.filter(id => !candidateName(id)));
+        editorTitle.textContent = `Editar · ${routeLabels[kind]}`;
+        routeEditor.classList.remove('hidden');
+        document.querySelector(`.route-row[data-route-kind="${kind}"]`).appendChild(routeEditor);
+        document.getElementById('removeConfiguration').classList.toggle('hidden', route.state !== 'configured');
+        renderCandidateSelector();
+        renderDraft();
+      }
+
+      function closeRouteEditor() {
+        routeEditor.classList.add('hidden');
+        activeKind = null;
+        selectedRecipients = new Set();
+        historicalDraftIds = new Set();
+      }
+
+      function markCandidateError(id, message) {
+        const option = candidateList.querySelector(`[data-candidate-id="${id}"]`);
+        if (!option) return;
+        option.classList.add('error');
+        const error = option.querySelector('.candidate-error');
+        error.textContent = message;
+        error.classList.remove('hidden');
+      }
+
+      function saveRoute() {
+        if (!activeKind) return;
+        candidateList.querySelectorAll('.candidate-option').forEach(option => option.classList.remove('error'));
+        candidateList.querySelectorAll('.candidate-error').forEach(error => { error.textContent=''; error.classList.add('hidden'); });
+
+        if (selectedRecipients.size === 0) {
+          renderNotice('A configuração não foi salva', 'Escolha ao menos uma pessoa atual ou use Remover configuração. Uma rota configurada nunca é uma lista vazia.', 'configured-empty-refused');
+          return;
+        }
+
+        if (scenario.value === 'validation-rejected' && !validationConsumed) {
+          validationConsumed = true;
+          const rejected = selectedRecipients.has('p-carla') ? 'p-carla' : [...selectedRecipients][0];
+          markCandidateError(rejected, 'Este destinatário não está elegível para este tipo.');
+          renderNotice('A configuração não foi alterada', 'O servidor rejeitou um destinatário no save. O rascunho permanece aberto para correção, sem revelar detalhes internos de autorização.', 'validation-rejected');
+          return;
+        }
+
+        if (scenario.value === 'stale-route-write' && !staleConsumed) {
+          staleConsumed = true;
+          renderNotice('A rota mudou desde sua leitura', 'A precondition do write falhou. O rascunho permanece aberto; releia a configuração atual antes de tentar novamente.', 'stale-route-write');
+          return;
+        }
+
+        routes[activeKind] = {
+          state:'configured',
+          recipients:[...selectedRecipients],
+          etag:`${routes[activeKind].etag}-next`
+        };
+        historicalDraftIds = new Set();
+        renderRouteRows();
+        renderNotice('Configuração salva', 'A nova revisão configurada vale para ocorrências futuras. A seleção foi revalidada no write.', 'saved');
+        openRouteEditor(activeKind);
+      }
+
+      function removeConfiguration() {
+        if (!activeKind) return;
+        routes[activeKind] = { state:'unconfigured', recipients:[], etag:`${routes[activeKind].etag}-next` };
+        renderRouteRows();
+        renderNotice('Configuração removida', 'A rota agora está Sem configuração de destinatários. Isso não apaga histórico nem cria uma configuração vazia.', 'unconfigured');
+        closeRouteEditor();
+      }
+
+      function loadNextCandidatePage() {
+        if (!nextCandidateCursor) return;
+        candidatePage += 1;
+        loadedCandidates.push(...candidatePages[candidatePage]);
+        nextCandidateCursor = candidatePage < candidatePages.length - 1 ? `candidate-cursor-${candidatePage + 1}` : null;
+        renderRouteRows();
+        renderCandidateSelector();
+        renderDraft();
+      }
+
+      function resetState() {
+        routes = cloneRoutes();
+        candidatePage = 0;
+        loadedCandidates = [...candidatePages[0]];
+        nextCandidateCursor = 'candidate-cursor-2';
+        activeKind = null;
+        selectedRecipients = new Set();
+        historicalDraftIds = new Set();
+        validationConsumed = false;
+        staleConsumed = false;
+        settingsUnavailable.classList.add('hidden');
+        routeList.classList.remove('hidden');
+        closeRouteEditor();
+        clearNotice();
+        renderRouteRows();
+      }
+
+      function invalidateRoutingContext() {
+        closeRouteEditor();
+        miniPreview.classList.add('hidden');
+        notificationBell.setAttribute('aria-expanded','false');
+        resetState();
+        renderNotice('Organização alterada', 'Editor, candidatos paginados e revisão de rotas da Organização anterior foram invalidados antes de apresentar a nova verdade.', 'organization-switch');
+      }
+
+      routeList.addEventListener('click', event => {
+        const button = event.target.closest('button[data-action="edit-route"]');
+        if (!button) return;
+        const row = button.closest('.route-row');
+        openRouteEditor(row.dataset.routeKind);
+      });
+
+      candidateList.addEventListener('change', event => {
+        const checkbox = event.target.closest('input[type="checkbox"]');
+        if (!checkbox) return;
+        if (checkbox.checked) selectedRecipients.add(checkbox.value);
+        else selectedRecipients.delete(checkbox.value);
+        renderDraft();
+      });
+
+      historicalRecipients.addEventListener('click', event => {
+        const button = event.target.closest('button[data-drop-historical]');
+        if (!button) return;
+        historicalDraftIds.delete(button.dataset.dropHistorical);
+        renderDraft();
+      });
+
+      document.getElementById('saveRoute').addEventListener('click', saveRoute);
+      document.getElementById('removeConfiguration').addEventListener('click', removeConfiguration);
+      document.getElementById('cancelEdit').addEventListener('click', closeRouteEditor);
+      document.getElementById('closeEditor').addEventListener('click', closeRouteEditor);
+      loadMoreCandidates.addEventListener('click', loadNextCandidatePage);
+
+      notificationBell.addEventListener('click', () => {
+        const open = miniPreview.classList.toggle('hidden') === false;
+        notificationBell.setAttribute('aria-expanded', String(open));
+      });
+      menuToggle.addEventListener('click', () => document.body.classList.toggle('drawer-open'));
+      drawerBackdrop.addEventListener('click', () => document.body.classList.remove('drawer-open'));
+      organization.addEventListener('change', invalidateRoutingContext);
+
+      scenario.addEventListener('change', () => {
+        resetState();
+        if (scenario.value === 'request-unavailable') {
+          routeList.classList.add('hidden');
+          settingsUnavailable.classList.remove('hidden');
+          return;
+        }
+        if (scenario.value === 'unconfigured') openRouteEditor('AVAILABILITY_ATTENTION');
+        else if (scenario.value === 'historical-ineligible') {
+          routes.POST_SALE_ATTENTION = { state:'configured', recipients:['p-historical'], etag:'r10-history' };
+          renderRouteRows();
+          openRouteEditor('POST_SALE_ATTENTION');
+        }
+        else if (scenario.value === 'validation-rejected') {
+          openRouteEditor('NEW_MARKETPLACE_SALE');
+          selectedRecipients.add('p-carla');
+          renderCandidateSelector();
+          renderDraft();
+        }
+        else if (scenario.value === 'stale-route-write') openRouteEditor('SALE_ATTENTION');
+        else if (scenario.value === 'organization-switch') {
+          openRouteEditor('MARKETPLACE_INSTALLATION_ATTENTION');
+          renderNotice('Troque a Organização', 'Com o editor aberto, altere a Organização na sidebar para provar invalidação antes da nova verdade.', 'scenario-instruction');
+        }
+        else if (scenario.value === 'candidate-pagination') openRouteEditor('MARKETPLACE_INSTALLATION_ATTENTION');
+        else openRouteEditor('MARKETPLACE_INSTALLATION_ATTENTION');
+      });
+
+      resetPrototype.addEventListener('click', () => {
+        scenario.value = 'configured';
+        organization.value = 'org-a';
+        resetState();
+        openRouteEditor('MARKETPLACE_INSTALLATION_ATTENTION');
+      });
+
+      resetState();
+      openRouteEditor('MARKETPLACE_INSTALLATION_ATTENTION');
+    })();
+  </script>
+</body>
+</html>

@@ -44,6 +44,20 @@ paths:
     $ref: './paths-access-performance.yaml#/pathItems/AssignAccessRole'
   '/organizations/{organization_id}/members/{principal_id}:revoke-access-role':
     $ref: './paths-access-performance.yaml#/pathItems/RevokeAccessRole'
+
+  # NOTIF-01 paths start
+  '/organizations/{organization_id}/notifications':
+    $ref: './paths-notifications-authorization-request.yaml#/pathItems/MyNotifications'
+  '/organizations/{organization_id}/notifications/{notification_id}':
+    $ref: './paths-notifications-authorization-request.yaml#/pathItems/MyNotification'
+  '/organizations/{organization_id}/notification-routes':
+    $ref: './paths-notifications.yaml#/pathItems/NotificationRoutes'
+  '/organizations/{organization_id}/notification-routes/{notification_kind}':
+    $ref: './paths-notifications.yaml#/pathItems/NotificationRoute'
+  '/organizations/{organization_id}/notification-route-recipient-candidates':
+    $ref: './paths-notifications.yaml#/pathItems/NotificationRouteRecipientCandidates'
+  # NOTIF-01 paths end
+
   '/organizations/{organization_id}/marketplace-installations':
     $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/MarketplaceInstallations'
   '/organizations/{organization_id}/marketplace-installations/{marketplace_installation_id}':
@@ -131,10 +145,16 @@ paths:
     $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/EconomicAttribution'
   '/organizations/{organization_id}/economic-attributions/{economic_attribution_id}:resolve':
     $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/ResolveEconomicAttribution'
+  '/organizations/{organization_id}/authorization-requests':
+    $ref: './paths-authorization-requests.yaml#/pathItems/AuthorizationRequests'
+  '/organizations/{organization_id}/authorization-requests/{authorization_request_id}':
+    $ref: './paths-authorization-requests.yaml#/pathItems/AuthorizationRequest'
+  '/organizations/{organization_id}/authorization-requests/{authorization_request_id}:decide':
+    $ref: './paths-authorization-requests.yaml#/pathItems/DecideAuthorizationRequest'
   '/organizations/{organization_id}/authorization-decisions':
-    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/AuthorizationDecisions'
+    $ref: './paths-authorization-requests.yaml#/pathItems/AuthorizationDecisions'
   '/organizations/{organization_id}/authorization-decisions/{authorization_decision_id}':
-    $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/AuthorizationDecision'
+    $ref: './paths-authorization-requests.yaml#/pathItems/AuthorizationDecision'
   '/organizations/{organization_id}/authorization-delegations':
     $ref: './paths-economics-governance-sales-materialization.yaml#/pathItems/AuthorizationDelegations'
   '/organizations/{organization_id}/authorization-delegations/{authorization_delegation_id}':
@@ -195,19 +215,19 @@ paths:
   '/organizations/{organization_id}/post-sale-resolutions/{post_sale_resolution_id}':
     $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/PostSaleResolution'
   '/organizations/{organization_id}/work':
-    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/Work'
+    $ref: './paths-work-authorization-request.yaml#/pathItems/Work'
   '/organizations/{organization_id}/work/{work_id}':
-    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/WorkItem'
+    $ref: './paths-work-authorization-request.yaml#/pathItems/WorkItem'
   '/organizations/{organization_id}/work/{work_id}:assign':
-    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/AssignWork'
+    $ref: './paths-work-authorization-request.yaml#/pathItems/AssignWork'
   '/organizations/{organization_id}/work/{work_id}:clear-assignment':
-    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/ClearWorkAssignment'
+    $ref: './paths-work-authorization-request.yaml#/pathItems/ClearWorkAssignment'
   '/organizations/{organization_id}/work/{work_id}:hold':
-    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/HoldWork'
+    $ref: './paths-work-authorization-request.yaml#/pathItems/HoldWork'
   '/organizations/{organization_id}/work/{work_id}:resume':
-    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/ResumeWork'
+    $ref: './paths-work-authorization-request.yaml#/pathItems/ResumeWork'
   '/organizations/{organization_id}/work/{work_id}:escalate':
-    $ref: './paths-fulfillment-postsale-work.yaml#/pathItems/EscalateWork'
+    $ref: './paths-work-authorization-request.yaml#/pathItems/EscalateWork'
 
 components:
   securitySchemes:
@@ -225,3 +245,10 @@ components:
         Audience-bound external OAuth access token issued to a confidential machine client through
         Client Credentials and resolved fail-closed to one automation/system Principal. Product
         authorization remains MPC-owned current authority.
+  schemas:
+    AuthorizationTargetRef: {$ref: './paths-authorization-requests.yaml#/schemas/AuthorizationRequestTargetRef'}
+    AuthorizationReviewBasis: {$ref: './paths-authorization-requests.yaml#/schemas/AuthorizationReviewBasis'}
+    ActionableAuthorizationRequestView: {$ref: './paths-authorization-requests.yaml#/schemas/ActionableAuthorizationRequestView'}
+    AuthorizationDecision: {$ref: './paths-authorization-requests.yaml#/schemas/AuthorizationDecision'}
+    Notification: {$ref: './paths-notifications-authorization-request.yaml#/schemas/Notification'}
+    WorkOrigin: {$ref: './paths-work-authorization-request.yaml#/schemas/WorkOrigin'}

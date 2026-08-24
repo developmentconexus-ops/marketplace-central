@@ -29,6 +29,7 @@ Pre-standard current-status/read-order prose inside accepted D-stage, architectu
 | Mercado Livre, Sankhya, provider boundaries/effects/reconciliation | [D4 External Integrations](engineering/rebaseline/D4-EXTERNAL-INTEGRATIONS.md) | old adapters/runtime |
 | Publication input, `ListingIntent`, readiness/source-following/override | [D4-R1 Publication Input](engineering/rebaseline/D4-R1-PUBLICATION-INPUT.md) | generic PIM assumptions |
 | Product API semantic laws | [D5 API](engineering/rebaseline/D5-API.md) | D6–D9 |
+| Operational collection/read projection repair for D6-R2 triage (`OP-READ-01`) | [D5-R2 Operational Read Projection Repair](engineering/rebaseline/D5-R2-OPERATIONAL-READ-PROJECTION-REPAIR.md) | broad D5 history; implementation/runtime |
 | Frontend interaction/authority model, screen→Product capability mapping, frontend topology | [D6 Frontend](engineering/rebaseline/D6-FRONTEND.md) | D7–D9 and removed frontend runtime |
 | Frontend product-experience planning process / D6-R2 execution method | [Frontend Product Experience Planning Method v2.1](development/frontend-product-experience-planning-method.md) — reusable methodology, not stage/status authority | stage semantics; use `roadmap.md` + owning authority |
 | Runtime/process topology and whole-D7 integration | [D7 Runtime / Jobs / Transactions](engineering/rebaseline/D7-RUNTIME-JOBS-TRANSACTIONS.md) | D8–D9 and removed runtime |
@@ -36,6 +37,7 @@ Pre-standard current-status/read-order prose inside accepted D-stage, architectu
 | Durable work, River, retries, external-effect ambiguity/reconciliation | [D7-C Durable Work & External Effects](engineering/rebaseline/D7-C-DURABLE-WORK-EXTERNAL-EFFECTS.md) | auth/deployment and generic workflow assumptions |
 | Human session/CSRF/OIDC and A/S machine bearer realization | [D7-D Authentication / Session / CSRF](engineering/rebaseline/D7-D-AUTHENTICATION-SESSION-CSRF.md) | D7-E and generic IAM |
 | HTTP runtime validation, byte storage, secrets, migrations, telemetry, deployment/backup/proof | [D7-E Operability / Deployment / Proof](engineering/rebaseline/D7-E-OPERABILITY-DEPLOYMENT-PROOF.md) | D8–D9 and provider-specific infra by preference |
+| Golden-flow GF-02 operational-read revalidation | [D8-R2 GF-02 Operational Read Revalidation](engineering/rebaseline/D8-R2-OPERATIONAL-READ-REVALIDATION.md) | unrelated D8 probes/runtime proof |
 | Current decision-generation reconciliation | [Decision Reconciliation Baseline](engineering/rebaseline/DECISION-RECONCILIATION-BASELINE.md) | all phase history |
 | Stable cross-stage architecture constraints | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | all phase documents |
 | ADR disposition / retirement trigger | [ADR Registry](architecture/decisions/README.md), then only the named ADR | all ADRs |
@@ -70,6 +72,8 @@ Canonical Product OAD authoring is material and spans several accepted D5 homes.
 - [Technical Ingress](engineering/rebaseline/D5-B2-TECHNICAL-INGRESS.md).
 
 For the D6-discovered Performance repair, start from [D6-R1 Marketplace Performance Intelligence](engineering/rebaseline/D6-R1-MARKETPLACE-PERFORMANCE-INTELLIGENCE.md) and switch to one D5 subpack only when the exact wire/proof question requires it. D6-R1 supersedes only its explicitly bounded 95→99 / 29→30 / 26→28 amendments; it does not generally reopen accepted D5.
+
+For the D6-R2-discovered operational triage repair, start from [D5-R2 Operational Read Projection Repair](engineering/rebaseline/D5-R2-OPERATIONAL-READ-PROJECTION-REPAIR.md) and switch to W2/W3 only for exact schema/collection grammar. D5-R2 supersedes only its bounded operational ListItem/filter amendments.
 
 Switch subpacks as the concrete authoring question changes. Read D0–D4 only when the D5 package cannot answer a concrete contract question without reopening earlier semantics.
 

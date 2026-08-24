@@ -9,25 +9,11 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const contractDir = join(root, 'contracts/api/product');
 const entrypoint = join(contractDir, 'openapi.yaml');
 const redoclyConfig = join(contractDir, 'redocly.yaml');
-const historicalVerifier = join(root, 'scripts/verify-product-oad-current99.mjs');
 const preAuthVerifier = join(root, 'scripts/verify-product-oad-pre-auth.mjs');
 const baselineVerifier = join(root, 'scripts/verify-product-oad-baseline.mjs');
-const temp = mkdtempSync(join(tmpdir(), 'mpc-product-current-proof-'));
+const temp = mkdtempSync(join(tmpdir(), 'mpc-product-auth-proof-'));
 const go = process.platform === 'win32' ? 'go.exe' : 'go';
 const HTTP_METHODS = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);
-const NOTIF_START = '  # NOTIF-01 paths start';
-const NOTIF_END = '  # NOTIF-01 paths end';
-const NOTIFICATION_IDS = [
-  'ListMyNotifications',
-  'UpdateMyNotificationAwarenessState',
-  'ListNotificationRoutes',
-  'ListNotificationRouteRecipientCandidates',
-  'SetNotificationRoute',
-];
-const AUTHORIZATION_REQUEST_IDS = [
-  'ListMyActionableAuthorizationRequests',
-  'GetMyActionableAuthorizationRequest',
-];
 let negativeControls = 0;
 
 function fail(message) { throw new Error(message); }
@@ -75,67 +61,44 @@ function operations(document) {
   return result;
 }
 
-function stripMarkedBlock(source, startMarker, endMarker, label) {
-  const start = source.indexOf(startMarker);
-  const end = source.indexOf(endMarker);
-  assert(start >= 0 && end > start, `unable to locate ${label} markers`);
-  const endOfLine = source.indexOf('\n', end);
-  return source.slice(0, start) + source.slice(endOfLine >= 0 ? endOfLine + 1 : source.length);
-}
-
-function rewindAuthorizationRequestSurface(source) {
-  const requestBlock = [
-    "  '/organizations/{organization_id}/authorization-requests':",
-    "    $ref: './paths-authorization-requests.yaml#/pathItems/AuthorizationRequests'",
-    "  '/organizations/{organization_id}/authorization-requests/{authorization_request_id}':",
-    "    $ref: './paths-authorization-requests.yaml#/pathItems/AuthorizationRequest'",
-    "  '/organizations/{organization_id}/authorization-requests/{authorization_request_id}:decide':",
-    "    $ref: './paths-authorization-requests.yaml#/pathItems/DecideAuthorizationRequest'",
-    '',
-  ].join('\n');
-  assert(source.includes(requestBlock), 'historical fixture cannot locate D5-R6 AuthorizationRequest path block');
-  source = source.replace(requestBlock, '');
-  source = source.replace("./paths-authorization-requests.yaml#/pathItems/AuthorizationDecisions", "./paths-economics-governance-sales-materialization.yaml#/pathItems/AuthorizationDecisions");
-  source = source.replace("./paths-authorization-requests.yaml#/pathItems/AuthorizationDecision", "./paths-economics-governance-sales-materialization.yaml#/pathItems/AuthorizationDecision");
-  source = source.replaceAll("./paths-work-authorization-request.yaml#/pathItems/", "./paths-fulfillment-postsale-work.yaml#/pathItems/");
-  const aliases = source.indexOf('\n  schemas:\n');
-  assert(aliases >= 0, 'historical fixture cannot locate D5-R6 root schema aliases');
-  return source.slice(0, aliases).trimEnd() + '\n';
-}
-
-function historical99Proof() {
-  const historicalRoot = join(temp, 'historical-99-root');
+function preAuthSurfaceProof() {
+  const historicalRoot = join(temp, 'pre-auth-root');
   mkdirSync(join(historicalRoot, 'contracts/api'), { recursive: true });
   mkdirSync(join(historicalRoot, 'docs/engineering'), { recursive: true });
   mkdirSync(join(historicalRoot, 'scripts'), { recursive: true });
   cpSync(contractDir, join(historicalRoot, 'contracts/api/product'), { recursive: true });
   cpSync(join(root, 'docs/engineering/rebaseline'), join(historicalRoot, 'docs/engineering/rebaseline'), { recursive: true });
-  cpSync(historicalVerifier, join(historicalRoot, 'scripts/verify-product-oad.mjs'));
-  cpSync(preAuthVerifier, join(historicalRoot, 'scripts/verify-product-oad-pre-auth.mjs'));
+  cpSync(preAuthVerifier, join(historicalRoot, 'scripts/verify-product-oad.mjs'));
   cpSync(baselineVerifier, join(historicalRoot, 'scripts/verify-product-oad-baseline.mjs'));
 
-  const historicalContractDir = join(historicalRoot, 'contracts/api/product');
-  const historicalEntry = join(historicalContractDir, 'openapi.yaml');
-  let openapiSource = readFileSync(historicalEntry, 'utf8');
-  openapiSource = stripMarkedBlock(openapiSource, NOTIF_START, NOTIF_END, 'NOTIF-01 paths');
-  openapiSource = rewindAuthorizationRequestSurface(openapiSource);
-  writeFileSync(historicalEntry, openapiSource, 'utf8');
-
-  const accessPath = join(historicalContractDir, 'paths-access-performance.yaml');
-  let accessSource = readFileSync(accessPath, 'utf8');
-  assert(accessSource.includes(', notifications.manage]'), 'historical fixture cannot remove notifications.manage from effective Permission enum');
-  accessSource = accessSource.replace(', notifications.manage]', ']');
-  writeFileSync(accessPath, accessSource, 'utf8');
-  for (const file of [
-    'paths-notifications.yaml',
-    'paths-notifications-authorization-request.yaml',
-    'paths-authorization-requests.yaml',
-    'paths-work-authorization-request.yaml',
-  ]) rmSync(join(historicalContractDir, file), { force: true });
+  const historicalEntry = join(historicalRoot, 'contracts/api/product/openapi.yaml');
+  let source = readFileSync(historicalEntry, 'utf8');
+  const authReplacement = [
+    'security:',
+    '  - MpcBearerAuth: []',
+    '',
+    'paths:',
+  ].join('\n');
+  const authPattern = /security:\n[\s\S]*?\npaths:\n/;
+  assert(authPattern.test(source), 'unable to construct pre-auth root security fixture');
+  source = source.replace(authPattern, `${authReplacement}\n`);
+  const componentPattern = /\ncomponents:\n  securitySchemes:[\s\S]*$/;
+  assert(componentPattern.test(source), 'unable to construct pre-auth security-scheme fixture');
+  source = source.replace(componentPattern, [
+    '',
+    'components:',
+    '  securitySchemes:',
+    '    MpcBearerAuth:',
+    '      type: http',
+    '      scheme: bearer',
+    '      description: Accepted external bearer credential; Product authorization remains MPC-owned current authority.',
+    '',
+  ].join('\n'));
+  writeFileSync(historicalEntry, source, 'utf8');
 
   const result = run(process.execPath, [join(historicalRoot, 'scripts/verify-product-oad.mjs')], { cwd: historicalRoot });
   if (result.stdout?.trim()) console.log(result.stdout.trim());
-  console.log('product_oad_historical_99_non_regression=PASS');
+  console.log('product_oad_pre_auth_surface_non_regression=PASS');
 }
 
 function validateAuth(document) {
@@ -174,14 +137,12 @@ function validateAuth(document) {
   assert(profile?.machine?.grant === 'client_credentials', 'machine bearer must use Client Credentials baseline');
 
   const all = operations(document);
-  assert(all.length === 106, `current Product surface must contain 106 operations, found ${all.length}`);
-  assert(new Set(all.map((entry) => entry.operation.operationId)).size === 106, 'current operationId values are not unique');
+  assert(all.length === 99, `auth repair must preserve 99 Product operations, found ${all.length}`);
   for (const entry of all) {
     assert(!Object.hasOwn(entry.operation, 'security'), `${entry.operation.operationId} must not shadow the canonical split auth profile`);
     const kinds = entry.operation['x-mpc-principal-kinds'] ?? [];
-    assert(kinds.length > 0 && kinds.every((kind) => ['H', 'A', 'S'].includes(kind)), `${entry.operation.operationId} principal kinds changed during current auth proof`);
+    assert(kinds.length > 0 && kinds.every((kind) => ['H', 'A', 'S'].includes(kind)), `${entry.operation.operationId} principal kinds changed during auth repair`);
   }
-  for (const id of [...NOTIFICATION_IDS, ...AUTHORIZATION_REQUEST_IDS]) assert(all.some((entry) => entry.operation.operationId === id), `current generated surface missing ratified operation ${id}`);
   return all;
 }
 
@@ -214,17 +175,14 @@ function negativeAuthControls(document) {
 }
 
 function currentProjectionProof(bundlePath) {
-  const tsA = join(temp, 'current-product-a.d.ts');
-  const tsB = join(temp, 'current-product-b.d.ts');
+  const tsA = join(temp, 'auth-product-a.d.ts');
+  const tsB = join(temp, 'auth-product-b.d.ts');
   runNpx(['--yes', 'openapi-typescript@7.13.0', entrypoint, '-o', tsA, '--redocly', redoclyConfig]);
   runNpx(['--yes', 'openapi-typescript@7.13.0', entrypoint, '-o', tsB, '--redocly', redoclyConfig]);
-  assert(sha256(tsA) === sha256(tsB), 'current TypeScript projection is not deterministic');
+  assert(sha256(tsA) === sha256(tsB), 'auth-repaired TypeScript projection is not deterministic');
   runNpx(['--yes', '-p', 'typescript@5.9.3', 'tsc', '--noEmit', '--strict', '--skipLibCheck', tsA]);
-  const tsText = readFileSync(tsA, 'utf8');
-  for (const id of [...NOTIFICATION_IDS, ...AUTHORIZATION_REQUEST_IDS]) assert(tsText.includes(id), `generated TypeScript projection missing ${id}`);
-  assert(tsText.includes('notifications.manage'), 'generated TypeScript projection missing notifications.manage');
 
-  const goDir = join(temp, 'current-go-proof');
+  const goDir = join(temp, 'auth-go-proof');
   mkdirSync(goDir, { recursive: true });
   writeFileSync(join(goDir, 'oapi-codegen.yaml'), [
     'package: productapi',
@@ -241,27 +199,25 @@ function currentProjectionProof(bundlePath) {
   const generatedPath = join(goDir, 'product.gen.go');
   const firstHash = sha256(generatedPath);
   generate();
-  assert(sha256(generatedPath) === firstHash, 'current Go projection is not deterministic');
-  const goText = readFileSync(generatedPath, 'utf8');
-  for (const id of [...NOTIFICATION_IDS, ...AUTHORIZATION_REQUEST_IDS]) assert(goText.includes(id), `generated Go projection missing ${id}`);
-  writeFileSync(join(goDir, 'go.mod'), ['module productcurrentproof', '', 'go 1.25.1', '', 'require github.com/oapi-codegen/runtime v1.7.0', ''].join('\n'));
+  assert(sha256(generatedPath) === firstHash, 'auth-repaired Go projection is not deterministic');
+  writeFileSync(join(goDir, 'go.mod'), ['module productauthproof', '', 'go 1.25.1', '', 'require github.com/oapi-codegen/runtime v1.7.0', ''].join('\n'));
   run(go, ['mod', 'tidy'], { cwd: goDir });
   run(go, ['test', './...'], { cwd: goDir });
-  console.log('product_oad_current_generated_projection_semantics=PASS');
+  console.log('product_oad_auth_generated_projection_semantics=PASS');
 }
 
 function currentAuthProof() {
   runNpx(['--yes', '@redocly/cli@2.45.0', 'lint', entrypoint, '--config', redoclyConfig]);
-  const bundleA = join(temp, 'current-a.json');
-  const bundleB = join(temp, 'current-b.json');
+  const bundleA = join(temp, 'auth-a.json');
+  const bundleB = join(temp, 'auth-b.json');
   runNpx(['--yes', '@redocly/cli@2.45.0', 'bundle', entrypoint, '--config', redoclyConfig, '-o', bundleA]);
   runNpx(['--yes', '@redocly/cli@2.45.0', 'bundle', entrypoint, '--config', redoclyConfig, '-o', bundleB]);
-  assert(sha256(bundleA) === sha256(bundleB), 'current Product bundle is not deterministic');
+  assert(sha256(bundleA) === sha256(bundleB), 'auth-repaired Product bundle is not deterministic');
   const document = JSON.parse(readFileSync(bundleA, 'utf8'));
   const all = validateAuth(document);
   negativeAuthControls(document);
   currentProjectionProof(bundleA);
-  console.log(`product_oad_operations=${all.length}/106`);
+  console.log(`product_oad_operations=${all.length}/99`);
   console.log('product_oad_auth_human=OIDC_SERVER_SESSION_COOKIE_CSRF');
   console.log('product_oad_auth_machine=CLIENT_CREDENTIALS_BEARER_A_S');
   console.log(`product_oad_auth_negative_controls=${negativeControls}/5`);
@@ -269,7 +225,7 @@ function currentAuthProof() {
 }
 
 try {
-  historical99Proof();
+  preAuthSurfaceProof();
   currentAuthProof();
 } finally {
   rmSync(temp, { recursive: true, force: true });

@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Marketplace Central — D6-R2 B11 Personal Inbox</title>
+  <style>
+    :root { --paper:#fff; --canvas:#f3f3f3; --ink:#111; --muted:#666; --line:#bbb; --sidebar:264px; --space:24px; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--canvas); font:14px/1.45 system-ui,sans-serif; }
+    button,select { font:inherit; color:inherit; }
+    button { cursor:pointer; }
+    button:focus-visible,select:focus-visible { outline:3px solid var(--ink); outline-offset:2px; }
+    .hidden { display:none!important; }
+    .prototype-bar { min-height:38px; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:7px 12px; border-bottom:1px solid var(--ink); background:var(--paper); font-size:12px; }
+    .prototype-controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .prototype-controls select,.prototype-controls button { border:1px solid var(--line); background:var(--paper); padding:5px 8px; }
+    .app { min-height:calc(100vh - 38px); display:grid; grid-template-columns:var(--sidebar) minmax(0,1fr); }
+    .sidebar { position:sticky; top:38px; height:calc(100vh - 38px); overflow:auto; border-right:1px solid var(--ink); background:var(--paper); padding:18px 14px; }
+    .brand { padding:3px 8px 14px; border-bottom:1px solid var(--line); margin-bottom:14px; font-size:17px; font-weight:800; }
+    .organization-block { padding:0 6px 14px; border-bottom:1px solid var(--line); }
+    .label,.group-label { color:var(--muted); font-size:11px; }
+    .organization-select { width:100%; min-height:38px; border:1px solid var(--ink); background:var(--paper); padding:7px 9px; }
+    .nav-group { margin-top:17px; }
+    .group-label { margin:0 7px 5px; font-size:10px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; }
+    .nav-item { width:100%; min-height:36px; border:0; background:transparent; text-align:left; padding:8px 9px; }
+    .nav-item.sub { padding-left:27px; font-size:13px; }
+    .sidebar-note { margin:22px 6px 0; border-top:1px dashed var(--line); padding-top:10px; color:var(--muted); font:11px ui-monospace,monospace; }
+    .main { min-width:0; background:var(--paper); }
+    .header { min-height:64px; display:grid; grid-template-columns:minmax(0,1fr) minmax(260px,420px) auto; gap:16px; align-items:center; padding:10px var(--space); border-bottom:1px solid var(--ink); position:sticky; top:38px; z-index:10; background:var(--paper); }
+    .title-row { display:flex; align-items:center; gap:12px; min-width:0; }
+    .page-title { margin:0; font-size:18px; }
+    .menu-toggle { display:none; width:38px; height:36px; border:1px solid var(--ink); background:var(--paper); }
+    .context-empty { min-height:38px; display:flex; align-items:center; justify-content:center; border:1px dashed var(--line); color:var(--muted); padding:8px 10px; text-align:center; }
+    .notification-utility { position:relative; justify-self:end; }
+    .notification-bell { min-height:40px; border:1px solid var(--ink); background:var(--paper); padding:6px 9px; display:flex; align-items:center; gap:7px; }
+    .bell-dot { width:9px; height:9px; border-radius:50%; background:var(--ink); }
+    .mini-preview { position:absolute; top:calc(100% + 8px); right:0; width:min(360px,calc(100vw - 28px)); border:2px solid var(--ink); background:var(--paper); z-index:30; }
+    .mini-preview h2 { margin:0; padding:11px 12px; border-bottom:1px solid var(--line); font-size:15px; }
+    .mini-preview div { padding:10px 12px; border-bottom:1px solid var(--line); }
+    .content { max-width:1180px; margin:0 auto; padding:28px var(--space) 48px; }
+    .structural-meta { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; color:var(--muted); font:11px ui-monospace,monospace; }
+    .structural-meta span { border:1px solid var(--line); padding:4px 6px; }
+    .inbox-shell { border:1px solid var(--ink); background:var(--paper); }
+    .inbox-heading { padding:22px; border-bottom:1px solid var(--ink); }
+    .inbox-heading h1 { margin:0 0 5px; font-size:25px; }
+    .inbox-heading p { margin:0; color:var(--muted); max-width:780px; }
+    .filter-stack { border-bottom:1px solid var(--ink); }
+    .lens-row,.filter-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:12px 18px; }
+    .lens-row { border-bottom:1px solid var(--line); }
+    .lens-label { min-width:70px; color:var(--muted); font-size:12px; }
+    .lens-button { min-height:34px; border:1px solid var(--line); background:var(--paper); padding:6px 10px; }
+    .lens-button.active { border-color:var(--ink); outline:1px solid var(--ink); }
+    .filter-row select { min-height:36px; width:min(430px,100%); border:1px solid var(--ink); background:var(--paper); padding:6px 8px; }
+    .knowledge-region { padding:18px; border-bottom:1px solid var(--line); }
+    .knowledge-card,.notice { border:2px solid var(--ink); padding:16px; background:var(--paper); }
+    .knowledge-card h2,.notice strong { margin:0 0 5px; display:block; }
+    .knowledge-card p,.notice p { margin:0; color:var(--muted); }
+    .notice { margin:14px 18px 0; border-width:1px; }
+    .inbox-list { list-style:none; margin:0; padding:0; }
+    .inbox-item { display:grid; grid-template-columns:18px minmax(0,1fr) auto; gap:12px; padding:18px; border-bottom:1px solid var(--line); }
+    .state-marker { width:10px; height:10px; border-radius:50%; border:1px solid var(--ink); margin-top:5px; background:var(--paper); }
+    .inbox-item[data-read-state="unread"] .state-marker { background:var(--ink); }
+    .item-kicker { display:flex; flex-wrap:wrap; gap:8px; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+    .item-title { margin:5px 0 4px; font-size:16px; font-weight:760; }
+    .item-outcome { margin:0 0 6px; font-weight:650; }
+    .item-meta { color:var(--muted); font-size:12px; }
+    .item-meta span { margin-right:12px; }
+    .item-actions { min-width:150px; display:flex; flex-direction:column; gap:7px; }
+    .item-actions button { min-height:34px; border:1px solid var(--line); background:var(--paper); padding:6px 9px; text-align:left; }
+    .item-actions .primary { border-color:var(--ink); }
+    .pagination-region { padding:16px 18px; display:flex; justify-content:center; align-items:center; gap:12px; }
+    #loadMore { min-height:38px; border:1px solid var(--ink); background:var(--paper); padding:7px 14px; }
+    .cursor-note { color:var(--muted); font-size:11px; }
+    .drawer-backdrop { display:none; }
+    @media (max-width:1020px) { :root{--sidebar:210px;--space:20px;} .header{grid-template-columns:minmax(0,1fr) minmax(220px,330px) auto;} .bell-label{display:none;} }
+    @media (max-width:760px) {
+      :root{--space:14px;} .prototype-bar{align-items:flex-start;flex-direction:column;} .app{display:block;}
+      .sidebar{position:fixed;z-index:40;top:0;left:0;width:min(86vw,310px);height:100vh;transform:translateX(-105%);}
+      body.drawer-open .sidebar{transform:translateX(0);} .drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.18);z-index:39;} body.drawer-open .drawer-backdrop{display:block;}
+      .header{top:0;grid-template-columns:minmax(0,1fr) auto;gap:7px 10px;} .title-row{grid-column:1;grid-row:1;} .notification-utility{grid-column:2;grid-row:1;} .local-context{grid-column:1/-1;grid-row:2;padding-left:50px;} .menu-toggle{display:inline-grid;place-items:center;}
+      .inbox-item{grid-template-columns:14px minmax(0,1fr);} .item-actions{grid-column:2;min-width:0;flex-direction:row;flex-wrap:wrap;} .item-actions button{flex:1 1 132px;} .filter-row{align-items:flex-start;flex-direction:column;} .mini-preview{position:fixed;top:62px;left:7px;right:7px;width:auto;}
+    }
+  </style>
+</head>
+<body data-p8-status="candidate" data-surface="R128" data-representation="structured-list" data-responsive-law="mobile-stacked-inbox-actions" data-not-rendered="B12">
+  <div class="prototype-bar" aria-label="Controles exclusivos do protótipo">
+    <div><strong>D6-R2 · P8 · B11 · CANDIDATE</strong> — Inbox pessoal completo; herda B00/B00-R2 LOCKED.</div>
+    <div class="prototype-controls">
+      <label for="scenario">Cenário</label>
+      <select id="scenario">
+        <option value="populated">Populado</option>
+        <option value="known-empty">Conhecido vazio</option>
+        <option value="request-unavailable">Consulta indisponível</option>
+        <option value="stale-awareness-write">Awareness stale</option>
+        <option value="source-access-denied">Origem sem acesso atual</option>
+        <option value="organization-switch">Troca de Organização</option>
+      </select>
+      <button id="resetPrototype" type="button">Restaurar</button>
+    </div>
+  </div>
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <div class="app">
+    <aside class="sidebar" aria-label="Navegação principal">
+      <div class="brand">Marketplace Central</div>
+      <div class="organization-block">
+        <label class="label" for="organization">Organização · workspace global</label>
+        <select id="organization" class="organization-select"><option value="org-a">Organização Exemplo A</option><option value="org-b">Organização Exemplo B</option></select>
+      </div>
+      <nav>
+        <div class="nav-group"><div class="group-label">Visão geral</div><button class="nav-item">Visão geral</button></div>
+        <div class="nav-group"><div class="group-label">Oferta</div><button class="nav-item">Preparação</button><button class="nav-item">Anúncios</button><button class="nav-item">Preços</button><button class="nav-item">Disponibilidade</button></div>
+        <div class="nav-group"><div class="group-label">Operação</div><button class="nav-item">Visão operacional</button><button class="nav-item">Vendas</button><button class="nav-item">Expedição</button><button class="nav-item">Pós-venda</button></div>
+        <div class="nav-group"><div class="group-label">Estratégia e inteligência</div><button class="nav-item">Performance</button><button class="nav-item sub">Resumo</button><button class="nav-item sub">Anúncios</button><button class="nav-item sub">Mídia</button><button class="nav-item">Mercado</button><button class="nav-item">Economia</button></div>
+        <div class="nav-group"><div class="group-label">Controle</div><button class="nav-item">Trabalho</button><button class="nav-item">Aprovações</button></div>
+        <div class="nav-group"><div class="group-label">Configurações</div><button class="nav-item">Configurações</button></div>
+      </nav>
+      <div class="sidebar-note">locked global sidebar · Inbox permanece utility route</div>
+    </aside>
+    <main class="main">
+      <header class="header">
+        <div class="title-row"><button class="menu-toggle" id="menuToggle" aria-label="Abrir navegação">☰</button><h1 class="page-title">Notificações</h1></div>
+        <div class="local-context"><div class="context-empty">Inbox pessoal · escopo da Organização atual</div></div>
+        <div class="notification-utility">
+          <button id="notificationBell" class="notification-bell" aria-label="Abrir preview de notificações" aria-expanded="false" data-operation="ListMyNotifications"><span>◉</span><span class="bell-dot"></span><span class="bell-label">Não lidas</span></button>
+          <section id="miniPreview" class="mini-preview hidden" aria-label="Preview recente"><h2>Notificações recentes</h2><div><strong>Nova venda</strong><br><small>Venda #ML-1048</small></div><div><strong>Expedição requer atenção</strong><br><small>Execução #FX-220</small></div></section>
+        </div>
+      </header>
+      <div class="content">
+        <div class="structural-meta"><span>B11 · R128</span><span>Organization-scoped utility route</span><span>structured list</span><span>cursor pagination</span><span>B12 not rendered</span></div>
+        <section id="fullInbox" class="inbox-shell" data-surface="R128" data-operation="ListMyNotifications" aria-labelledby="inboxTitle">
+          <header class="inbox-heading"><h1 id="inboxTitle">Notificações</h1><p>Triagem de awareness pessoal. A origem continua sendo lida e autorizada pelo owner atual; este Inbox só controla leitura e arquivo da Notification.</p></header>
+          <div class="filter-stack">
+            <div class="lens-row"><span class="lens-label">Arquivo</span><button class="lens-button active" data-archive-lens="active">Ativas</button><button class="lens-button" data-archive-lens="archived">Arquivadas</button></div>
+            <div class="lens-row"><span class="lens-label">Leitura</span><button class="lens-button active" data-read-lens="all">Todas</button><button class="lens-button" data-read-lens="unread">Não lidas</button><button class="lens-button" data-read-lens="read">Lidas</button></div>
+            <div class="filter-row"><label class="lens-label" for="kindFilter">Tipo</label><select id="kindFilter" data-filter="notification_kind">
+              <option value="all">Todos os tipos admitidos</option>
+              <option value="MARKETPLACE_INSTALLATION_ATTENTION">Canal requer atenção</option>
+              <option value="OFFERING_ASYNC_ACTION_RESULT">Resultado de ação de oferta</option>
+              <option value="AVAILABILITY_ATTENTION">Disponibilidade requer atenção</option>
+              <option value="ECONOMIC_RECONCILIATION_ATTENTION">Reconciliação econômica</option>
+              <option value="NEW_MARKETPLACE_SALE">Nova venda</option>
+              <option value="SALE_ATTENTION">Venda requer atenção</option>
+              <option value="MATERIALIZATION_ATTENTION">Materialização requer atenção</option>
+              <option value="FULFILLMENT_ACTIONABLE">Expedição acionável</option>
+              <option value="FULFILLMENT_ATTENTION">Expedição requer atenção</option>
+              <option value="SHIPMENT_EXCEPTION">Exceção de envio</option>
+              <option value="POST_SALE_ATTENTION">Pós-venda requer atenção</option>
+              <option value="WORK_ASSIGNMENT">Trabalho atribuído</option>
+              <option value="AUTHORIZATION_ACTION_REQUIRED">Aprovação requerida</option>
+              <option value="AUTHORIZATION_DECISION_RESULT">Resultado de aprovação</option>
+            </select></div>
+          </div>
+          <div id="noticeHost" aria-live="polite"></div>
+          <div id="knownEmpty" class="knowledge-region hidden" data-knowledge-state="known-empty"><div class="knowledge-card"><h2>Nenhuma notificação neste recorte</h2><p>A consulta terminou com sucesso e o recorte é conhecido-vazio.</p></div></div>
+          <div id="unavailable" class="knowledge-region hidden" data-knowledge-state="unavailable"><div class="knowledge-card"><h2>Inbox indisponível</h2><p>Falha de leitura não é tratada como vazio. Preserve o contexto e tente novamente.</p></div></div>
+          <div class="hidden" data-failure="stale-awareness-write"></div><div class="hidden" data-failure="source-access-denied"></div>
+          <ol id="inboxList" class="inbox-list" aria-live="polite">
+            <li class="inbox-item" data-notification-id="n-100" data-kind="NEW_MARKETPLACE_SALE" data-read-state="unread" data-archive-state="active">
+              <span class="state-marker"></span><div><div class="item-kicker"><span>Nova venda</span><span>Não lida</span><span>Ativa</span></div><div class="item-title">Venda #ML-1048</div><div class="item-meta"><span>Ocorreu 13:18</span><span>Awareness criada 13:18</span></div></div>
+              <div class="item-actions"><button class="primary" data-action="open-source" data-notification-id="n-100">Abrir origem</button><button data-action="mark-read" data-notification-id="n-100" data-operation="UpdateMyNotificationAwarenessState">Marcar como lida</button><button data-action="archive" data-notification-id="n-100" data-operation="UpdateMyNotificationAwarenessState">Arquivar</button></div>
+            </li>
+            <li class="inbox-item" data-notification-id="n-101" data-kind="OFFERING_ASYNC_ACTION_RESULT" data-offering-outcome="converged" data-read-state="unread" data-archive-state="active">
+              <span class="state-marker"></span><div><div class="item-kicker"><span>Resultado de ação de oferta</span><span>Não lida</span><span>Ativa</span></div><div class="item-title">Alteração de preço · Anúncio 45031</div><p class="item-outcome">Resultado: convergiu</p><div class="item-meta"><span>Ocorreu 12:48</span><span>Awareness criada 12:50</span></div></div>
+              <div class="item-actions"><button class="primary" data-action="open-source" data-notification-id="n-101">Abrir origem</button><button data-action="mark-read" data-notification-id="n-101" data-operation="UpdateMyNotificationAwarenessState">Marcar como lida</button><button data-action="archive" data-notification-id="n-101" data-operation="UpdateMyNotificationAwarenessState">Arquivar</button></div>
+            </li>
+            <li class="inbox-item" data-notification-id="n-102" data-kind="AUTHORIZATION_DECISION_RESULT" data-authorization-outcome="authorize" data-read-state="read" data-archive-state="active">
+              <span class="state-marker"></span><div><div class="item-kicker"><span>Resultado de aprovação</span><span>Lida</span><span>Ativa</span></div><div class="item-title">Alteração comercial · Produto 8821</div><p class="item-outcome">Decisão: autorizada</p><div class="item-meta"><span>Ocorreu 11:22</span><span>Awareness criada 11:23</span></div></div>
+              <div class="item-actions"><button class="primary" data-action="open-source" data-notification-id="n-102">Abrir origem</button><button data-action="mark-unread" data-notification-id="n-102" data-operation="UpdateMyNotificationAwarenessState">Marcar como não lida</button><button data-action="archive" data-notification-id="n-102" data-operation="UpdateMyNotificationAwarenessState">Arquivar</button></div>
+            </li>
+            <li class="inbox-item" data-notification-id="n-103" data-kind="FULFILLMENT_ATTENTION" data-read-state="read" data-archive-state="active">
+              <span class="state-marker"></span><div><div class="item-kicker"><span>Expedição requer atenção</span><span>Lida</span><span>Ativa</span></div><div class="item-title">Execução #FX-220</div><div class="item-meta"><span>Ocorreu 10:07</span><span>Awareness criada 10:07</span></div></div>
+              <div class="item-actions"><button class="primary" data-action="open-source" data-notification-id="n-103">Abrir origem</button><button data-action="mark-unread" data-notification-id="n-103" data-operation="UpdateMyNotificationAwarenessState">Marcar como não lida</button><button data-action="archive" data-notification-id="n-103" data-operation="UpdateMyNotificationAwarenessState">Arquivar</button></div>
+            </li>
+          </ol>
+          <template id="archivedFixture"><li class="inbox-item" data-notification-id="n-105" data-kind="WORK_ASSIGNMENT" data-read-state="read" data-archive-state="archived"><span class="state-marker"></span><div><div class="item-kicker"><span>Trabalho atribuído</span><span>Lida</span><span>Arquivada</span></div><div class="item-title">Trabalho #W-991</div></div><div class="item-actions"><button data-action="open-source" data-notification-id="n-105">Abrir origem</button><button data-action="mark-unread" data-notification-id="n-105" data-operation="UpdateMyNotificationAwarenessState">Marcar como não lida</button><button data-action="restore" data-notification-id="n-105" data-operation="UpdateMyNotificationAwarenessState">Restaurar</button></div></li></template>
+          <template id="secondPageFixture"><li class="inbox-item" data-notification-id="n-104" data-kind="POST_SALE_ATTENTION" data-read-state="read" data-archive-state="active"><span class="state-marker"></span><div><div class="item-kicker"><span>Pós-venda requer atenção</span><span>Lida</span><span>Ativa</span></div><div class="item-title">Pós-venda #PS-48</div></div><div class="item-actions"><button data-action="open-source" data-notification-id="n-104">Abrir origem</button><button data-action="mark-unread" data-notification-id="n-104" data-operation="UpdateMyNotificationAwarenessState">Marcar como não lida</button><button data-action="archive" data-notification-id="n-104" data-operation="UpdateMyNotificationAwarenessState">Arquivar</button></div></li></template>
+          <div class="pagination-region" id="paginationRegion"><button id="loadMore" data-cursor-source="next_cursor">Carregar mais</button><span class="cursor-note" id="cursorNote">Continuação por cursor opaco disponível.</span></div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script>
+    (() => {
+      const inboxList=document.getElementById('inboxList'); const initialMarkup=inboxList.innerHTML; const scenario=document.getElementById('scenario'); const organization=document.getElementById('organization'); const kindFilter=document.getElementById('kindFilter'); const noticeHost=document.getElementById('noticeHost'); const knownEmpty=document.getElementById('knownEmpty'); const unavailable=document.getElementById('unavailable'); const paginationRegion=document.getElementById('paginationRegion'); const loadMore=document.getElementById('loadMore'); const cursorNote=document.getElementById('cursorNote'); const bell=document.getElementById('notificationBell'); const miniPreview=document.getElementById('miniPreview');
+      const archiveButtons=[...document.querySelectorAll('[data-archive-lens]')]; const readButtons=[...document.querySelectorAll('[data-read-lens]')];
+      let archiveLens='active', readLens='all', nextCursor='cursor-page-2', staleConsumed=false, sourceDeniedConsumed=false;
+      function renderNotice(title,message,kind){noticeHost.innerHTML=`<div class="notice" data-notice-kind="${kind}"><strong>${title}</strong><p>${message}</p></div>`;}
+      function clearNotice(){noticeHost.innerHTML='';}
+      function resetStaticList(){inboxList.innerHTML=initialMarkup;}
+      function applyFilters(){
+        const unavailableState=scenario.value==='request-unavailable'; unavailable.classList.toggle('hidden',!unavailableState);
+        if(unavailableState){inboxList.classList.add('hidden');knownEmpty.classList.add('hidden');paginationRegion.classList.add('hidden');return;}
+        inboxList.classList.remove('hidden'); let visible=0;
+        [...inboxList.querySelectorAll('.inbox-item')].forEach(item=>{ const okArchive=item.dataset.archiveState===archiveLens; const okRead=readLens==='all'||item.dataset.readState===readLens; const okKind=kindFilter.value==='all'||item.dataset.kind===kindFilter.value; const show=okArchive&&okRead&&okKind; item.classList.toggle('hidden',!show); if(show)visible++; });
+        knownEmpty.classList.toggle('hidden',visible!==0); paginationRegion.classList.toggle('hidden',visible===0); loadMore.disabled=!nextCursor; cursorNote.textContent=nextCursor?'Continuação por cursor opaco disponível.':'Fim da continuação conhecida para este recorte.';
+      }
+      function setItemState(item,readState,archiveState){ if(readState)item.dataset.readState=readState; if(archiveState)item.dataset.archiveState=archiveState; const kicker=item.querySelector('.item-kicker'); if(kicker){const parts=kicker.querySelectorAll('span'); if(parts[1])parts[1].textContent=item.dataset.readState==='unread'?'Não lida':'Lida'; if(parts[2])parts[2].textContent=item.dataset.archiveState==='archived'?'Arquivada':'Ativa';} }
+      function applyAwarenessMutation(action,notificationId){ const item=inboxList.querySelector(`[data-notification-id="${notificationId}"]`); if(!item)return; if(scenario.value==='stale-awareness-write'&&!staleConsumed){staleConsumed=true;renderNotice('A notificação mudou','Precondition rejeitou o write stale. Releia o estado atual antes de reenviar.','stale-awareness-write');return;} if(action==='mark-read')setItemState(item,'read'); if(action==='mark-unread')setItemState(item,'unread'); if(action==='archive')setItemState(item,null,'archived'); if(action==='restore')setItemState(item,null,'active'); clearNotice();applyFilters(); }
+      function handleSourceOpen(notificationId){ if(scenario.value==='source-access-denied'&&!sourceDeniedConsumed){sourceDeniedConsumed=true;renderNotice('Origem indisponível para seu acesso atual','A origem foi reautorizada e falhou fechada; a Notification continua e seu estado de leitura não mudou.','source-access-denied');return;} renderNotice('Continuação para a origem',`A origem de ${notificationId} seria reautorizada agora. Abrir origem não altera awareness.`,'source-open'); }
+      function invalidateInboxContext(){ miniPreview.classList.add('hidden');bell.setAttribute('aria-expanded','false');archiveLens='active';readLens='all';nextCursor='cursor-page-2';kindFilter.value='all';staleConsumed=false;sourceDeniedConsumed=false;resetStaticList();archiveButtons.forEach(b=>b.classList.toggle('active',b.dataset.archiveLens==='active'));readButtons.forEach(b=>b.classList.toggle('active',b.dataset.readLens==='all'));clearNotice();applyFilters(); }
+      archiveButtons.forEach(b=>b.addEventListener('click',()=>{archiveLens=b.dataset.archiveLens;if(archiveLens==='archived'&&!inboxList.querySelector('[data-archive-state="archived"]'))inboxList.insertAdjacentHTML('beforeend',document.getElementById('archivedFixture').innerHTML);archiveButtons.forEach(x=>x.classList.toggle('active',x===b));applyFilters();}));
+      readButtons.forEach(b=>b.addEventListener('click',()=>{readLens=b.dataset.readLens;readButtons.forEach(x=>x.classList.toggle('active',x===b));applyFilters();})); kindFilter.addEventListener('change',applyFilters);
+      inboxList.addEventListener('click',e=>{const b=e.target.closest('button[data-action]');if(!b)return;b.dataset.action==='open-source'?handleSourceOpen(b.dataset.notificationId):applyAwarenessMutation(b.dataset.action,b.dataset.notificationId);});
+      loadMore.addEventListener('click',()=>{if(!nextCursor)return;inboxList.insertAdjacentHTML('beforeend',document.getElementById('secondPageFixture').innerHTML);nextCursor=null;applyFilters();});
+      bell.addEventListener('click',()=>{const open=miniPreview.classList.toggle('hidden')===false;bell.setAttribute('aria-expanded',String(open));});
+      organization.addEventListener('change',()=>{invalidateInboxContext();if(scenario.value==='organization-switch')renderNotice('Organização alterada','Cursor, filtros transitórios e preview do Inbox anterior foram invalidados antes da nova Organização.','organization-switch');});
+      scenario.addEventListener('change',()=>{invalidateInboxContext();if(scenario.value==='known-empty'){inboxList.innerHTML='';nextCursor=null;}if(scenario.value==='organization-switch'){miniPreview.classList.remove('hidden');bell.setAttribute('aria-expanded','true');}applyFilters();});
+      document.getElementById('menuToggle').addEventListener('click',()=>document.body.classList.toggle('drawer-open')); document.getElementById('drawerBackdrop').addEventListener('click',()=>document.body.classList.remove('drawer-open')); document.getElementById('resetPrototype').addEventListener('click',()=>{scenario.value='populated';organization.value='org-a';invalidateInboxContext();}); applyFilters();
+    })();
+  </script>
+</body>
+</html>
