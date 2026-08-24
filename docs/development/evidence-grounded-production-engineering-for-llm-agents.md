@@ -2,7 +2,7 @@
 
 > **Status:** DERIVED / PORTABLE GUIDE — NON-AUTHORITATIVE BY DEFAULT  
 > **Audience:** human, LLM and hybrid software-engineering work  
-> **Parent method:** [DevelopmentConexus Engineering Method](./root-cause-global-maximum-method.md), local availability copy of the canonical organizational method  
+> **Parent method:** [DevelopmentConexus Engineering Method](https://github.com/developmentconexus-ops/conexus-methodology/blob/9c7210d1504bef01c0d134a6c3ae8627deebb535/METHOD.md), canonical organizational method at the repository's accepted pin  
 > **Purpose:** guide production-grade technology research, reuse, implementation and proof without becoming product architecture, repository status authority or a second engineering method  
 > **External references last reviewed:** 2026-08-19
 
@@ -659,7 +659,7 @@ This list is a starting map, not a frozen version catalog. Always resolve curren
 
 ### Organizational method
 
-- DevelopmentConexus Engineering Method: https://github.com/developmentconexus-ops/conexus-methodology/blob/main/METHOD.md
+- DevelopmentConexus Engineering Method: https://github.com/developmentconexus-ops/conexus-methodology/blob/9c7210d1504bef01c0d134a6c3ae8627deebb535/METHOD.md
 
 ### Protocols and API contracts
 
