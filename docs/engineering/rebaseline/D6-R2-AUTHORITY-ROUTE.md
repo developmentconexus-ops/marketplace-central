@@ -59,6 +59,7 @@ Use this pack only after `AGENTS.md → docs/index.md → docs/roadmap.md` route
 - [D5-R4 OAD Wire Proof](D6-R2-NOTIF-01-D5-R4-OAD-WIRE-PROOF.md)
 - [D5-R5 AuthorizationRequest Product Surface](D6-R2-NOTIF-01-D5-R5-AUTHORIZATION-REQUEST-PRODUCT-SURFACE.md)
 - [D5-R6 AuthorizationRequest OAD Wire Proof](D6-R2-NOTIF-01-D5-R6-AUTHORIZATION-REQUEST-OAD-WIRE-PROOF.md)
+- [Fable R-1 / D5-R7 W1 AuthorizationDecision Carrier Repair](D6-R2-FABLE-R1-D5-R7-AUTHORIZATION-DECISION-W1-CARRIER-REPAIR.md)
 
 ## Frontend feed-forward / approvals realization
 
