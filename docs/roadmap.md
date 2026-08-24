@@ -12,8 +12,9 @@
 | Current stage | **D6-R2 — Complete Frontend Realization Closure — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | Integrated checkpoint | **PR #61 squash-integrated at `b54d17bfe6d794645d198a9160f4a2a1c63647e8`; D6-R2 remained OPEN** |
-| Current acceptance increment | **PR #62 — DevelopmentConexus methodology adoption — OPEN / CANDIDATE; repository-governance only** |
+| Current acceptance increment | **PR #62 — DevelopmentConexus methodology adoption — REVIEW CONVERGED / PROVED / READY FOR INTEGRATION; repository-governance only** |
 | Methodology target pin | **`developmentconexus-ops/conexus-methodology@9c7210d1504bef01c0d134a6c3ae8627deebb535`** |
+| Independent review | **R1 CONVERGED — no MATERIAL finding; R1-F1/F2/F3 bounded corrections absorbed; R1-F4 upstream provenance note; R1-F5 no-change reopen trigger** |
 | D6-R2 | [Closure](engineering/rebaseline/D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md) · [authority route](engineering/rebaseline/D6-R2-AUTHORITY-ROUTE.md) — **WHOLE-REPO FABLE R-1 + R-2 CLOSED; B10 PAUSED** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **106 Product operations · 31 ordinary Permissions · Principal kinds H / A / S only** |
@@ -21,7 +22,7 @@
 | OAD source hygiene | **49 exact frozen historical-proof definitions; 0 new orphans; content digest guarded** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Complete PR #62 as the bounded methodology-adoption candidate, prove aggregate conformance, then independently challenge the exact candidate under the pinned adversarial-review method. Do not resume B10, merge PR #62, begin Pre-D9/D9, or implement Product code first.** |
+| Exact next action | **Run final aggregate verification for the exact PR #62 candidate, then STOP and await separate explicit operator authorization to squash-merge PR #62. Do not resume B10, begin Pre-D9/D9, or implement Product code before that integration.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -42,7 +43,7 @@
 | D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED baseline; D7-R ACCEPTED** |
 | D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED; D8-R ACCEPTED** |
 | D8-R2 — GF-02 Operational Read Revalidation | **ACCEPTED / PASS** |
-| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — PR #61 INTEGRATED; METHODOLOGY ADOPTION PR #62 OPEN; B10 PAUSED** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — PR #61 INTEGRATED; METHODOLOGY ADOPTION PR #62 REVIEW-CONVERGED / READY FOR INTEGRATION; B10 PAUSED** |
 | Pre-D9 readiness | **BLOCKED** |
 | D9 — Adversarial Architecture Review | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -50,7 +51,9 @@
 ## Current result
 
 - PR #61 is integrated. Its Product/frontend/architecture authority remains intact; methodology adoption does not reinterpret or mutate it.
-- PR #62 is a separate repository-governance acceptance increment. Its only purpose is to pin and route the accepted DevelopmentConexus methodology, remove duplicate active local methodology authority, preserve genuine MPC specialization, and strengthen aggregate repository conformance.
+- PR #62 remains a separate repository-governance acceptance increment. It pins and routes the accepted DevelopmentConexus methodology, removes duplicate active local methodology authority, preserves genuine MPC specialization, and strengthens aggregate repository conformance.
+- Independent R1 found no MATERIAL defect. Bounded corrections removed the retained guide's floating/dead Method links, added single-pin consumer enforcement with deterministic falsifiers, proved all bootstrap predicate branches, and narrowed the local frontend lineage claim to reachable v2.1 history.
+- The reusable single-pin consumer census and canonical v2.3-lineage provenance residue are METHOD FINDING inputs for the canonical methodology owner; they do not reopen Marketplace Product authority.
 - AuthorizationRequest Global Maximum, Product **106/31/H-A-S**, D7-R, D8-R, OAD source-hygiene guards, and all operator LOCKs remain unchanged.
 - B10 remains paused until PR #62 is accepted/integrated and B10 is then boundedly revalidated against the accepted pinned frontend method.
 
