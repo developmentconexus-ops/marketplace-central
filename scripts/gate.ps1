@@ -87,7 +87,7 @@ function Assert-MethodologyConsumerPins([string]$path, [string]$text, [string]$r
     foreach ($match in [regex]::Matches($text, $pattern)) {
         $ref = $match.Groups[1].Value
         if ($ref -ne $pin) {
-            Fail "methodology consumer pin drift in $path: expected $pin, found $ref"
+            Fail "methodology consumer pin drift in ${path}: expected $pin, found $ref"
         }
     }
 }
