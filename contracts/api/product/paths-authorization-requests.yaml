@@ -105,7 +105,7 @@ parameters:
 
 responses:
   AuthorizationDecisionCreated: {description: Authorization decision created., headers: {Location: {$ref: './components.yaml#/headers/Location'}}, content: {'application/json': {schema: {$ref: '#/schemas/AuthorizationDecision'}}}}
-  AuthorizationValidityUnavailable: {description: Current material authorization-basis validity cannot be established sufficiently to decide now. The request remains pending., content: {'application/problem+json': {schema: {$ref: '#/schemas/AboutBlank503Problem'}}}}
+  AuthorizationValidityUnavailable: {description: Current material authorization-basis validity cannot be established sufficiently to decide now. The request remains pending and no Decision is recorded., content: {'application/problem+json': {schema: {$ref: '#/schemas/AuthorizationValidityUnavailableProblem'}}}}
 
 schemas:
   AuthorizationRequestRef:
@@ -195,8 +195,6 @@ schemas:
       authorization_request_id: {$ref: './components.yaml#/schemas/OpaqueId'}
       target: {$ref: '#/schemas/AuthorizationRequestTargetRef'}
       subject_display_label: {type: string, minLength: 1, description: Immutable authorization-purpose human presentation snapshot; not source identity or current source truth.}
-      requester_or_initiator_principal_id: {$ref: './components.yaml#/schemas/OpaqueId'}
-      predecessor_authorization_request_id: {$ref: './components.yaml#/schemas/OpaqueId'}
       created_at: {$ref: './components.yaml#/schemas/Instant'}
 
   ActionableAuthorizationRequestsCollection:
@@ -216,8 +214,6 @@ schemas:
       target: {$ref: '#/schemas/AuthorizationListingIntentTargetRef'}
       subject_display_label: {type: string, minLength: 1}
       review_basis: {$ref: '#/schemas/ListingIntentAuthorizationReviewBasis'}
-      requester_or_initiator_principal_id: {$ref: './components.yaml#/schemas/OpaqueId'}
-      predecessor_authorization_request_id: {$ref: './components.yaml#/schemas/OpaqueId'}
       created_at: {$ref: './components.yaml#/schemas/Instant'}
 
   ActionablePriceIntentAuthorizationRequest:
@@ -229,8 +225,6 @@ schemas:
       target: {$ref: '#/schemas/AuthorizationPriceIntentTargetRef'}
       subject_display_label: {type: string, minLength: 1}
       review_basis: {$ref: '#/schemas/PriceIntentAuthorizationReviewBasis'}
-      requester_or_initiator_principal_id: {$ref: './components.yaml#/schemas/OpaqueId'}
-      predecessor_authorization_request_id: {$ref: './components.yaml#/schemas/OpaqueId'}
       created_at: {$ref: './components.yaml#/schemas/Instant'}
 
   ActionableBusinessOrderIntentAuthorizationRequest:
@@ -242,8 +236,6 @@ schemas:
       target: {$ref: '#/schemas/AuthorizationBusinessOrderTargetRef'}
       subject_display_label: {type: string, minLength: 1}
       review_basis: {$ref: '#/schemas/BusinessOrderIntentAuthorizationReviewBasis'}
-      requester_or_initiator_principal_id: {$ref: './components.yaml#/schemas/OpaqueId'}
-      predecessor_authorization_request_id: {$ref: './components.yaml#/schemas/OpaqueId'}
       created_at: {$ref: './components.yaml#/schemas/Instant'}
 
   ActionableInvoicingIntentAuthorizationRequest:
@@ -255,8 +247,6 @@ schemas:
       target: {$ref: '#/schemas/AuthorizationInvoicingTargetRef'}
       subject_display_label: {type: string, minLength: 1}
       review_basis: {$ref: '#/schemas/InvoicingIntentAuthorizationReviewBasis'}
-      requester_or_initiator_principal_id: {$ref: './components.yaml#/schemas/OpaqueId'}
-      predecessor_authorization_request_id: {$ref: './components.yaml#/schemas/OpaqueId'}
       created_at: {$ref: './components.yaml#/schemas/Instant'}
 
   ActionableAuthorizationRequestView:
@@ -305,12 +295,12 @@ schemas:
       authorization_decisions: {type: array, items: {$ref: '#/schemas/AuthorizationDecisionListItem'}}
       next_cursor: {$ref: './components.yaml#/schemas/OpaqueKey'}
 
-  AboutBlank503Problem:
+  AuthorizationValidityUnavailableProblem:
     type: object
     additionalProperties: false
     required: [type, title, status]
     properties:
-      type: {const: 'about:blank'}
+      type: {const: 'https://conexus.fun/marketplace-central/problems/product/authorization-validity-unavailable'}
       title: {type: string}
       status: {const: 503}
       detail: {type: string}
