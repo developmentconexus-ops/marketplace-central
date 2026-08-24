@@ -81,6 +81,17 @@ function Assert-MethodologyBootstrap([string]$text, [string]$repository, [string
     if (-not $text.Contains('ROUTER.md')) { Fail 'AGENTS.md is missing the pinned methodology ROUTER.md route' }
 }
 
+function Assert-MethodologyConsumerPins([string]$path, [string]$text, [string]$repository, [string]$pin) {
+    $escapedRepository = [regex]::Escape($repository)
+    $pattern = "https://github\.com/$escapedRepository/blob/([^/]+)/"
+    foreach ($match in [regex]::Matches($text, $pattern)) {
+        $ref = $match.Groups[1].Value
+        if ($ref -ne $pin) {
+            Fail "methodology consumer pin drift in $path: expected $pin, found $ref"
+        }
+    }
+}
+
 Require-Command git
 Require-Command node
 Require-Command npm
@@ -113,7 +124,6 @@ $requiredFiles = @(
     'docs/index.md',
     'docs/roadmap.md',
     'docs/development/engineering-rules.md',
-    'docs/development/evidence-grounded-production-engineering-for-llm-agents.md',
     'docs/architecture/decisions/README.md',
     'docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md',
     'docs/engineering/rebaseline/D1-DOMAINS-BOUNDARIES.md',
@@ -209,6 +219,18 @@ $frontendMethod = Get-Content -Raw 'docs/development/frontend-product-experience
 $methodologyRepository = 'developmentconexus-ops/conexus-methodology'
 $methodologyPin = '9c7210d1504bef01c0d134a6c3ae8627deebb535'
 Assert-MethodologyBootstrap $agent $methodologyRepository $methodologyPin
+
+$methodologyConsumerFiles = @(
+    'AGENTS.md',
+    'docs/index.md',
+    'docs/roadmap.md',
+    'docs/development/engineering-rules.md',
+    'docs/development/frontend-product-experience-planning-method.md',
+    'docs/development/evidence-grounded-production-engineering-for-llm-agents.md'
+)
+foreach ($path in $methodologyConsumerFiles) {
+    Assert-MethodologyConsumerPins $path (Get-Content -Raw $path) $methodologyRepository $methodologyPin
+}
 
 foreach ($legacyMethodVersion in @('DevelopmentConexus Engineering Method v1.0.0', 'DevelopmentConexus Repository Standard v1.0.0')) {
     foreach ($surface in @($agent, $index, $engineeringRules)) {
@@ -343,11 +365,27 @@ Expect-Failure 'review isolation' {
     if ((Test-ReviewDiffNames @('docs/work/current/ai-dialog.md')) -and -not (Test-ReviewDiffNames @('docs/work/current/ai-dialog.md', 'README.md'))) { throw 'caught' }
 }
 
-Expect-Failure 'methodology exact pin' {
-    Assert-MethodologyBootstrap 'developmentconexus-ops/conexus-methodology ROUTER.md' $methodologyRepository $methodologyPin
+Expect-Failure 'methodology canonical repository' {
+    Assert-MethodologyBootstrap "$methodologyPin ROUTER.md" $methodologyRepository $methodologyPin
 }
 
-if ($negativeControls -ne 2) { Fail "repository negative-control count mismatch: $negativeControls/2" }
+Expect-Failure 'methodology exact pin' {
+    Assert-MethodologyBootstrap "$methodologyRepository ROUTER.md" $methodologyRepository $methodologyPin
+}
+
+Expect-Failure 'methodology router route' {
+    Assert-MethodologyBootstrap "$methodologyRepository $methodologyPin" $methodologyRepository $methodologyPin
+}
+
+Expect-Failure 'methodology floating main' {
+    Assert-MethodologyConsumerPins 'fixture.md' "https://github.com/$methodologyRepository/blob/main/METHOD.md" $methodologyRepository $methodologyPin
+}
+
+Expect-Failure 'methodology stale pin' {
+    Assert-MethodologyConsumerPins 'fixture.md' "https://github.com/$methodologyRepository/blob/0000000000000000000000000000000000000000/METHOD.md" $methodologyRepository $methodologyPin
+}
+
+if ($negativeControls -ne 6) { Fail "repository negative-control count mismatch: $negativeControls/6" }
 
 $productProof = & node 'scripts/verify-product-oad.mjs' 2>&1
 if ($LASTEXITCODE -ne 0) {
@@ -364,8 +402,9 @@ Write-Host "docs_index_relative_links: $(@($docLinks['docs/index.md']).Count)"
 Write-Host "durable_docs_reachable: $($reachable.Count)"
 Write-Host "machine_route_files: $($machineRouteFiles.Count) selectors: $machineRouteSelectors"
 Write-Host "methodology_pin: $methodologyRepository@$methodologyPin"
+Write-Host "methodology_consumer_files: $($methodologyConsumerFiles.Count)"
 Write-Host "diff_range: $diffRange changed_files: $($changedFiles.Count)"
 Write-Host "review_mode: $isReview"
 Write-Host "legacy_runtime_population: 0"
-Write-Host "negative_controls: $negativeControls/2"
+Write-Host "negative_controls: $negativeControls/6"
 Write-Host 'gate: PASS'
