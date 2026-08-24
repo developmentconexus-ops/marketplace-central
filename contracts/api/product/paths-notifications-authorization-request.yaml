@@ -1,0 +1,94 @@
+pathItems:
+  MyNotifications:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: ListMyNotifications
+      summary: List my personal notifications in the current organization
+      description: Returns current non-superseded personal awareness ordered by created_at descending with a stable tie-breaker. Request failure never means an empty inbox.
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: authenticated
+      x-mpc-self-recipient: true
+      x-mpc-require-current-organization-membership: true
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: PersonalNotifications
+      parameters:
+        - {name: archive_state, in: query, required: false, schema: {$ref: './paths-notifications.yaml#/schemas/NotificationArchiveStateFilter'}}
+        - {name: read_state, in: query, required: false, schema: {$ref: './paths-notifications.yaml#/schemas/NotificationReadStateFilter'}}
+        - {name: notification_kind, in: query, required: false, style: form, explode: true, schema: {type: array, minItems: 1, uniqueItems: true, items: {$ref: './paths-notifications.yaml#/schemas/NotificationKind'}}}
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+      responses:
+        '200': {description: Current personal notifications., content: {'application/json': {schema: {$ref: '#/schemas/NotificationsCollection'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+  MyNotification:
+    parameters:
+      - {$ref: './components.yaml#/parameters/OrganizationId'}
+      - {$ref: './paths-notifications.yaml#/parameters/NotificationId'}
+    patch:
+      operationId: UpdateMyNotificationAwarenessState
+      summary: Update my notification awareness state
+      x-mpc-operation-class: C
+      x-mpc-required-permission: authenticated
+      x-mpc-self-recipient: true
+      x-mpc-require-current-organization-membership: true
+      x-mpc-principal-kinds: [H]
+      x-mpc-semantic-owner: PersonalNotifications
+      parameters: [{$ref: './components.yaml#/parameters/IfMatch'}]
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './paths-notifications.yaml#/schemas/UpdateNotificationAwarenessStateRequest'}}}}
+      responses:
+        '200': {description: Updated personal notification., headers: {ETag: {$ref: './components.yaml#/headers/ETag'}}, content: {'application/json': {schema: {$ref: '#/schemas/Notification'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '409': {$ref: './components.yaml#/responses/Conflict'}
+        '412': {$ref: './components.yaml#/responses/PreconditionFailed'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '428': {$ref: './components.yaml#/responses/PreconditionRequired'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
+schemas:
+  NotificationAuthorizationActionRequired:
+    type: object
+    additionalProperties: false
+    required: [notification_id, kind, subject_display_label, source_ref, source_occurred_at, created_at, read_state, archive_state, etag]
+    properties:
+      notification_id: {$ref: './components.yaml#/schemas/OpaqueId'}
+      kind: {const: AUTHORIZATION_ACTION_REQUIRED}
+      subject_display_label: {$ref: './paths-notifications.yaml#/schemas/SubjectDisplayLabel'}
+      source_ref: {$ref: './paths-authorization-requests.yaml#/schemas/AuthorizationRequestRef'}
+      source_occurred_at: {$ref: './components.yaml#/schemas/Instant'}
+      created_at: {$ref: './components.yaml#/schemas/Instant'}
+      read_state: {$ref: './paths-notifications.yaml#/schemas/NotificationReadState'}
+      archive_state: {$ref: './paths-notifications.yaml#/schemas/NotificationArchiveState'}
+      etag: {$ref: './components.yaml#/schemas/StrongETag'}
+
+  Notification:
+    oneOf:
+      - {$ref: './paths-notifications.yaml#/schemas/NotificationMarketplaceInstallationAttention'}
+      - {$ref: './paths-notifications.yaml#/schemas/NotificationOfferingAsyncActionResult'}
+      - {$ref: './paths-notifications.yaml#/schemas/NotificationAvailabilityAttention'}
+      - {$ref: './paths-notifications.yaml#/schemas/NotificationEconomicReconciliationAttention'}
+      - {$ref: './paths-notifications.yaml#/schemas/NotificationNewMarketplaceSale'}
+      - {$ref: './paths-notifications.yaml#/schemas/NotificationSaleAttention'}
+      - {$ref: './paths-notifications.yaml#/schemas/NotificationMaterializationAttention'}
+      - {$ref: './paths-notifications.yaml#/schemas/NotificationFulfillmentActionable'}
+      - {$ref: './paths-notifications.yaml#/schemas/NotificationFulfillmentAttention'}
+      - {$ref: './paths-notifications.yaml#/schemas/NotificationShipmentException'}
+      - {$ref: './paths-notifications.yaml#/schemas/NotificationPostSaleAttention'}
+      - {$ref: './paths-notifications.yaml#/schemas/NotificationWorkAssignment'}
+      - {$ref: '#/schemas/NotificationAuthorizationActionRequired'}
+      - {$ref: './paths-notifications.yaml#/schemas/NotificationAuthorizationDecisionResult'}
+
+  NotificationsCollection:
+    type: object
+    additionalProperties: false
+    required: [notifications]
+    properties:
+      notifications: {type: array, items: {$ref: '#/schemas/Notification'}}
+      next_cursor: {$ref: './components.yaml#/schemas/OpaqueKey'}
