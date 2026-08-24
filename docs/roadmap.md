@@ -13,7 +13,7 @@
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | Integrated checkpoints | **PR #61 Product/frontend checkpoint → `b54d17bfe6d794645d198a9160f4a2a1c63647e8`; PR #62 methodology adoption → `689dab34b0a756cbd7c790a6c5277d887ced0b4c`; PR #65 proportional CI verification → `a2aeac19816c90ee30bf373cef0448d52a486c7e`** |
 | Method profile | **`developmentconexus-ops/conexus-methodology@9c7210d1504bef01c0d134a6c3ae8627deebb535`** |
-| Current prerequisite increment | **PR #68 — PublicationRequirements wire truth repair — DRAFT / OPEN; deterministic proof in progress** |
+| Current prerequisite increment | **PR #68 — PublicationRequirements wire truth repair — READY / OPEN; full aggregate proof + independent challenge pending** |
 | B10 Product candidate | **PR #64 — Preparação — PAUSED at P8 / NOT LOCKED pending prerequisite integration** |
 | B10 finding | **UPSTREAM FINDING — accepted D4-R1/W2 publication-requirement meaning is richer than the current machine-readable OAD realization; smallest owner is the Product OAD wire realization** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
