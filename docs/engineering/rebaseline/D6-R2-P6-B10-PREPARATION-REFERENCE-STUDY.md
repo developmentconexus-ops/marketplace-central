@@ -251,3 +251,41 @@ permanent split-view treated as mandatory product structure
 ## 8. P6 exit
 
 **DERIVED.** B10 should render one low-fidelity HTML candidate using a search/list → selected exact-subject detail pattern inside the accepted Preparação workspace. P7 is not triggered. No Product operation, Permission, owner or D0–D8 authority is reopened.
+
+## 9. Post-methodology adoption revalidation
+
+**Method profile:** `developmentconexus-ops/conexus-methodology@9c7210d1504bef01c0d134a6c3ae8627deebb535` → `METHOD.md + FRONTEND-METHOD.md`.
+
+**Outcome:** `CURRENT STRUCTURE CONFIRMED`.
+
+The accepted methodology adds stronger P7 feasibility and P8 operating/assumption proof, but it does not provide Evidence that falsifies B10's search/list → exact-subject detail structure. **P7 layout hypotheses remain NOT TRIGGERED**: rendering rejected split-view/inline alternatives would manufacture ambiguity.
+
+The pre-adoption HTML does require bounded P8 correction before operator adjudication: its search control is a no-op; it does not inspect a known-empty search result; its Organization selector does not prove invalidation of Installation context; its shell still projects an older IA snapshot; its ListingIntent continuation is a no-op rather than an explicit unopened-block boundary; and its mobile drawer does not fully expose keyboard/focus state. These are prototype-proof defects, not Product capability gaps.
+
+### 9.1 P7 feasibility disposition under the accepted method
+
+| Feasibility question | Current authority | Disposition |
+| --- | --- | --- |
+| Required fields / summaries | `SearchSourceProductsForMarketplace`, `GetProductChannelReadiness`, `GetPublicationRequirements` expose the source-qualified search/readiness/requirements truth needed by R10. | **PRESENT-IN-AUTHORITY** |
+| Identity sources | Organization + exact Marketplace Installation + explicit `SourceInstance` + native product key are accepted identities; no hidden/default source is admitted. | **PRESENT-IN-AUTHORITY** |
+| Pagination / scale | Search admits `limit + cursor`; no `total_count` or complete-corpus inference is required. P8 may use deterministic local fixtures without claiming global totals. | **PRESENT-IN-AUTHORITY** |
+| Sort / filter | Search query + optional exact `source_instance_id` narrowing are admitted. No material user need or Product contract currently justifies an additional sort surface. | **PRESENT-IN-AUTHORITY** for admitted filters; additional sort **REJECTED — YAGNI / no evidenced need** |
+| Preview / content truth | Compact readiness/requirements/correspondence signals are projections of `ProductChannelReadiness`, never frontend scores or source-master edits. | **PRESENT-IN-AUTHORITY** |
+| Material writes | B10 may expose only `ResolveProductChannelCorrespondence` / `ClearProductChannelCorrespondence` when authorized. `CreateListingIntentDraft` is the explicit downstream B10 boundary, not a B10 editor implementation. | **PRESENT-IN-AUTHORITY** |
+
+`UPSTREAM FINDING: NONE`.
+
+### 9.2 Lock-time assumption and walkthrough gate
+
+A01 materially influenced rejection of a permanent split-view because real high-frequency rapid cycling is not evidenced. Under the accepted Method its lock-time disposition remains **PENDING OPERATOR**. Before B10 can LOCK, the operator must choose exactly one:
+
+```text
+ACCEPT_FOR_LOCK_WITH_LATER_PROBE
+BLOCK_LOCK
+```
+
+A03 detailed terminology remains an OPEN P12 comprehension probe, but current Evidence does not make it a structural B10 blocker unless the operator walkthrough exposes material confusion. A05 continues to support no invented bulk baseline; absence of Product bulk authority is not converted into a convenience UI.
+
+`Operator walkthrough: PENDING`.
+
+`P8 status: CANDIDATE / NOT LOCKED`.
