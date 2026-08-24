@@ -60,6 +60,29 @@ function verifyHtml(text) {
 
   assert(text.includes('SourceInstance'), 'B10 must expose SourceInstance qualification');
   assert(text.includes('native product key'), 'B10 must expose native product key qualification');
+
+  assert(text.includes('data-provider-authority="provider-authoritative"'), 'B10 must state provider-authoritative publication requirements');
+  assert(text.includes('data-requirements-census="all-applicable"'), 'B10 must expose the complete applicable publication-requirement census');
+  assert(text.includes('data-provider-context="installation-category-product-type"'), 'B10 requirements must remain qualified by Installation/category/product-type context');
+  assert(text.includes('data-requirements-revision='), 'B10 must expose the provider/readiness requirements revision');
+  assert(text.includes('Todos os requisitos aplicáveis'), 'B10 must label the complete applicable requirement set for the operator');
+  assert(text.includes('Os requisitos variam conforme marketplace, categoria e product type.'), 'B10 must explain provider/context-specific requirement variation');
+
+  const requirementRows = [...text.matchAll(/data-requirement-key="([^"]+)"/gu)];
+  assert(requirementRows.length >= 5, `B10 fixture must render a meaningful requirement census; found ${requirementRows.length}`);
+  for (const applicability of ['required', 'recommended', 'conditional']) {
+    assert(text.includes(`data-applicability="${applicability}"`), `B10 requirement applicability fixture missing: ${applicability}`);
+  }
+  for (const sourceState of ['met', 'missing', 'unavailable']) {
+    assert(text.includes(`data-source-state="${sourceState}"`), `B10 source-evidence state fixture missing: ${sourceState}`);
+  }
+  assert(text.includes('data-resolution-mode="follow-source"'), 'B10 must show FOLLOW_SOURCE as source-backed resolution meaning');
+  assert(text.includes('data-listing-intent-resolution="explicit-override-eligible"'), 'B10 must show when a missing source value may be resolved later by ListingIntent EXPLICIT_OVERRIDE');
+  assert(text.includes('data-source-missing-policy="listing-intent-override-eligible"'), 'B10 must not equate missing source evidence with publication impossibility');
+  assert(text.includes('data-progression="listing-intent-required"'), 'B10 must allow progression to ListingIntent when source debt is override-eligible');
+  assert(text.includes('data-progression="blocked-by-correspondence"'), 'B10 must distinguish true pre-ListingIntent correspondence blockers');
+  assert(!text.includes('provider_fields'), 'B10 must not expose a raw provider field bag as Product authority');
+
   assert(text.includes('Re-leitura de prontidão necessária'), 'B10 must require reread after correspondence effect');
   assert(text.includes('function markCorrespondenceEffect'), 'B10 correspondence effect handler missing');
   assert(text.includes('function rereadReadiness'), 'B10 readiness reread handler missing');
@@ -83,6 +106,11 @@ function verifyStudy(text) {
   for (const label of ['Required fields / summaries', 'Identity sources', 'Pagination / scale', 'Sort / filter', 'Preview / content truth', 'Material writes']) {
     assert(text.includes(label), `B10 P7 feasibility disposition missing: ${label}`);
   }
+  assert(text.includes('## 10. Operator REVISE — requirement census and provider-specific readiness'), 'B10 operator REVISE disposition missing');
+  assert(text.includes('provider-authoritative'), 'B10 study must preserve provider authority for publication requirements');
+  assert(text.includes('missing source != publication impossible'), 'B10 study must distinguish source insufficiency from publication impossibility');
+  assert(text.includes('FOLLOW_SOURCE'), 'B10 study must preserve FOLLOW_SOURCE boundary meaning');
+  assert(text.includes('EXPLICIT_OVERRIDE'), 'B10 study must preserve EXPLICIT_OVERRIDE boundary meaning');
   assert(text.includes('A01'), 'B10 must carry the materially depended A01 assumption into lock-time disposition');
   assert(text.includes('PENDING OPERATOR'), 'B10 A01 lock-time disposition must remain operator-owned before walkthrough');
   assert(text.includes('ACCEPT_FOR_LOCK_WITH_LATER_PROBE'), 'B10 must expose the accepted lock-time assumption option');
@@ -107,13 +135,19 @@ expectFailure('search no-op', () => verifyHtml(html.replace('function runSearch'
 expectFailure('known-empty collapsed', () => verifyHtml(html.replace('data-search-state="known-empty"', 'data-search-state="known-populated"')));
 expectFailure('organization context leak', () => verifyHtml(html.replace("function invalidateOrganizationContext(){installation.value='';", "function invalidateOrganizationContext(){installation.value='ml-a';")));
 expectFailure('premature lock', () => verifyHtml(html.replace('data-p8-status="candidate"', 'data-p8-status="locked"')));
+expectFailure('requirement census collapsed', () => verifyHtml(html.replace('data-requirements-census="all-applicable"', 'data-requirements-census="summary-only"')));
+expectFailure('provider authority erased', () => verifyHtml(html.replace('data-provider-authority="provider-authoritative"', 'data-provider-authority="frontend-normalized"')));
+expectFailure('missing source treated as blocker', () => verifyHtml(html.replace('data-source-missing-policy="listing-intent-override-eligible"', 'data-source-missing-policy="blocked"')));
 
-assert(negativeControls === 4, `B10 negative-control count mismatch: ${negativeControls}/4`);
+assert(negativeControls === 7, `B10 negative-control count mismatch: ${negativeControls}/7`);
 
 console.log('d6_r_b10_status=CANDIDATE');
 console.log('d6_r_b10_structure=SEARCH_TO_EXACT_SUBJECT_DETAIL');
+console.log('d6_r_b10_requirements=ALL_APPLICABLE_PROVIDER_CONTEXT');
+console.log('d6_r_b10_source_missing=LISTING_INTENT_OVERRIDE_ELIGIBLE');
+console.log('d6_r_b10_provider_authority=PROVIDER_AUTHORITATIVE_VIA_READINESS');
 console.log('d6_r_b10_p7_layout=NOT_TRIGGERED');
 console.log('d6_r_b10_upstream_finding=NONE');
 console.log('d6_r_b10_assumption_A01=PENDING_OPERATOR');
-console.log(`d6_r_b10_negative_controls=${negativeControls}/4`);
+console.log(`d6_r_b10_negative_controls=${negativeControls}/7`);
 console.log('d6_r_b10_wireframe=PASS');
