@@ -41,12 +41,12 @@ pathItems:
     post:
       operationId: CreateAuthorizationDecision
       summary: Decide one currently actionable authorization request
-      description: The client supplies only the human outcome plus request-local concurrency and idempotency carriers. Governance revalidates current request state, exact human eligibility and material authorization-basis validity before committing a Decision.
+      description: The client supplies the human outcome, the AuthorizationRequest owner-local strong validator as typed request data, and the idempotency carrier. Governance revalidates current request state, exact human eligibility and material authorization-basis validity before committing a Decision.
       x-mpc-operation-class: C
       x-mpc-required-permission: governance.decide
       x-mpc-principal-kinds: [H]
       x-mpc-semantic-owner: ControlledActionGovernance
-      parameters: [{$ref: './components.yaml#/parameters/IfMatch'}, {$ref: './components.yaml#/parameters/IdempotencyKey'}]
+      parameters: [{$ref: './components.yaml#/parameters/IdempotencyKey'}]
       requestBody: {required: true, content: {'application/json': {schema: {$ref: '#/schemas/CreateAuthorizationDecisionRequest'}}}}
       responses:
         '201': {$ref: '#/responses/AuthorizationDecisionCreated'}
@@ -55,9 +55,7 @@ pathItems:
         '403': {$ref: './components.yaml#/responses/AccessDenied'}
         '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
         '409': {$ref: './components.yaml#/responses/Conflict'}
-        '412': {$ref: './components.yaml#/responses/PreconditionFailed'}
         '422': {$ref: './components.yaml#/responses/ValidationError'}
-        '428': {$ref: './components.yaml#/responses/PreconditionRequired'}
         '503': {$ref: '#/responses/AuthorizationValidityUnavailable'}
         '500': {$ref: './components.yaml#/responses/InternalError'}
 
@@ -255,8 +253,10 @@ schemas:
   CreateAuthorizationDecisionRequest:
     type: object
     additionalProperties: false
-    required: [outcome]
-    properties: {outcome: {type: string, enum: [authorize, reject]}}
+    required: [etag, outcome]
+    properties:
+      etag: {$ref: './components.yaml#/schemas/StrongETag'}
+      outcome: {type: string, enum: [authorize, reject]}
 
   AuthorizationDecision:
     type: object
