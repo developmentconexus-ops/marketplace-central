@@ -8,7 +8,6 @@ let negativeControls = 0;
 
 function fail(message) { throw new Error(message); }
 function assert(condition, message) { if (!condition) fail(message); }
-
 function section(text, start, end) {
   const startIndex = text.indexOf(start);
   assert(startIndex >= 0, `missing section start: ${start}`);
@@ -16,7 +15,7 @@ function section(text, start, end) {
   return text.slice(startIndex, endIndex >= 0 ? endIndex : undefined);
 }
 
-function validate({ pathYaml, w1, p9, d7r, d8r }) {
+function validate({ pathYaml, w1, repair }) {
   const decide = section(pathYaml, '  DecideAuthorizationRequest:', '  AuthorizationDecisions:');
   const request = section(pathYaml, '  CreateAuthorizationDecisionRequest:', '  AuthorizationDecision:');
   const w1Custom = section(w1, '### 14.2 Owner custom method', '### 14.3 Exact revision of another referenced resource');
@@ -26,7 +25,7 @@ function validate({ pathYaml, w1, p9, d7r, d8r }) {
   assert(w1Custom.includes('`422 validation-error`'), 'W1 missing/invalid typed ETag failure grammar missing');
   assert(w1Custom.includes('`409 resource-revision-conflict`'), 'W1 stale typed ETag failure grammar missing');
 
-  assert(decide.includes("operationId: CreateAuthorizationDecision"), 'CreateAuthorizationDecision operation missing');
+  assert(decide.includes('operationId: CreateAuthorizationDecision'), 'CreateAuthorizationDecision operation missing');
   assert(decide.includes("./components.yaml#/parameters/IdempotencyKey"), 'CreateAuthorizationDecision must retain Idempotency-Key');
   assert(!decide.includes("./components.yaml#/parameters/IfMatch"), 'CreateAuthorizationDecision custom method must not use If-Match');
   assert(!decide.includes("'412':"), 'CreateAuthorizationDecision custom method must not expose 412');
@@ -40,15 +39,21 @@ function validate({ pathYaml, w1, p9, d7r, d8r }) {
   assert(!request.includes('authorization_request_id:'), 'decision body must not duplicate request identity');
   assert(!request.includes('target:'), 'decision body must not carry governed target');
 
-  assert(p9.includes('P9_DECISION_CONCURRENCY:TYPED_REQUEST_ETAG'), 'P9 must bind decision concurrency to typed request etag');
-  assert(!p9.includes('P9_DECISION_CONCURRENCY:IF_MATCH_AUTHORIZATION_REQUEST'), 'P9 must not retain obsolete If-Match carrier marker');
+  for (const marker of [
+    '> **Status:** OPERATOR-RATIFIED / ACCEPTED',
+    'D5R7_W1_CARRIER:TYPED_REQUEST_ETAG',
+    'D5R7_FAILURES:MISSING_INVALID_422_STALE_409',
+    'D5R7_REPLAY_ORDER:IDEMPOTENCY_BEFORE_REVISION_PRECONDITION',
+    'D5R7_B110:REVALIDATED_STRUCTURE_UNAFFECTED',
+    'D5R7_SUPERSEDES:D5R6_P9_D7R_D8R_CARRIER_ONLY',
+    'D5R7_NEW_PRODUCT_OPERATIONS:0',
+    'D5R7_NEW_PERMISSIONS:0',
+    'D5R7_NEW_BUSINESS_MEANING:0',
+  ]) assert(repair.includes(marker), `D5-R7 repair authority missing marker: ${marker}`);
 
-  assert(d7r.includes('D7R_IDEMPOTENCY_FINGERPRINT:REQUEST_ETAG_OUTCOME'), 'D7-R fingerprint must use typed etag');
-  assert(d7r.includes('D7R_REPLAY_ORDER:IDEMPOTENCY_BEFORE_REVISION_PRECONDITION'), 'D7-R replay order must be carrier-neutral revision-precondition language');
-  assert(!d7r.includes('D7R_REPLAY_ORDER:IDEMPOTENCY_BEFORE_IF_MATCH'), 'D7-R must not retain obsolete If-Match replay marker');
-
-  assert(d8r.includes('D8R_RETRY:IDEMPOTENCY_BEFORE_REVISION_PRECONDITION'), 'D8-R must preserve carrier-neutral replay-before-revision law');
-  assert(!d8r.includes('same Principal/key exact committed retry replays before stale `If-Match` evaluation'), 'D8-R must not retain obsolete If-Match prose');
+  assert(repair.includes('B110 LOCK disposition = REVALIDATE'), 'D5-R7 must explicitly revalidate B110 LOCK');
+  assert(repair.includes('P8 reopen             = NO'), 'D5-R7 must preserve B110 structure without unnecessary P8 reopen');
+  assert(repair.includes('Historical proof text is intentionally not rewritten'), 'D5-R7 must preserve prior artifacts as historical snapshots');
 }
 
 function expectFailure(name, base, mutate) {
@@ -63,13 +68,10 @@ function expectFailure(name, base, mutate) {
 const base = {
   pathYaml: read('contracts/api/product/paths-authorization-requests.yaml'),
   w1: read('docs/engineering/rebaseline/D5-B2-WIRE-CONTRACT.md'),
-  p9: read('docs/engineering/rebaseline/D6-R2-P9-AUTHORIZATION-REQUEST-BIDIRECTIONAL-SCREEN-CONTRACTS.md'),
-  d7r: read('docs/engineering/rebaseline/D6-R2-NOTIF-01-D7-R-AUTHORIZATION-REQUEST-RUNTIME-REPAIR.md'),
-  d8r: read('docs/engineering/rebaseline/D6-R2-NOTIF-01-D8-R-AUTHORIZATION-REQUEST-GOLDEN-FLOW-REVALIDATION.md'),
+  repair: read('docs/engineering/rebaseline/D6-R2-FABLE-R1-D5-R7-AUTHORIZATION-DECISION-W1-CARRIER-REPAIR.md'),
 };
 
 validate(base);
-
 expectFailure('custom decide regresses to If-Match header', base, (c) => {
   c.pathYaml = c.pathYaml.replace("parameters: [{$ref: './components.yaml#/parameters/IdempotencyKey'}]", "parameters: [{$ref: './components.yaml#/parameters/IfMatch'}, {$ref: './components.yaml#/parameters/IdempotencyKey'}]");
 });
@@ -80,12 +82,13 @@ expectFailure('stale typed etag maps to 412', base, (c) => {
   const s = section(c.pathYaml, '  DecideAuthorizationRequest:', '  AuthorizationDecisions:');
   c.pathYaml = c.pathYaml.replace(s, s.replace("'409':", "'412':"));
 });
-expectFailure('D7 replay order regresses to carrier-specific If-Match', base, (c) => {
-  c.d7r = c.d7r.replace('D7R_REPLAY_ORDER:IDEMPOTENCY_BEFORE_REVISION_PRECONDITION', 'D7R_REPLAY_ORDER:IDEMPOTENCY_BEFORE_IF_MATCH');
+expectFailure('bounded repair loses carrier-neutral replay law', base, (c) => {
+  c.repair = c.repair.replace('D5R7_REPLAY_ORDER:IDEMPOTENCY_BEFORE_REVISION_PRECONDITION', 'D5R7_REPLAY_ORDER:REVISION_BEFORE_IDEMPOTENCY');
 });
 
 console.log('authorization_request_w1_carrier=TYPED_REQUEST_ETAG');
 console.log('authorization_request_w1_failures=MISSING_INVALID_422_STALE_409');
 console.log('authorization_request_w1_replay_order=IDEMPOTENCY_BEFORE_REVISION_PRECONDITION');
+console.log('authorization_request_w1_b110=REVALIDATED_STRUCTURE_UNAFFECTED');
 console.log(`authorization_request_w1_negative_controls=${negativeControls}/4`);
 console.log('authorization_request_w1_carrier=PASS');
