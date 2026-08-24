@@ -9,7 +9,6 @@ const entrypoint = join(root, 'contracts/api/product/openapi.yaml');
 const redoclyConfig = join(root, 'contracts/api/product/redocly.yaml');
 const temp = mkdtempSync(join(tmpdir(), 'mpc-authorization-request-oad-proof-'));
 const HTTP_METHODS = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);
-const ACTIONABLE_IDS = ['ListMyActionableAuthorizationRequests', 'GetMyActionableAuthorizationRequest'];
 const REVIEW_KINDS = ['listing_intent', 'price_intent', 'business_order_intent', 'invoicing_intent'];
 let negativeControls = 0;
 
@@ -134,7 +133,7 @@ function validateActionableView(document) {
 }
 function validate(document) {
   const all = operations(document);
-  assert(all.length === 106, `AuthorizationRequest D5-R6 Product operation count must be 106, found ${all.length}`);
+  assert(all.length === 106, `AuthorizationRequest current Product operation count must be 106, found ${all.length}`);
   assert(new Set(all.map((entry) => entry.operation.operationId)).size === 106, 'operationId values must remain unique');
 
   const permissions = normalize(all.map((entry) => entry.operation['x-mpc-required-permission']).filter((value) => value && value !== 'authenticated'));
@@ -165,14 +164,17 @@ function validate(document) {
   sameSet(item?.required ?? [], ['authorization_request_id', 'target', 'subject_display_label', 'created_at'], 'actionable list item required');
   assert(item?.additionalProperties === false, 'actionable list item must be closed');
 
-  assert(hasHeaderParameter(document, decide, 'If-Match'), 'CreateAuthorizationDecision must require If-Match');
+  assert(!hasHeaderParameter(document, decide, 'If-Match'), 'CreateAuthorizationDecision custom method must not require If-Match');
   assert(hasHeaderParameter(document, decide, 'Idempotency-Key'), 'CreateAuthorizationDecision must require Idempotency-Key');
-  for (const status of ['201', '409', '412', '422', '428']) assert(decide.operation.responses?.[status], `CreateAuthorizationDecision must expose ${status}`);
+  for (const status of ['201', '409', '422', '503']) assert(decide.operation.responses?.[status], `CreateAuthorizationDecision must expose ${status}`);
+  assert(!decide.operation.responses?.['412'], 'CreateAuthorizationDecision custom method must not expose 412');
+  assert(!decide.operation.responses?.['428'], 'CreateAuthorizationDecision custom method must not expose 428');
   const decideBody = requestSchema(document, decide.operation);
-  sameSet(decideBody?.required ?? [], ['outcome'], 'CreateAuthorizationDecision body required');
-  sameSet(Object.keys(decideBody?.properties ?? {}), ['outcome'], 'CreateAuthorizationDecision body properties');
+  sameSet(decideBody?.required ?? [], ['etag', 'outcome'], 'CreateAuthorizationDecision body required');
+  sameSet(Object.keys(decideBody?.properties ?? {}), ['etag', 'outcome'], 'CreateAuthorizationDecision body properties');
   assert(decideBody?.additionalProperties === false, 'CreateAuthorizationDecision body must be closed');
-  assert(!JSON.stringify(decideBody).includes('etag') && !JSON.stringify(decideBody).includes('target'), 'decision body must not carry target/target ETag');
+  assert(JSON.stringify(resolveRef(document, decideBody?.properties?.etag)) === JSON.stringify(component(document, 'StrongETag')), 'decision body etag must use canonical StrongETag');
+  assert(!JSON.stringify(decideBody).includes('target'), 'decision body must not carry governed target/target ETag');
 
   const target = component(document, 'AuthorizationTargetRef');
   assert((target.oneOf ?? []).length === 4, 'AuthorizationTargetRef must remain closed 4-way union');
@@ -231,9 +233,10 @@ function negativeProof(document) {
   expectFailure('actionable list gains search', document, (candidate) => {
     byId(operations(candidate), 'ListMyActionableAuthorizationRequests').operation.parameters.push({ name: 'query', in: 'query', required: false, schema: { type: 'string' } });
   });
-  expectFailure('decision loses request precondition', document, (candidate) => {
-    const entry = byId(operations(candidate), 'CreateAuthorizationDecision');
-    entry.operation.parameters = entry.operation.parameters.filter((p) => resolveRef(candidate, p)?.name !== 'If-Match');
+  expectFailure('decision loses typed request etag', document, (candidate) => {
+    const body = requestSchema(candidate, byId(operations(candidate), 'CreateAuthorizationDecision').operation);
+    body.required = (body.required ?? []).filter((name) => name !== 'etag');
+    delete body.properties.etag;
   });
   expectFailure('decision body regains target', document, (candidate) => {
     const body = requestSchema(candidate, byId(operations(candidate), 'CreateAuthorizationDecision').operation);
@@ -279,7 +282,8 @@ try {
   negativeProof(document);
   console.log(`authorization_request_oad_operations=${result.all.length}/106`);
   console.log(`authorization_request_oad_permissions=${result.permissions.length}/31`);
-  console.log(`authorization_request_oad_review_basis=4/4`);
+  console.log('authorization_request_oad_review_basis=4/4');
+  console.log('authorization_request_oad_decision_carrier=TYPED_REQUEST_ETAG');
   console.log(`authorization_request_oad_negative_controls=${negativeControls}/10`);
   console.log('authorization_request_oad=PASS');
 } finally {
