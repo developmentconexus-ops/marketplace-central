@@ -21,6 +21,17 @@ function verifyHtml(text) {
   assert(text.includes('data-surface="R10"'), 'B10 must identify the R10 Preparation surface');
   assert(text.includes('data-responsive-law="search-detail-mobile-stack"'), 'B10 responsive structural law missing');
 
+  const expectedNavLabels = [
+    'Visão geral', 'Preparação', 'Anúncios', 'Preços', 'Disponibilidade',
+    'Visão operacional', 'Vendas', 'Expedição', 'Pós-venda', 'Performance',
+    'Mercado', 'Economia', 'Trabalho', 'Aprovações', 'Configurações',
+  ];
+  for (const label of expectedNavLabels) {
+    assert(text.includes(`>${label}</button>`) || text.includes(`>${label}</a>`), `locked B00 IA label missing from B10 shell: ${label}`);
+  }
+  assert(text.includes('>Oferta<') || text.includes('>OFERTA<') || text.includes('>Oferta</'), 'B10 must inherit the locked OFERTA navigation mass');
+  assert(text.includes('>Operação<') || text.includes('>OPERAÇÃO<') || text.includes('>Operação</'), 'B10 must inherit the locked OPERAÇÃO navigation mass');
+
   for (const operationId of [
     'SearchSourceProductsForMarketplace',
     'GetProductChannelReadiness',
