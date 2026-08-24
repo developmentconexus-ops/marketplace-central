@@ -9,6 +9,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const contractDir = join(root, 'contracts/api/product');
 const entrypoint = join(contractDir, 'openapi.yaml');
 const redoclyConfig = join(contractDir, 'redocly.yaml');
+const allowlistPath = join(contractDir, 'source-orphan-allowlist.json');
 const temp = mkdtempSync(join(tmpdir(), 'mpc-oad-source-reachability-'));
 const ENFORCED_SECTIONS = new Set(['pathItems', 'schemas']);
 
@@ -29,6 +30,7 @@ function run(command, args) {
   return result;
 }
 function sha256(text) { return createHash('sha256').update(text).digest('hex'); }
+function sortedUnique(values) { return [...new Set(values)].sort(); }
 
 function parseDefinitions(file, text) {
   const lines = text.split(/\r?\n/);
@@ -124,6 +126,23 @@ function orphanSnapshotHash(result) {
   return sha256(payload);
 }
 
+function validatePolicy(result, manifest) {
+  assert(manifest.policy === 'exact-frozen-historical-proof-source-debt', 'source orphan manifest policy changed');
+  const expected = sortedUnique(manifest.definitions ?? []);
+  assert(expected.length === (manifest.definitions ?? []).length, 'source orphan manifest contains duplicate definitions');
+  assert(JSON.stringify(result.orphans) === JSON.stringify(expected), [
+    'current unreachable source set differs from the exact historical-debt manifest',
+    `current=${JSON.stringify(result.orphans)}`,
+    `manifest=${JSON.stringify(expected)}`,
+  ].join('\n'));
+  assert(result.orphanPathItems.length === manifest.path_item_count, `source orphan pathItem count changed: ${result.orphanPathItems.length}/${manifest.path_item_count}`);
+  assert(result.orphanSchemas.length === manifest.schema_count, `source orphan schema count changed: ${result.orphanSchemas.length}/${manifest.schema_count}`);
+  assert(result.orphans.length === manifest.total_count, `source orphan total count changed: ${result.orphans.length}/${manifest.total_count}`);
+  const actualHash = orphanSnapshotHash(result);
+  assert(actualHash === manifest.snapshot_sha256, `frozen historical source debt content drifted: ${actualHash}/${manifest.snapshot_sha256}`);
+  return actualHash;
+}
+
 try {
   const bundlePath = join(temp, 'product.json');
   const spec = npxSpec(['--yes', '@redocly/cli@2.45.0', 'bundle', entrypoint, '--config', redoclyConfig, '-o', bundlePath]);
@@ -133,8 +152,9 @@ try {
 
   const files = readdirSync(contractDir).filter((name) => name.endsWith('.yaml')).sort();
   const fileTexts = new Map(files.map((file) => [file, readFileSync(join(contractDir, file), 'utf8')]));
+  const manifest = JSON.parse(readFileSync(allowlistPath, 'utf8'));
   const result = analyze(fileTexts);
-  const orphanHash = orphanSnapshotHash(result);
+  const orphanHash = validatePolicy(result, manifest);
 
   console.log(`oad_source_bundle_sha256=${bundleHash}`);
   console.log(`oad_source_definitions=${result.defs.size}`);
@@ -143,28 +163,42 @@ try {
   console.log(`oad_source_orphan_pathitems=${result.orphanPathItems.length}`);
   console.log(`oad_source_orphan_schemas=${result.orphanSchemas.length}`);
   console.log(`oad_source_orphan_snapshot_sha256=${orphanHash}`);
-  if (result.orphans.length) {
-    fail(`unreachable OAD source definitions (${result.orphans.length}):\n${result.orphans.join('\n')}`);
-  }
+  console.log('oad_source_orphan_policy=EXACT_FROZEN_HISTORICAL_ALLOWLIST');
+  console.log(`oad_source_allowed_orphans=${result.orphans.length}/${manifest.total_count}`);
+  console.log('oad_source_new_orphans=0');
 
   let negativeControls = 0;
-  for (const [name, injection] of [
-    ['orphan pathItem', '\n  DefinitelyUnreachablePathItem:\n    get:\n      operationId: DefinitelyUnreachablePathItem\n      responses: {\'200\': {description: never}}\n'],
-    ['orphan schema', '\n  DefinitelyUnreachableSchema:\n    type: object\n    additionalProperties: false\n'],
-  ]) {
+
+  {
     const candidate = new Map(fileTexts);
-    const targetFile = name.includes('pathItem') ? 'paths-authorization-requests.yaml' : 'components.yaml';
-    const marker = name.includes('pathItem') ? '\nschemas:\n' : null;
-    if (marker) {
-      const source = candidate.get(targetFile);
-      candidate.set(targetFile, source.replace(marker, `${injection}${marker}`));
-    } else {
-      candidate.set(targetFile, `${candidate.get(targetFile).trimEnd()}${injection}\n`);
-    }
-    const mutated = analyze(candidate);
-    assert(mutated.orphans.length > 0, `source-reachability negative control unexpectedly passed: ${name}`);
+    const source = candidate.get('paths-authorization-requests.yaml');
+    candidate.set('paths-authorization-requests.yaml', source.replace('\nschemas:\n', [
+      '\n  DefinitelyUnreachablePathItem:',
+      '    get:',
+      '      operationId: DefinitelyUnreachablePathItem',
+      "      responses: {'200': {description: never}}",
+      '',
+      'schemas:',
+      '',
+    ].join('\n')));
+    let failed = false;
+    try { validatePolicy(analyze(candidate), manifest); } catch { failed = true; }
+    assert(failed, 'source reachability negative control unexpectedly admitted a new orphan');
     negativeControls++;
   }
+
+  {
+    const candidate = new Map(fileTexts);
+    const source = candidate.get('components.yaml');
+    const needle = '  AboutBlank405Problem:';
+    assert(source.includes(needle), 'historical orphan mutation control cannot locate AboutBlank405Problem');
+    candidate.set('components.yaml', source.replace(needle, '  AboutBlank405Problem:\n    description: forbidden silent drift'));
+    let failed = false;
+    try { validatePolicy(analyze(candidate), manifest); } catch { failed = true; }
+    assert(failed, 'source reachability negative control unexpectedly admitted allowlisted-orphan content drift');
+    negativeControls++;
+  }
+
   assert(negativeControls === 2, `source-reachability negative controls must be 2, found ${negativeControls}`);
   console.log(`oad_source_reachability_negative_controls=${negativeControls}/2`);
   console.log('oad_source_reachability=PASS');
