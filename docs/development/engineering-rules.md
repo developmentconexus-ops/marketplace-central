@@ -53,9 +53,9 @@ Independent review lifecycle/transport is owned by the pinned `ADVERSARIAL-REVIE
 
 ## Retained derived production guide
 
-[`evidence-grounded-production-engineering-for-llm-agents.md`](evidence-grounded-production-engineering-for-llm-agents.md) is retained as historical/portable **non-authoritative reference** from blob `8de8ff4afbfcc2ee37a7db6ea0019e717740ebcf`.
+[`evidence-grounded-production-engineering-for-llm-agents.md`](evidence-grounded-production-engineering-for-llm-agents.md) is retained as an optional historical/portable **non-authoritative reference** derived from historical blob `8de8ff4afbfcc2ee37a7db6ea0019e717740ebcf`. The current file differs from that historical blob only by bounded repairs that replace a dead/local Method parent link and a floating-`main` Method link with the repository's accepted exact canonical pin; its engineering guidance is not promoted to normative authority.
 
-It is not a current Method selector and its historical parent-link prose is not normative. Current production realization uses the pinned `ROUTER.md` → `METHOD.md` + `REALIZATION-METHOD.md` profile. Keep the guide only while it has a real reference consumer; do not update it into a second Method copy.
+It is not a current Method selector. Current production realization uses the pinned `ROUTER.md` → `METHOD.md` + `REALIZATION-METHOD.md` profile. Keep the guide only while it has a real reference consumer; the aggregate gate does not require its mere existence. Do not evolve it into a second Method copy.
 
 ## Justified Repository Standard path specializations
 
