@@ -118,7 +118,7 @@ schemas:
   AuthorizationPriceIntentTargetRef: {type: object, additionalProperties: false, required: [kind, price_intent_id], properties: {kind: {const: price_intent}, price_intent_id: {$ref: './components.yaml#/schemas/OpaqueId'}}}
   AuthorizationBusinessOrderTargetRef: {type: object, additionalProperties: false, required: [kind, business_order_intent_id], properties: {kind: {const: business_order_intent}, business_order_intent_id: {$ref: './components.yaml#/schemas/OpaqueId'}}}
   AuthorizationInvoicingTargetRef: {type: object, additionalProperties: false, required: [kind, invoicing_intent_id], properties: {kind: {const: invoicing_intent}, invoicing_intent_id: {$ref: './components.yaml#/schemas/OpaqueId'}}}
-  AuthorizationTargetRef: {oneOf: [{$ref: '#/schemas/AuthorizationListingIntentTargetRef'}, {$ref: '#/schemas/AuthorizationPriceIntentTargetRef'}, {$ref: '#/schemas/AuthorizationBusinessOrderTargetRef'}, {$ref: '#/schemas/AuthorizationInvoicingTargetRef'}]}
+  AuthorizationRequestTargetRef: {oneOf: [{$ref: '#/schemas/AuthorizationListingIntentTargetRef'}, {$ref: '#/schemas/AuthorizationPriceIntentTargetRef'}, {$ref: '#/schemas/AuthorizationBusinessOrderTargetRef'}, {$ref: '#/schemas/AuthorizationInvoicingTargetRef'}]}
 
   ListingIntentAuthorizationReviewBasis:
     type: object
@@ -193,7 +193,7 @@ schemas:
     required: [authorization_request_id, target, subject_display_label, created_at]
     properties:
       authorization_request_id: {$ref: './components.yaml#/schemas/OpaqueId'}
-      target: {$ref: '#/schemas/AuthorizationTargetRef'}
+      target: {$ref: '#/schemas/AuthorizationRequestTargetRef'}
       subject_display_label: {type: string, minLength: 1, description: Immutable authorization-purpose human presentation snapshot; not source identity or current source truth.}
       requester_or_initiator_principal_id: {$ref: './components.yaml#/schemas/OpaqueId'}
       predecessor_authorization_request_id: {$ref: './components.yaml#/schemas/OpaqueId'}
@@ -275,7 +275,7 @@ schemas:
     properties:
       authorization_decision_id: {$ref: './components.yaml#/schemas/OpaqueId'}
       authorization_request_id: {$ref: './components.yaml#/schemas/OpaqueId'}
-      target: {$ref: '#/schemas/AuthorizationTargetRef'}
+      target: {$ref: '#/schemas/AuthorizationRequestTargetRef'}
       review_basis: {$ref: '#/schemas/AuthorizationReviewBasis'}
       outcome: {type: string, enum: [authorize, reject]}
       decided_by_principal_id: {$ref: './components.yaml#/schemas/OpaqueId'}
@@ -293,7 +293,7 @@ schemas:
     properties:
       authorization_decision_id: {$ref: './components.yaml#/schemas/OpaqueId'}
       authorization_request_id: {$ref: './components.yaml#/schemas/OpaqueId'}
-      target: {$ref: '#/schemas/AuthorizationTargetRef'}
+      target: {$ref: '#/schemas/AuthorizationRequestTargetRef'}
       outcome: {type: string, enum: [authorize, reject]}
       decided_at: {$ref: './components.yaml#/schemas/Instant'}
 

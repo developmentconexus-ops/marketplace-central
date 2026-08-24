@@ -246,7 +246,7 @@ components:
         Client Credentials and resolved fail-closed to one automation/system Principal. Product
         authorization remains MPC-owned current authority.
   schemas:
-    AuthorizationTargetRef: {$ref: './paths-authorization-requests.yaml#/schemas/AuthorizationTargetRef'}
+    AuthorizationTargetRef: {$ref: './paths-authorization-requests.yaml#/schemas/AuthorizationRequestTargetRef'}
     AuthorizationReviewBasis: {$ref: './paths-authorization-requests.yaml#/schemas/AuthorizationReviewBasis'}
     ActionableAuthorizationRequestView: {$ref: './paths-authorization-requests.yaml#/schemas/ActionableAuthorizationRequestView'}
     AuthorizationDecision: {$ref: './paths-authorization-requests.yaml#/schemas/AuthorizationDecision'}
