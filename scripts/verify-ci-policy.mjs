@@ -8,11 +8,56 @@ const prTitle = readFileSync('.github/workflows/pr-title.yml', 'utf8');
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 const gate = readFileSync('scripts/gate.ps1', 'utf8');
 
-assert(ci.includes("github.event.pull_request.draft == true"), 'CI must select quick verification for Draft PRs');
-assert(ci.includes("github.event_name == 'push' || github.event.pull_request.draft == false"), 'CI must select full verification for non-Draft candidates and main pushes');
-assert(ci.includes('run: npm run gate\n'), 'CI quick path must run npm run gate');
-assert(ci.includes('run: npm run gate:full'), 'CI full path must run npm run gate:full');
-assert(ci.includes('setup-go@v6') && ci.includes("github.event_name == 'push' || github.event.pull_request.draft == false"), 'Go setup must be reserved for full verification');
+const draftCondition = "if: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == true }}";
+const fullCondition = "if: ${{ github.event_name == 'push' || github.event.pull_request.draft == false }}";
+const dynamicCheckName = "name: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == true && 'quick' || 'required' }}";
+
+function stepBlock(text, anchor) {
+  const lines = text.split('\n');
+  const start = lines.findIndex((line) => line.includes(anchor));
+  assert(start >= 0, `CI step missing: ${anchor}`);
+  const block = [lines[start]];
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if (/^      - (?:name:|uses:)/u.test(lines[index])) break;
+    block.push(lines[index]);
+  }
+  return block.join('\n');
+}
+
+function verifyWorkflowPolicy(text) {
+  assert(text.includes(dynamicCheckName), 'Draft runs must report quick while Ready/main runs report ruleset-required context required');
+
+  const quick = stepBlock(text, '- name: quick gate');
+  assert(quick.includes(draftCondition), 'quick gate must be bound to Draft pull requests');
+  assert(quick.includes('run: npm run gate\n') || quick.endsWith('run: npm run gate'), 'quick gate must run npm run gate');
+  assert(!quick.includes('gate:full'), 'quick gate must never run the full lane');
+
+  const full = stepBlock(text, '- name: full gate');
+  assert(full.includes(fullCondition), 'full gate must be bound to Ready/non-Draft candidates and main pushes');
+  assert(full.includes('run: npm run gate:full'), 'full gate must run npm run gate:full');
+
+  const go = stepBlock(text, 'uses: actions/setup-go@v6');
+  assert(go.includes(fullCondition), 'Go setup must be bound to the full verification condition');
+}
+
+verifyWorkflowPolicy(ci);
+
+let negativeControls = 0;
+function expectFailure(name, body) {
+  let failed = false;
+  try { body(); } catch { failed = true; }
+  if (!failed) fail(`negative control unexpectedly passed: ${name}`);
+  negativeControls += 1;
+}
+
+expectFailure('lane inversion', () => verifyWorkflowPolicy(
+  ci.replace('run: npm run gate\n', 'run: npm run gate:full\n')
+    .replace('run: npm run gate:full\n', 'run: npm run gate\n'),
+));
+expectFailure('required context leaked to Draft', () => verifyWorkflowPolicy(
+  ci.replace(dynamicCheckName, "name: required"),
+));
+assert(negativeControls === 2, `CI policy negative-control count mismatch: ${negativeControls}/2`);
 
 assert(!prTitle.includes('synchronize'), 'PR title check must not rerun on synchronize-only events');
 assert(prTitle.includes('opened') && prTitle.includes('edited') && prTitle.includes('reopened'), 'PR title check must still cover title-changing lifecycle events');
@@ -25,7 +70,8 @@ assert(gate.includes("if ($Lane -eq 'full')"), 'gate.ps1 must make full-only wor
 assert(gate.includes('quick_verifiers:'), 'gate.ps1 must report the change-aware verifier set');
 assert(gate.includes('product_proof:'), 'gate.ps1 must report whether Product OAD proof ran');
 
-console.log('ci_policy_draft_lane=QUICK');
-console.log('ci_policy_candidate_lane=FULL');
+console.log('ci_policy_draft_context=QUICK_ADVISORY');
+console.log('ci_policy_candidate_context=REQUIRED_FULL');
+console.log('ci_policy_negative_controls=2/2');
 console.log('ci_policy_pr_title_synchronize=SKIPPED');
 console.log('ci_policy=PASS');
