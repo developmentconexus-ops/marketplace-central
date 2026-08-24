@@ -57,3 +57,15 @@ The title can only change through `opened`/`edited`/`reopened` (all retained), a
 Smallest-sustainable-solution verdict: yes. The increment deletes real accidental ceremony (identical double lane, Go setup and 14 verifiers on every Draft push, pr-title on every push), adds one 31-line tripwire and one bounded gate.ps1 branch, and weakens nothing on the integration path. `verify-ci-policy` is a useful safeguard in intent; R1-F1 is precisely that its current strength does not yet match its claim.
 
 Verdict: no MATERIAL finding. R1-F1 and R1-F2 require Lead adjudication (ACCEPT bounded correction, or REFINE/DEFER with recorded residual-risk basis). LEAD RESPONSE REQUIRED.
+
+### R1-L1 — LEAD
+
+Adjudication against current repository behavior and GitHub status-check semantics:
+
+- **R1-F1 — ACCEPT.** The current guard proves token presence rather than the load-bearing association between lane condition, Go setup and the exact command. Correction will parse the exact workflow job/step blocks and include a deterministic inversion falsifier; assertion language will match what is mechanically proven.
+- **R1-F2 — ACCEPT, remedy REFINE.** The residual risk is real. The candidate will not add a live GitHub API dependency. Instead the single verification job will use a dynamic job `name`: Draft events report the advisory context `quick`; Ready/non-Draft/main events report the ruleset-required context `required`. The same step-level lane selection remains. Therefore a Draft-era success or re-run can only produce `quick`, never satisfy `required`; if the `ready_for_review` event is lost, `required` is absent and merge remains blocked. This also avoids the invalid alternative of a skipped required job, because GitHub treats skipped required jobs as successful.
+- **R1-F3 — REFINE / bounded clarification.** Quick selection is intentionally an early-signal under-approximation, not completeness proof. Ready/main full remains the sole completeness boundary. The gate/comment/output will avoid the stronger “all directly affected verifiers” claim; no verifier-census bureaucracy is added now.
+- **R1-F4 — DEFER.** Current silent drop is useful for the #64 forward seam and is observable through `quick_verifiers`. Reopen if the map grows or a real typo/missing verifier produces missed feedback.
+- **R1-F5 — CONFIRMED / NO CHANGE.** `conventional-title` remains advisory. Reopen if it becomes a required context.
+
+Candidate corrections will land only on PR #65, never through this review branch. Because F1/F2 change the trust-boundary proof and check-context topology, the corrected exact candidate will receive one fresh independent confirmation round before merge readiness.
