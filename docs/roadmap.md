@@ -11,7 +11,7 @@
 | Product | **Marketplace Operations Control Plane + Commercial Intelligence** |
 | Current stage | **D6-R2 — Complete Frontend Realization Closure — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
-| D6-R2 | [Closure](engineering/rebaseline/D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md) + [AuthorizationRequest closure](engineering/rebaseline/D6-R2-AUTHORIZATION-REQUEST-FABLE-RATIFICATION.md) + [D7-R](engineering/rebaseline/D6-R2-NOTIF-01-D7-R-AUTHORIZATION-REQUEST-RUNTIME-REPAIR.md) + [B10 preparation](engineering/rebaseline/D6-R2-P6-B10-PREPARATION-REFERENCE-STUDY.md) — **AUTH GLOBAL-MAXIMUM CLOSED; D7-R ACCEPTED; D8-R NEXT; B10 SUSPENDED** |
+| D6-R2 | [Closure](engineering/rebaseline/D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md) + [authority route](engineering/rebaseline/D6-R2-AUTHORITY-ROUTE.md) + [AuthorizationRequest closure](engineering/rebaseline/D6-R2-AUTHORIZATION-REQUEST-FABLE-RATIFICATION.md) + [D7-R](engineering/rebaseline/D6-R2-NOTIF-01-D7-R-AUTHORIZATION-REQUEST-RUNTIME-REPAIR.md) + [B10 preparation](engineering/rebaseline/D6-R2-P6-B10-PREPARATION-REFERENCE-STUDY.md) — **AUTH GLOBAL-MAXIMUM CLOSED; D7-R ACCEPTED; D8-R NEXT; B10 SUSPENDED** |
 | NOTIF-01 | D2-R6 + D3-R3 + D5-R6 + final P9 + Fable closure **ACCEPTED / PROVED**; [D7-R runtime repair](engineering/rebaseline/D6-R2-NOTIF-01-D7-R-AUTHORIZATION-REQUEST-RUNTIME-REPAIR.md) **OPERATOR-RATIFIED / ACCEPTED** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **106 Product operations · 31 ordinary Permissions · Principal kinds H / A / S only** |
