@@ -172,13 +172,15 @@ try {
   {
     const candidate = new Map(fileTexts);
     const source = candidate.get('paths-authorization-requests.yaml');
-    candidate.set('paths-authorization-requests.yaml', source.replace('\nschemas:\n', [
-      '\n  DefinitelyUnreachablePathItem:',
+    assert(source.includes('\nparameters:\n'), 'source reachability pathItem control cannot locate pathItems boundary');
+    candidate.set('paths-authorization-requests.yaml', source.replace('\nparameters:\n', [
+      '',
+      '  DefinitelyUnreachablePathItem:',
       '    get:',
       '      operationId: DefinitelyUnreachablePathItem',
       "      responses: {'200': {description: never}}",
       '',
-      'schemas:',
+      'parameters:',
       '',
     ].join('\n')));
     let failed = false;
