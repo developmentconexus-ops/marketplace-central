@@ -22,7 +22,7 @@ Use pinned:
 - `METHOD.md` for engineering reasoning;
 - `FRONTEND-METHOD.md` for frontend Product Experience planning.
 
-This file remains only so historical Marketplace Central documents that cite the old local path retain understandable lineage. Historical v2.1/v2.3-era decisions, LOCKs, findings, and evidence remain truthful snapshots; they are not silently rewritten to claim they were produced under the later global Method.
+This file remains only so historical Marketplace Central documents that cite the old local path retain understandable lineage. Historical v2.1-era decisions, LOCKs, findings, and evidence remain truthful snapshots; they are not silently rewritten to claim they were produced under the later global Method.
 
 Mutable frontend/Product status remains exclusively in `docs/roadmap.md`. Marketplace-specific engineering specialization remains in `docs/development/engineering-rules.md`.
 
