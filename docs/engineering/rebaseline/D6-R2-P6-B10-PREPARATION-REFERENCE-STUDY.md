@@ -289,3 +289,84 @@ A03 detailed terminology remains an OPEN P12 comprehension probe, but current Ev
 `Operator walkthrough: PENDING`.
 
 `P8 status: CANDIDATE / NOT LOCKED`.
+
+## 10. Operator REVISE — requirement census and provider-specific readiness
+
+Operator walkthrough inquiry exposed one material P8 simplification defect after the first GREEN candidate:
+
+```text
+B10 summary-only "Categoria / atributos"
+≠
+operator ability to inspect every applicable marketplace publication requirement
+```
+
+The accepted D4-R1 publication-input authority already resolves the semantic question, so this is **not** an upstream Product/backend gap.
+
+### 10.1 Authority recovered
+
+Provider publication requirements are **provider-authoritative** evidence. ProductChannelReadiness owns the MPC semantic projection needed to understand them for this exact subject:
+
+```text
+Organization
++ exact Marketplace Installation
++ SourceInstance-qualified Product
++ provider/category/product-type context
+→ applicable publication requirements
+```
+
+The applicable set may legitimately differ across Mercado Livre, Amazon, Mirakl-class providers, category, product type, account/context and provider schema revision. MPC must preserve those meaningful differences instead of manufacturing one universal ProductAttribute/provider-field catalog.
+
+B10 therefore needs the complete **applicable requirement census**, not every arbitrary attribute that happens to exist in Sankhya. For every material requirement the operator must be able to inspect, when supplied by current authority:
+
+- provider/context-qualified requirement identity;
+- required / recommended / optional / conditional applicability;
+- data kind, cardinality, options and constraints when material;
+- source-qualified candidate/value evidence;
+- missing / conflicting / unknown / unavailable / unsupported state;
+- current requirements revision/provenance sufficient to know which rule set is being inspected.
+
+### 10.2 Source sufficiency is not final draft dispatchability
+
+The first candidate also collapsed one cross-owner distinction:
+
+```text
+missing source != publication impossible
+```
+
+Readiness may truthfully state that the external source lacks a value while Offering later creates a valid ListingIntent resolution using one of the accepted modes:
+
+```text
+FOLLOW_SOURCE(source_candidate_key)
+EXPLICIT_OVERRIDE(PublicationValue)
+```
+
+An `EXPLICIT_OVERRIDE` is ListingIntent/Offering-authored desired listing meaning. It never rewrites or falsifies the Sankhya/source fact. Therefore a source-missing requirement that is override-eligible may progress from B10 into the ListingIntent block, where the draft must actually resolve it before Offering can decide dispatchability.
+
+B10 must still block progression when current authority truly cannot establish a safe next subject/context, for example:
+
+- required correspondence is unresolved;
+- requirement/readiness authority is unknown/unavailable in a way that prevents establishing the current basis;
+- another accepted pre-ListingIntent condition explicitly blocks continuation.
+
+The UI must not infer which provider requirement is override-eligible when current authority does not provide that meaning.
+
+### 10.3 P8 disposition
+
+**Disposition:** `REVISE`.
+
+**UPSTREAM FINDING: NONE`** — accepted Product architecture already contains the necessary distinction.
+
+The corrected P8 candidate must:
+
+1. show all applicable marketplace requirements for the selected exact context;
+2. expose the marketplace/category/product-type/revision basis;
+3. show source evidence per requirement rather than a generic attributes bucket;
+4. preserve provider-specific differences without raw provider DTO/field-bag authority;
+5. distinguish source-missing debt from true pre-ListingIntent blockers;
+6. allow `EXPLICIT_OVERRIDE`-eligible source debt to continue only to the ListingIntent boundary;
+7. keep actual override editing outside B10;
+8. keep correspondence resolution and its required reread inside Readiness/B10.
+
+`Operator walkthrough: PENDING`.
+
+`P8 status: CANDIDATE / NOT LOCKED`.
