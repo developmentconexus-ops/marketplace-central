@@ -209,7 +209,7 @@ $roadmapMarkers = @(
     'D9 — Adversarial Architecture Review | **BLOCKED**',
     'Canonical Product OAD',
     'contracts/api/product/openapi.yaml',
-    '104 Product operations',
+    '106 Product operations',
     '31 ordinary Permissions',
     'Principal kinds H / A / S only',
     'https://conexus.fun',
