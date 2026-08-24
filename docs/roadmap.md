@@ -13,13 +13,14 @@
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | Integrated checkpoints | **PR #61 Product/frontend checkpoint → `b54d17bfe6d794645d198a9160f4a2a1c63647e8`; PR #62 methodology adoption → `689dab34b0a756cbd7c790a6c5277d887ced0b4c`** |
 | Method profile | **`developmentconexus-ops/conexus-methodology@9c7210d1504bef01c0d134a6c3ae8627deebb535` → `METHOD + FRONTEND-METHOD`** |
-| Current acceptance increment | **B10 — Preparação — bounded post-methodology revalidation / P8 CANDIDATE; NOT LOCKED** |
+| Current acceptance increment | **PR #64 / B10 — Preparação — P6/P7 REVALIDATED; P8 GREEN CANDIDATE; OPERATOR ADJUDICATION NEXT; NOT LOCKED** |
+| B10 structural proof | **CI #667 PASS — search→exact-subject detail; no upstream finding; 4/4 B10 falsifiers; A01 PENDING OPERATOR** |
 | LOCKED frontend blocks | **B00 · B01 · B00-R2 · B11 · B12 · B110** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **106 Product operations · 31 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Revalidate B10 P6/P7 against the pinned frontend method, prove the corrected browser-operable P8 HTML, then operator operates it and chooses REVISE / UPSTREAM FINDING / explicit LOCK. Do not begin B10 P9 before LOCK.** |
+| Exact next action | **Operator operates the browser B10 candidate and returns REVISE / UPSTREAM FINDING / explicit LOCK, plus A01 disposition `ACCEPT_FOR_LOCK_WITH_LATER_PROBE` or `BLOCK_LOCK`. Do not begin B10 P9 before explicit LOCK.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -40,7 +41,7 @@
 | D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED baseline; D7-R ACCEPTED** |
 | D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED; D8-R ACCEPTED** |
 | D8-R2 — GF-02 Operational Read Revalidation | **ACCEPTED / PASS** |
-| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B10 P8 CANDIDATE / OPERATOR ADJUDICATION NEXT AFTER GREEN** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B10 P8 GREEN CANDIDATE / OPERATOR ADJUDICATION NEXT** |
 | Pre-D9 readiness | **BLOCKED** |
 | D9 — Adversarial Architecture Review | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -48,12 +49,13 @@
 ## Current result
 
 - Methodology adoption is integrated; accepted Product/frontend authority remains intact.
-- B10 is the only active Product-experience increment. Its existing search-first structure is being falsified against the pinned `FRONTEND-METHOD.md`; methodology adoption alone does not reopen Product authority.
+- B10 post-methodology revalidation confirms the search/list → exact-subject detail structure. P7 layout hypotheses remain not triggered and `UPSTREAM FINDING: NONE`.
+- The P8 candidate now proves locked shell IA, material search, exact source identity, known-empty vs unavailable, Organization→Installation invalidation, correspondence reread, explicit ListingIntent boundary and mobile drawer keyboard/focus behavior.
 - Product **106/31/H-A-S**, AuthorizationRequest/W1, D7-R, D8-R, OAD source hygiene and existing operator LOCKs remain unchanged.
 - B10 may advance to P9 only after explicit operator LOCK of its operated P8 candidate.
 
 ```text
-B10 P6/P7 revalidation → corrected P8 HTML → operator adjudication → LOCK only if explicit → B10 P9/P10 → integrate increment → next Bxx
+B10 P8 GREEN → operator walkthrough + A01 disposition → LOCK only if explicit → B10 P9/P10 → integrate increment → next Bxx
 ```
 
 One coherent acceptance increment lands before the next. Return to [`index.md`](index.md) for task routing.
