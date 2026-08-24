@@ -47,8 +47,9 @@ function verifyHtml(text) {
 
   assert(text.includes('id="organization"'), 'B10 Organization control must be explicit');
   assert(text.includes('id="installation"'), 'B10 exact Marketplace Installation control missing');
-  assert(text.includes('function invalidateOrganizationContext'), 'B10 Organization-switch invalidation function missing');
-  assert(/invalidateOrganizationContext\([^)]*\)[\s\S]*installation\.value\s*=\s*['"]{2}/u.test(text), 'Organization switch must clear Marketplace Installation context');
+  const organizationInvalidation = text.match(/function invalidateOrganizationContext\(\)\{([^}]*)\}/u);
+  assert(organizationInvalidation, 'B10 Organization-switch invalidation function missing');
+  assert(/installation\.value\s*=\s*['"]{2}/u.test(organizationInvalidation[1]), 'Organization switch must clear Marketplace Installation context');
 
   assert(text.includes('function runSearch'), 'B10 material search interaction must be implemented');
   assert(!text.includes("document.getElementById('search').onclick=()=>{}"), 'B10 search button must not be a no-op');
@@ -104,7 +105,7 @@ function expectFailure(name, body) {
 
 expectFailure('search no-op', () => verifyHtml(html.replace('function runSearch', 'function missingRunSearch')));
 expectFailure('known-empty collapsed', () => verifyHtml(html.replace('data-search-state="known-empty"', 'data-search-state="known-populated"')));
-expectFailure('organization context leak', () => verifyHtml(html.replace(/installation\.value\s*=\s*['"]{2}/u, 'installation.value=\'ml-a\'')));
+expectFailure('organization context leak', () => verifyHtml(html.replace("function invalidateOrganizationContext(){installation.value='';", "function invalidateOrganizationContext(){installation.value='ml-a';")));
 expectFailure('premature lock', () => verifyHtml(html.replace('data-p8-status="candidate"', 'data-p8-status="locked"')));
 
 assert(negativeControls === 4, `B10 negative-control count mismatch: ${negativeControls}/4`);
