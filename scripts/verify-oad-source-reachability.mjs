@@ -78,7 +78,7 @@ function normalizeRef(sourceFile, ref) {
     file = basename(normalize(join(dirname(sourceFile), rawFile)));
   }
   const parts = pointer.split('/');
-  if (parts[0] === 'components' && parts.length >= 3) return null; // root-local aliases are not source-definition ids
+  if (parts[0] === 'components' && parts.length >= 3) return null;
   if (parts.length < 2) return null;
   return `${file}#/${parts[0]}/${parts[1].replaceAll('~1', '/').replaceAll('~0', '~')}`;
 }
@@ -119,6 +119,11 @@ function analyze(fileTexts) {
   return { defs, reachable, enforced, orphans, orphanPathItems, orphanSchemas };
 }
 
+function orphanSnapshotHash(result) {
+  const payload = result.orphans.map((id) => `${id}\n${result.defs.get(id).text.trimEnd()}`).join('\n---\n');
+  return sha256(payload);
+}
+
 try {
   const bundlePath = join(temp, 'product.json');
   const spec = npxSpec(['--yes', '@redocly/cli@2.45.0', 'bundle', entrypoint, '--config', redoclyConfig, '-o', bundlePath]);
@@ -129,6 +134,7 @@ try {
   const files = readdirSync(contractDir).filter((name) => name.endsWith('.yaml')).sort();
   const fileTexts = new Map(files.map((file) => [file, readFileSync(join(contractDir, file), 'utf8')]));
   const result = analyze(fileTexts);
+  const orphanHash = orphanSnapshotHash(result);
 
   console.log(`oad_source_bundle_sha256=${bundleHash}`);
   console.log(`oad_source_definitions=${result.defs.size}`);
@@ -136,11 +142,11 @@ try {
   console.log(`oad_source_reachable_definitions=${result.reachable.size}`);
   console.log(`oad_source_orphan_pathitems=${result.orphanPathItems.length}`);
   console.log(`oad_source_orphan_schemas=${result.orphanSchemas.length}`);
+  console.log(`oad_source_orphan_snapshot_sha256=${orphanHash}`);
   if (result.orphans.length) {
     fail(`unreachable OAD source definitions (${result.orphans.length}):\n${result.orphans.join('\n')}`);
   }
 
-  // GREEN-only falsifiers: once the live graph is clean, prove the detector itself fires.
   let negativeControls = 0;
   for (const [name, injection] of [
     ['orphan pathItem', '\n  DefinitelyUnreachablePathItem:\n    get:\n      operationId: DefinitelyUnreachablePathItem\n      responses: {\'200\': {description: never}}\n'],
