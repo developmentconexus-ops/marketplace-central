@@ -387,12 +387,51 @@ Expect-Failure 'methodology stale pin' {
 
 if ($negativeControls -ne 6) { Fail "repository negative-control count mismatch: $negativeControls/6" }
 
-$productProof = & node 'scripts/verify-product-oad.mjs' 2>&1
-if ($LASTEXITCODE -ne 0) {
-    $productProof | ForEach-Object { Write-Host $_ }
-    Fail 'Product OAD proof failed'
+$quickVerifiers = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+function Add-QuickVerifier([string]$verifier) {
+    if (Test-Path $verifier -PathType Leaf) { [void]$quickVerifiers.Add($verifier) }
 }
-$productProof | ForEach-Object { Write-Host $_ }
+
+$productProofRan = $false
+if ($Lane -eq 'full') {
+    $productProof = & node 'scripts/verify-product-oad.mjs' 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        $productProof | ForEach-Object { Write-Host $_ }
+        Fail 'Product OAD proof failed'
+    }
+    $productProof | ForEach-Object { Write-Host $_ }
+    $productProofRan = $true
+} else {
+    foreach ($file in $changedFiles) {
+        $normalized = $file.Replace('\', '/')
+
+        if ($normalized -match '^scripts/verify-.*\.mjs$' -and $normalized -notmatch '^scripts/verify-(product-oad|ci-policy)') {
+            Add-QuickVerifier $normalized
+        }
+
+        switch -Regex ($normalized) {
+            '^qualification/d6-r2-wireframes/b00-r2-notifications\.html$' { Add-QuickVerifier 'scripts/verify-d6-r-b00-r2-wireframe.mjs'; break }
+            '^qualification/d6-r2-wireframes/b11-notifications-inbox\.html$' { Add-QuickVerifier 'scripts/verify-d6-r-b11-inbox-wireframe.mjs'; break }
+            '^qualification/d6-r2-wireframes/b12-notification-routing-settings\.html$' { Add-QuickVerifier 'scripts/verify-d6-r-b12-routing-settings-wireframe.mjs'; break }
+            '^qualification/d6-r2-wireframes/.*b110.*\.html$' { Add-QuickVerifier 'scripts/verify-d6-r-b110-approvals-wireframe.mjs'; break }
+            '^qualification/d6-r2-wireframes/b10-preparation\.html$' { Add-QuickVerifier 'scripts/verify-d6-r-b10-preparation.mjs'; break }
+            '^docs/engineering/rebaseline/D6-R2-P6-B10-PREPARATION-REFERENCE-STUDY\.md$' { Add-QuickVerifier 'scripts/verify-d6-r-b10-preparation.mjs'; break }
+            '^contracts/api/product/' { Add-QuickVerifier 'scripts/verify-oad-source-reachability.mjs'; break }
+        }
+    }
+
+    foreach ($verifier in @($quickVerifiers | Sort-Object)) {
+        $output = & node $verifier 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            $output | ForEach-Object { Write-Host $_ }
+            Fail "quick verifier failed: $verifier"
+        }
+        $output | ForEach-Object { Write-Host $_ }
+    }
+}
+
+$quickVerifierSummary = if ($quickVerifiers.Count -eq 0) { 'NONE' } else { (@($quickVerifiers | Sort-Object) -join ',') }
+$productProofSummary = if ($productProofRan) { 'FULL' } else { 'SKIPPED_QUICK' }
 
 Write-Host "gate lane: $Lane"
 Write-Host "required files: $($requiredFiles.Count)"
@@ -407,4 +446,6 @@ Write-Host "diff_range: $diffRange changed_files: $($changedFiles.Count)"
 Write-Host "review_mode: $isReview"
 Write-Host "legacy_runtime_population: 0"
 Write-Host "negative_controls: $negativeControls/6"
+Write-Host "quick_verifiers: $quickVerifierSummary"
+Write-Host "product_proof: $productProofSummary"
 Write-Host 'gate: PASS'
