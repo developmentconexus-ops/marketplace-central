@@ -272,24 +272,97 @@ schemas:
   PublicationNotApplicableValue: {type: object, additionalProperties: false, required: [kind], properties: {kind: {const: not_applicable}}}
   PublicationValue:
     oneOf: [{$ref: '#/schemas/PublicationTextValue'}, {$ref: '#/schemas/PublicationExactDecimalValue'}, {$ref: '#/schemas/PublicationBooleanValue'}, {$ref: '#/schemas/PublicationOptionValue'}, {$ref: '#/schemas/PublicationTextListValue'}, {$ref: '#/schemas/PublicationOptionListValue'}, {$ref: '#/schemas/PublicationNumberUnitValue'}, {$ref: '#/schemas/PublicationNotApplicableValue'}]
+  PublicationRequirementsContext:
+    type: object
+    additionalProperties: false
+    properties:
+      category_key: {$ref: '#/schemas/OpaqueKey'}
+      product_type_key: {$ref: '#/schemas/OpaqueKey'}
   PublicationSourceCandidate:
     type: object
     additionalProperties: false
-    required: [candidate_key, state]
-    properties: {candidate_key: {$ref: '#/schemas/OpaqueKey'}, state: {type: string, enum: [known, unknown, unavailable]}, value: {$ref: '#/schemas/PublicationValue'}}
+    required: [candidate_key, value]
+    properties: {candidate_key: {$ref: '#/schemas/OpaqueKey'}, value: {$ref: '#/schemas/PublicationValue'}}
+  PublicationSourceEvidenceKnown:
+    type: object
+    additionalProperties: false
+    required: [state, candidates]
+    properties: {state: {const: known}, candidates: {type: array, minItems: 1, items: {$ref: '#/schemas/PublicationSourceCandidate'}}}
+  PublicationSourceEvidenceMissing: {type: object, additionalProperties: false, required: [state], properties: {state: {const: missing}}}
+  PublicationSourceEvidenceConflicting:
+    type: object
+    additionalProperties: false
+    required: [state, candidates]
+    properties: {state: {const: conflicting}, candidates: {type: array, minItems: 2, items: {$ref: '#/schemas/PublicationSourceCandidate'}}}
+  PublicationSourceEvidenceUnknown: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unknown}}}
+  PublicationSourceEvidenceUnavailable: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unavailable}}}
+  PublicationSourceEvidenceUnsupported: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unsupported}}}
+  PublicationSourceEvidence:
+    oneOf: [{$ref: '#/schemas/PublicationSourceEvidenceKnown'}, {$ref: '#/schemas/PublicationSourceEvidenceMissing'}, {$ref: '#/schemas/PublicationSourceEvidenceConflicting'}, {$ref: '#/schemas/PublicationSourceEvidenceUnknown'}, {$ref: '#/schemas/PublicationSourceEvidenceUnavailable'}, {$ref: '#/schemas/PublicationSourceEvidenceUnsupported'}]
+  PublicationTextRequirementSpec:
+    type: object
+    additionalProperties: false
+    required: [kind]
+    properties:
+      kind: {const: text}
+      min_length: {type: integer, minimum: 0}
+      max_length: {type: integer, minimum: 0}
+  PublicationExactDecimalRequirementSpec:
+    type: object
+    additionalProperties: false
+    required: [kind]
+    properties:
+      kind: {const: exact_decimal}
+      minimum: {$ref: '#/schemas/ExactDecimalString'}
+      maximum: {$ref: '#/schemas/ExactDecimalString'}
+  PublicationBooleanRequirementSpec: {type: object, additionalProperties: false, required: [kind], properties: {kind: {const: boolean}}}
+  PublicationOptionRequirementSpec:
+    type: object
+    additionalProperties: false
+    required: [kind, option_keys]
+    properties: {kind: {const: option}, option_keys: {type: array, minItems: 1, uniqueItems: true, items: {$ref: '#/schemas/OpaqueKey'}}}
+  PublicationTextListRequirementSpec:
+    type: object
+    additionalProperties: false
+    required: [kind]
+    properties:
+      kind: {const: text_list}
+      min_items: {type: integer, minimum: 0}
+      max_items: {type: integer, minimum: 0}
+      item_min_length: {type: integer, minimum: 0}
+      item_max_length: {type: integer, minimum: 0}
+  PublicationOptionListRequirementSpec:
+    type: object
+    additionalProperties: false
+    required: [kind, option_keys]
+    properties:
+      kind: {const: option_list}
+      option_keys: {type: array, minItems: 1, uniqueItems: true, items: {$ref: '#/schemas/OpaqueKey'}}
+      min_items: {type: integer, minimum: 0}
+      max_items: {type: integer, minimum: 0}
+  PublicationNumberUnitRequirementSpec:
+    type: object
+    additionalProperties: false
+    required: [kind, unit_keys]
+    properties:
+      kind: {const: number_unit}
+      unit_keys: {type: array, minItems: 1, uniqueItems: true, items: {$ref: '#/schemas/OpaqueKey'}}
+      default_unit_key: {$ref: '#/schemas/OpaqueKey'}
+      minimum: {$ref: '#/schemas/ExactDecimalString'}
+      maximum: {$ref: '#/schemas/ExactDecimalString'}
+  PublicationRequirementValueSpec:
+    oneOf: [{$ref: '#/schemas/PublicationTextRequirementSpec'}, {$ref: '#/schemas/PublicationExactDecimalRequirementSpec'}, {$ref: '#/schemas/PublicationBooleanRequirementSpec'}, {$ref: '#/schemas/PublicationOptionRequirementSpec'}, {$ref: '#/schemas/PublicationTextListRequirementSpec'}, {$ref: '#/schemas/PublicationOptionListRequirementSpec'}, {$ref: '#/schemas/PublicationNumberUnitRequirementSpec'}]
   PublicationRequirement:
     type: object
     additionalProperties: false
-    required: [requirement_key, value_kind, applicability, required, not_applicable_allowed, source_candidates]
+    required: [requirement_key, requirement_class, applicability, value_spec, not_applicable_allowed, source_evidence]
     properties:
       requirement_key: {$ref: '#/schemas/OpaqueKey'}
-      value_kind: {type: string, enum: [text, exact_decimal, boolean, option, text_list, option_list, number_unit, not_applicable]}
+      requirement_class: {type: string, enum: [required, recommended, optional, conditional]}
       applicability: {type: string, enum: [current, draft_dependent]}
-      required: {type: boolean}
+      value_spec: {$ref: '#/schemas/PublicationRequirementValueSpec'}
       not_applicable_allowed: {type: boolean}
-      option_keys: {type: array, uniqueItems: true, items: {$ref: '#/schemas/OpaqueKey'}}
-      unit_keys: {type: array, uniqueItems: true, items: {$ref: '#/schemas/OpaqueKey'}}
-      source_candidates: {type: array, items: {$ref: '#/schemas/PublicationSourceCandidate'}}
+      source_evidence: {$ref: '#/schemas/PublicationSourceEvidence'}
   SourceMediaCandidate:
     type: object
     additionalProperties: false
@@ -298,8 +371,8 @@ schemas:
   PublicationRequirements:
     type: object
     additionalProperties: false
-    required: [subject, requirements_revision, requirements, source_media_candidates, evaluated_at]
-    properties: {subject: {$ref: '#/schemas/ProductChannelReadinessSubject'}, requirements_revision: {$ref: '#/schemas/OpaqueKey'}, requirements: {type: array, items: {$ref: '#/schemas/PublicationRequirement'}}, source_media_candidates: {type: array, items: {$ref: '#/schemas/SourceMediaCandidate'}}, evaluated_at: {$ref: '#/schemas/Instant'}}
+    required: [subject, publication_context, requirements_revision, requirements, source_media_candidates, evaluated_at]
+    properties: {subject: {$ref: '#/schemas/ProductChannelReadinessSubject'}, publication_context: {$ref: '#/schemas/PublicationRequirementsContext'}, requirements_revision: {$ref: '#/schemas/OpaqueKey'}, requirements: {type: array, items: {$ref: '#/schemas/PublicationRequirement'}}, source_media_candidates: {type: array, items: {$ref: '#/schemas/SourceMediaCandidate'}}, evaluated_at: {$ref: '#/schemas/Instant'}}
 
   MarketplaceListingRef:
     type: object
