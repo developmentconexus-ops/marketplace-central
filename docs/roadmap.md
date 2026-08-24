@@ -11,18 +11,15 @@
 | Product | **Marketplace Operations Control Plane + Commercial Intelligence** |
 | Current stage | **D6-R2 — Complete Frontend Realization Closure — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
-| Integrated checkpoint | **PR #61 squash-integrated at `b54d17bfe6d794645d198a9160f4a2a1c63647e8`; D6-R2 remained OPEN** |
-| Current acceptance increment | **PR #62 — DevelopmentConexus methodology adoption — REVIEW CONVERGED / PROVED / READY FOR INTEGRATION; repository-governance only** |
-| Methodology target pin | **`developmentconexus-ops/conexus-methodology@9c7210d1504bef01c0d134a6c3ae8627deebb535`** |
-| Independent review | **R1 CONVERGED — no MATERIAL finding; R1-F1/F2/F3 bounded corrections absorbed; R1-F4 upstream provenance note; R1-F5 no-change reopen trigger** |
-| D6-R2 | [Closure](engineering/rebaseline/D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md) · [authority route](engineering/rebaseline/D6-R2-AUTHORITY-ROUTE.md) — **WHOLE-REPO FABLE R-1 + R-2 CLOSED; B10 PAUSED** |
+| Integrated checkpoints | **PR #61 Product/frontend checkpoint → `b54d17bfe6d794645d198a9160f4a2a1c63647e8`; PR #62 methodology adoption → `689dab34b0a756cbd7c790a6c5277d887ced0b4c`** |
+| Method profile | **`developmentconexus-ops/conexus-methodology@9c7210d1504bef01c0d134a6c3ae8627deebb535`** |
+| Current repository-governance increment | **PR #65 — proportional CI verification — independent of Product/B10** |
+| Parallel Product candidate | **PR #64 — B10 Preparação — UNMERGED; not integrated authority on this branch** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **106 Product operations · 31 ordinary Permissions · Principal kinds H / A / S only** |
-| Decision carrier | `CreateAuthorizationDecision` = `Idempotency-Key` + typed body `etag`/`outcome`; revision validation **422/409** |
-| OAD source hygiene | **49 exact frozen historical-proof definitions; 0 new orphans; content digest guarded** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Run final aggregate verification for the exact PR #62 candidate, then STOP and await separate explicit operator authorization to squash-merge PR #62. Do not resume B10, begin Pre-D9/D9, or implement Product code before that integration.** |
+| Exact next action | **Prove PR #65 Draft quick lane, transition the exact candidate to Ready so the full aggregate lane runs, complete required review, then STOP for explicit merge authorization. Do not reinterpret or advance B10/Product in this increment.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -37,28 +34,28 @@
 | D3 — Communication / Events | ACCEPTED / CLOSED; D3-R3 ACCEPTED |
 | D4 — External Integrations | ACCEPTED / CLOSED |
 | D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL |
-| D5 — API | ACCEPTED / CLOSED; **D5-R6 106/31 PROVED; D5-R7 W1 REPAIR ACCEPTED** |
+| D5 — API | ACCEPTED / CLOSED; D5-R6 106/31 PROVED; D5-R7 W1 REPAIR ACCEPTED |
 | D5-R2 — Operational Read Projection Repair | **ACCEPTED / CANONICAL** |
-| D6 — Frontend | **ACCEPTED / CLOSED baseline; B00/B01/B00-R2/B11/B12/B110 LOCKED; B110 REVALIDATED / UNAFFECTED** |
+| D6 — Frontend | **ACCEPTED / CLOSED baseline; B00/B01/B00-R2/B11/B12/B110 LOCKED** |
 | D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED baseline; D7-R ACCEPTED** |
 | D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED; D8-R ACCEPTED** |
 | D8-R2 — GF-02 Operational Read Revalidation | **ACCEPTED / PASS** |
-| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — PR #61 INTEGRATED; METHODOLOGY ADOPTION PR #62 REVIEW-CONVERGED / READY FOR INTEGRATION; B10 PAUSED** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B10 continues separately; PR #65 changes verification machinery only** |
 | Pre-D9 readiness | **BLOCKED** |
 | D9 — Adversarial Architecture Review | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
 
 ## Current result
 
-- PR #61 is integrated. Its Product/frontend/architecture authority remains intact; methodology adoption does not reinterpret or mutate it.
-- PR #62 remains a separate repository-governance acceptance increment. It pins and routes the accepted DevelopmentConexus methodology, removes duplicate active local methodology authority, preserves genuine MPC specialization, and strengthens aggregate repository conformance.
-- Independent R1 found no MATERIAL defect. Bounded corrections removed the retained guide's floating/dead Method links, added single-pin consumer enforcement with deterministic falsifiers, proved all bootstrap predicate branches, and narrowed the local frontend lineage claim to reachable v2.1 history.
-- The reusable single-pin consumer census and canonical v2.3-lineage provenance residue are METHOD FINDING inputs for the canonical methodology owner; they do not reopen Marketplace Product authority.
-- AuthorizationRequest Global Maximum, Product **106/31/H-A-S**, D7-R, D8-R, OAD source-hygiene guards, and all operator LOCKs remain unchanged.
-- B10 remains paused until PR #62 is accepted/integrated and B10 is then boundedly revalidated against the accepted pinned frontend method.
+- Methodology adoption is integrated at `689dab34b0a756cbd7c790a6c5277d887ced0b4c`.
+- PR #65 removes accidental CI ceremony: Draft PRs use quick/change-aware verification; Ready candidates and `main` use the full aggregate gate; the stable `required` check remains.
+- Quick verification preserves repository/bootstrap/methodology/diff hygiene and invokes only directly affected lightweight verifiers; it does not claim whole-Product non-regression.
+- Full verification remains the integration proof and retains Product historical/current, D7-R, D8-R, W1 and OAD source-reachability coverage.
+- PR #64/B10 is an explicit independent parallel candidate. Nothing in #65 treats it as accepted, merged, or semantically changed.
+- Product **106/31/H-A-S**, accepted OAD, runtime baseline NONE, existing LOCKs and implementation block remain unchanged.
 
 ```text
-PR #61 integrated → methodology-adoption PR #62 → B10 continuation inside D6-R2 → Pre-D9 readiness → D9 → Product implementation only after accepted D9
+PR #65 CI proportionality → integrate only after full proof/review → continue PR #64 B10 independently → Pre-D9 readiness → D9 → implementation only after accepted D9
 ```
 
 One coherent acceptance increment lands before the next. Return to [`index.md`](index.md) for task routing.
