@@ -71,10 +71,11 @@ Use this pack only after `AGENTS.md → docs/index.md → docs/roadmap.md` route
 - [D6-R P9-F1 Supersession Ratification](D6-R2-NOTIF-01-D6-R-P9-F1-SUPERSESSION-RATIFICATION.md)
 - [P9 AuthorizationRequest Bidirectional Screen Contracts](D6-R2-P9-AUTHORIZATION-REQUEST-BIDIRECTIONAL-SCREEN-CONTRACTS.md)
 
-## Independent closure and runtime feed-forward
+## Independent closure and runtime / golden-flow feed-forward
 
 - [AuthorizationRequest Fable Adjudication](D6-R2-AUTHORIZATION-REQUEST-FABLE-ADJUDICATION.md)
 - [AuthorizationRequest Fable Ratification](D6-R2-AUTHORIZATION-REQUEST-FABLE-RATIFICATION.md)
 - [D7-R AuthorizationRequest Runtime Repair](D6-R2-NOTIF-01-D7-R-AUTHORIZATION-REQUEST-RUNTIME-REPAIR.md)
+- [D8-R AuthorizationRequest Golden-Flow Revalidation](D6-R2-NOTIF-01-D8-R-AUTHORIZATION-REQUEST-GOLDEN-FLOW-REVALIDATION.md)
 
 This route pack exists only so every durable D6-R2 authority/evidence document remains reachable from the canonical bootstrap graph while `docs/roadmap.md` stays compact. Frozen historical `Exact next action` prose inside routed documents remains a snapshot; current mutable status is always the roadmap.
