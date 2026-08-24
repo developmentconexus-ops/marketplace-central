@@ -24,6 +24,10 @@ const NOTIFICATION_IDS = [
   'ListNotificationRouteRecipientCandidates',
   'SetNotificationRoute',
 ];
+const AUTHORIZATION_REQUEST_IDS = [
+  'ListMyActionableAuthorizationRequests',
+  'GetMyActionableAuthorizationRequest',
+];
 let negativeControls = 0;
 
 function fail(message) { throw new Error(message); }
@@ -79,6 +83,26 @@ function stripMarkedBlock(source, startMarker, endMarker, label) {
   return source.slice(0, start) + source.slice(endOfLine >= 0 ? endOfLine + 1 : source.length);
 }
 
+function rewindAuthorizationRequestSurface(source) {
+  const requestBlock = [
+    "  '/organizations/{organization_id}/authorization-requests':",
+    "    $ref: './paths-authorization-requests.yaml#/pathItems/AuthorizationRequests'",
+    "  '/organizations/{organization_id}/authorization-requests/{authorization_request_id}':",
+    "    $ref: './paths-authorization-requests.yaml#/pathItems/AuthorizationRequest'",
+    "  '/organizations/{organization_id}/authorization-requests/{authorization_request_id}:decide':",
+    "    $ref: './paths-authorization-requests.yaml#/pathItems/DecideAuthorizationRequest'",
+    '',
+  ].join('\n');
+  assert(source.includes(requestBlock), 'historical fixture cannot locate D5-R6 AuthorizationRequest path block');
+  source = source.replace(requestBlock, '');
+  source = source.replace("./paths-authorization-requests.yaml#/pathItems/AuthorizationDecisions", "./paths-economics-governance-sales-materialization.yaml#/pathItems/AuthorizationDecisions");
+  source = source.replace("./paths-authorization-requests.yaml#/pathItems/AuthorizationDecision", "./paths-economics-governance-sales-materialization.yaml#/pathItems/AuthorizationDecision");
+  source = source.replaceAll("./paths-work-authorization-request.yaml#/pathItems/", "./paths-fulfillment-postsale-work.yaml#/pathItems/");
+  const aliases = source.indexOf('\n  schemas:\n');
+  assert(aliases >= 0, 'historical fixture cannot locate D5-R6 root schema aliases');
+  return source.slice(0, aliases).trimEnd() + '\n';
+}
+
 function historical99Proof() {
   const historicalRoot = join(temp, 'historical-99-root');
   mkdirSync(join(historicalRoot, 'contracts/api'), { recursive: true });
@@ -94,6 +118,7 @@ function historical99Proof() {
   const historicalEntry = join(historicalContractDir, 'openapi.yaml');
   let openapiSource = readFileSync(historicalEntry, 'utf8');
   openapiSource = stripMarkedBlock(openapiSource, NOTIF_START, NOTIF_END, 'NOTIF-01 paths');
+  openapiSource = rewindAuthorizationRequestSurface(openapiSource);
   writeFileSync(historicalEntry, openapiSource, 'utf8');
 
   const accessPath = join(historicalContractDir, 'paths-access-performance.yaml');
@@ -101,7 +126,12 @@ function historical99Proof() {
   assert(accessSource.includes(', notifications.manage]'), 'historical fixture cannot remove notifications.manage from effective Permission enum');
   accessSource = accessSource.replace(', notifications.manage]', ']');
   writeFileSync(accessPath, accessSource, 'utf8');
-  rmSync(join(historicalContractDir, 'paths-notifications.yaml'), { force: true });
+  for (const file of [
+    'paths-notifications.yaml',
+    'paths-notifications-authorization-request.yaml',
+    'paths-authorization-requests.yaml',
+    'paths-work-authorization-request.yaml',
+  ]) rmSync(join(historicalContractDir, file), { force: true });
 
   const result = run(process.execPath, [join(historicalRoot, 'scripts/verify-product-oad.mjs')], { cwd: historicalRoot });
   if (result.stdout?.trim()) console.log(result.stdout.trim());
@@ -144,14 +174,14 @@ function validateAuth(document) {
   assert(profile?.machine?.grant === 'client_credentials', 'machine bearer must use Client Credentials baseline');
 
   const all = operations(document);
-  assert(all.length === 104, `current Product surface must contain 104 operations, found ${all.length}`);
-  assert(new Set(all.map((entry) => entry.operation.operationId)).size === 104, 'current operationId values are not unique');
+  assert(all.length === 106, `current Product surface must contain 106 operations, found ${all.length}`);
+  assert(new Set(all.map((entry) => entry.operation.operationId)).size === 106, 'current operationId values are not unique');
   for (const entry of all) {
     assert(!Object.hasOwn(entry.operation, 'security'), `${entry.operation.operationId} must not shadow the canonical split auth profile`);
     const kinds = entry.operation['x-mpc-principal-kinds'] ?? [];
     assert(kinds.length > 0 && kinds.every((kind) => ['H', 'A', 'S'].includes(kind)), `${entry.operation.operationId} principal kinds changed during current auth proof`);
   }
-  for (const id of NOTIFICATION_IDS) assert(all.some((entry) => entry.operation.operationId === id), `current generated surface missing ratified NOTIF-01 operation ${id}`);
+  for (const id of [...NOTIFICATION_IDS, ...AUTHORIZATION_REQUEST_IDS]) assert(all.some((entry) => entry.operation.operationId === id), `current generated surface missing ratified operation ${id}`);
   return all;
 }
 
@@ -191,7 +221,7 @@ function currentProjectionProof(bundlePath) {
   assert(sha256(tsA) === sha256(tsB), 'current TypeScript projection is not deterministic');
   runNpx(['--yes', '-p', 'typescript@5.9.3', 'tsc', '--noEmit', '--strict', '--skipLibCheck', tsA]);
   const tsText = readFileSync(tsA, 'utf8');
-  for (const id of NOTIFICATION_IDS) assert(tsText.includes(id), `generated TypeScript projection missing ${id}`);
+  for (const id of [...NOTIFICATION_IDS, ...AUTHORIZATION_REQUEST_IDS]) assert(tsText.includes(id), `generated TypeScript projection missing ${id}`);
   assert(tsText.includes('notifications.manage'), 'generated TypeScript projection missing notifications.manage');
 
   const goDir = join(temp, 'current-go-proof');
@@ -213,7 +243,7 @@ function currentProjectionProof(bundlePath) {
   generate();
   assert(sha256(generatedPath) === firstHash, 'current Go projection is not deterministic');
   const goText = readFileSync(generatedPath, 'utf8');
-  for (const id of NOTIFICATION_IDS) assert(goText.includes(id), `generated Go projection missing ${id}`);
+  for (const id of [...NOTIFICATION_IDS, ...AUTHORIZATION_REQUEST_IDS]) assert(goText.includes(id), `generated Go projection missing ${id}`);
   writeFileSync(join(goDir, 'go.mod'), ['module productcurrentproof', '', 'go 1.25.1', '', 'require github.com/oapi-codegen/runtime v1.7.0', ''].join('\n'));
   run(go, ['mod', 'tidy'], { cwd: goDir });
   run(go, ['test', './...'], { cwd: goDir });
@@ -231,7 +261,7 @@ function currentAuthProof() {
   const all = validateAuth(document);
   negativeAuthControls(document);
   currentProjectionProof(bundleA);
-  console.log(`product_oad_operations=${all.length}/104`);
+  console.log(`product_oad_operations=${all.length}/106`);
   console.log('product_oad_auth_human=OIDC_SERVER_SESSION_COOKIE_CSRF');
   console.log('product_oad_auth_machine=CLIENT_CREDENTIALS_BEARER_A_S');
   console.log(`product_oad_auth_negative_controls=${negativeControls}/5`);
