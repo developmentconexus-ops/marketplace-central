@@ -11,7 +11,10 @@
 | Product | **Marketplace Operations Control Plane + Commercial Intelligence** |
 | Current stage | **D6-R2 — Complete Frontend Realization Closure — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
-| Current acceptance increment | **PR #61 accumulated Product/frontend/architecture checkpoint — PROVED / READY FOR INTEGRATION; D6-R2 remains OPEN after integration** |
+| Integrated checkpoint | **PR #61 squash-integrated at `b54d17bfe6d794645d198a9160f4a2a1c63647e8`; D6-R2 remained OPEN** |
+| Current acceptance increment | **PR #62 — DevelopmentConexus methodology adoption — REVIEW CONVERGED / PROVED / READY FOR INTEGRATION; repository-governance only** |
+| Methodology target pin | **`developmentconexus-ops/conexus-methodology@9c7210d1504bef01c0d134a6c3ae8627deebb535`** |
+| Independent review | **R1 CONVERGED — no MATERIAL finding; R1-F1/F2/F3 bounded corrections absorbed; R1-F4 upstream provenance note; R1-F5 no-change reopen trigger** |
 | D6-R2 | [Closure](engineering/rebaseline/D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md) · [authority route](engineering/rebaseline/D6-R2-AUTHORITY-ROUTE.md) — **WHOLE-REPO FABLE R-1 + R-2 CLOSED; B10 PAUSED** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **106 Product operations · 31 ordinary Permissions · Principal kinds H / A / S only** |
@@ -19,7 +22,7 @@
 | OAD source hygiene | **49 exact frozen historical-proof definitions; 0 new orphans; content digest guarded** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Await separate explicit operator authorization to squash-merge PR #61. After merge: revalidate `main`, then open a new independent methodology-adoption acceptance increment pinned to `developmentconexus-ops/conexus-methodology@9c7210d1504bef01c0d134a6c3ae8627deebb535`. Do not adopt methodology in PR #61, resume B10, or implement Product code first.** |
+| Exact next action | **Run final aggregate verification for the exact PR #62 candidate, then STOP and await separate explicit operator authorization to squash-merge PR #62. Do not resume B10, begin Pre-D9/D9, or implement Product code before that integration.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -40,21 +43,22 @@
 | D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED baseline; D7-R ACCEPTED** |
 | D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED; D8-R ACCEPTED** |
 | D8-R2 — GF-02 Operational Read Revalidation | **ACCEPTED / PASS** |
-| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — PR #61 CHECKPOINT PROVED / READY FOR INTEGRATION; B10 PAUSED** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — PR #61 INTEGRATED; METHODOLOGY ADOPTION PR #62 REVIEW-CONVERGED / READY FOR INTEGRATION; B10 PAUSED** |
 | Pre-D9 readiness | **BLOCKED** |
 | D9 — Adversarial Architecture Review | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
 
 ## Current result
 
-- PR #61 remains an accumulated legacy checkpoint, not the future PR-granularity model. Its Product/frontend/architecture content is proved and ready for integration; merging it does **not** close D6-R2.
-- AuthorizationRequest Global Maximum remains accepted; D5-R7 changes only the custom-method revision carrier to canonical W1 typed-request semantics.
-- Fable R-2 remains closed with **16 pathItems + 33 schemas = 49** exact frozen historical-proof definitions and **0 new orphans**; historical **95/29 + 99/30** and current **106/31** proofs remain binding.
-- The accepted DevelopmentConexus methodology upgrade is a separate repository-governance acceptance increment. It must start from revalidated post-#61 `main`; it does not reinterpret or mutate this Product checkpoint.
-- B10 stays paused until that separate methodology adoption is integrated and B10 is boundedly revalidated against it.
+- PR #61 is integrated. Its Product/frontend/architecture authority remains intact; methodology adoption does not reinterpret or mutate it.
+- PR #62 remains a separate repository-governance acceptance increment. It pins and routes the accepted DevelopmentConexus methodology, removes duplicate active local methodology authority, preserves genuine MPC specialization, and strengthens aggregate repository conformance.
+- Independent R1 found no MATERIAL defect. Bounded corrections removed the retained guide's floating/dead Method links, added single-pin consumer enforcement with deterministic falsifiers, proved all bootstrap predicate branches, and narrowed the local frontend lineage claim to reachable v2.1 history.
+- The reusable single-pin consumer census and canonical v2.3-lineage provenance residue are METHOD FINDING inputs for the canonical methodology owner; they do not reopen Marketplace Product authority.
+- AuthorizationRequest Global Maximum, Product **106/31/H-A-S**, D7-R, D8-R, OAD source-hygiene guards, and all operator LOCKs remain unchanged.
+- B10 remains paused until PR #62 is accepted/integrated and B10 is then boundedly revalidated against the accepted pinned frontend method.
 
 ```text
-PR #61 integration → methodology-adoption increment → B10 continuation inside D6-R2 → Pre-D9 readiness → D9 → Product implementation only after accepted D9
+PR #61 integrated → methodology-adoption PR #62 → B10 continuation inside D6-R2 → Pre-D9 readiness → D9 → Product implementation only after accepted D9
 ```
 
 One coherent acceptance increment lands before the next. Return to [`index.md`](index.md) for task routing.

@@ -9,11 +9,13 @@ Read, in order:
 1. [`../AGENTS.md`](../AGENTS.md)
 2. this file
 3. [`roadmap.md`](roadmap.md)
-4. one or two owning documents for the concrete task
+4. pinned [`ROUTER.md`](https://github.com/developmentconexus-ops/conexus-methodology/blob/9c7210d1504bef01c0d134a6c3ae8627deebb535/ROUTER.md)
+5. the Method profile selected by that router
+6. one or two repository owners for the concrete task
 
-Default task pack: **5 files or fewer**. Do not recursively read phase history, ADRs, Evidence, Git history, or removed runtime unless a concrete question requires them.
+The repository-local authority pack defaults to **5 files or fewer**; selected methodology files are a separate Method profile. Do not recursively read phase history, ADRs, Evidence, Git history, research, or removed runtime unless a concrete question requires them.
 
-Pre-standard current-status/read-order prose inside accepted D-stage, architecture or retained ADR artifacts is a **frozen routing snapshot**. This router and `docs/roadmap.md` supersede that prose for navigation/status only; the owning documents' accepted Product/architecture semantics remain unchanged.
+Pre-standard current-status/read-order prose inside accepted D-stage, architecture, or retained ADR artifacts is a **frozen routing snapshot**. This router and `docs/roadmap.md` supersede that prose for navigation/status only; the owning documents' accepted Product/architecture semantics remain unchanged.
 
 ## Task routes
 
@@ -21,7 +23,7 @@ Pre-standard current-status/read-order prose inside accepted D-stage, architectu
 | --- | --- | --- |
 | Current stage, allowed/blocked work, exact next action | [`roadmap.md`](roadmap.md) | phase history |
 | Product mission, scope, actors, Product 1.0 boundary | [D0 Product/System Definition](engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md) | D1–D5 |
-| Domains, semantic owners, allowed ownership edges | [D1 Domains/Boundaries](engineering/rebaseline/D1-DOMAINS-BOUNDARIES.md); for the current bounded Performance amendment also [D6-R1 Marketplace Performance Intelligence](engineering/rebaseline/D6-R1-MARKETPLACE-PERFORMANCE-INTELLIGENCE.md) | implementation history |
+| Domains, semantic owners, allowed ownership edges | [D1 Domains/Boundaries](engineering/rebaseline/D1-DOMAINS-BOUNDARIES.md); for the bounded Performance amendment also [D6-R1 Marketplace Performance Intelligence](engineering/rebaseline/D6-R1-MARKETPLACE-PERFORMANCE-INTELLIGENCE.md) | implementation history |
 | Organization, Principal, identity, data ownership, knowledge/provenance | [D2 Identity/Tenant/Data Ownership](engineering/rebaseline/D2-IDENTITY-TENANT-DATA-OWNERSHIP.md) | provider/runtime details |
 | Human-readable Organization/Principal/AccessRole presentation identity | [D2-R1 Presentation Identity](engineering/rebaseline/D2-R1-PRESENTATION-IDENTITY.md) | profile/directory/runtime mechanics |
 | Marketplace Performance Intelligence bounded D0–D5 repair, historical performance evidence, retail-media read contract | [D6-R1 Marketplace Performance Intelligence](engineering/rebaseline/D6-R1-MARKETPLACE-PERFORMANCE-INTELLIGENCE.md) | D7 runtime/storage realization, Ads management, AI implementation |
@@ -31,42 +33,43 @@ Pre-standard current-status/read-order prose inside accepted D-stage, architectu
 | Product API semantic laws | [D5 API](engineering/rebaseline/D5-API.md) | D6–D9 |
 | Operational collection/read projection repair for D6-R2 triage (`OP-READ-01`) | [D5-R2 Operational Read Projection Repair](engineering/rebaseline/D5-R2-OPERATIONAL-READ-PROJECTION-REPAIR.md) | broad D5 history; implementation/runtime |
 | Frontend interaction/authority model, screen→Product capability mapping, frontend topology | [D6 Frontend](engineering/rebaseline/D6-FRONTEND.md) | D7–D9 and removed frontend runtime |
-| Frontend product-experience planning process / D6-R2 execution method | [Frontend Product Experience Planning Method v2.1](development/frontend-product-experience-planning-method.md) — reusable methodology, not stage/status authority | stage semantics; use `roadmap.md` + owning authority |
+| Frontend Product Experience planning / D6-R2 execution method | pinned [`METHOD.md`](https://github.com/developmentconexus-ops/conexus-methodology/blob/9c7210d1504bef01c0d134a6c3ae8627deebb535/METHOD.md) + [`FRONTEND-METHOD.md`](https://github.com/developmentconexus-ops/conexus-methodology/blob/9c7210d1504bef01c0d134a6c3ae8627deebb535/FRONTEND-METHOD.md) | superseded local methodology prose; stage status |
 | Runtime/process topology and whole-D7 integration | [D7 Runtime / Jobs / Transactions](engineering/rebaseline/D7-RUNTIME-JOBS-TRANSACTIONS.md) | D8–D9 and removed runtime |
 | PostgreSQL Organization isolation, RLS, transaction scope, idempotency, ETag/revision | [D7-B PostgreSQL Isolation & Transactions](engineering/rebaseline/D7-B-POSTGRESQL-ISOLATION-TRANSACTIONS.md) | D7-C–E and full schema census |
 | Durable work, River, retries, external-effect ambiguity/reconciliation | [D7-C Durable Work & External Effects](engineering/rebaseline/D7-C-DURABLE-WORK-EXTERNAL-EFFECTS.md) | auth/deployment and generic workflow assumptions |
 | Human session/CSRF/OIDC and A/S machine bearer realization | [D7-D Authentication / Session / CSRF](engineering/rebaseline/D7-D-AUTHENTICATION-SESSION-CSRF.md) | D7-E and generic IAM |
 | HTTP runtime validation, byte storage, secrets, migrations, telemetry, deployment/backup/proof | [D7-E Operability / Deployment / Proof](engineering/rebaseline/D7-E-OPERABILITY-DEPLOYMENT-PROOF.md) | D8–D9 and provider-specific infra by preference |
 | Golden-flow GF-02 operational-read revalidation | [D8-R2 GF-02 Operational Read Revalidation](engineering/rebaseline/D8-R2-OPERATIONAL-READ-REVALIDATION.md) | unrelated D8 probes/runtime proof |
+| Current D6-R2 accumulated authority/evidence routing | [D6-R2 Authority Route](engineering/rebaseline/D6-R2-AUTHORITY-ROUTE.md) | recursive rebaseline history |
 | Current decision-generation reconciliation | [Decision Reconciliation Baseline](engineering/rebaseline/DECISION-RECONCILIATION-BASELINE.md) | all phase history |
 | Stable cross-stage architecture constraints | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | all phase documents |
 | ADR disposition / retirement trigger | [ADR Registry](architecture/decisions/README.md), then only the named ADR | all ADRs |
 | Historical/current-state Evidence for a concrete decision | [Evidence Register](engineering/rebaseline/EVIDENCE-REGISTER.md), then exact cited ref/path | repository archaeology |
-| Repository-local engineering/Git/CI/proof rules | [`development/engineering-rules.md`](development/engineering-rules.md) | organizational Method text copied locally |
-| Production coding, technology research, framework/dependency evaluation and source hierarchy | [Evidence-Grounded Production Engineering for LLM Agents](development/evidence-grounded-production-engineering-for-llm-agents.md) — derived guide, non-authoritative | broad recursive research |
+| Repository-local engineering/Git/CI/proof specialization | [`development/engineering-rules.md`](development/engineering-rules.md) | organizational Method text copied locally |
+| Production coding, technology/dependency research, integration/proof | pinned [`METHOD.md`](https://github.com/developmentconexus-ops/conexus-methodology/blob/9c7210d1504bef01c0d134a6c3ae8627deebb535/METHOD.md) + [`REALIZATION-METHOD.md`](https://github.com/developmentconexus-ops/conexus-methodology/blob/9c7210d1504bef01c0d134a6c3ae8627deebb535/REALIZATION-METHOD.md); the retained [legacy derived guide](development/evidence-grounded-production-engineering-for-llm-agents.md) is optional reference only | broad recursive research |
 
 ## Product OAD bounded subpacks
 
-Canonical Product OAD authoring is material and spans several accepted D5 homes. Do **not** open all of them at once. Use one subpack at a time; every subpack remains within the five-file repository limit.
+Canonical Product OAD authoring is material and spans several accepted D5 homes. Do **not** open all of them at once. Use one subpack at a time; every repository-local subpack remains within the five-file default.
 
-**Start / authority and tooling — 4 files total with the bootstrap:**
+**Start / authority and tooling — 4 repository files total with the bootstrap:**
 
 - this router + [`roadmap.md`](roadmap.md);
 - [D5 API](engineering/rebaseline/D5-API.md);
 - [OpenAPI Wire Authority / Tooling](engineering/rebaseline/D5-B2-OPENAPI-WIRE-AUTHORITY-TOOLING.md).
 
-**Operation/path authoring — add at most 3 owning files:**
+**Operation/path authoring — add at most 3 owners:**
 
 - [Operation Admission Matrix](engineering/rebaseline/D5-B2-OPERATION-ADMISSION-MATRIX.md);
 - [Product Operation Surface](engineering/rebaseline/D5-B2-PRODUCT-OPERATION-SURFACE.md);
 - [W1 Wire Contract](engineering/rebaseline/D5-B2-WIRE-CONTRACT.md).
 
-**Schema/collection authoring — add at most 2 owning files:**
+**Schema/collection authoring — add at most 2 owners:**
 
 - [W2 Schema Grammar](engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md);
 - [W3 Collection Grammar](engineering/rebaseline/D5-B2-W3-COLLECTION-GRAMMAR.md).
 
-**Access/technical exclusion proof — add at most 2 owning files:**
+**Access/technical exclusion proof — add at most 2 owners:**
 
 - [W4 Permission / Client-Class Enforcement](engineering/rebaseline/D5-B2-W4-PERMISSION-CLIENT-CLASS-ENFORCEMENT.md);
 - [Technical Ingress](engineering/rebaseline/D5-B2-TECHNICAL-INGRESS.md).
@@ -79,9 +82,9 @@ Switch subpacks as the concrete authoring question changes. Read D0–D4 only wh
 
 ## D6 Frontend bounded subpacks
 
-D6 must consume accepted Product/API authority without re-reading the full rebaseline. Use one subpack at a time.
+For frontend planning, the selected Method profile is pinned `METHOD + FRONTEND-METHOD`. Repository-local authority remains separate.
 
-**Start / interaction authority — 5 files total with the bootstrap:**
+**Start / interaction authority — 5 repository files total with the bootstrap:**
 
 - [`../AGENTS.md`](../AGENTS.md);
 - this router;
@@ -89,31 +92,24 @@ D6 must consume accepted Product/API authority without re-reading the full rebas
 - [D6 Frontend](engineering/rebaseline/D6-FRONTEND.md);
 - [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
 
-**Screen / Product capability mapping — replace `ARCHITECTURE.md` with the machine-readable Product authority:**
+**Screen / Product capability mapping — replace `ARCHITECTURE.md` with machine-readable Product authority:**
 
 - [D6 Frontend](engineering/rebaseline/D6-FRONTEND.md);
 - [`../contracts/api/product/openapi.yaml`](../contracts/api/product/openapi.yaml).
 
-Use D5 narrative documents only when the canonical OAD plus D6 authority cannot answer a concrete wire-semantic question. For the bounded human-readable Organization/Principal/AccessRole label rule, switch to D2-R1 rather than inventing frontend-local identity. For the strategy/performance workspace and repaired 99/30 Product surface, switch to D6-R1 rather than inventing frontend-local analytics.
+Use D5 narrative only when the OAD plus D6 authority cannot answer a concrete wire-semantic question. For human-readable Organization/Principal/AccessRole labels, switch to D2-R1. For strategy/performance and the repaired 99/30 surface, switch to D6-R1.
 
-**Frontend dependency/topology research — replace the OAD/architecture owner with the derived research guide only when a concrete technology question exists:**
-
-- [D6 Frontend](engineering/rebaseline/D6-FRONTEND.md);
-- [Evidence-Grounded Production Engineering for LLM Agents](development/evidence-grounded-production-engineering-for-llm-agents.md).
-
-Do not select D7 runtime/router/database/deployment mechanics from D6 research.
+Technology/dependency questions switch the Method profile to pinned `METHOD + REALIZATION-METHOD`; they do not authorize D7 runtime/router/database/deployment decisions from frontend preference.
 
 ## D7 Runtime bounded subpacks
 
-Start from the D7 task-route row above and add only the one accepted prior owner needed for the concrete invariant. Do not read D7-A→D7-E recursively by default; whole-D7 review is the only task that intentionally composes the entire set.
+Start from the D7 task-route row above and add only the accepted prior owner needed for the concrete invariant. Do not read D7-A→D7-E recursively by default; whole-D7 review is the only task that intentionally composes the entire set.
 
-Do not begin D8 golden-flow choreography or Product implementation from D7 research.
+Do not begin D8 choreography or Product implementation from D7 research.
 
-## Organizational standards
+## Organizational methodology
 
-Canonical, external to this repository:
+Canonical repository: `developmentconexus-ops/conexus-methodology`  
+Accepted pin: `9c7210d1504bef01c0d134a6c3ae8627deebb535`
 
-- `developmentconexus-ops/conexus-methodology/METHOD.md` — **DevelopmentConexus Engineering Method v1.0.0**
-- `developmentconexus-ops/conexus-methodology/REPOSITORY-STANDARD.md` — **DevelopmentConexus Repository Standard v1.0.0**
-
-No local copy is Product or repository authority.
+Start at pinned [`ROUTER.md`](https://github.com/developmentconexus-ops/conexus-methodology/blob/9c7210d1504bef01c0d134a6c3ae8627deebb535/ROUTER.md). It selects `METHOD.md` and at most the specialist Method required by the current task by default. No local copy is independent methodology authority.
