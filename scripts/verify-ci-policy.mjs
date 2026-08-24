@@ -50,14 +50,16 @@ function expectFailure(name, body) {
   negativeControls += 1;
 }
 
-expectFailure('lane inversion', () => verifyWorkflowPolicy(
-  ci.replace('run: npm run gate\n', 'run: npm run gate:full\n')
-    .replace('run: npm run gate:full\n', 'run: npm run gate\n'),
+expectFailure('quick lane inverted to full', () => verifyWorkflowPolicy(
+  ci.replace('run: npm run gate\n', 'run: npm run gate:full\n'),
+));
+expectFailure('full lane inverted to quick', () => verifyWorkflowPolicy(
+  ci.replace('run: npm run gate:full\n', 'run: npm run gate\n'),
 ));
 expectFailure('required context leaked to Draft', () => verifyWorkflowPolicy(
-  ci.replace(dynamicCheckName, "name: required"),
+  ci.replace(dynamicCheckName, 'name: required'),
 ));
-assert(negativeControls === 2, `CI policy negative-control count mismatch: ${negativeControls}/2`);
+assert(negativeControls === 3, `CI policy negative-control count mismatch: ${negativeControls}/3`);
 
 assert(!prTitle.includes('synchronize'), 'PR title check must not rerun on synchronize-only events');
 assert(prTitle.includes('opened') && prTitle.includes('edited') && prTitle.includes('reopened'), 'PR title check must still cover title-changing lifecycle events');
@@ -72,6 +74,6 @@ assert(gate.includes('product_proof:'), 'gate.ps1 must report whether Product OA
 
 console.log('ci_policy_draft_context=QUICK_ADVISORY');
 console.log('ci_policy_candidate_context=REQUIRED_FULL');
-console.log('ci_policy_negative_controls=2/2');
+console.log('ci_policy_negative_controls=3/3');
 console.log('ci_policy_pr_title_synchronize=SKIPPED');
 console.log('ci_policy=PASS');
