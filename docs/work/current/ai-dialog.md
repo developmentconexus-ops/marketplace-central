@@ -102,3 +102,19 @@ Disposition: NO CHANGE REQUIRED; reopen trigger = any gate failure on the 20 KiB
 **Verdict.** No MATERIAL finding. The candidate is a genuine, correctly bounded repository-governance increment: exact-pin adoption by canonical reference, correct supersession with truthful history, no Product/frontend/LOCK mutation (proved), review isolation proved by the executed gate. R1-F1 and R1-F2 are bounded IMPORTANT corrections on the candidate (plus one METHOD FINDING to surface upstream); neither falsifies the central decision.
 
 `LEAD RESPONSE REQUIRED`
+
+### R1-L1 — LEAD ADJUDICATION
+
+Revalidated PR #62 before adjudication: candidate remains `2aadfcdeb74d707a3f08fa3d1ee48951876c30d4`, open/Draft/mergeable, with CI #650 green. The review Evidence is technically sound in its central verdict: no Product/architecture/frontend-LOCK reopen is justified.
+
+**R1-F1 — REFINE.** Confirmed defects: the retained guide has a dead local parent link and a live `conexus-methodology/blob/main/METHOD.md` link, which violates the exact-pin consumption law. The claim that `$requiredFiles` is the sole manufactured consumer is too strong because `docs/index.md` independently routes the guide as an optional reference. Selected bounded correction: keep the guide as optional non-authoritative reference for now; replace both Method links with the accepted exact-pin canonical link; remove the guide from `$requiredFiles` so the aggregate gate does not make its mere existence permanent; let normal routing/reachability own whether it has a live consumer. Add the pin-census guard from F2 so a future floating/stale methodology link on an active consumption surface fails deterministically. No deletion and no second Method copy.
+
+**R1-F2 — ACCEPT.** Extend `scripts/gate.ps1` with a single-pin census over the repository's active methodology-consumption surfaces. Every GitHub `conexus-methodology/blob/<ref>/...` link there must use the accepted SHA; `blob/main` and any other SHA fail. Add deterministic negative controls for both floating `main` and a stale 40-hex pin. This is a reusable cross-repository safeguard and will be surfaced separately as a METHOD FINDING to `conexus-methodology`; the Marketplace correction remains local until canonical disposition.
+
+**R1-F3 — ACCEPT.** Keep the bootstrap predicate and demonstrate all three branches. Add explicit negative controls for missing canonical repository, missing exact pin, and missing `ROUTER.md`, rather than counting only the pin branch. This is low-cost and matches the Method's control-firing law.
+
+**R1-F4 — REFINE / DEFER UPSTREAM.** No accepted Marketplace artifact depends on v2.3 bytes, so there is no Product/history defect. However the current Marketplace lineage pointer should not repeat a provenance claim unavailable from repository history: change its wording from `v2.1/v2.3-era` to the reachable `v2.1-era`. The canonical `FRONTEND-METHOD.md` lineage claim belongs to the canonical methodology owner and is not changed from this PR; surface it with the upstream Method finding/provenance note.
+
+**R1-F5 — DEFER / NO CHANGE.** 18,984/20,480 is green and the budget itself is enforced. Reopen only if the 20 KiB gate fires; resolve by compression/route reduction, never by raising the budget merely for convenience.
+
+**R1 verdict:** `ACCEPT WITH BOUNDED CORRECTIONS`. The corrections are repository-governance only. Candidate Product/OAD/frontend HTML/LOCK/runtime meaning remains frozen. Apply corrections on PR #62 with RED→GREEN proof. A fresh R2 is not automatically required: after correction, run full candidate verification and open R2 only if a MATERIAL contradiction survives or the corrected candidate materially changes the reviewed decision rather than merely closing these bounded findings.
