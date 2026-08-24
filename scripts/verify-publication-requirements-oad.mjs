@@ -125,7 +125,7 @@ function expectFailure(name, mutate) {
 expectFailure('publication context erased', (text) => text.replace('  PublicationRequirementsContext:', '  BrokenPublicationRequirementsContext:'));
 expectFailure('unsupported source state collapsed', (text) => text.replace('state: {const: unsupported}', 'state: {const: unknown}'));
 expectFailure('provider requirement class collapsed', (text) => text.replace('[required, recommended, optional, conditional]', '[required, optional]'));
-expectFailure('text max constraint erased', (text) => text.replace('      max_length:', '      erased_max_length:'));
+expectFailure('text max constraint erased', (text) => text.replace('      max_length:', '      erased_length:'));
 expectFailure('candidate knowledge duplicated', (text) => text.replace('required: [candidate_key, value]', 'required: [candidate_key, state]'));
 expectFailure('conflict cardinality weakened', (text) => text.replace('candidates: {type: array, minItems: 2,', 'candidates: {type: array, minItems: 1,'));
 expectFailure('response publication context omitted', (text) => text.replace('[subject, publication_context, requirements_revision, requirements, source_media_candidates, evaluated_at]', '[subject, requirements_revision, requirements, source_media_candidates, evaluated_at]'));
