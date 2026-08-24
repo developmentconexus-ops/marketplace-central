@@ -151,8 +151,8 @@ function branchByKind(document, schema, kind) {
 function validate(document) {
   const all = operations(document);
   for (const id of NOTIFICATION_IDS) byId(all, id);
-  assert(all.length === 104, `Product operation count must be 104 after NOTIF-01, found ${all.length}`);
-  assert(new Set(all.map((entry) => entry.operation.operationId)).size === 104, 'operationId values are not unique');
+  assert(all.length === 106, `Product operation count must be 106 after D5-R6, found ${all.length}`);
+  assert(new Set(all.map((entry) => entry.operation.operationId)).size === 106, 'operationId values are not unique');
 
   const listMine = byId(all, 'ListMyNotifications');
   const updateMine = byId(all, 'UpdateMyNotificationAwarenessState');
@@ -287,7 +287,7 @@ try {
   const document = JSON.parse(readFileSync(bundle, 'utf8'));
   const result = validate(document);
   negativeProof(document);
-  console.log(`notification_oad_operations=${result.all.length}/104`);
+  console.log(`notification_oad_operations=${result.all.length}/106`);
   console.log(`notification_oad_permissions=${result.ordinaryPermissions.length}/31`);
   console.log(`notification_oad_negative_controls=${negativeControls}/8`);
   console.log('notification_oad=PASS');
