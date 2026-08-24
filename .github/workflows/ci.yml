@@ -2,6 +2,7 @@ name: ci
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
   push:
     branches: [main]
 
@@ -27,9 +28,15 @@ jobs:
         with:
           node-version-file: .node-version
       - uses: actions/setup-go@v6
+        if: ${{ github.event_name == 'push' || github.event.pull_request.draft == false }}
         with:
           go-version: stable
           cache: false
-      - name: repository full gate
+      - name: quick gate
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == true }}
+        shell: pwsh
+        run: npm run gate
+      - name: full gate
+        if: ${{ github.event_name == 'push' || github.event.pull_request.draft == false }}
         shell: pwsh
         run: npm run gate:full
