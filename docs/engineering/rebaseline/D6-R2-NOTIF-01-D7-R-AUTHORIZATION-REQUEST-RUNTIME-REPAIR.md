@@ -1,6 +1,7 @@
 # NOTIF-01 D7-R — AuthorizationRequest Runtime / Jobs / Transactions Repair
 
-> **Status:** DERIVED / CANDIDATE — OPERATOR ADJUDICATION REQUIRED
+> **Status:** OPERATOR-RATIFIED / ACCEPTED
+> **Operator ratification:** 2026-08-24 — `Aprovado`
 > **Trigger:** [AuthorizationRequest Fable Closure Ratification](D6-R2-AUTHORIZATION-REQUEST-FABLE-RATIFICATION.md)
 > **Runtime owner:** [D7 Runtime / Jobs / Transactions](D7-RUNTIME-JOBS-TRANSACTIONS.md)
 > **Bounded mechanisms:** [D7-B PostgreSQL](D7-B-POSTGRESQL-ISOLATION-TRANSACTIONS.md) + [D7-C Durable Work](D7-C-DURABLE-WORK-EXTERNAL-EFFECTS.md) + [D7-E HTTP / Proof](D7-E-OPERABILITY-DEPLOYMENT-PROOF.md)
@@ -8,9 +9,14 @@
 > **Active runtime:** NONE
 > **Implementation:** BLOCKED UNTIL accepted D9
 
+```text
+D7R_GLOBAL_MAXIMUM:ACCEPTED
+D7R_PROOF_CLASS:STRUCTURAL_AUTHORITY_ONLY_NOT_RUNTIME_PROOF
+```
+
 ## 1. Purpose and boundary
 
-D7-R realizes the accepted `AuthorizationRequest` semantics against the already-ratified D7 runtime architecture. It does not redesign the Product or select a second runtime stack.
+D7-R realizes the accepted `AuthorizationRequest` semantics against the already-ratified D7 runtime architecture. It does not redesign the Product, create a second runtime stack or begin Product implementation.
 
 The Fable closure carries eight runtime obligations into D7-R:
 
@@ -27,26 +33,26 @@ D7-R adds **no Product operation, Permission, Principal kind, business owner, No
 
 ## 2. D7 revalidation result
 
-The accepted D7 mechanisms are sufficient:
+The accepted D7 mechanisms remain sufficient:
 
 ```text
 HTTP / strict wire       Chi v5 + oapi-codegen strict server + OAD middleware
 owner transactions       pgx/v5 + PostgreSQL READ COMMITTED + explicit locks
 Organization isolation   transaction-local scope + FORCE RLS + composite FKs
-idempotency              Organization/operation-scoped technical records
+generic idempotency      D7-B owner-local technical records
 post-commit reactions    River InsertTx
 recovery                 owner Q/revalidation + reconciliation/sweeps
 ```
 
-D7-B already requires exact prior idempotent intake to be resolved **before stale revision re-evaluation**. D7-C already requires transactionally durable consumer jobs, semantic duplicate safety, no exactly-once claim, and recovery sweeps that do not make scheduler/event delivery business authority. D7-E already requires Product Problems to be emitted from canonical Product wire semantics rather than middleware error leakage.
+D7-B already requires exact prior idempotent intake to be resolved before stale revision re-evaluation. D7-C already requires transactionally durable consumer jobs, semantic duplicate safety, no exactly-once claim, and recovery sweeps that do not make scheduler/event delivery business authority. D7-E already requires Product Problems to be emitted from canonical Product wire semantics rather than middleware error leakage.
 
-Therefore D7-R is a bounded composition repair, not D7 reconstruction.
+Therefore this is a **bounded D7 composition repair**, not D7 reconstruction.
 
-## 3. Alternatives challenged
+## 3. Alternatives challenged and adjudicated
 
 ### A — reuse accepted D7 primitives with AuthorizationRequest-specific sequencing
 
-**SELECTED — Global-Maximum candidate.** It closes every current runtime obligation while adding no infrastructure or business authority.
+**SELECTED / OPERATOR-RATIFIED — GLOBAL MAXIMUM.** It closes every current runtime obligation while adding no infrastructure or business authority.
 
 ### B — generic approval/workflow engine
 
@@ -77,36 +83,52 @@ H session/AuthN
 
 These gates are not idempotency/business replay. Current Product access may still fail closed even when an old idempotent result exists.
 
-### 4.2 Owner transaction — idempotency first
+### 4.2 Principal-scoped idempotency namespace
 
-Start one exact-Organization Governance transaction.
+The generic D7-B scope is specialized for `CreateAuthorizationDecision` because the immutable result carries the server-derived deciding Principal and a raw client key must never become cross-Principal replay/disclosure authority.
 
-Idempotency identity remains D7-B scoped by:
+The accepted uniqueness namespace is:
 
 ```text
 organization_id
++ effective PrincipalID
 + CreateAuthorizationDecision operation identity
 + digest(Idempotency-Key)
 ```
 
-For this command the semantic fingerprint includes at least:
+```text
+D7R_IDEMPOTENCY_SCOPE:ORGANIZATION_PRINCIPAL_OPERATION_KEY
+```
+
+The effective Principal is derived from trusted authentication/current Product access context. It is **not** a client field, credential digest or caller-authored authority.
+
+Within that namespace, the semantic fingerprint includes at least:
 
 ```text
-effective PrincipalID
-+ authorization_request_id
+authorization_request_id
 + supplied If-Match
 + outcome
 ```
 
-The Principal is semantic actor identity, not credential material. Including it prevents one human's key/result from becoming another eligible human's replay result.
+```text
+D7R_IDEMPOTENCY_FINGERPRINT:REQUEST_IFMATCH_OUTCOME
+```
 
-Processing order:
+A same raw Idempotency-Key under a different effective Principal is a different idempotency namespace. It neither replays nor conflicts with the first Principal's intake merely because the raw key string is equal. The second Principal proceeds as a genuinely new decision attempt, where current request state/revision/eligibility decides admissibility.
+
+> **Binding law:** same raw Idempotency-Key under a different effective Principal is a different idempotency namespace.
+
+This specialization does not change the Product OAD or add a public identity parameter. It is a bounded D7 realization of server-attributed actor semantics.
+
+### 4.3 Idempotency before request concurrency
+
+Inside one exact-Organization Governance transaction:
 
 ```text
-lookup/claim Idempotency-Key
+lookup/claim Principal-scoped Idempotency-Key
   ├─ existing same fingerprint + committed terminal result
   │    → replay the established result
-  │    → BEFORE request-lock / If-Match / current-decision-eligibility re-evaluation
+  │    → BEFORE request lock / If-Match / current eligibility/material-validity re-evaluation
   ├─ existing different fingerprint
   │    → accepted reused-key failure
   ├─ existing genuinely in-progress intake
@@ -117,14 +139,13 @@ lookup/claim Idempotency-Key
 
 ```text
 D7R_REPLAY_ORDER:IDEMPOTENCY_BEFORE_IF_MATCH
-D7R_IDEMPOTENCY_FINGERPRINT:PRINCIPAL_REQUEST_IFMATCH_OUTCOME
 ```
 
 An exact replay is recovery of an already committed historical command, not a new decision attempt. It still passes current AuthN/ordinary Product access gates, but it does not fabricate a second current eligibility/material-validity decision.
 
-### 4.3 New decision attempt
+### 4.4 New decision attempt
 
-For a new intake:
+Only for a genuinely new intake:
 
 ```text
 lock exact AuthorizationRequest under Organization scope
@@ -141,10 +162,8 @@ lock exact AuthorizationRequest under Organization scope
 
 Actionability list/detail and every **new** decision attempt derive eligibility from current Governance authority/delegation plus current IdentityAccess truth.
 
-Baseline law:
-
 ```text
-no durable eligibility cache
+no durable eligibility cache as authority
 no Notification-derived eligibility
 no River-event-derived eligibility
 events/wakeups may optimize reevaluation only
@@ -154,7 +173,7 @@ events/wakeups may optimize reevaluation only
 D7R_ELIGIBILITY:AUTHORITATIVE_Q_NOT_EVENT_CACHE
 ```
 
-For the decision command, the authoritative eligibility Q occurs after the request has been locked/current-checked and before Decision creation. A revocation/change committed before that Q must be observed. A change after the successful Q is later authority drift; it does not rewrite a historical Decision, and existing action-owner execution-time revalidation remains binding.
+For the decision command, the authoritative eligibility Q occurs after the request has been locked/current-checked and before Decision creation. A revocation/change committed before that Q must be observed. A change after the successful Q is later authority drift; it does not rewrite a historical Decision, and action-owner execution-time revalidation remains binding.
 
 D7-R does not acquire private cross-owner IdentityAccess locks or create a distributed transaction merely to freeze future access state.
 
@@ -162,19 +181,13 @@ D7-R does not acquire private cross-owner IdentityAccess locks or create a distr
 
 Governance never calls a marketplace/provider/business-system network endpoint while its owner transaction/request lock is open.
 
-The decision-time material-validity Q is an in-process action-owner query over that owner's current MPC truth/evidence. If sufficient current evidence is not available without an external acquisition/reconciliation step, the action owner answers:
-
-```text
-UNKNOWN_OR_UNAVAILABLE
-```
-
-rather than performing hidden network I/O or guessing `VALID`.
+The decision-time material-validity Q is an in-process action-owner query over that owner's current MPC truth/evidence. If sufficient current evidence is not available without an external acquisition/reconciliation step, the action owner answers `UNKNOWN_OR_UNAVAILABLE` rather than performing hidden network I/O or guessing `VALID`.
 
 ```text
 D7R_VALIDITY_Q:IN_PROCESS_NO_EXTERNAL_NETWORK
 ```
 
-The three outcomes are realized as:
+The three outcomes are realized as follows.
 
 ### `VALID`
 
@@ -183,7 +196,7 @@ In the Governance transaction:
 ```text
 create immutable AuthorizationDecision
 + set request DECIDED / rotate request revision
-+ persist terminal idempotency result reference
++ persist terminal Principal-scoped idempotency result reference
 + InsertTx independent required reaction jobs
 COMMIT
 ```
@@ -192,7 +205,7 @@ Required Decision consumers get independent durable jobs, including action-owner
 
 ### `INVALID`
 
-Governance atomically terminates the still-current request as `INVALIDATED`, rotates its revision, persists the terminal idempotent command outcome, and inserts required owner/Work reconciliation reactions. It creates **no AuthorizationDecision and no F14**. HTTP recovery remains the accepted current-state conflict path.
+Governance atomically terminates the still-current request as `INVALIDATED`, rotates its revision, persists the terminal Principal-scoped idempotent command outcome, and inserts required owner/Work reconciliation reactions. It creates **no AuthorizationDecision and no F14**.
 
 ### `UNKNOWN_OR_UNAVAILABLE`
 
@@ -208,11 +221,20 @@ The request stays PENDING.
 D7R_503:EXACT_TYPED_KNOWN_NO_EFFECT
 ```
 
-Any bodyless, unparsable, proxy/infrastructure or otherwise non-matching 503 is not this semantic result and remains ambiguous potentially accepted to the client. Runtime middleware/proxy errors may not counterfeit the typed Product Problem.
+Any bodyless, unparsable, proxy/infrastructure or otherwise non-matching 503 is not this semantic result and remains **ambiguous potentially accepted** to the client. Runtime middleware/proxy errors may not counterfeit the typed Product Problem.
 
 ## 7. Idempotency result storage and retention
 
-For committed `CreateAuthorizationDecision` terminal effects, the idempotency record stores only the minimum durable replay correlation, e.g. fingerprint digest + effective Principal + stable result/status reference. It does not duplicate the immutable review basis or raw request body merely for replay.
+For committed `CreateAuthorizationDecision` terminal effects, the idempotency record stores only the minimum durable replay correlation, proportionately:
+
+```text
+effective Principal namespace identity
++ key digest
++ semantic fingerprint digest
++ stable result/status reference
+```
+
+It does not duplicate the immutable review basis or raw request body merely for replay.
 
 For a committed Decision, replay can resolve through the immutable `AuthorizationDecisionID`. For an attempt that atomically caused request invalidation, the terminal request/outcome correlation remains durable enough to replay the established result semantics.
 
@@ -293,7 +315,7 @@ recovery lane
   → reconcile F13 / zero-decider Work / invalidation obligations
 ```
 
-The sweep cursor/tick is technical state only. Exact cadence/queue names/concurrency are not frozen without D8/operability evidence.
+The sweep cursor/tick is technical state only. Exact cadence/queue names/concurrency are not frozen without evidence.
 
 A missed event or scheduler tick cannot permanently strand a correctness-required reaction; later sweep/startup recovery rediscovers it from durable owner state.
 
@@ -304,8 +326,6 @@ D7R_RECOVERY:EVENT_PLUS_DURABLE_PENDING_SWEEP
 ## 12. Invalidation recovery
 
 Action-owner material invalidation may awaken Governance via accepted E, but that E is never sole authority.
-
-Worker behavior:
 
 ```text
 exact Organization + request
@@ -329,8 +349,6 @@ D7-E's generated strict server + Product validator remains binding.
 
 Only an explicit application result representing material validity `UNKNOWN_OR_UNAVAILABLE` may construct the exact `authorization-validity-unavailable` Problem body. Generic middleware, dependency outage, panic/error recovery, reverse proxy or transport failure does not map to that semantic type by status-code symmetry.
 
-This preserves the client contract:
-
 ```text
 exact typed Problem 503  → known no Decision / request remains PENDING
 any other uncertain 503  → ambiguous potentially accepted
@@ -342,20 +360,21 @@ No new Product response/status or operation is required.
 
 D7-R extends the accepted D7 proof contract. Later implemented proof must be capable of falsifying at least:
 
-1. committed Decision + lost 201 + exact same key/command returns 412 instead of replaying the original Decision;
-2. same key with different Principal/request/If-Match/outcome replays another command instead of failing reused-key semantics;
-3. two new different-key deciders consume the same request revision and both create Decisions;
-4. exact-current eligibility is replaced by stale cache/Notification/event state;
-5. a provider/business-system network call occurs while the Governance decision transaction is holding its request lock;
-6. exact typed semantic 503 leaves a Decision/request mutation or durable false-success intake behind;
-7. bodyless/non-semantic 503 is emitted/treated as the typed known-no-effect Product Problem;
-8. delayed F13 creates new awareness for a terminal request or no-longer-eligible human;
-9. duplicate same-occurrence F13 or same-Decision F14 produces duplicate semantic Notifications;
-10. known-empty deciders fail to materialize Work, duplicate reevaluation creates duplicate Work, or restored eligibility leaves stale blocking Work indefinitely;
-11. a missed invalidation wake-up permanently leaves a request PENDING even though durable current owner evidence proves invalidity;
-12. replay correlation is evicted while its AuthorizationRequest/Decision historical authority remains within the admitted replay lifetime;
-13. River job args copy review basis, credentials, arbitrary PII or provider payload by convenience;
-14. any D7-R path bypasses exact Organization scope/RLS or creates cross-owner writes inside the Governance owner transaction.
+1. committed Decision + lost 201 + exact same Principal/key/command returns 412 instead of replaying the original Decision;
+2. same raw key under a different effective Principal collides with or replays the first Principal's idempotency record instead of using an independent namespace;
+3. same Principal + same key + changed request/`If-Match`/outcome avoids the accepted reused-key failure;
+4. two new different-key deciders consume the same request revision and both create Decisions;
+5. exact-current eligibility is replaced by stale cache/Notification/event state;
+6. a provider/business-system network call occurs while the Governance decision transaction is holding its request lock;
+7. exact typed semantic 503 leaves a Decision/request mutation or durable false-success intake behind;
+8. bodyless/non-semantic 503 is emitted/treated as the typed known-no-effect Product Problem;
+9. delayed F13 creates new awareness for a terminal request or no-longer-eligible human;
+10. duplicate same-occurrence F13 or same-Decision F14 produces duplicate semantic Notifications;
+11. known-empty deciders fail to materialize Work, duplicate reevaluation creates duplicate Work, or restored eligibility leaves stale blocking Work indefinitely;
+12. a missed invalidation wake-up permanently leaves a request PENDING even though durable current owner evidence proves invalidity;
+13. replay correlation is evicted while its AuthorizationRequest/Decision historical authority remains within the admitted replay lifetime;
+14. River job args copy review basis, credentials, arbitrary PII or provider payload by convenience;
+15. any D7-R path bypasses exact Organization scope/RLS or creates cross-owner writes inside the Governance owner transaction.
 
 Real PostgreSQL/River/runtime execution is required when implementation proof becomes authorized; document/mock-only tests cannot claim those runtime properties.
 
@@ -378,9 +397,9 @@ Reopen only if measured/runtime evidence proves one of these is correctness-rele
 
 Actionable-list scale may later justify a bounded eligibility candidate projection/cache, but only as an optimization with authoritative revalidation; it may never become decision authority by existence.
 
-No D8 choreography or Product implementation begins from this candidate.
+D8-R is now **NEXT / NOT STARTED**. B10 remains suspended. Product implementation remains blocked until accepted D9.
 
-## 16. Candidate result
+## 16. Accepted result
 
 ```text
 D7 stack reconstruction                 NO
@@ -389,14 +408,16 @@ new ordinary Permission                 0
 new NotificationKind                    0
 new Work operation                      0
 new infrastructure service              0
-idempotent replay before If-Match        REQUIRED
+idempotency namespace                   Organization + Principal + operation + key
+idempotent replay before If-Match       REQUIRED
 eligibility authority                   current Q / no event-cache authority
 validity external network in owner tx   FORBIDDEN
 semantic 503 discriminator              exact Product Problem type
 F13/F14                                 independent River reactions + revalidation/idempotency
 zero-decider                            Work materialize + reconcile
 invalidation                            event wakeup + durable PENDING recovery sweep
+architecture proof class                STRUCTURAL AUTHORITY ONLY
 runtime real proof                      REQUIRED AFTER IMPLEMENTATION GATE
 ```
 
-**Recommendation:** accept this bounded D7-R composition repair. If operator-ratified, D7-R becomes accepted authority and D8-R becomes the next bounded stage; B10 remains suspended and Product implementation remains blocked until D9.
+**Operator-ratified outcome:** D7-R is accepted as the bounded Global-Maximum runtime realization for the current AuthorizationRequest authority. D8-R becomes NEXT / NOT STARTED; B10 remains suspended; PR #61 remains unmerged; Product implementation remains blocked until D9.
