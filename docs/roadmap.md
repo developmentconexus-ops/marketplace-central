@@ -13,15 +13,15 @@
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | Integrated checkpoints | **PR #61 → `b54d17bfe6d794645d198a9160f4a2a1c63647e8`; PR #62 methodology → `689dab34b0a756cbd7c790a6c5277d887ced0b4c`; PR #65 proportional CI → `a2aeac19816c90ee30bf373cef0448d52a486c7e`; PR #68 PublicationRequirements wire → `ed3d164b0574b7950c2c7467d150c89576bba1ec`** |
 | Method profile | **`developmentconexus-ops/conexus-methodology@9c7210d1504bef01c0d134a6c3ae8627deebb535` → `METHOD + FRONTEND-METHOD`** |
-| Current acceptance increment | **PR #64 / B10 — Preparação — human-first P8 GREEN CANDIDATE / OPERATOR WALKTHROUGH NEXT / NOT LOCKED** |
-| B10 proof | **Draft quick CI #726 PASS at `486b9a2b0c77c308cd981615b966e316d86fbc0d`; human-first language; B10 falsifiers 12/12** |
+| Current acceptance increment | **PR #64 / B10 — Preparação — human-first P8 OPERATOR WALKTHROUGH APPROVED; A01 PENDING; NOT LOCKED** |
+| B10 proof | **Human-first candidate PASS; B10 falsifiers 12/12; exact current-head proof re-running after walkthrough status update** |
 | Resolved upstream finding | **PublicationRequirements wire gap RESOLVED by integrated PR #68** |
 | LOCK impact | **B00 / B01 / B00-R2 / B11 / B12 / B110 UNAFFECTED** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **106 Product operations · 31 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Operator operates the human-first B10 P8 candidate and returns REVISE / UPSTREAM FINDING / explicit LOCK, plus A01 disposition `ACCEPT_FOR_LOCK_WITH_LATER_PROBE` or `BLOCK_LOCK`. Do not begin P9 before explicit operator LOCK.** |
+| Exact next action | **Operator selects A01: `ACCEPT_FOR_LOCK_WITH_LATER_PROBE` or `BLOCK_LOCK`. Only then may an explicit B10 LOCK be recorded; do not begin P9 before LOCK.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -42,7 +42,7 @@
 | D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED baseline; D7-R ACCEPTED** |
 | D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED; D8-R ACCEPTED** |
 | D8-R2 — GF-02 Operational Read Revalidation | **ACCEPTED / PASS** |
-| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B10 human-first P8 GREEN CANDIDATE / OPERATOR WALKTHROUGH NEXT / NOT LOCKED** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B10 human-first P8 walkthrough APPROVED; A01 PENDING; NOT LOCKED** |
 | Pre-D9 readiness | **BLOCKED** |
 | D9 — Adversarial Architecture Review | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -51,16 +51,16 @@
 
 - PR #68 is integrated and post-merge `main` full CI passed.
 - B10 keeps the accepted search/list → exact-subject detail structure and complete provider/context-specific requirement truth.
-- Operator REVISE exposed backend-shaped UX: technical wire vocabulary had leaked into the primary screen. The corrected candidate now leads with **Resumo da preparação** and **Requisito do marketplace / Exigência / Situação / Informação atual / O que fazer**; technical identities/keys remain behind secondary disclosure.
-- PR #68 wire distinctions remain encoded/testable: class vs applicability, six source-evidence states, seven value-spec families, candidate identity and source-media separation.
-- Draft quick proof is GREEN with B10 negative controls **12/12**. Existing LOCKED blocks remain unaffected; Product **106/31/H-A-S**, runtime NONE and Pre-D9/D9/implementation blocks are unchanged.
+- Operator REVISE exposed backend-shaped UX; the corrected candidate leads with **Resumo da preparação** and **Requisito do marketplace / Exigência / Situação / Informação atual / O que fazer**, with technical identities/keys behind secondary disclosure.
+- The operator operated and **approved** the human-first P8 candidate; no material issue remained from that walkthrough. This approval does not silently choose the A01 lock-time assumption.
+- PR #68 wire distinctions remain encoded/testable: class vs applicability, six source-evidence states, seven value-spec families, candidate identity and source-media separation. Existing LOCKED blocks remain unaffected; Product **106/31/H-A-S**, runtime NONE and Pre-D9/D9/implementation blocks are unchanged.
 - A01 remains **PENDING OPERATOR**: `ACCEPT_FOR_LOCK_WITH_LATER_PROBE` or `BLOCK_LOCK`.
 
 ```text
 PR #68 INTEGRATED / MAIN GREEN
-→ B10 HUMAN-FIRST P8 GREEN CANDIDATE
-→ operator walkthrough + A01 disposition
-→ explicit LOCK only if accepted
+→ B10 HUMAN-FIRST P8 OPERATOR APPROVED
+→ A01 disposition
+→ explicit LOCK only after A01
 → P9 only after LOCK
 ```
 
