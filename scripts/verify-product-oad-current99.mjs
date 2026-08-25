@@ -11,6 +11,7 @@ const entrypoint = join(contractDir, 'openapi.yaml');
 const redoclyConfig = join(contractDir, 'redocly.yaml');
 const preAuthVerifier = join(root, 'scripts/verify-product-oad-pre-auth.mjs');
 const baselineVerifier = join(root, 'scripts/verify-product-oad-baseline.mjs');
+const fixtureDir = join(root, 'scripts/fixtures');
 const temp = mkdtempSync(join(tmpdir(), 'mpc-product-auth-proof-'));
 const go = process.platform === 'win32' ? 'go.exe' : 'go';
 const HTTP_METHODS = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);
@@ -70,6 +71,7 @@ function preAuthSurfaceProof() {
   cpSync(join(root, 'docs/engineering/rebaseline'), join(historicalRoot, 'docs/engineering/rebaseline'), { recursive: true });
   cpSync(preAuthVerifier, join(historicalRoot, 'scripts/verify-product-oad.mjs'));
   cpSync(baselineVerifier, join(historicalRoot, 'scripts/verify-product-oad-baseline.mjs'));
+  cpSync(fixtureDir, join(historicalRoot, 'scripts/fixtures'), { recursive: true });
 
   const historicalEntry = join(historicalRoot, 'contracts/api/product/openapi.yaml');
   let source = readFileSync(historicalEntry, 'utf8');

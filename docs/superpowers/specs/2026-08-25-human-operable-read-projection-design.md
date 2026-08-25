@@ -3,7 +3,8 @@
 > **Status:** DESIGN APPROVED — operator-approved on 2026-08-25; implementation plan review remains required before contract execution
 > **Trigger:** D6-R2 B20 planning after B10 integration
 > **Method:** DevelopmentConexus Engineering Method v1.0.0 + Frontend Product Experience Planning Method v2.3
-> **Baseline:** `main@bdbbef43ed3a5e9d912e67ddac5173024352eaa3`
+> **Baseline:** `main@181f606ceaf5fadd7b25aab2008d0256ed6ad7de` — PR #71 integrated; Product OAD and operator-locked P8 evidence unchanged
+> **Reanchor:** current D4/D5/P5 owners verified; zero references to paths retired by PR #71
 > **Implementation:** BLOCKED until the implementation plan is explicitly approved and the repository roadmap authorizes execution
 
 ## 1. Decision

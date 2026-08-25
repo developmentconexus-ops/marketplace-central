@@ -11,11 +11,29 @@ function Resolve-GateBase {
         git cat-file -e "$($env:GATE_BASE_SHA)^{commit}" 2>$null
         if ($LASTEXITCODE -eq 0) { return $env:GATE_BASE_SHA }
     }
+
+    # CI supplies GATE_HEAD_SHA. If it cannot also supply a trustworthy base,
+    # do not substitute origin/main: on a push to main that ref can already be
+    # the same commit as the head and would create a false empty diff. Returning
+    # no base deliberately falls through to the full Product proof below.
+    if ($env:GATE_HEAD_SHA) { return $null }
+
+    # Local/manual execution may still compare a working branch to main when no
+    # explicit CI head/base pair exists.
     foreach ($candidate in @('origin/main', 'main')) {
         git rev-parse --verify --quiet "$candidate^{commit}" *> $null
         if ($LASTEXITCODE -eq 0) { return $candidate }
     }
     return $null
+}
+function Test-ChangedPathMatches([string[]]$patterns) {
+    foreach ($file in $changedFiles) {
+        $normalized = $file.Replace('\', '/')
+        foreach ($pattern in $patterns) {
+            if ($normalized -match $pattern) { return $true }
+        }
+    }
+    return $false
 }
 
 Require-Command git
@@ -78,21 +96,47 @@ if ($base) {
 }
 
 if ($implementationBlocked) {
-    foreach ($file in $changedFiles) {
+    # With a reliable diff, reject only newly changed implementation surfaces.
+    # Without one, fail safe against any tracked implementation population while
+    # the roadmap says runtime/Product implementation is still blocked.
+    $implementationCandidates = if ($base) { $changedFiles } else { $trackedFiles }
+    foreach ($file in $implementationCandidates) {
         $normalized = $file.Replace('\', '/')
         if ($normalized -match '^(apps|cmd|internal|server|backend|frontend|src|migrations)/') {
-            Fail "implementation is blocked by roadmap but candidate changes implementation surface: $normalized"
+            Fail "implementation is blocked by roadmap but candidate contains implementation surface: $normalized"
         }
     }
 }
 
-$productProof = & node 'scripts/verify-product-oad.mjs' 2>&1
-$productProofExit = $LASTEXITCODE
-$productProof | ForEach-Object { Write-Host $_ }
-if ($productProofExit -ne 0) { Fail 'Product OAD proof failed' }
+$productProofPatterns = @(
+    '^contracts/api/product/',
+    '^scripts/gate\.ps1$',
+    '^scripts/verify-product-oad(?:-[^/]+)?\.mjs$',
+    '^scripts/fixtures/product-oad-[^/]+\.json$',
+    '^scripts/verify-oad-source-reachability\.mjs$',
+    '^scripts/verify-operational-read-contract\.mjs$',
+    '^scripts/verify-performance-evidence-knowledge\.mjs$',
+    '^scripts/verify-notification-oad\.mjs$',
+    '^scripts/verify-authorization-request-oad\.mjs$',
+    '^scripts/lib/publication-requirements-oad-proof\.mjs$',
+    '^package\.json$',
+    '^\.node-version$',
+    '^\.github/workflows/ci\.yml$'
+)
+$productProofAffected = if (-not $base) { $true } else { Test-ChangedPathMatches $productProofPatterns }
+
+if ($productProofAffected) {
+    $productProof = & node 'scripts/verify-product-oad.mjs' 2>&1
+    $productProofExit = $LASTEXITCODE
+    $productProof | ForEach-Object { Write-Host $_ }
+    if ($productProofExit -ne 0) { Fail 'Product OAD proof failed' }
+    $productProofStatus = 'PASS'
+} else {
+    $productProofStatus = 'SKIPPED_NOT_AFFECTED'
+}
 
 Write-Host 'gate: PASS'
 Write-Host "required_files: $($requiredFiles.Count)"
 Write-Host "implementation_blocked: $implementationBlocked"
 Write-Host "diff_range: $diffRange changed_files: $($changedFiles.Count)"
-Write-Host 'product_oad_proof: PASS'
+Write-Host "product_oad_proof: $productProofStatus"

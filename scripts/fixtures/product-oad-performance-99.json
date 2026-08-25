@@ -1,0 +1,8 @@
+{
+  "operations": [
+    ["GetMarketplacePerformanceSummary", "Q", "performance.read", ["H", "A", "S"]],
+    ["ListMarketplaceListingPerformance", "Q", "performance.read", ["H", "A", "S"]],
+    ["GetMarketplaceListingPerformance", "Q", "performance.read", ["H", "A", "S"]],
+    ["ListRetailMediaPerformance", "Q", "performance.read", ["H", "A", "S"]]
+  ]
+}

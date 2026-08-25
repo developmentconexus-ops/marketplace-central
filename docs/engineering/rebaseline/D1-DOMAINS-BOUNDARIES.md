@@ -291,3 +291,92 @@ No Product 1.0 semantic remains for D2–D7 to invent at domain/boundary altitud
 **Exact next stage:** D2 — Identity / Tenant / Data Ownership.
 
 Product implementation remains blocked until D9 is accepted.
+
+---
+
+## 14. Post-closure accepted amendment — Personal Notifications + AuthorizationRequest boundary
+
+**Accepted / operator-ratified in D6-R2 and consolidated here on 2026-08-25.** The twelve D1 **business boundaries remain exactly twelve**. This amendment adds one bounded supporting semantic owner and clarifies Governance identity/edges; it does not create a 13th business domain or a generic workflow platform.
+
+### 14.1 Personal Notifications is a supporting semantic owner, not a business domain
+
+`Personal Notifications` owns only durable personal-awareness meaning:
+
+- one human recipient's Notification lifecycle (`unread/read`, `active/archived`, bounded supersession);
+- bounded Organization routing configuration for the ten accepted `ORG_ROUTED` families;
+- personal-awareness deduplication/suppression and immutable presentation/result snapshots needed to explain the occurrence.
+
+It explicitly does **not** own source business truth, action disposition, Work, authorization, sales/materialization/fulfillment/post-sale semantics, source mutation, general subscriptions/preferences, delivery channels or provider protocol.
+
+The accepted source-owner → Personal Notifications awareness edges are:
+
+```text
+Marketplace Portfolio
+Marketplace Offering Operations
+Availability Control
+Commercial Economics
+Marketplace Sales
+Business-System Materialization
+Fulfillment Lifecycle
+Post-Sale Resolution
+Operational Work
+Controlled Action Governance
+  → Personal Notifications
+```
+
+These edges communicate source-owner committed meaning for awareness only. They never transfer the source owner's business authority.
+
+### 14.2 Accepted family/audience boundary
+
+The fourteen accepted families remain the D0 set. Their audience strategy is closed at this altitude:
+
+```text
+DIRECT_SOURCE
+  OFFERING_ASYNC_ACTION_RESULT
+  WORK_ASSIGNMENT
+  AUTHORIZATION_DECISION_RESULT
+
+OWNER_DERIVED
+  AUTHORIZATION_ACTION_REQUIRED
+
+ORG_ROUTED
+  MARKETPLACE_INSTALLATION_ATTENTION
+  AVAILABILITY_ATTENTION
+  ECONOMIC_RECONCILIATION_ATTENTION
+  NEW_MARKETPLACE_SALE
+  SALE_ATTENTION
+  MATERIALIZATION_ATTENTION
+  FULFILLMENT_ACTIONABLE
+  FULFILLMENT_ATTENTION
+  SHIPMENT_EXCEPTION
+  POST_SALE_ATTENTION
+```
+
+Exact family identity/state belongs D2/D5. D1 freezes only ownership/audience semantics. Permission/role membership never silently selects routing recipients.
+
+Two overlap rules are deliberately bounded rather than generalized:
+
+1. an exact source attention occurrence may yield to the richer `WORK_ASSIGNMENT` awareness for the same human when that Work/assignment causally replaces the source alert;
+2. a `SALE_ATTENTION` occurrence may yield to the richer `POST_SALE_ATTENTION` continuation for the same exact Post-Sale Resolution/human.
+
+No generic notification relation graph, routing DSL or cross-kind precedence engine is admitted.
+
+### 14.3 AuthorizationRequest remains Controlled Action Governance meaning
+
+A materially distinct pre-decision authorization episode is canonical `AuthorizationRequest` state owned by **Controlled Action Governance**. It is separate from:
+
+```text
+action-owning Business Intent
+AuthorizationDecision
+Operational Work
+Notification
+execution outcome
+```
+
+The closed governed target families remain ListingIntent, PriceIntent, BusinessOrderIntent and InvoicingIntent. `AuthorizationRequest` provides stable identity/history for one authorization episode; it does not become a generic approval/workflow/case owner.
+
+`AUTHORIZATION_ACTION_REQUIRED` awareness references the exact pending AuthorizationRequest. `AUTHORIZATION_DECISION_RESULT` remains requester-oriented toward the governed target rather than forcing Governance-history read authority.
+
+A zero-current-decider condition remains explicit Governance/Work coordination; it does not convert Work into an approver or authorization authority.
+
+These accepted amendments extend the legal D1 edge set only as stated above. D3 owns communication/recovery; D5 owns Product wire; D6 owns human realization; D7 owns runtime mechanics.

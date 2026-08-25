@@ -12,6 +12,7 @@ const redoclyConfig = join(contractDir, 'redocly.yaml');
 const historicalVerifier = join(root, 'scripts/verify-product-oad-current99.mjs');
 const preAuthVerifier = join(root, 'scripts/verify-product-oad-pre-auth.mjs');
 const baselineVerifier = join(root, 'scripts/verify-product-oad-baseline.mjs');
+const fixtureDir = join(root, 'scripts/fixtures');
 const temp = mkdtempSync(join(tmpdir(), 'mpc-product-current-proof-'));
 const go = process.platform === 'win32' ? 'go.exe' : 'go';
 const HTTP_METHODS = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);
@@ -113,6 +114,7 @@ function historical99Proof() {
   cpSync(historicalVerifier, join(historicalRoot, 'scripts/verify-product-oad.mjs'));
   cpSync(preAuthVerifier, join(historicalRoot, 'scripts/verify-product-oad-pre-auth.mjs'));
   cpSync(baselineVerifier, join(historicalRoot, 'scripts/verify-product-oad-baseline.mjs'));
+  cpSync(fixtureDir, join(historicalRoot, 'scripts/fixtures'), { recursive: true });
 
   const historicalContractDir = join(historicalRoot, 'contracts/api/product');
   const historicalEntry = join(historicalContractDir, 'openapi.yaml');

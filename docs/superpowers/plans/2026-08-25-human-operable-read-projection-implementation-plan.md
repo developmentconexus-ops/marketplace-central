@@ -1,6 +1,6 @@
 # Human-Operable Read Projection & Wire Conformance Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Follow the repository-local Engineering Method v1.0.0 and Frontend Product Experience Planning Method v2.3. Execute this plan task-by-task only after explicit operator approval. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Rehome the approved Global Maximum into canonical D4/D5 authority and repair the Product OAD so the proven human-facing Readiness/Offering flows are operable without changing canonical identity, operation count, Permission count, Principal kinds, or runtime topology.
 
@@ -9,6 +9,8 @@
 **Tech Stack:** OpenAPI 3.1.2 YAML; Node.js `>=26.3.0 <27`; PowerShell aggregate gate; `@redocly/cli@2.45.0`; `openapi-typescript@7.13.0`; TypeScript `5.9.3`; Go `1.25.1`; `oapi-codegen v2.8.0`; `github.com/oapi-codegen/runtime v1.7.0`.
 
 **Spec:** `docs/superpowers/specs/2026-08-25-human-operable-read-projection-design.md`
+
+**Baseline:** `main@181f606ceaf5fadd7b25aab2008d0256ed6ad7de` — PR #71 integrated; current authority owners and diff-aware aggregate gate active.
 
 ## Global Constraints
 
@@ -47,7 +49,7 @@
 **Proof**
 - Create `scripts/verify-human-operable-read-projection.mjs`
 - Modify `scripts/verify-product-oad.mjs`
-- Do not modify `scripts/gate.ps1` unless the existing Product verifier call is objectively unable to carry the proof; expected path is no change
+- Modify `scripts/gate.ps1` only to register `scripts/verify-human-operable-read-projection.mjs` as a Product-proof input in the existing diff-aware affected-path predicate; do not add another workflow/check
 
 **Status/design**
 - `docs/superpowers/specs/2026-08-25-human-operable-read-projection-design.md`
@@ -192,6 +194,7 @@ git commit -m "docs(d6-r2): rehome human-operable read projection authority"
 **Files:**
 - Create `scripts/verify-human-operable-read-projection.mjs`
 - Modify `scripts/verify-product-oad.mjs`
+- Modify `scripts/gate.ps1` only for the focused-verifier affected-path trigger
 - Modify `contracts/api/product/components.yaml`
 - Modify `contracts/api/product/paths-identity-portfolio-readiness.yaml` only for descriptions that materially clarify the repaired response
 
@@ -465,6 +468,14 @@ and after `currentProjectionProof(bundleA);`:
 run(process.execPath, [humanOperableReadProjectionVerifier, bundleA]);
 ```
 
+In `scripts/gate.ps1`, add the new verifier to the existing `$productProofPatterns` array:
+
+```powershell
+'^scripts/verify-human-operable-read-projection\.mjs$'
+```
+
+This is required because PR #71 made Product proof diff-aware. A change to the focused verifier itself is a Product-proof-input change and must not be classified as unrelated documentation/tooling.
+
 Run:
 
 ```powershell
@@ -479,7 +490,8 @@ Expected: existing historical/auth/generated proofs PASS, `human_operable_read_p
 git add contracts/api/product/components.yaml \
         contracts/api/product/paths-identity-portfolio-readiness.yaml \
         scripts/verify-human-operable-read-projection.mjs \
-        scripts/verify-product-oad.mjs
+        scripts/verify-product-oad.mjs \
+        scripts/gate.ps1
 git commit -m "feat(d5): make readiness reads human-operable"
 ```
 

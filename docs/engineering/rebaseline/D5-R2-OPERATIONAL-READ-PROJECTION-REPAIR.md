@@ -1,36 +1,37 @@
 # D5-R2 — Operational Read Projection Repair
 
-> **Status:** ACCEPTED / CANONICAL — OPERATOR-APPROVED / EXECUTABLY PROVEN 2026-08-22
-> **Trigger:** D6-R2 `OP-READ-01`
-> **Parent authority:** accepted D5 API + W2/W3 + canonical Product OAD
-> **Consumer evidence:** [D6-R2 P4-R1 Global IA / Operational Mass Reopen](D6-R2-P4-R1-GLOBAL-IA-OPERATIONAL-MASS-REOPEN.md)
-> **Product implementation:** BLOCKED UNTIL accepted D9
+> **Status:** ACCEPTED / CANONICAL / CURRENT CONSOLIDATED AUTHORITY  
+> **Trigger:** D6-R2 `OP-READ-01`  
+> **Parent authority:** current D5 + W2/W3 + canonical Product OAD  
+> **Current consumer evidence:** [D6-R2 P5 Current Screen / Material-Surface Inventory](D6-R2-P5-SCREEN-SURFACE-INVENTORY.md) — operational homes R70–R101 and state grammar  
+> **Current Product:** 106 operations / 31 ordinary Permissions / H-A-S; this repair's delta remains **0 operations / 0 Permissions**  
+> **Implementation:** blocked until D9
 
 ## 1. Purpose
 
-D6-R2 proved a real human operational-triage consumer that the accepted Product owners can answer semantically, but several prior ListItem/query contracts could not answer efficiently without N+1 point reads or frontend-authored workflow projection.
+D6-R2 proved a real human operational-triage consumer that accepted Product owners could answer semantically, while several earlier collection contracts would have required N+1 point reads or frontend-authored workflow conclusions.
 
-This amendment repairs **read projection/query expressibility only**. It creates no new business capability, owner, lifecycle or Product operation.
+D5-R2 repairs **owner-local read projection/query expressibility only**. It creates no new business capability, owner, lifecycle, Product operation or write authority.
 
 ## 2. Governing invariant
 
 > **When an accepted owner already owns the state required by an evidenced collection consumer, the Product collection may expose the smallest semantic subset and typed owner-local narrowing needed to scan and triage that owner truth; the client must not reconstruct a new cross-owner workflow truth.**
 
-The existing W2/W3 laws remain binding:
+Binding W2/W3 laws remain:
 
 - ListItem fields are semantic subsets of the same owner point meaning;
-- filters exist only for a real consumer and combine by W3 AND semantics;
-- no generic projection/filter DSL;
+- filters exist only for a real consumer and combine under typed owner-local query semantics;
 - pagination does not prove total population or knowledge completeness;
-- no caller-selectable sort or universal count by convenience.
+- no generic projection/filter DSL, caller-selectable sort or universal count;
+- a production baseline must not use N+1 detail fan-out to compensate for a materially deficient owner collection.
 
 ## 3. Accepted bounded repair
 
 ### 3.1 Business-System Materialization — BusinessOrderIntent
 
-`BusinessOrderIntentListItem` additionally exposes required `convergence`, reusing the exact point-resource enum/meaning.
+`BusinessOrderIntentListItem` exposes owner-native `convergence`.
 
-`ListBusinessOrderIntents` additionally admits optional owner-native filters:
+`ListBusinessOrderIntents` admits optional:
 
 ```text
 external_effect_state?
@@ -41,7 +42,7 @@ No Party/Destination detail is copied into the collection merely for convenience
 
 ### 3.2 Business-System Materialization — InvoicingIntent
 
-`InvoicingIntent` additionally carries required source-qualified `sale` correlation.
+`InvoicingIntent` carries source-qualified `sale` correlation.
 
 `InvoicingIntentListItem` exposes:
 
@@ -51,18 +52,18 @@ convergence                required
 fulfillment_execution_id?  optional
 ```
 
-`ListInvoicingIntents` additionally admits:
+`ListInvoicingIntents` admits:
 
 ```text
 external_effect_state?
 convergence?
 ```
 
-The Sale reference is correlation/navigation evidence only; Sales ownership does not move to Materialization.
+Sale correlation/navigation does not transfer Sales authority to Materialization.
 
 ### 3.3 Fulfillment
 
-`FulfillmentExecutionListItem` additionally exposes the owner-native checkpoint representations already present on `FulfillmentExecution`:
+`FulfillmentExecutionListItem` exposes owner-native checkpoint meaning already present on the point owner:
 
 ```text
 separation
@@ -72,7 +73,7 @@ dispatch_handoff
 provider_dispatch_deadline?
 ```
 
-`ListFulfillmentExecutions` additionally admits typed owner-native narrowing:
+`ListFulfillmentExecutions` admits typed owner-native narrowing:
 
 ```text
 physical_readiness?                  ready | blocked | unknown
@@ -83,42 +84,42 @@ dispatch_handoff_state?              pending | recorded
 provider_dispatch_deadline_before?   date-time
 ```
 
-No `stage`, `next_action`, `priority`, severity or synthetic queue status is created.
+No synthetic `stage`, `next_action`, `priority`, severity or queue status is created.
 
 ### 3.4 Shipment
 
-`ShipmentListItem` additionally exposes optional source-qualified `sale` and optional `dispatch_deadline`, both already owned by the point resource.
+`ShipmentListItem` exposes optional source-qualified `sale` and optional `dispatch_deadline`, both already owner point meaning.
 
-`ListShipments` additionally admits optional `state?` using the existing Shipment state vocabulary:
+`ListShipments` admits optional owner-native:
 
 ```text
-pending | ready | dispatched | delivered | exception | unknown
+state? = pending | ready | dispatched | delivered | exception | unknown
 ```
 
-No additional Shipment deadline filter is admitted now; the evidenced consumer does not yet require it.
+No additional Shipment deadline filter is admitted without another real consumer.
 
 ### 3.5 No repair required
 
-No D5-R2 change is required for MarketplaceSales, PostSaleResolution or OperationalWork. Their current collection contracts already satisfy the present bounded consumer or remain intentionally owner-local specialist views.
+MarketplaceSales, PostSaleResolution and OperationalWork did not require D5-R2 schema/query expansion. Their accepted owner-local collections remain authoritative for their jobs.
 
-## 4. Product-surface conservation — PROVEN
+## 4. Product-surface conservation
 
-D5-R2 preserves exactly:
+D5-R2 itself adds:
 
 ```text
-Product operations       99
-ordinary Permissions     30
-Principal kinds          H / A / S only
-semantic owners          unchanged
-Product write surface    unchanged
-Technical Ingress        unchanged
+new Product operations       0
+new ordinary Permissions     0
+new Principal kinds          0
+new semantic owners          0
+new Product writes           0
+Technical Ingress changes    0
 ```
 
-D5-R2 admits **zero** new Product operations and **zero** new Permissions.
+The global Product later evolved through separate accepted increments to **106/31/H-A-S**. Those later additions do not change D5-R2's zero-surface-delta meaning.
 
 ## 5. Hard negative controls
 
-D5-R2 explicitly rejects:
+Reject:
 
 ```text
 /operational-dashboard
@@ -130,42 +131,19 @@ total_count
 kanban_column
 generic filter DSL
 cross-owner synthetic lifecycle
-frontend N+1 detail fan-out as baseline
+frontend N+1 detail fan-out as production baseline
 ```
 
-A user-facing phrase such as `A embalar` may be a frontend presentation of current Fulfillment predicates; it is not a new Product business state.
+A human phrase such as `A embalar` may present current Fulfillment predicates; it is not a new Product business state.
 
 ## 6. Executable proof
 
-Canonical OAD remains the machine-readable wire authority. `scripts/verify-operational-read-contract.mjs` proves this amendment mechanically and includes negative controls.
+Canonical OAD remains machine-readable wire authority. `scripts/verify-operational-read-contract.mjs` is the targeted executable proof for these owner-local projection/filter invariants and their negative controls.
 
-Proven candidate HEAD:
+Historical ratification/CI checkpoints remain in Git history; they are not parallel current status authority. The current aggregate Product proof/gate protects the canonical Product contract under current 106/31 authority.
 
-```text
-4fdd07d48da76120c610d23a2e544d0b89571f7b
-ci #427                         SUCCESS
-gate                             PASS
-Product operations               99/99
-ordinary Permissions             30/30
-Principal kinds                  H/A/S
-full generated projection        PASS
-auth profile                     PASS
-Performance knowledge proof      PASS
-operational owner-local projection PASS
-operational filters              PASS
-operational negative controls    2/2
-operational read contract proof  PASS
-legacy runtime population        0
-```
+## 7. Downstream disposition
 
-The proof failure immediately before this candidate was proof-harness-local: Redocly pruned the unreferenced `Permission` component from the bundle. The harness was corrected to count ordinary Permissions from canonical operation metadata; the OAD was not weakened to satisfy the proof.
+The required GF-02 operational-read revalidation is already accepted as D8-R2. `OP-READ-01` is closed.
 
-## 7. Downstream law
-
-Because D5-R2 changes only owner-local collection projection/filter expressibility:
-
-1. GF-02 must be revalidated only for affected read/composition properties;
-2. no GF-02 choreography, owner, write/effect, authorization, physical checkpoint or runtime mechanism changes;
-3. after that revalidation, `OP-READ-01` closes and D6-R2 returns to the corrected global-frame/B00 cycle.
-
-No Product implementation is authorized by this amendment.
+Current frontend consumer homes and state grammar now live in D6-R2 P5. Future operational UX must preserve owner separation and may reopen D5 only when new human evidence proves an existing owner collection materially insufficient.
