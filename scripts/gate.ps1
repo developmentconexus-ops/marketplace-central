@@ -11,6 +11,15 @@ function Resolve-GateBase {
         git cat-file -e "$($env:GATE_BASE_SHA)^{commit}" 2>$null
         if ($LASTEXITCODE -eq 0) { return $env:GATE_BASE_SHA }
     }
+
+    # CI supplies GATE_HEAD_SHA. If it cannot also supply a trustworthy base,
+    # do not substitute origin/main: on a push to main that ref can already be
+    # the same commit as the head and would create a false empty diff. Returning
+    # no base deliberately falls through to the full Product proof below.
+    if ($env:GATE_HEAD_SHA) { return $null }
+
+    # Local/manual execution may still compare a working branch to main when no
+    # explicit CI head/base pair exists.
     foreach ($candidate in @('origin/main', 'main')) {
         git rev-parse --verify --quiet "$candidate^{commit}" *> $null
         if ($LASTEXITCODE -eq 0) { return $candidate }
