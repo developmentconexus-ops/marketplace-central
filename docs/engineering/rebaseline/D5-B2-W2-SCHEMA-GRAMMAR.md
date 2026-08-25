@@ -44,6 +44,29 @@ Client writes never author:
 
 This rule is semantic, not merely an OpenAPI `readOnly` convention.
 
+#### Human-operable read projection grammar
+
+A canonical Ref/request carrier remains minimal. A current read may carry an adjacent owner-correct presentation projection when a proven human job requires recognition, selection or explanation. A purpose/historical presentation snapshot is a third meaning and is not refreshed as current source truth.
+
+Presentation is never accepted as identity or write authority. Equal labels never collapse distinct keys. Unknown/unavailable presentation never erases the known canonical subject.
+
+The current implementation vocabulary is intentionally bounded to these owner-specific schema families:
+
+```text
+SourceProductPresentation
+PublicationContextRef / PublicationContextView
+PublicationOptionDescriptor
+PublicationUnitDescriptor
+PublicationValue / PublicationValueView
+PublicationSourceCandidateView
+CorrespondenceCandidatePopulation
+MarketplaceListingPresentation
+ListingIntent requirement-resolution read views
+source/authored/observed media presentation families
+```
+
+The MarketplaceListing/ListingIntent OAD drift directly implicated by the approved D6-R2 prerequisite is repaired under W2 without changing W1 operation/resource authority or W4 authorization semantics.
+
 ### 2.5 Closed semantic objects / bounded unions
 
 Request objects are closed by default; responses are closed where needed to protect meaning. Material unions use exclusive typed/discriminated variants. Provider enrichment is typed and bounded; arbitrary `metadata`, raw provider DTOs or dynamic field bags are forbidden.
@@ -139,7 +162,7 @@ Current Request/actionable-read wire must not reintroduce generic target/entity 
 
 ## 5. Publication / Readiness schema grammar
 
-The accepted pre-#70 publication model remains key/identity based and source/provider qualified. Repository health does **not** implement the later human-operable-read-projection prerequisite.
+The accepted publication model remains key/identity based and source/provider qualified. Current human reads add only the owner-correct presentation required by the grammar above; requests and effects remain canonical-key based.
 
 ### 5.1 Publication context / requirements
 
@@ -192,7 +215,7 @@ Canonical W2 MarketplaceListing meaning includes proportionately:
 - current observed marketplace price when material;
 - observation/freshness/provenance.
 
-The current OAD is known to under-project parts of this already-accepted meaning; that drift is owned by paused PR #70 and must not be hidden by changing W2 during repository health.
+The D6-R2 prerequisite repairs the directly implicated OAD underprojection without adding another Listing identity, owner or operation.
 
 ### 6.3 ListingIntent
 
@@ -215,7 +238,7 @@ ListingIntentMediaPresentationDescriptor
 
 The access reference is never persisted into durable history/idempotency/logs/Problems as authority. Source-media locators, authored-media access references and observed-provider media are distinct trust types; there is no generic Media/Asset business service.
 
-Current OAD underprojection of this accepted presentation descriptor remains part of paused PR #70.
+The D6-R2 prerequisite restores this accepted response-only presentation descriptor while preserving the trust separation above.
 
 ---
 
@@ -370,7 +393,7 @@ W2 does not create:
 - generic Media/Asset business service;
 - generic authorization/workflow payload;
 - schema fields solely because one frontend component would be easier to code;
-- human-operable provider presentation additions whose semantics are still under paused PR #70.
+- presentation fields on canonical refs or writes, or owner-wide enrichment without a proven human job.
 
 ## 13. Reopen trigger
 

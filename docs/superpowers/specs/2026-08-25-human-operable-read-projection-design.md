@@ -1,11 +1,11 @@
 # Human-Operable Read Projection & Wire Conformance — Design
 
-> **Status:** DESIGN APPROVED — operator-approved on 2026-08-25; implementation plan review remains required before contract execution
+> **Status:** DESIGN APPROVED / IMPLEMENTATION PLAN APPROVED — operator approvals recorded on 2026-08-25; contract execution active task-by-task
 > **Trigger:** D6-R2 B20 planning after B10 integration
 > **Method:** DevelopmentConexus Engineering Method v1.0.0 + Frontend Product Experience Planning Method v2.3
 > **Baseline:** `main@181f606ceaf5fadd7b25aab2008d0256ed6ad7de` — PR #71 integrated; Product OAD and operator-locked P8 evidence unchanged
 > **Reanchor:** current D4/D5/P5 owners verified; zero references to paths retired by PR #71
-> **Implementation:** BLOCKED until the implementation plan is explicitly approved and the repository roadmap authorizes execution
+> **Implementation:** AUTHORIZED for Tasks 1–6 of the approved prerequisite plan; Product runtime and B10/B20 HTML remain blocked
 
 ## 1. Decision
 
@@ -645,10 +645,8 @@ This prerequisite does not create:
 
 ## 19. Written-spec exit gate
 
-This design has been operator-approved. Contract execution still requires:
+This design and its implementation plan have been operator-approved. Contract execution now requires:
 
-- explicit operator approval of the implementation plan;
-- repository roadmap authorization for execution;
 - task-by-task proof and stop/reopen behavior defined by that approved plan.
 
-Only then may D4/D4-R1/W2/W3/OAD be modified. B10/B20 frontend work remains separately gated.
+D4/D4-R1/W2/W3/OAD may now be modified only within Tasks 1–6 of that plan. B10/B20 frontend work remains separately gated.

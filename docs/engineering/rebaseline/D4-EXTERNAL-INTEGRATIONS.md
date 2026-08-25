@@ -93,6 +93,14 @@ D7 later supplies runtime mechanics around this boundary.
 
 Legacy generic plugin/self-registration/catalog/factory shape has no target authority by inheritance.
 
+### Human-operable external presentation evidence
+
+When a consumer-owned Product read has a proven human recognition/selection job, D4 preserves the smallest current source/provider presentation evidence needed by that consumer in addition to the canonical external key. Provider/source presentation is mutable, non-unique evidence and never MPC identity, correspondence authority, authorization, or a generic metadata bag.
+
+For Mercado Livre publication/listing evidence this includes, when applicable, the human names/titles associated with already-used category/product-type/attribute/allowed-value/unit/Listing identities. Adapter DTO/field topology remains private.
+
+When presentation cannot currently be established, D4 propagates honest unknown/unavailable presentation rather than fabricating a label or promoting the native key into a name.
+
 ## 3.3 Mercado Livre Installation ↔ seller binding
 
 1. A Marketplace Installation binds one Organization marketplace participation to one authoritative provider seller/account namespace.

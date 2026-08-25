@@ -29,7 +29,22 @@ A ListItem is a semantic subset of the same owner meaning needed to scan/select/
 
 A point GET fan-out is not a substitute for a materially deficient collection item when the owner can directly provide the necessary current item meaning. Conversely, no generic `Summary<T>`, `View<T>`, `expand` or selection DSL is admitted.
 
-The later human-operable presentation gap discovered in D6-R2 is owned by paused PR #70 and is **not** silently repaired by repository health.
+When the admitted human consumer must scan/select/navigate a member and the owner can supply current presentation without a second business conclusion, the ListItem carries that owner-semantic presentation subset directly. Point-GET fan-out is not the baseline repair for a deficient collection item. This admits no generic `View<T>`, projection DSL, total count, alternate sort, or metadata envelope.
+
+The currently proven collection set is exactly:
+
+```text
+SearchSourceProductsForMarketplace
+ListMarketplaceListings
+ListListingIntents
+ListPriceIntents
+ListSellableAvailability
+ListCompetitivePositions
+ListExpectedEconomics
+ListMarketplaceListingPerformance
+```
+
+Any expansion beyond this set requires a separately proven human job and the smallest-owner reopen.
 
 ## 4. Shared continuation grammar
 

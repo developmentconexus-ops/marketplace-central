@@ -240,6 +240,23 @@ When the first real external connector exists, D5 defines the smallest wire cont
 
 Provider publication requirements remain provider-authoritative D4 evidence translated through consumer-owned ports.
 
+### Human-operable publication decision seam
+
+```text
+canonical decision identity
+  requirement_key / option_key / unit_key / source_candidate_key / correspondence candidate_key
+
+current human read projection
+  source/provider display presentation needed to recognize the choice
+
+write/effect
+  canonical key only + current owner revalidation
+```
+
+When a human choice is admitted, Readiness preserves the smallest current human presentation needed to recognize the SourceProduct/SourceInstance, requirements, options, units, `FOLLOW_SOURCE` candidates and correspondence candidates. This read evidence remains adjacent to the canonical key and never becomes decision identity or write authority.
+
+Provider expressions, raw paths, adapter DTO topology, arbitrary maps and generic metadata bags remain rejected at the Product seam. Unknown/unavailable presentation blocks a choice that cannot be performed honestly rather than fabricating a label.
+
 For a Readiness consumer the semantic contract may preserve only what is material, such as:
 
 - provider/context-qualified requirement identity;
