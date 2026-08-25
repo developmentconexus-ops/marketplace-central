@@ -18,6 +18,13 @@ function schemaMap(document) {
   assert(schemas && typeof schemas === 'object', 'bundled Product OAD components.schemas missing');
   return schemas;
 }
+function typedPatternValue(schema, label) {
+  assert(schema?.type === 'object', `${label} must be an object map`);
+  assert(schema.additionalProperties === false, `${label} must remain closed`);
+  const patterns = schema.patternProperties ?? {};
+  sameSet(Object.keys(patterns), ['^.+$'], `${label} pattern keys`);
+  return refName(patterns['^.+$']);
+}
 
 const VALUE_FAMILIES = [
   ['text', 'PublicationTextRequirementSpec', 'PublicationTextValue', 'PublicationTextSourceEvidence'],
@@ -44,7 +51,7 @@ function validatePublicationRequirementsOad(document) {
   assert(candidates?.type === 'object', 'PublicationSourceCandidateValues must be an object keyed by candidate identity');
   assert(candidates.minProperties === 1, 'PublicationSourceCandidateValues must require at least one candidate');
   assert(refName(candidates.propertyNames) === 'OpaqueKey', 'candidate map property names must be opaque Readiness keys');
-  assert(refName(candidates.additionalProperties) === 'PublicationValue', 'candidate map values must use canonical PublicationValue');
+  assert(typedPatternValue(candidates, 'PublicationSourceCandidateValues') === 'PublicationValue', 'candidate map values must use canonical PublicationValue');
 
   const known = schemas.PublicationSourceEvidenceKnown;
   requiredFields(known, ['state', 'candidates'], 'PublicationSourceEvidenceKnown');
@@ -92,8 +99,7 @@ function validatePublicationRequirementsOad(document) {
     sameSet(conditional.if?.properties?.state?.enum ?? [], ['known', 'conflicting'], `${evidenceName} constrained states`);
     assert((conditional.if?.required ?? []).includes('state'), `${evidenceName} type constraint must require state discriminant`);
     const typedCandidates = conditional.then?.properties?.candidates;
-    assert(typedCandidates?.type === 'object', `${evidenceName} candidate overlay must remain an object map`);
-    assert(refName(typedCandidates.additionalProperties) === valueName, `${evidenceName} must bind candidates to ${valueName}`);
+    assert(typedPatternValue(typedCandidates, `${evidenceName}.candidates`) === valueName, `${evidenceName} must bind candidates to ${valueName}`);
     assert(JSON.stringify(typedEvidence).includes('PublicationNotApplicableValue') === false, `${evidenceName} must not admit not_applicable source evidence`);
   }
 
@@ -133,6 +139,12 @@ function publicationRequirementsNegativeControls(document) {
     ['candidate identity map weakened', (candidate) => {
       candidate.components.schemas.PublicationSourceCandidateValues.propertyNames = { type: 'string' };
     }],
+    ['candidate map opened', (candidate) => {
+      candidate.components.schemas.PublicationSourceCandidateValues.additionalProperties = true;
+    }],
+    ['candidate value contract erased', (candidate) => {
+      candidate.components.schemas.PublicationSourceCandidateValues.patternProperties['^.+$'] = { type: 'string' };
+    }],
     ['conflict distinct identity weakened', (candidate) => {
       const allOf = candidate.components.schemas.PublicationSourceEvidenceConflicting.properties.candidates.allOf;
       const bound = allOf.find((entry) => entry.minProperties === 2);
@@ -144,12 +156,12 @@ function publicationRequirementsNegativeControls(document) {
     ['text source candidate type widened', (candidate) => {
       const allOf = candidate.components.schemas.PublicationTextSourceEvidence.allOf;
       const conditional = allOf.find((entry) => entry.if && entry.then);
-      conditional.then.properties.candidates.additionalProperties = { $ref: '#/components/schemas/PublicationValue' };
+      conditional.then.properties.candidates.patternProperties['^.+$'] = { $ref: '#/components/schemas/PublicationValue' };
     }],
     ['not-applicable leaked into text source candidates', (candidate) => {
       const allOf = candidate.components.schemas.PublicationTextSourceEvidence.allOf;
       const conditional = allOf.find((entry) => entry.if && entry.then);
-      conditional.then.properties.candidates.additionalProperties = { $ref: '#/components/schemas/PublicationNotApplicableValue' };
+      conditional.then.properties.candidates.patternProperties['^.+$'] = { $ref: '#/components/schemas/PublicationNotApplicableValue' };
     }],
     ['requirement value/source coupling removed', (candidate) => {
       candidate.components.schemas.PublicationRequirement.allOf = [];
