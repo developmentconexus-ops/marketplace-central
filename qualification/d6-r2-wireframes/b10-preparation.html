@@ -2,41 +2,55 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Marketplace Central — D6-R2 B10 Preparação</title>
 <style>
-:root{--paper:#fff;--canvas:#f3f3f3;--ink:#111;--muted:#666;--line:#bdbdbd;--soft:#e7e7e7;--sidebar:264px;--header:64px;--space:24px}
-*{box-sizing:border-box}html,body{min-height:100%}body{margin:0;background:var(--canvas);color:var(--ink);font:14px/1.4 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select{font:inherit;color:inherit}button{cursor:pointer}.hidden{display:none!important}.small{font-size:12px;color:var(--muted)}
-.prototype-bar{min-height:38px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:7px 12px;border-bottom:1px solid var(--ink);background:var(--paper);font-size:12px}.prototype-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.prototype-controls select,.prototype-controls button{border:1px solid var(--line);background:#fff;padding:5px 8px}
-.app{min-height:calc(100vh - 38px);display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr)}.sidebar{position:sticky;top:38px;height:calc(100vh - 38px);overflow:auto;border-right:1px solid var(--ink);background:#fff;padding:18px 14px 14px}.brand{padding:3px 8px 14px;font-size:17px;font-weight:800;border-bottom:1px solid var(--line);margin-bottom:14px}.organization-block{padding:0 6px 14px;border-bottom:1px solid var(--line)}
-.label{display:block;color:var(--muted);font-size:11px;margin-bottom:5px}.organization-select,.installation-select,.control{min-height:38px;border:1px solid var(--ink);background:#fff;padding:7px 9px}.organization-select,.installation-select{width:100%}.nav-group{margin-top:17px}.group-label{margin:0 7px 5px;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.09em}.nav-item{width:100%;min-height:36px;border:0;background:transparent;text-align:left;padding:8px 9px}.nav-item.active{background:var(--ink);color:#fff}.nav-item.sub{padding-left:27px;font-size:13px}
-.main{min-width:0;background:#fff}.header{min-height:var(--header);display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,430px);gap:20px;align-items:center;padding:10px var(--space);border-bottom:1px solid var(--ink);background:#fff;position:sticky;top:38px;z-index:3}.title-row{display:flex;align-items:center;gap:12px}.menu-toggle{display:none;width:38px;height:36px;border:1px solid var(--ink);background:#fff}.page-title{margin:0;font-size:18px}
-.content{padding:28px var(--space) 40px;max-width:1440px;margin:0 auto}.meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;color:var(--muted);font:11px ui-monospace,SFMono-Regular,Consolas,monospace}.meta span{border:1px solid var(--line);padding:4px 6px}.page-head h1{font-size:24px;margin:0 0 5px}.page-head p{margin:0;color:var(--muted);max-width:900px}.state-box{border:2px solid var(--ink);padding:18px;margin-top:18px;background:#fff}.state-box h2{margin:0 0 5px;font-size:17px}.state-box p{margin:0;color:var(--muted)}
-.search-tools{display:grid;grid-template-columns:minmax(260px,1fr) minmax(220px,320px) auto;gap:10px;align-items:end;margin:20px 0 12px}.field label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px}.field .control{width:100%}.btn{border:1px solid var(--ink);background:#fff;padding:8px 11px;min-height:38px}.btn.primary{background:var(--ink);color:#fff}.btn[disabled]{border-color:var(--line);color:#999;cursor:not-allowed}.search-law,.notice{padding:9px 11px;border:1px dashed var(--line);color:var(--muted);font-size:12px;margin-bottom:14px}.search-state{border:1px dashed var(--line);padding:16px;margin:12px 0;background:#fff}.search-state h2{font-size:15px;margin:0 0 4px}.search-state p{margin:0;color:var(--muted)}
-table{width:100%;border-collapse:collapse;border:1px solid var(--ink);background:#fff}th,td{text-align:left;vertical-align:top;border-bottom:1px solid var(--line);padding:10px}th{font-size:11px;color:var(--muted);font-weight:700}.identity{font:11px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--muted);display:block;margin-top:4px}.tag{display:inline-block;border:1px solid var(--ink);padding:2px 6px;font:11px ui-monospace,SFMono-Regular,Consolas,monospace}.tag.dashed{border-style:dashed}.row-note{font-size:12px;color:var(--muted);margin-top:4px}.result-actions{white-space:nowrap}.cursor-row{display:flex;justify-content:flex-start;margin-top:10px}
-.detail-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:18px 0 12px}.subject-header{border:2px solid var(--ink);padding:15px;background:#fff}.subject-header-top{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}.subject-header h2{margin:0 0 4px;font-size:19px}.subject-identity{margin-top:10px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.identity-cell{border:1px dashed var(--line);padding:8px}.identity-cell span{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}.identity-cell strong{font:12px ui-monospace,SFMono-Regular,Consolas,monospace}
-.detail-grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}.region{border:1px solid var(--ink);padding:14px;background:#fff}.region-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.region h3{margin:0 0 4px;font-size:15px}.region p{margin:0;color:var(--muted)}.provider-context{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}.provider-cell{border:1px dashed var(--line);padding:8px}.provider-cell span{display:block;font-size:10px;color:var(--muted);text-transform:uppercase}.provider-cell strong{font:12px ui-monospace,SFMono-Regular,Consolas,monospace}.requirements-table{margin-top:12px}.requirements-table td:nth-child(1){min-width:170px}.requirements-table td:nth-child(2){min-width:120px}.requirements-table td:nth-child(3){min-width:190px}.requirements-table td:nth-child(4){min-width:210px}.requirements-table td:nth-child(5){min-width:200px}.source-value{font-weight:700}.source-missing{font-weight:700}.resolution-copy{font-size:12px}.requirement-key{font:10px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--muted);display:block;margin-top:3px}
-.correspondence-body{margin-top:12px}.correspondence-choice{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;border:1px dashed var(--line);padding:10px;margin-top:8px}.action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.next-step{border:2px solid var(--ink);padding:14px;background:#fff;margin-top:12px}.next-step h3{margin:0 0 4px;font-size:15px}.next-step p{margin:0;color:var(--muted)}.revalidation{margin-top:10px;border:1px dashed var(--line);padding:9px 10px;color:var(--muted);font-size:12px}.boundary{border:2px dashed var(--ink);padding:14px;margin-top:12px;background:#fff}.boundary h3{margin:0 0 4px;font-size:15px}.boundary p{margin:0;color:var(--muted)}.boundary-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.boundary-summary div{border:1px solid var(--line);padding:8px}.drawer-backdrop{display:none;border:0;padding:0}
-@media(max-width:1020px){:root{--sidebar:210px;--space:20px}.header{grid-template-columns:minmax(0,1fr) minmax(240px,340px)}.search-tools{grid-template-columns:1fr 1fr}.search-tools .btn{grid-column:1/-1;justify-self:start}.subject-identity,.provider-context{grid-template-columns:1fr 1fr}}
-@media(max-width:760px){:root{--space:14px;--header:58px}.prototype-bar{align-items:flex-start;flex-direction:column}.app{display:block}.sidebar{position:fixed;z-index:20;top:0;left:0;width:min(86vw,310px);height:100vh;transform:translateX(-105%);transition:transform .12s linear}body.drawer-open .sidebar{transform:translateX(0)}.drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.18);z-index:19;width:100%;height:100%}body.drawer-open .drawer-backdrop{display:block}.header{position:sticky;top:0;grid-template-columns:1fr;gap:7px;padding:8px var(--space)}.menu-toggle{display:inline-grid;place-items:center}.page-title{font-size:16px}.content{padding-top:18px}.search-tools{grid-template-columns:1fr}.search-tools .btn{grid-column:auto;width:100%}table,thead,tbody,tr,th,td{display:block}thead{position:absolute;left:-9999px}tr{border-bottom:1px solid var(--ink);padding:9px}td{border:0;padding:5px 0}.subject-header-top,.detail-toolbar{display:block}.subject-header-top .tag,.detail-toolbar .btn{margin-top:8px}.subject-identity,.provider-context,.boundary-summary{grid-template-columns:1fr}.correspondence-choice{grid-template-columns:1fr}.correspondence-choice .btn{width:100%}.requirements-table tr{padding:12px}.requirements-table td:before{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px}.requirements-table td:nth-child(1):before{content:'Requisito'}.requirements-table td:nth-child(2):before{content:'Aplicabilidade'}.requirements-table td:nth-child(3):before{content:'Constraint do marketplace'}.requirements-table td:nth-child(4):before{content:'Evidência da fonte'}.requirements-table td:nth-child(5):before{content:'Caminho de resolução'}}
+:root{--paper:#fff;--canvas:#f4f4f4;--ink:#111;--muted:#666;--line:#bbb;--sidebar:260px;--space:22px}
+*{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--ink);font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}button,input,select{font:inherit;color:inherit}button{cursor:pointer}.hidden{display:none!important}.small{font-size:12px;color:var(--muted)}
+.prototype{padding:8px 12px;border-bottom:1px solid var(--ink);background:#fff;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.prototype-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.prototype select,.prototype button{background:#fff;border:1px solid var(--line);padding:5px 8px}
+.app{min-height:calc(100vh - 42px);display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr)}.sidebar{background:#fff;border-right:1px solid var(--ink);padding:18px 14px;position:sticky;top:0;height:100vh;overflow:auto}.brand{font-weight:800;font-size:17px;padding:0 8px 14px;border-bottom:1px solid var(--line)}.organization-block{padding:14px 6px;border-bottom:1px solid var(--line)}.label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px}.organization-select,.installation-select,.control{width:100%;min-height:38px;background:#fff;border:1px solid var(--ink);padding:7px 9px}
+.nav-group{margin-top:16px}.group-label{font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--muted);padding:0 8px 4px}.nav-item{width:100%;border:0;background:transparent;text-align:left;padding:8px 9px;min-height:36px}.nav-item.active{background:var(--ink);color:#fff}.nav-item.sub{padding-left:26px;font-size:13px}
+.main{min-width:0;background:#fff}.header{position:sticky;top:0;z-index:3;background:#fff;border-bottom:1px solid var(--ink);padding:10px var(--space);display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,420px);gap:18px;align-items:center}.title-row{display:flex;align-items:center;gap:10px}.menu-toggle{display:none;background:#fff;border:1px solid var(--ink);width:38px;height:36px}.page-title{font-size:18px;margin:0}.content{max-width:1480px;margin:auto;padding:26px var(--space) 42px}
+.meta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;font:11px ui-monospace,monospace;color:var(--muted)}.meta span{border:1px solid var(--line);padding:3px 6px}.page-head h1{margin:0 0 5px;font-size:24px}.page-head p{margin:0;color:var(--muted);max-width:960px}.state-box,.region,.next-step,.boundary{background:#fff;border:1px solid var(--ink);padding:14px}.state-box{border-width:2px;margin-top:18px}.region,.next-step,.boundary{margin-top:12px}.boundary{border-style:dashed;border-width:2px}.state-box h2,.region h3,.next-step h3,.boundary h3{margin:0 0 5px}.state-box p,.region p,.next-step p,.boundary p{margin:0;color:var(--muted)}
+.search-tools{display:grid;grid-template-columns:minmax(260px,1fr) minmax(220px,300px) auto;gap:10px;align-items:end;margin:20px 0 10px}.field label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px}.btn{border:1px solid var(--ink);background:#fff;padding:8px 11px;min-height:38px}.btn.primary{background:var(--ink);color:#fff}.btn:disabled{color:#999;border-color:var(--line);cursor:not-allowed}.notice,.search-state,.revalidation{border:1px dashed var(--line);padding:9px 10px;color:var(--muted);margin-top:10px}.search-state{padding:14px}.search-state h2{margin:0 0 4px;font-size:15px}.search-state p{margin:0}
+table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1px solid var(--line);text-align:left;vertical-align:top;padding:9px}th{font-size:11px;color:var(--muted)}.identity{display:block;font:11px ui-monospace,monospace;color:var(--muted);margin-top:3px}.tag{display:inline-block;border:1px solid var(--ink);padding:2px 6px;font:11px ui-monospace,monospace}.tag.dashed{border-style:dashed}.row-note{font-size:12px;color:var(--muted);margin-top:3px}
+.detail-toolbar{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:18px 0 10px}.subject-header{border:2px solid var(--ink);padding:14px}.subject-top{display:flex;justify-content:space-between;gap:12px}.subject-top h2{margin:0 0 4px}.identity-grid,.context-grid,.boundary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}.identity-cell,.context-cell,.boundary-grid div{border:1px dashed var(--line);padding:8px}.identity-cell span,.context-cell span{display:block;font-size:10px;color:var(--muted);text-transform:uppercase}.identity-cell strong,.context-cell strong{font:12px ui-monospace,monospace}
+.requirements-wrap{overflow:auto}.requirements-table{min-width:1160px}.requirement-key{display:block;font:10px ui-monospace,monospace;color:var(--muted);margin-top:3px}.candidate{display:block;font:10px ui-monospace,monospace;margin-top:3px}.evidence-state{font-weight:700}.correspondence-choice{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;border:1px dashed var(--line);padding:10px;margin-top:9px}.action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.drawer-backdrop{display:none;border:0}
+@media(max-width:1020px){:root{--sidebar:210px}.header{grid-template-columns:1fr 300px}.search-tools{grid-template-columns:1fr 1fr}.search-tools .btn{grid-column:1/-1;justify-self:start}.identity-grid,.context-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:760px){:root{--space:14px}.app{display:block}.sidebar{position:fixed;z-index:20;top:0;left:0;width:min(86vw,310px);transform:translateX(-105%);transition:transform .12s linear}.drawer-open .sidebar{transform:translateX(0)}.drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.18);z-index:19;width:100%;height:100%}.drawer-open .drawer-backdrop{display:block}.header{grid-template-columns:1fr;gap:8px}.menu-toggle{display:inline-grid;place-items:center}.search-tools{grid-template-columns:1fr}.search-tools .btn{grid-column:auto;width:100%}.identity-grid,.context-grid,.boundary-grid{grid-template-columns:1fr}.subject-top,.detail-toolbar{display:block}.subject-top .tag,.detail-toolbar .btn{margin-top:8px}.correspondence-choice{grid-template-columns:1fr}.correspondence-choice .btn{width:100%}}
 </style>
 </head>
-<body data-p8-status="candidate" data-surface="R10" data-owner="ProductChannelReadiness" data-required-permission="readiness.read" data-write-permission="readiness.manage" data-responsive-law="search-detail-mobile-stack" data-provider-authority="provider-authoritative" data-requirements-census="all-applicable" data-provider-context="installation-category-product-type" data-source-missing-policy="listing-intent-override-eligible">
-<div class="prototype-bar">
-  <div><strong>D6-R2 · P8 · B10 · CANDIDATE</strong> — preparação orientada pelos requisitos do marketplace selecionado.</div>
+<body
+  data-p8-status="candidate"
+  data-surface="R10"
+  data-wire-prerequisite="pr68-integrated"
+  data-owner="ProductChannelReadiness"
+  data-required-permission="readiness.read"
+  data-write-permission="readiness.manage"
+  data-responsive-law="search-detail-mobile-stack"
+  data-provider-authority="provider-authoritative"
+  data-requirements-census="all-applicable"
+  data-provider-context="installation-category-product-type"
+  data-source-missing-policy="preserve-source-truth">
+<div class="prototype">
+  <div><strong>D6-R2 · P8 · B10 · CANDIDATE</strong> — rebaseline após PR #68; não é UI final.</div>
   <div class="prototype-controls">
-    <label for="searchScenario">Cenário da busca</label>
+    <label for="searchScenario">Busca</label>
     <select id="searchScenario"><option value="normal">NORMAL</option><option value="known-empty">KNOWN_EMPTY</option><option value="unavailable">UNAVAILABLE</option></select>
-    <label for="detailScenario">Cenário do detalhe</label>
-    <select id="detailScenario"><option value="ready">SOURCE_SUFFICIENT</option><option value="requirements">SOURCE_MISSING_OVERRIDE_POSSIBLE</option><option value="correspondence">CORRESPONDENCE_NEEDED</option><option value="unknown">KNOWLEDGE_UNAVAILABLE</option></select>
-    <button id="reset" type="button">Reiniciar bloco</button>
+    <label for="detailScenario">Detalhe</label>
+    <select id="detailScenario"><option value="normal">CONTINUAR</option><option value="correspondence">CORRESPONDENCE_BLOCKER</option><option value="unknown">UNKNOWN_AUTHORITY</option></select>
+    <button id="reset" type="button">Reiniciar</button>
   </div>
 </div>
+
 <button class="drawer-backdrop" id="backdrop" type="button" aria-label="Fechar navegação"></button>
 <div class="app">
 <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
   <div class="brand">Marketplace Central</div>
-  <div class="organization-block"><label class="label" for="organization">Organização · workspace global</label><select id="organization" class="organization-select"><option value="org-a">Organização Exemplo A</option><option value="org-b">Organização Exemplo B</option></select></div>
+  <div class="organization-block">
+    <label class="label" for="organization">Organização · workspace global</label>
+    <select id="organization" class="organization-select"><option value="org-a">Organização Exemplo A</option><option value="org-b">Organização Exemplo B</option></select>
+  </div>
   <nav>
     <div class="nav-group"><div class="group-label">VISÃO GERAL</div><button class="nav-item">Visão geral</button></div>
     <div class="nav-group"><div class="group-label">OFERTA</div><button class="nav-item active">Preparação</button><button class="nav-item">Anúncios</button><button class="nav-item">Preços</button><button class="nav-item">Disponibilidade</button></div>
@@ -46,123 +60,180 @@ table{width:100%;border-collapse:collapse;border:1px solid var(--ink);background
     <div class="nav-group"><div class="group-label">CONFIGURAÇÕES</div><button class="nav-item">Configurações</button></div>
   </nav>
 </aside>
+
 <main class="main">
 <header class="header">
   <div class="title-row"><button id="menu" class="menu-toggle" type="button" aria-label="Abrir navegação" aria-controls="sidebar" aria-expanded="false">☰</button><h1 class="page-title">Preparação</h1></div>
   <div><label class="label" for="installation">Conta do marketplace · obrigatória nesta rota</label><select id="installation" class="installation-select"><option value="">Selecione uma conta…</option><option value="ml-a">Mercado Livre · Conta A</option><option value="ml-b">Mercado Livre · Conta B</option></select></div>
 </header>
+
 <div class="content">
   <div class="meta" aria-label="Traço estrutural">
-    <span>B00 shell LOCKED</span><span>exact Installation required</span><span>SourceInstance never hidden</span><span>no MPC Product/PIM master</span>
-    <span data-operation="SearchSourceProductsForMarketplace">SearchSourceProductsForMarketplace</span><span data-operation="GetProductChannelReadiness">GetProductChannelReadiness</span><span data-operation="GetPublicationRequirements">GetPublicationRequirements</span><span data-operation="ResolveProductChannelCorrespondence">ResolveProductChannelCorrespondence</span><span data-operation="ClearProductChannelCorrespondence">ClearProductChannelCorrespondence</span>
+    <span>B00 shell LOCKED</span><span>PR68 integrated</span><span>exact Installation</span><span>SourceInstance explicit</span><span>no MPC Product/PIM master</span>
+    <span data-operation="SearchSourceProductsForMarketplace">SearchSourceProductsForMarketplace</span>
+    <span data-operation="GetProductChannelReadiness">GetProductChannelReadiness</span>
+    <span data-operation="GetPublicationRequirements">GetPublicationRequirements</span>
+    <span data-operation="ResolveProductChannelCorrespondence">ResolveProductChannelCorrespondence</span>
+    <span data-operation="ClearProductChannelCorrespondence">ClearProductChannelCorrespondence</span>
   </div>
-  <div class="page-head"><h1>Preparação</h1><p>Encontre o produto exato da fonte e compare sua evidência com todos os requisitos aplicáveis do marketplace. O B10 não edita o cadastro mestre nem transforma requisito ausente na fonte em publicação impossível por reflexo.</p></div>
 
-  <section id="missingInstallation" class="state-box"><h2>Selecione uma conta do marketplace</h2><p>Preparação exige uma Marketplace Installation exata. Os requisitos são obtidos no contexto desse marketplace; nenhuma primeira conta é escolhida automaticamente.</p></section>
+  <div class="page-head">
+    <h1>Preparação</h1>
+    <p>Encontre o produto exato da fonte, inspecione o conjunto completo de requisitos aplicáveis ao marketplace/contexto e preserve a diferença entre verdade da fonte e resolução futura do anúncio.</p>
+  </div>
 
-  <section id="searchMode" class="hidden" aria-labelledby="searchHeading">
-    <h2 id="searchHeading" class="hidden">Buscar produtos de origem</h2>
+  <section id="missingInstallation" class="state-box">
+    <h2>Selecione uma conta do marketplace</h2>
+    <p>Preparação exige uma Marketplace Installation exata. Nenhuma conta é escolhida automaticamente.</p>
+  </section>
+
+  <section id="searchMode" class="hidden">
     <div class="search-tools">
       <div class="field"><label for="query">Buscar produto de origem</label><input id="query" class="control" value="torneira" placeholder="Nome, SKU ou código da fonte"></div>
       <div class="field"><label for="source">Fonte de origem · filtro opcional</label><select id="source" class="control"><option value="all">Todas as fontes admitidas</option><option value="SANKHYA-PROD">SANKHYA-PROD</option><option value="LEGACY-CATALOG">LEGACY-CATALOG</option></select></div>
       <button id="search" class="btn primary" type="button">Buscar</button>
     </div>
-    <div class="search-law">A busca exige termo. Omitir SourceInstance significa busca multi-source admitida, nunca uma fonte default. Cada resultado permanece source-qualified.</div>
-    <div id="searchValidation" class="search-state hidden" role="status"><h2>Informe um termo de busca</h2><p>A operação canônica exige query não vazia.</p></div>
-    <div id="searchUnavailable" class="search-state hidden" data-knowledge-state="unavailable" role="status"><h2>Busca indisponível</h2><p>Não foi possível estabelecer o conjunto de resultados. Isto não significa nenhum produto encontrado.</p></div>
+    <div class="notice">Omitir SourceInstance significa busca multi-source admitida, nunca fonte default. Cada resultado permanece source-qualified.</div>
+    <div id="searchValidation" class="search-state hidden" role="status"><h2>Informe um termo de busca</h2><p>A operação exige query não vazia.</p></div>
+    <div id="searchUnavailable" class="search-state hidden" data-knowledge-state="unavailable" role="status"><h2>Busca indisponível</h2><p>Não foi possível estabelecer o conjunto de resultados. Isto não significa lista vazia.</p></div>
     <div id="knownEmpty" class="search-state hidden" data-search-state="known-empty" role="status"><h2>Nenhum resultado conhecido</h2><p>Nenhum produto encontrado nesta busca conhecida.</p></div>
     <div id="resultsHost" data-search-state="known-populated">
-      <table aria-label="Resultados de produtos de origem"><thead><tr><th>Produto de origem</th><th>Identidade da fonte</th><th>Readiness da fonte</th><th>Requisitos</th><th>Ação</th></tr></thead><tbody id="resultsBody"></tbody></table>
-      <div class="cursor-row"><button id="loadMore" class="btn hidden" type="button" data-cursor-source="next_cursor">Carregar mais resultados</button></div>
+      <table aria-label="Resultados de produtos de origem">
+        <thead><tr><th>Produto</th><th>Identidade da fonte</th><th>Readiness</th><th>Ação</th></tr></thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
     </div>
   </section>
 
   <section id="detailMode" class="hidden">
     <div class="detail-toolbar"><button id="back" class="btn" type="button">← Voltar aos resultados</button><span class="small">Busca/filtro são estado de navegação; não viram Product truth.</span></div>
+
     <div class="subject-header">
-      <div class="subject-header-top"><div><h2 id="subjectName">Torneira monocomando alta</h2><p class="small">Produto de origem exato selecionado.</p></div><span id="readinessTag" class="tag">SOURCE SUFFICIENT</span></div>
-      <div class="subject-identity"><div class="identity-cell"><span>SourceInstance</span><strong id="subjectSource">SANKHYA-PROD</strong></div><div class="identity-cell"><span>native product key</span><strong id="subjectKey">42664</strong></div><div class="identity-cell"><span>Marketplace Installation</span><strong id="subjectInstallation">ml-a</strong></div></div>
+      <div class="subject-top"><div><h2 id="subjectName">Torneira monocomando alta</h2><p class="small">Sujeito exato da preparação.</p></div><span id="readinessTag" class="tag">KNOWN</span></div>
+      <div class="identity-grid">
+        <div class="identity-cell"><span>SourceInstance</span><strong id="subjectSource">SANKHYA-PROD</strong></div>
+        <div class="identity-cell"><span>native product key</span><strong id="subjectKey">42664</strong></div>
+        <div class="identity-cell"><span>Marketplace Installation</span><strong id="subjectInstallation">ml-a</strong></div>
+        <div class="identity-cell"><span>Readiness evaluated</span><strong>2026-08-24T21:00-03:00</strong></div>
+      </div>
     </div>
 
-    <div class="detail-grid">
-      <section class="region">
-        <div class="region-head"><div><h3>Readiness da fonte</h3><p id="readinessCopy">A fonte possui candidatos conhecidos para os requisitos aplicáveis.</p></div><span id="knowledgeTag" class="tag">KNOWN</span></div>
-        <div id="knowledgeUnavailableNote" class="revalidation hidden" data-knowledge-state="unavailable">Conhecimento indisponível não é prontidão falsa nem lista vazia de requisitos.</div>
-        <div id="revalidation" class="revalidation hidden">Re-leitura de prontidão necessária após efeito consequencial. O frontend não assume convergência pelo clique.</div>
-      </section>
+    <section class="region" id="requirementsRegion"
+      data-provider-authority="provider-authoritative"
+      data-requirements-census="all-applicable"
+      data-provider-context="installation-category-product-type"
+      data-requirements-revision="ml-req-rev-43">
+      <div><h3>Todos os requisitos aplicáveis</h3><p>Os requisitos variam conforme marketplace, categoria e product type. A classe do requisito é independente da aplicabilidade de avaliação.</p></div>
+      <div class="context-grid">
+        <div class="context-cell"><span>Marketplace</span><strong>Mercado Livre</strong></div>
+        <div class="context-cell"><span>category_key</span><strong>MLB27140</strong></div>
+        <div class="context-cell"><span>product_type_key</span><strong>TORNEIRAS</strong></div>
+        <div class="context-cell"><span>requirements_revision</span><strong>ml-req-rev-43</strong></div>
+      </div>
+      <div class="notice"><strong>missing source ≠ publicação impossível.</strong> B10 mostra a verdade da fonte e o requisito; a resolução do draft pertence ao ListingIntent.</div>
 
-      <section class="region" id="requirementsRegion" data-provider-authority="provider-authoritative" data-requirements-census="all-applicable" data-provider-context="installation-category-product-type" data-requirements-revision="ml-req-rev-42">
-        <div class="region-head"><div><h3>Todos os requisitos aplicáveis</h3><p>Requisitos provider-authoritative traduzidos por ProductChannelReadiness para o contexto atual. Os requisitos variam conforme marketplace, categoria e product type.</p></div><span class="tag">PROVIDER REQUIREMENTS</span></div>
-        <div class="provider-context">
-          <div class="provider-cell"><span>Marketplace</span><strong id="providerName">Mercado Livre</strong></div>
-          <div class="provider-cell"><span>Categoria</span><strong id="providerCategory">MLB27140</strong></div>
-          <div class="provider-cell"><span>Product type</span><strong id="providerProductType">TORNEIRAS</strong></div>
-          <div class="provider-cell"><span>Requirements revision</span><strong id="providerRevision">ml-req-rev-42</strong></div>
-        </div>
-        <div class="notice">Este censo mostra requisitos aplicáveis à publicação — não todos os campos existentes no Sankhya. O MPC também não cria um catálogo universal de atributos para esconder diferenças entre marketplaces.</div>
-        <table class="requirements-table" aria-label="Todos os requisitos aplicáveis do marketplace">
-          <thead><tr><th>Requisito</th><th>Aplicabilidade</th><th>Constraint do marketplace</th><th>Evidência da fonte</th><th>Caminho de resolução</th></tr></thead>
-          <tbody id="requirementsBody">
-            <tr data-requirement-key="brand" data-applicability="required" data-source-state="met" data-resolution-mode="follow-source"><td><strong>Marca</strong><span class="requirement-key">brand</span></td><td>Obrigatório</td><td>Texto · 1 valor</td><td><span class="source-value">Deca</span><span class="identity">SANKHYA-PROD / 42664</span></td><td class="resolution-copy">FOLLOW_SOURCE disponível</td></tr>
-            <tr data-requirement-key="model" data-applicability="required" data-source-state="met" data-resolution-mode="follow-source"><td><strong>Modelo</strong><span class="requirement-key">model</span></td><td>Obrigatório</td><td>Texto · 1 valor</td><td><span class="source-value">Level</span><span class="identity">SANKHYA-PROD / 42664</span></td><td class="resolution-copy">FOLLOW_SOURCE disponível</td></tr>
-            <tr data-requirement-key="material" data-applicability="required" data-source-state="missing" data-listing-intent-resolution="explicit-override-eligible"><td><strong>Material</strong><span class="requirement-key">material</span></td><td>Obrigatório</td><td>Opção · inox / latão / outros</td><td><span class="source-missing">Ausente na fonte</span><span class="identity">nenhum candidato conhecido</span></td><td class="resolution-copy">ListingIntent poderá exigir EXPLICIT_OVERRIDE</td></tr>
-            <tr data-requirement-key="color" data-applicability="recommended" data-source-state="met" data-resolution-mode="follow-source"><td><strong>Cor</strong><span class="requirement-key">color</span></td><td>Recomendado</td><td>Opção · conjunto do provider</td><td><span class="source-value">Cromado</span><span class="identity">SANKHYA-PROD / 42664</span></td><td class="resolution-copy">FOLLOW_SOURCE disponível</td></tr>
-            <tr data-requirement-key="gtin" data-applicability="conditional" data-source-state="unavailable"><td><strong>GTIN / EAN</strong><span class="requirement-key">gtin</span></td><td>Condicional</td><td>Aplicável conforme categoria/contexto</td><td><span class="source-missing">Evidência indisponível nesta leitura</span></td><td class="resolution-copy">Não inferir; decisão posterior depende da regra atual</td></tr>
-            <tr data-requirement-key="minimum_media" data-applicability="required" data-source-state="met" data-resolution-mode="follow-source"><td><strong>Mídia mínima</strong><span class="requirement-key">minimum_media</span></td><td>Obrigatório</td><td>≥ 1 imagem elegível</td><td><span class="source-value">3 candidatos</span><span class="identity">source media</span></td><td class="resolution-copy">FOLLOW_SOURCE / seleção ocorrerá no ListingIntent</td></tr>
-          </tbody>
-        </table>
-      </section>
+      <div class="requirements-wrap">
+      <table class="requirements-table" aria-label="Requisitos aplicáveis do marketplace">
+        <thead><tr><th>Requisito</th><th>Classe</th><th>Aplicabilidade</th><th>value_spec</th><th>source_evidence</th><th>not_applicable</th><th>Handoff</th></tr></thead>
+        <tbody>
+          <tr data-requirement-key="brand" data-requirement-class="required" data-evaluation-applicability="current" data-value-spec-kind="text" data-source-knowledge="known" data-not-applicable-allowed="false">
+            <td><strong>Marca</strong><span class="requirement-key">brand</span></td><td>Obrigatório</td><td>Atual</td><td>Texto · 1–60 caracteres</td>
+            <td><span class="evidence-state">known</span><span class="candidate" data-source-candidate-key="cand-brand-01">cand-brand-01 → “Deca”</span></td><td>Não</td><td>FOLLOW_SOURCE pode usar a candidate key.</td>
+          </tr>
+          <tr data-requirement-key="width" data-requirement-class="required" data-evaluation-applicability="current" data-value-spec-kind="number_unit" data-source-knowledge="known" data-not-applicable-allowed="false">
+            <td><strong>Largura</strong><span class="requirement-key">width</span></td><td>Obrigatório</td><td>Atual</td><td>Número + unidade · mm/cm</td>
+            <td><span class="evidence-state">known</span><span class="candidate" data-source-candidate-key="cand-width-01">cand-width-01 → 220 mm</span></td><td>Não</td><td>FOLLOW_SOURCE preserva proveniência.</td>
+          </tr>
+          <tr data-requirement-key="reference_price" data-requirement-class="optional" data-evaluation-applicability="draft_dependent" data-value-spec-kind="exact_decimal" data-source-knowledge="unknown" data-not-applicable-allowed="true">
+            <td><strong>Preço de referência</strong><span class="requirement-key">reference_price</span></td><td>Opcional</td><td>Depende do draft</td><td>Decimal exato · mínimo 0</td>
+            <td><span class="evidence-state">unknown</span><span class="identity">nenhuma candidate é inventada</span></td><td>Sim</td><td>ListingIntent decide resolução quando aplicável.</td>
+          </tr>
+          <tr data-requirement-key="battery_included" data-requirement-class="conditional" data-evaluation-applicability="draft_dependent" data-value-spec-kind="boolean" data-source-knowledge="unsupported" data-not-applicable-allowed="true">
+            <td><strong>Bateria inclusa</strong><span class="requirement-key">battery_included</span></td><td>Condicional</td><td>Depende do draft</td><td>Booleano</td>
+            <td><span class="evidence-state">unsupported</span><span class="identity">fonte não fornece essa evidência</span></td><td>Sim</td><td>Não inferir valor nem N/A.</td>
+          </tr>
+          <tr data-requirement-key="material" data-requirement-class="required" data-evaluation-applicability="current" data-value-spec-kind="option" data-source-knowledge="missing" data-not-applicable-allowed="false">
+            <td><strong>Material</strong><span class="requirement-key">material</span></td><td>Obrigatório</td><td>Atual</td><td>Opção · latão / inox / outros</td>
+            <td><span class="evidence-state">missing</span><span class="identity">fonte consultada, sem candidate</span></td><td>Não</td><td>Não bloqueia B10 por reflexo; o draft ainda precisa resolver.</td>
+          </tr>
+          <tr data-requirement-key="search_terms" data-requirement-class="recommended" data-evaluation-applicability="draft_dependent" data-value-spec-kind="text_list" data-source-knowledge="unavailable" data-not-applicable-allowed="true">
+            <td><strong>Termos de busca</strong><span class="requirement-key">search_terms</span></td><td>Recomendado</td><td>Depende do draft</td><td>Lista de texto · máximo 10</td>
+            <td><span class="evidence-state">unavailable</span><span class="identity">leitura atual indisponível</span></td><td>Sim</td><td>Indisponível não vira vazio.</td>
+          </tr>
+          <tr data-requirement-key="finish_options" data-requirement-class="recommended" data-evaluation-applicability="current" data-value-spec-kind="option_list" data-source-knowledge="conflicting" data-source-candidate-count="2" data-not-applicable-allowed="true">
+            <td><strong>Acabamento</strong><span class="requirement-key">finish_options</span></td><td>Recomendado</td><td>Atual</td><td>Lista de opções · 1–3</td>
+            <td><span class="evidence-state">conflicting</span><span class="candidate" data-source-candidate-key="cand-finish-01">cand-finish-01 → cromado</span><span class="candidate" data-source-candidate-key="cand-finish-02">cand-finish-02 → inox</span></td><td>Sim</td><td>Conflito permanece explícito; nenhuma candidate é escolhida automaticamente.</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
 
-      <section class="region">
-        <div class="region-head"><div><h3>Correspondência do produto</h3><p>Resolução owner-admitida; não é edição do cadastro mestre.</p></div><span id="correspondenceTag" class="tag">RESOLVED</span></div>
-        <div id="correspondenceBody" class="correspondence-body"></div>
-      </section>
+      <div class="notice" data-source-media-candidates="3">
+        <strong>source_media_candidates</strong> — <span data-source-candidate-key="media-01">media-01</span>, <span data-source-candidate-key="media-02">media-02</span>, <span data-source-candidate-key="media-03">media-03</span>. Mídia permanece separada do censo de requisitos.
+      </div>
+    </section>
 
-      <section class="next-step" id="nextStep">
-        <h3>Próximo passo</h3><p id="nextCopy">A fonte cobre os requisitos necessários para começar a intenção de publicação.</p>
-        <div id="progressionMarker" data-progression="listing-intent-required" class="small">B10 avalia a fonte; a completude do draft é decidida depois por Offering.</div>
-        <div class="action-row"><button id="continue" class="btn primary" type="button">Continuar para intenção de publicação</button><button id="reread" class="btn hidden" type="button">Re-ler prontidão</button></div>
-      </section>
+    <section class="region">
+      <div><h3>Correspondência do produto</h3><p>Resolução owner-admitida; não é edição do cadastro mestre.</p></div>
+      <div id="correspondenceBody"></div>
+      <div id="revalidation" class="revalidation hidden">Re-leitura de prontidão necessária após efeito consequencial. O frontend não assume convergência pelo clique.</div>
+    </section>
 
-      <section id="listingIntentBoundary" class="boundary hidden" data-boundary="listing-intent" data-next-operation="CreateListingIntentDraft" tabindex="-1">
-        <h3>Boundary: ListingIntent</h3><p>B10 termina aqui. O próximo bloco cria o draft. Valores source-backed podem usar FOLLOW_SOURCE; requisitos sem candidato de fonte podem exigir EXPLICIT_OVERRIDE quando a regra atual permitir. O override não altera a verdade do Sankhya.</p>
-        <div class="boundary-summary"><div><strong>FOLLOW_SOURCE</strong><div class="small">Usa candidato source-qualified preservando proveniência.</div></div><div><strong>EXPLICIT_OVERRIDE</strong><div class="small">Valor authored no ListingIntent quando permitido; não reescreve a fonte.</div></div></div>
-      </section>
-    </div>
+    <section class="next-step">
+      <h3>Próximo passo</h3>
+      <p id="nextCopy">A fonte pode conter dívidas e ainda assim B10 pode avançar para o draft quando não existe blocker pré-ListingIntent.</p>
+      <div id="progression" data-progression="listing-intent-required" class="small">A dispatchability final não é decidida por B10.</div>
+      <span class="hidden" data-progression="blocked-by-correspondence"></span>
+      <span class="hidden" data-progression="blocked-by-unknown-authority"></span>
+      <div class="action-row"><button id="continue" class="btn primary" type="button">Continuar para intenção de publicação</button><button id="reread" class="btn hidden" type="button">Re-ler prontidão</button></div>
+    </section>
+
+    <section id="listingIntentBoundary" class="boundary hidden" data-boundary="listing-intent" data-next-operation="CreateListingIntentDraft" tabindex="-1">
+      <h3>Boundary: ListingIntent</h3>
+      <p>B10 termina aqui. FOLLOW_SOURCE referencia uma source candidate key. EXPLICIT_OVERRIDE é valor authored no draft e deve respeitar value_spec; <code>not_applicable</code> só pode ser authored quando <code>not_applicable_allowed</code> permitir. Nenhuma dessas ações reescreve a verdade da fonte.</p>
+      <div class="boundary-grid"><div><strong>FOLLOW_SOURCE</strong><p class="small">Preserva a candidate key e a proveniência.</p></div><div><strong>EXPLICIT_OVERRIDE</strong><p class="small">Pertence ao ListingIntent/Offering, não ao B10.</p></div></div>
+    </section>
   </section>
 </div>
 </main>
 </div>
+
 <script>
-const organization=document.getElementById('organization'),installation=document.getElementById('installation'),missing=document.getElementById('missingInstallation'),searchMode=document.getElementById('searchMode'),detailMode=document.getElementById('detailMode'),searchScenario=document.getElementById('searchScenario'),scenario=document.getElementById('detailScenario');
-const query=document.getElementById('query'),source=document.getElementById('source'),resultsHost=document.getElementById('resultsHost'),resultsBody=document.getElementById('resultsBody'),knownEmpty=document.getElementById('knownEmpty'),searchUnavailable=document.getElementById('searchUnavailable'),searchValidation=document.getElementById('searchValidation'),loadMore=document.getElementById('loadMore');
-const subjectName=document.getElementById('subjectName'),subjectSource=document.getElementById('subjectSource'),subjectKey=document.getElementById('subjectKey'),subjectInstallation=document.getElementById('subjectInstallation'),readinessTag=document.getElementById('readinessTag'),knowledgeTag=document.getElementById('knowledgeTag'),knowledgeUnavailableNote=document.getElementById('knowledgeUnavailableNote'),readinessCopy=document.getElementById('readinessCopy'),requirementsBody=document.getElementById('requirementsBody'),correspondenceTag=document.getElementById('correspondenceTag'),correspondenceBody=document.getElementById('correspondenceBody'),nextCopy=document.getElementById('nextCopy'),progressionMarker=document.getElementById('progressionMarker'),continueBtn=document.getElementById('continue'),reread=document.getElementById('reread'),revalidation=document.getElementById('revalidation'),listingIntentBoundary=document.getElementById('listingIntentBoundary');
-const menu=document.getElementById('menu'),backdrop=document.getElementById('backdrop');let selected=null,visibleLimit=2;
-const products=[{key:'42664',name:'Torneira monocomando alta',source:'SANKHYA-PROD',readiness:'SOURCE SUFFICIENT',note:'Fonte cobre requisitos conhecidos',corr:'Correspondência resolvida'},{key:'15723',name:'Cuba inox 50 cm',source:'SANKHYA-PROD',readiness:'SOURCE INCOMPLETE',note:'Há requisito sem candidato na fonte',corr:'Correspondência resolvida'},{key:'SKU-9912',name:'Kit misturador cozinha',source:'LEGACY-CATALOG',readiness:'UNKNOWN',note:'Requirement evidence indisponível',corr:'Correspondência precisa ser verificada'}];
-const baseRequirements=[
- {key:'brand',label:'Marca',app:'required',appLabel:'Obrigatório',constraint:'Texto · 1 valor',state:'met',source:'Deca',sourceMeta:'SANKHYA-PROD / produto exato',resolution:'FOLLOW_SOURCE disponível',mode:'follow-source'},
- {key:'model',label:'Modelo',app:'required',appLabel:'Obrigatório',constraint:'Texto · 1 valor',state:'met',source:'Level',sourceMeta:'SANKHYA-PROD / produto exato',resolution:'FOLLOW_SOURCE disponível',mode:'follow-source'},
- {key:'material',label:'Material',app:'required',appLabel:'Obrigatório',constraint:'Opção · inox / latão / outros',state:'missing',source:'Ausente na fonte',sourceMeta:'nenhum candidato conhecido',resolution:'ListingIntent poderá exigir EXPLICIT_OVERRIDE',override:true},
- {key:'color',label:'Cor',app:'recommended',appLabel:'Recomendado',constraint:'Opção · conjunto do provider',state:'met',source:'Cromado',sourceMeta:'SANKHYA-PROD / produto exato',resolution:'FOLLOW_SOURCE disponível',mode:'follow-source'},
- {key:'gtin',label:'GTIN / EAN',app:'conditional',appLabel:'Condicional',constraint:'Aplicável conforme categoria/contexto',state:'unavailable',source:'Evidência indisponível nesta leitura',sourceMeta:'não inferir ausência',resolution:'Decisão posterior depende da regra atual'},
- {key:'minimum_media',label:'Mídia mínima',app:'required',appLabel:'Obrigatório',constraint:'≥ 1 imagem elegível',state:'met',source:'3 candidatos',sourceMeta:'source media',resolution:'FOLLOW_SOURCE / seleção no ListingIntent',mode:'follow-source'}
+const organization=document.getElementById('organization'),installation=document.getElementById('installation'),missing=document.getElementById('missingInstallation'),searchMode=document.getElementById('searchMode'),detailMode=document.getElementById('detailMode'),query=document.getElementById('query'),source=document.getElementById('source'),searchScenario=document.getElementById('searchScenario'),detailScenario=document.getElementById('detailScenario'),resultsHost=document.getElementById('resultsHost'),resultsBody=document.getElementById('resultsBody'),knownEmpty=document.getElementById('knownEmpty'),searchUnavailable=document.getElementById('searchUnavailable'),searchValidation=document.getElementById('searchValidation'),subjectName=document.getElementById('subjectName'),subjectSource=document.getElementById('subjectSource'),subjectKey=document.getElementById('subjectKey'),subjectInstallation=document.getElementById('subjectInstallation'),correspondenceBody=document.getElementById('correspondenceBody'),revalidation=document.getElementById('revalidation'),progression=document.getElementById('progression'),continueBtn=document.getElementById('continue'),reread=document.getElementById('reread'),listingIntentBoundary=document.getElementById('listingIntentBoundary'),menu=document.getElementById('menu'),backdrop=document.getElementById('backdrop');
+let selected=null;
+const products=[
+ {key:'42664',name:'Torneira monocomando alta',source:'SANKHYA-PROD',readiness:'KNOWN'},
+ {key:'15723',name:'Cuba inox 50 cm',source:'SANKHYA-PROD',readiness:'PARTIAL'},
+ {key:'SKU-9912',name:'Kit misturador cozinha',source:'LEGACY-CATALOG',readiness:'UNKNOWN'}
 ];
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function openDrawer(){document.body.classList.add('drawer-open');menu.setAttribute('aria-expanded','true');}function closeDrawer(returnFocus=true){document.body.classList.remove('drawer-open');menu.setAttribute('aria-expanded','false');if(returnFocus)menu.focus();}
-function invalidateOrganizationContext(){installation.value='';selected=null;visibleLimit=2;source.value='all';query.value='torneira';searchScenario.value='normal';scenario.value='ready';listingIntentBoundary.classList.add('hidden');closeDrawer(false);renderRoot();}
-function renderRoot(){const ok=!!installation.value;missing.classList.toggle('hidden',ok);if(!ok){searchMode.classList.add('hidden');detailMode.classList.add('hidden');selected=null;return}if(selected){detailMode.classList.remove('hidden');searchMode.classList.add('hidden');renderDetail()}else{searchMode.classList.remove('hidden');detailMode.classList.add('hidden');runSearch(true)}}
-function renderResultRow(p){return '<tr><td><strong>'+esc(p.name)+'</strong><div class="row-note">Fixture estrutural</div></td><td><span class="identity">SourceInstance: '+esc(p.source)+'</span><span class="identity">native key: '+esc(p.key)+'</span></td><td><span class="tag'+(p.readiness==='SOURCE SUFFICIENT'?'':' dashed')+'">'+esc(p.readiness)+'</span></td><td><div class="row-note">'+esc(p.note)+'</div><div class="row-note">'+esc(p.corr)+'</div></td><td class="result-actions"><button class="btn open-detail" type="button" data-product="'+esc(p.key)+'">Abrir preparação</button></td></tr>'}
-function bindResultActions(){document.querySelectorAll('.open-detail').forEach(b=>b.onclick=()=>{selected=b.dataset.product;scenario.value=selected==='15723'?'requirements':selected==='SKU-9912'?'unknown':'ready';listingIntentBoundary.classList.add('hidden');renderRoot()})}
-function runSearch(resetCursor=false){if(resetCursor)visibleLimit=2;resultsBody.innerHTML='';knownEmpty.classList.add('hidden');searchUnavailable.classList.add('hidden');searchValidation.classList.add('hidden');resultsHost.classList.add('hidden');loadMore.classList.add('hidden');const term=query.value.trim().toLowerCase();if(!term){searchValidation.classList.remove('hidden');return}if(searchScenario.value==='unavailable'){searchUnavailable.classList.remove('hidden');return}let matches=products.filter(p=>(source.value==='all'||p.source===source.value)&&[p.name,p.key,p.source].some(v=>v.toLowerCase().includes(term)));if(searchScenario.value==='known-empty')matches=[];if(!matches.length){knownEmpty.classList.remove('hidden');return}resultsHost.classList.remove('hidden');const visible=matches.slice(0,visibleLimit);resultsBody.innerHTML=visible.map(renderResultRow).join('');bindResultActions();if(matches.length>visible.length)loadMore.classList.remove('hidden')}
-function requirementRow(r){const resolutionAttrs=r.mode?' data-resolution-mode="'+r.mode+'"':r.override?' data-listing-intent-resolution="explicit-override-eligible"':'';return '<tr data-requirement-key="'+esc(r.key)+'" data-applicability="'+esc(r.app)+'" data-source-state="'+esc(r.state)+'"'+resolutionAttrs+'><td><strong>'+esc(r.label)+'</strong><span class="requirement-key">'+esc(r.key)+'</span></td><td>'+esc(r.appLabel)+'</td><td>'+esc(r.constraint)+'</td><td><span class="'+(r.state==='met'?'source-value':'source-missing')+'">'+esc(r.source)+'</span><span class="identity">'+esc(r.sourceMeta)+'</span></td><td class="resolution-copy">'+esc(r.resolution)+'</td></tr>'}
-function renderRequirements(value){let rows=baseRequirements.map(r=>({...r}));if(value==='ready')rows=rows.map(r=>r.key==='material'?{...r,state:'met',source:'Latão',sourceMeta:'SANKHYA-PROD / produto exato',resolution:'FOLLOW_SOURCE disponível',mode:'follow-source',override:false}:r);if(value==='correspondence')rows=rows.map(r=>r.key==='material'?{...r,state:'unavailable',source:'Aguardando correspondência',sourceMeta:'não escolher candidato por inferência',resolution:'Bloqueado até correspondência válida',override:false}:r);if(value==='unknown')rows=rows.map(r=>({...r,state:'unavailable',source:'Evidência indisponível',sourceMeta:'requirement/source truth não estabelecida',resolution:'Não inferir nem avançar',mode:undefined,override:false}));requirementsBody.innerHTML=rows.map(requirementRow).join('')}
-function renderDetail(){const p=products.find(x=>x.key===selected)||products[0];subjectName.textContent=p.name;subjectSource.textContent=p.source;subjectKey.textContent=p.key;subjectInstallation.textContent=installation.value;correspondenceBody.innerHTML='';revalidation.classList.add('hidden');reread.classList.add('hidden');knowledgeUnavailableNote.classList.add('hidden');listingIntentBoundary.classList.add('hidden');continueBtn.disabled=false;continueBtn.classList.add('primary');progressionMarker.dataset.progression='listing-intent-required';const v=scenario.value;renderRequirements(v);
- if(v==='ready'){readinessTag.textContent='SOURCE SUFFICIENT';knowledgeTag.textContent='KNOWN';readinessCopy.textContent='A fonte oferece candidatos conhecidos para os requisitos aplicáveis nesta revisão.';correspondenceTag.textContent='RESOLVED';correspondenceBody.innerHTML='<div class="correspondence-choice"><div><strong>Correspondência atual conhecida</strong><div class="row-note">Vínculo aceito para este sujeito exato.</div></div><button class="btn" type="button" id="clearCorr">Limpar correspondência</button></div>';nextCopy.textContent='Você pode iniciar o ListingIntent; valores source-backed poderão seguir a fonte.'}
- if(v==='requirements'){readinessTag.textContent='SOURCE INCOMPLETE';knowledgeTag.textContent='KNOWN';readinessCopy.textContent='Há requisito aplicável sem candidato de fonte. Isso é dívida da fonte, não prova de publicação impossível.';correspondenceTag.textContent='RESOLVED';correspondenceBody.innerHTML='<div class="correspondence-choice"><div><strong>Correspondência conhecida</strong><div class="row-note">A pendência atual é um valor ausente na fonte, não a correspondência.</div></div><span class="tag">RESOLVED</span></div>';nextCopy.textContent='Você pode iniciar o ListingIntent. O requisito ausente deverá receber uma resolução permitida, como EXPLICIT_OVERRIDE, antes do draft ser dispatchable.'}
- if(v==='correspondence'){readinessTag.textContent='CORRESPONDENCE REQUIRED';knowledgeTag.textContent='KNOWN';readinessCopy.textContent='Os requisitos são conhecidos, mas a correspondência necessária ainda não está resolvida.';correspondenceTag.textContent='NEEDS_RESOLUTION';correspondenceBody.innerHTML='<div class="correspondence-choice"><div><strong>Candidato A · categoria marketplace</strong><div class="row-note">Candidato provider-qualified retornado por Readiness.</div></div><button class="btn" type="button" id="resolveCorr">Resolver correspondência</button></div><div class="correspondence-choice"><div><strong>Candidato B · categoria marketplace</strong><div class="row-note">Nenhum candidato é escolhido automaticamente.</div></div><button class="btn" type="button" id="resolveCorrB">Resolver correspondência</button></div>';nextCopy.textContent='Resolva a correspondência e re-leia a autoridade antes de continuar.';continueBtn.disabled=true;continueBtn.classList.remove('primary');progressionMarker.dataset.progression='blocked-by-correspondence'}
- if(v==='unknown'){readinessTag.textContent='UNKNOWN';knowledgeTag.textContent='UNAVAILABLE';knowledgeUnavailableNote.classList.remove('hidden');readinessCopy.textContent='A autoridade não forneceu evidência suficiente para estabelecer o requirement/source state atual.';correspondenceTag.textContent='UNKNOWN';correspondenceBody.innerHTML='<div class="notice">A correspondência não pode ser inferida desta leitura.</div>';nextCopy.textContent='A continuação fica indisponível enquanto a base de requisitos/conhecimento não é conhecida.';continueBtn.disabled=true;continueBtn.classList.remove('primary');progressionMarker.dataset.progression='blocked-by-unknown-authority'}bindCorrespondenceActions()}
-function markCorrespondenceEffect(){revalidation.classList.remove('hidden');reread.classList.remove('hidden');continueBtn.disabled=true;continueBtn.classList.remove('primary');listingIntentBoundary.classList.add('hidden');progressionMarker.dataset.progression='blocked-pending-reread';nextCopy.textContent='Efeito consequencial enviado no protótipo; re-leia a autoridade antes de continuar.'}function bindCorrespondenceActions(){[document.getElementById('resolveCorr'),document.getElementById('resolveCorrB'),document.getElementById('clearCorr')].filter(Boolean).forEach(b=>b.onclick=markCorrespondenceEffect)}function rereadReadiness(){scenario.value='ready';renderDetail()}function showListingIntentBoundary(){if(continueBtn.disabled)return;listingIntentBoundary.classList.remove('hidden');listingIntentBoundary.focus()}
-organization.onchange=invalidateOrganizationContext;installation.onchange=()=>{selected=null;visibleLimit=2;listingIntentBoundary.classList.add('hidden');renderRoot()};document.getElementById('search').onclick=()=>runSearch(true);query.onkeydown=e=>{if(e.key==='Enter')runSearch(true)};source.onchange=()=>runSearch(true);searchScenario.onchange=()=>{selected=null;renderRoot()};loadMore.onclick=()=>{visibleLimit+=2;runSearch(false)};document.getElementById('back').onclick=()=>{selected=null;listingIntentBoundary.classList.add('hidden');renderRoot()};document.getElementById('reset').onclick=()=>{installation.value='';selected=null;visibleLimit=2;query.value='torneira';source.value='all';searchScenario.value='normal';scenario.value='ready';listingIntentBoundary.classList.add('hidden');renderRoot()};scenario.onchange=()=>{if(!selected)selected='42664';renderRoot()};reread.onclick=rereadReadiness;continueBtn.onclick=showListingIntentBoundary;menu.onclick=()=>document.body.classList.contains('drawer-open')?closeDrawer():openDrawer();backdrop.onclick=()=>closeDrawer();document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.body.classList.contains('drawer-open'))closeDrawer()});renderRoot();
+function openDrawer(){document.body.classList.add('drawer-open');menu.setAttribute('aria-expanded','true');}
+function closeDrawer(returnFocus=true){document.body.classList.remove('drawer-open');menu.setAttribute('aria-expanded','false');if(returnFocus)menu.focus();}
+function invalidateOrganizationContext(){installation.value='';selected=null;listingIntentBoundary.classList.add('hidden');renderRoot();}
+function renderRoot(){const ok=!!installation.value;missing.classList.toggle('hidden',ok);if(!ok){searchMode.classList.add('hidden');detailMode.classList.add('hidden');selected=null;return}if(selected){searchMode.classList.add('hidden');detailMode.classList.remove('hidden');renderDetail()}else{detailMode.classList.add('hidden');searchMode.classList.remove('hidden');runSearch();}}
+function row(p){return '<tr><td><strong>'+esc(p.name)+'</strong></td><td><span class="identity">SourceInstance: '+esc(p.source)+'</span><span class="identity">native product key: '+esc(p.key)+'</span></td><td><span class="tag'+(p.readiness==='KNOWN'?'':' dashed')+'">'+esc(p.readiness)+'</span></td><td><button class="btn open-detail" type="button" data-product="'+esc(p.key)+'">Abrir preparação</button></td></tr>';}
+function bindRows(){document.querySelectorAll('.open-detail').forEach(b=>b.onclick=()=>{selected=b.dataset.product;listingIntentBoundary.classList.add('hidden');renderRoot();});}
+function runSearch(){resultsBody.innerHTML='';knownEmpty.classList.add('hidden');searchUnavailable.classList.add('hidden');searchValidation.classList.add('hidden');resultsHost.classList.add('hidden');const term=query.value.trim().toLowerCase();if(!term){searchValidation.classList.remove('hidden');return}if(searchScenario.value==='unavailable'){searchUnavailable.classList.remove('hidden');return}let matches=products.filter(p=>(source.value==='all'||p.source===source.value)&&[p.name,p.key,p.source].some(v=>v.toLowerCase().includes(term)));if(searchScenario.value==='known-empty')matches=[];if(!matches.length){knownEmpty.classList.remove('hidden');return}resultsHost.classList.remove('hidden');resultsBody.innerHTML=matches.map(row).join('');bindRows();}
+function renderDetail(){const p=products.find(x=>x.key===selected)||products[0];subjectName.textContent=p.name;subjectSource.textContent=p.source;subjectKey.textContent=p.key;subjectInstallation.textContent=installation.value;revalidation.classList.add('hidden');reread.classList.add('hidden');listingIntentBoundary.classList.add('hidden');continueBtn.disabled=false;continueBtn.classList.add('primary');progression.dataset.progression='listing-intent-required';const mode=detailScenario.value;if(mode==='normal'){correspondenceBody.innerHTML='<div class="correspondence-choice"><div><strong>Correspondência atual conhecida</strong><div class="row-note">Nenhuma escolha é inferida pelo frontend.</div></div><button id="clearCorr" class="btn" type="button">Limpar correspondência</button></div>';}if(mode==='correspondence'){progression.dataset.progression='blocked-by-correspondence';continueBtn.disabled=true;continueBtn.classList.remove('primary');correspondenceBody.innerHTML='<div class="correspondence-choice"><div><strong>Correspondência necessária</strong><div class="row-note">Escolha explícita antes de avançar.</div></div><button id="resolveCorr" class="btn" type="button">Resolver correspondência</button></div>';}if(mode==='unknown'){progression.dataset.progression='blocked-by-unknown-authority';continueBtn.disabled=true;continueBtn.classList.remove('primary');correspondenceBody.innerHTML='<div class="notice">A base necessária está unknown/unavailable; não inferir correspondência nem continuar.</div>';}bindCorrespondence();}
+function markCorrespondenceEffect(){revalidation.classList.remove('hidden');reread.classList.remove('hidden');continueBtn.disabled=true;continueBtn.classList.remove('primary');listingIntentBoundary.classList.add('hidden');progression.dataset.progression='blocked-pending-reread';}
+function bindCorrespondence(){[document.getElementById('resolveCorr'),document.getElementById('clearCorr')].filter(Boolean).forEach(b=>b.onclick=markCorrespondenceEffect);}
+function rereadReadiness(){detailScenario.value='normal';renderDetail();}
+function showListingIntentBoundary(){if(continueBtn.disabled)return;listingIntentBoundary.classList.remove('hidden');listingIntentBoundary.focus();}
+organization.onchange=invalidateOrganizationContext;
+installation.onchange=()=>{selected=null;listingIntentBoundary.classList.add('hidden');renderRoot();};
+document.getElementById('search').onclick=runSearch;
+query.onkeydown=e=>{if(e.key==='Enter')runSearch();};
+source.onchange=runSearch;
+searchScenario.onchange=runSearch;
+detailScenario.onchange=()=>{if(!selected)selected='42664';renderRoot();};
+document.getElementById('back').onclick=()=>{selected=null;listingIntentBoundary.classList.add('hidden');renderRoot();};
+document.getElementById('reset').onclick=()=>{installation.value='';selected=null;query.value='torneira';source.value='all';searchScenario.value='normal';detailScenario.value='normal';listingIntentBoundary.classList.add('hidden');renderRoot();};
+reread.onclick=rereadReadiness;
+continueBtn.onclick=showListingIntentBoundary;
+menu.onclick=()=>document.body.classList.contains('drawer-open')?closeDrawer():openDrawer();
+backdrop.onclick=()=>closeDrawer();
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.body.classList.contains('drawer-open'))closeDrawer();});
+renderRoot();
 </script>
 </body>
 </html>
