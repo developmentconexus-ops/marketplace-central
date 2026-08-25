@@ -123,7 +123,7 @@ Safety rules:
 - `RETIRE` requires no surviving current meaning, or an exact current replacement owner already containing it.
 - `REHOME THEN RETIRE` requires an exact existing owner. If none exists, STOP: cleanup must not invent Product architecture.
 - Current operator-locked HTML is `KEEP CURRENT EVIDENCE` unless separately adjudicated by the frontend method.
-- Each row states an exact reason; no “old”, “probably superseded”, or filename-based rationale.
+- Each row states an exact reason; no filename-only or vague age-based rationale.
 
 - [ ] **Step 5: Validate the audit and commit the no-delete checkpoint**
 
@@ -260,7 +260,7 @@ Any matching text must be an explicit prohibition/history statement, not a live 
   - `docs/engineering/rebaseline/D6-FRONTEND.md`
   - `docs/engineering/rebaseline/D6-R2-P5-SCREEN-SURFACE-INVENTORY.md`
   - an exact retained block-specific P8/P9 owner named by the audit
-  - `docs/engineering/rebaseline/D7-RUNTIME-JOBS-TRANSACTIONS.md` or D7-B/C/D/E when runtime meaning survives
+  - `docs/engineering/rebaseline/D7-RUNTIME-JOBS-TRANSACTIONS.md` or its accepted D7-B/C/D/E owner when runtime meaning survives
   - `docs/engineering/rebaseline/D8-GOLDEN-FLOWS.md` when golden-flow meaning survives
 - Delete: only Task 1 rows whose Action is `rm` or `rehome+rm`
 - Preserve: Task 1 KEEP rows and locked/current HTML
@@ -315,7 +315,7 @@ done < .git/repository-health-retire.txt
 
 Expected: zero current stale refs.
 
-- [ ] **Step 5: Prove frontend evidence was not “cleaned up” accidentally**
+- [ ] **Step 5: Prove frontend evidence was not changed accidentally**
 
 ```bash
 git diff --exit-code main -- qualification/d6-r2-wireframes
@@ -484,21 +484,20 @@ if ($productProofAffected) {
 
 Fail-safe law: when a diff base is unavailable, run the Product proof.
 
-- [ ] **Step 2: Prove the synthetic docs-only range skips the heavy proof**
+- [ ] **Step 2: Prove a synthetic docs-only range skips the heavy proof**
 
 Use the Task 4 commit as a known docs-only endpoint:
 
 ```bash
-DOCS_ONLY_HEAD=$(git log -1 --format=%H --grep='docs: retire satisfied ADR and planning residue')
-BASE=$(git merge-base main "$DOCS_ONLY_HEAD")
-printf '%s\n%s\n' "$BASE" "$DOCS_ONLY_HEAD"
+git log -1 --format=%H --grep='docs: retire satisfied ADR and planning residue'
+git merge-base main "$(git log -1 --format=%H --grep='docs: retire satisfied ADR and planning residue')"
 ```
 
-Run the current working-tree gate with those endpoints:
+Copy the printed merge-base SHA and Task 4 SHA into:
 
 ```powershell
-$env:GATE_BASE_SHA = '<printed BASE>'
-$env:GATE_HEAD_SHA = '<printed DOCS_ONLY_HEAD>'
+$env:GATE_BASE_SHA = 'printed-merge-base-sha'
+$env:GATE_HEAD_SHA = 'printed-task4-sha'
 npm run gate
 ```
 
@@ -511,9 +510,9 @@ gate: PASS
 
 The universal required-file/workflow/diff/implementation-block checks still execute.
 
-- [ ] **Step 3: Prove a Product/proof-input range still runs the full existing proof**
+- [ ] **Step 3: Prove the health diff still runs the full existing proof**
 
-The health diff changes `scripts/gate.ps1`, which is deliberately in `$productProofPatterns`. Clear the synthetic endpoints and run:
+Clear the synthetic endpoints and run:
 
 ```powershell
 Remove-Item Env:GATE_BASE_SHA -ErrorAction SilentlyContinue
@@ -521,7 +520,7 @@ Remove-Item Env:GATE_HEAD_SHA -ErrorAction SilentlyContinue
 npm run gate
 ```
 
-Expected output still contains the existing baseline/current chain, including 95/99/106 proof evidence, and ends with:
+Because `scripts/gate.ps1` changed and is in the predicate, expected output still contains the existing 95/99/106 proof evidence and ends with:
 
 ```text
 product_oad_proof: PASS
@@ -543,7 +542,7 @@ git add scripts/gate.ps1
 git commit -m "ci: make Product proof proportional to changed paths"
 ```
 
-Reopen proof decomposition only if Product-changing CI itself becomes a material bottleneck; that future work must map every still-current 95/99 assertion to an equivalent current-authority proof before removing replay.
+Reopen proof decomposition only if Product-changing CI itself becomes a material bottleneck; that future work must map every still-current 95/99 assertion to equivalent current-authority proof before removing replay.
 
 ---
 
@@ -566,20 +565,19 @@ printf 'authority_route_refs='; rg -l 'D6-R2-AUTHORITY-ROUTE' AGENTS.md docs ARC
 
 Review every survivor against the Task 1 audit. No numerical target is enforced.
 
-Also list the largest remaining tracked authority/docs files:
+List the largest remaining current docs/authority files:
 
 ```bash
-git ls-files -s | cat >/dev/null
 for f in $(git ls-files '*.md' '*.yaml' '*.yml'); do
   test -f "$f" && printf '%10s %s\n' "$(wc -c < "$f")" "$f"
 done | sort -nr | head -20
 ```
 
-Do not split a large canonical owner in this PR. If accidental history is gone but one canonical file still repeatedly causes task-level overflow because it owns independently navigable responsibilities, record that as a separate reopen after health integration.
+Do not split a large canonical owner in this PR. If accidental history is gone but a canonical file still repeatedly causes task-level overflow because it owns independently navigable responsibilities, record a separate reopen after health integration.
 
 - [ ] **Step 2: Prove representative fresh-session navigation**
 
-Using only `AGENTS.md → roadmap → applicable method/index`, verify these questions resolve directly:
+Using only `AGENTS.md → roadmap → applicable method/index`, verify:
 
 ```text
 Product identity                              → D2
@@ -591,7 +589,7 @@ B10 current acceptance evidence               → retained block-specific P8/P9 
 
 If discovery requires a ratification chain merely to find the owner, fix `docs/index.md`; do not recreate a historical router.
 
-- [ ] **Step 3: Recheck retired references and protected evidence**
+- [ ] **Step 3: Recheck protected Product/frontend evidence**
 
 ```bash
 git diff --check main...HEAD
