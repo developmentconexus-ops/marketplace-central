@@ -15,7 +15,7 @@
 | Method profile | **local [`engineering-method.md`](development/engineering-method.md) + [`frontend-product-experience-planning-method.md`](development/frontend-product-experience-planning-method.md) v2.3** |
 | Current prerequisite | **Human-Operable Read Projection & Wire Conformance — GLOBAL MAXIMUM DESIGN APPROVED / IMPLEMENTATION PLAN REVIEW REQUIRED** |
 | Written design | **[`docs/superpowers/specs/2026-08-25-human-operable-read-projection-design.md`](superpowers/specs/2026-08-25-human-operable-read-projection-design.md) — operator-approved 2026-08-25** |
-| Implementation plan | **[`docs/superpowers/plans/2026-08-25-human-operable-read-projection-implementation-plan.md`](superpowers/plans/2026-08-25-human-operable-read-projection-implementation-plan.md) — CANDIDATE / OPERATOR REVIEW REQUIRED** |
+| Implementation plan | **[`docs/superpowers/plans/2026-08-25-human-operable-read-projection-implementation-plan.md`](superpowers/plans/2026-08-25-human-operable-read-projection-implementation-plan.md) — self-reviewed candidate / operator approval required** |
 | B20 increment | **PR #69 — PAUSED / NO P8; cannot resume before prerequisite acceptance/integration and bounded B10 correspondence revalidation** |
 | B10 status | **Global Maximum + main structure preserved; correspondence region REOPEN REQUIRED by upstream contract falsifier; P9 must rerun after repaired wire** |
 | Upstream finding | **Canonical refs/keys were reused as human read projections; Readiness dynamic vocabulary/source/correspondence candidate projection is insufficient; directly implicated W2→OAD Offering read drift also exists** |
@@ -60,7 +60,7 @@
 - Canonical W2 already requires directly implicated MarketplaceListing/ListingIntent read axes that are absent or incomplete in the current OAD, including MarketplaceListing publication context/media/provenance and ListingIntent authored-media presentation separation.
 - Performance's local Listing `display_name` and Governance's immutable `subject_display_label` prove that current presentation and purpose/historical snapshots are already distinct Product meanings in different places; the prerequisite consolidates the rule without creating a generic presentation authority.
 - The operator approved the Global Maximum design: **Canonical Ref ≠ Current Read Projection ≠ Purpose/Historical Snapshot**, with owner-specific typed projections only for proven human recognition/selection/explanation jobs.
-- A concrete implementation plan now exists and has been self-reviewed for scope, file paths, type-name consistency, TDD/negative proof, one-gate CI, D3 stop conditions, and independent review. It is **not yet execution authority**.
+- A concrete implementation plan now exists and has been self-reviewed for scope, canonical file paths, type-name consistency, TDD/negative proof, one-gate CI, D3 stop conditions and independent full-PR review. It is **not yet execution authority**.
 - Expected Product inventory remains **106 operations / 31 Permissions / H-A-S**; a count change is a new finding and must stop/reopen explicitly.
 - PR #69 / B20 remains paused. No B20 P8 HTML is authorized against the deficient Listing read contract.
 
@@ -71,7 +71,7 @@ PR #64 integrated
 → Global Coherence Review
 → RESTRUCTURE NOW design
 → operator-approved written spec
-→ implementation plan candidate
+→ self-reviewed implementation plan candidate
 → operator plan review
 → only after approval: bounded prerequisite implementation/proof
 → prerequisite integration
