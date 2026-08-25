@@ -1,6 +1,6 @@
 # Repository Governance & Context Health Rebaseline — Design
 
-> **Status:** DESIGN CANDIDATE — direction operator-approved on 2026-08-25; written-spec review required before repository changes
+> **Status:** DESIGN APPROVED — operator-approved on 2026-08-25; implementation plan review required before repository changes
 > **Trigger:** D6-R2 frontend work became slow/context-heavy after temporary methodology/router experiments and accumulated rebaseline evidence remained in the active tree
 > **Method:** DevelopmentConexus Engineering Method v1.0.0
 > **Baseline:** `main@bdbbef43ed3a5e9d912e67ddac5173024352eaa3`
@@ -69,6 +69,8 @@ The repository exposes one required `npm run gate`, but the Product OAD verifier
 Recent docs-only PR evidence shows the aggregate gate spending roughly 85 seconds in the Product proof while no Product OAD file changed.
 
 This contradicts the repository rule that historical proofs must not become permanent prerequisites for unrelated planning work.
+
+Implementation-planning refinement: the existing 95/99 replay still protects several valid current Product invariants. Therefore this health increment will first make the heavy proof **diff-aware without weakening it**. Splitting current proof from historical replay is deferred unless a separate proof-parity exercise demonstrates that every still-current protection survives the split.
 
 ## 3. Governing invariants
 
@@ -245,29 +247,15 @@ Examples may include:
 
 Contains still-valid meaning, but that meaning belongs in a different current owner. Rehome once, then remove the intermediate artifact.
 
-Likely examples discovered during health audit:
-
-- accepted findings/ratifications whose surviving rule is not yet present in the canonical D-stage owner;
-- stage closure/ledger material that still contains unique current frontend decisions.
-
 ### D — RETIRE FROM ACTIVE TREE
 
 Fully absorbed, superseded or historical material with no current unresolved proof obligation.
-
-Likely candidates include:
-
-- old ratification wrappers after their exact decision is canonical elsewhere;
-- review/adjudication artifacts whose accepted fixes have landed;
-- old implementation plans after execution and rehome;
-- superseded route packs;
-- legacy ADR residues whose own retirement condition is already satisfied;
-- historical verifier layers that are needed only as Git evidence rather than as a current mandatory gate.
 
 Every removal must cite its current replacement owner or state explicitly that no target meaning survives.
 
 ## 6. First health audit scope
 
-The health implementation must inventory, classify and adjudicate at least these groups.
+The implementation must inventory, classify and adjudicate at least these groups.
 
 ### 6.1 D6-R2 / NOTIF-01 chain
 
@@ -320,25 +308,11 @@ Priority candidates whose registry currently says “retire when D7 adjudicates�
 
 `035` remains while D0–D9 transition authority is still required.
 
-Update the registry after each retirement; do not keep a stale status table.
-
 ### 6.4 Plans/specs
 
-Audit both existing locations:
+Audit existing completed `docs/plans/**` material. A plan/spec is working material; after its accepted meaning is rehomed and its execution/proof is complete, remove it unless a concrete current consumer still requires the exact document.
 
-```text
-docs/plans/**
-docs/superpowers/plans/**
-docs/superpowers/specs/**
-```
-
-Rule:
-
-> A plan/spec is working material. After its accepted meaning is rehomed and its execution/proof is complete, remove it from the active tree unless a concrete current consumer still requires the exact document.
-
-The current human-operable read-projection spec/plan remain current working material while PR #70 is paused. After that prerequisite eventually lands and meaning is rehomed, they are expected retirement candidates.
-
-This repository-health spec itself is also temporary working material and must retire after its rules are rehomed into `AGENTS.md` / `docs/index.md` / `docs/development/engineering-rules.md` and the health increment closes.
+This repository-health spec and its implementation plan are temporary working material and retire before final merge review after their durable rules are rehomed.
 
 ### 6.5 Architecture decisions/citations
 
@@ -346,7 +320,7 @@ Keep only retained ADRs and citation files with a current retained ADR consumer.
 
 ### 6.6 Product contract files
 
-Large canonical files such as `components.yaml`, D4 and W2 are **not** split merely because they are large.
+Large canonical files such as `components.yaml`, D4 and W2 are not split merely because they are large.
 
 First remove accidental historical/context complexity. Reassess canonical file size afterward. Split only if one file demonstrably owns multiple independently navigable responsibilities and the split reduces total decision/context cost without creating parallel authority.
 
@@ -373,47 +347,39 @@ Every PR/push keeps cheap objective checks such as:
 - diff/conflict-marker check;
 - implementation-block changed-path enforcement.
 
-### 7.3 Diff-aware Product OAD proof
+### 7.3 Diff-aware heavy Product proof
 
-Heavy current Product OAD proof runs when changed files include the canonical Product contract or proof/authority inputs whose meaning can alter the current Product wire.
+The existing heavy Product proof runs when changed files include the canonical Product contract, its verifier machinery, or exact authority files that the current verifier parses to establish its baseline expectations.
 
-The implementation plan must define an explicit allowlist/predicate from current repository evidence rather than a broad “all docs” trigger.
+A docs-only frontend/planning change that cannot alter Product wire/proof semantics does not run the heavy Product proof.
 
-At minimum, candidates include:
-
-```text
-contracts/api/product/**
-scripts/verify-product-oad*.mjs
-scripts/lib/*oad*.mjs
-D5/W1/W2/W3/W4 authority files when the verifier derives exact expectations from them
-D4/D4-R1 only where a current mechanical Product proof explicitly reads them
-```
-
-A docs-only frontend planning change that cannot change Product OAD semantics must not pay for full Product generation.
+When diff-base evidence is unavailable, fail safe and run the Product proof.
 
 ### 7.4 Current proof vs historical replay
 
-Separate two claims:
+Conceptually distinguish:
 
 ```text
-CURRENT CONTRACT PROOF
-→ does the current canonical 106/31/H-A-S OAD satisfy its current contract/tooling invariants?
+CURRENT CONTRACT PROTECTION
+→ current 106/31/H-A-S contract and all still-valid inherited invariants
 
-HISTORICAL MIGRATION/NON-REGRESSION REPLAY
-→ can an older 95/99/pre-auth transition be reconstructed and re-proved?
+HISTORICAL TRANSITION REPLAY
+→ reconstruction of older 95/99/pre-auth transitions
 ```
 
-The required gate protects the first when relevant.
+Implementation planning found that the present replay mechanism still carries part of CURRENT CONTRACT PROTECTION. Therefore this health increment does not physically split the verifier until a future bounded refactor can map every still-current assertion to equivalent current-authority proof.
 
-The second becomes a targeted proof invoked only when changing the historical replay machinery or a claim that specifically depends on that transition.
+For this increment the safe Global Maximum is:
 
-Do not recursively regenerate 95 → 99 → 106 on every Product proof unless the implementation audit demonstrates a current correctness property that cannot be expressed directly against current authority.
+```text
+unrelated docs/frontend change
+→ skip heavy Product proof
 
-### 7.5 Generation determinism
+Product/proof-input change
+→ run the existing full proven Product proof unchanged
+```
 
-Current OAD changes still receive proportional generation proof (Redocly / TypeScript / Go) sufficient for the current contract claim. The health change must not weaken current schema/access/source-reachability/route generation properties merely to make CI faster.
-
-The optimization target is removing **obsolete repeated proof**, not current protection.
+This removes accidental cost from frontend flow without trading correctness for speed.
 
 ## 8. Git branch hygiene
 
@@ -431,124 +397,86 @@ Never infer safety from branch age/name alone. No force push/history rewrite.
 
 ## 9. Interaction with current frontend work
 
-During the health rebaseline:
+During health:
 
 - PR #69 / B20 remains **PAUSED / NO P8**;
-- PR #70 / human-operable read-projection prerequisite remains **PAUSED at implementation-plan gate**;
-- do not modify Product/OAD semantics as part of health cleanup;
-- do not render B20;
-- do not silently discard the B10/B20 finding.
+- PR #70 remains paused at its implementation-plan gate;
+- Product/OAD semantics are unchanged;
+- B20 is not rendered;
+- the B10/B20 read-projection finding is preserved.
 
 After health integration:
 
 ```text
 reanchor from cleaned main
-→ revalidate PR #70 design/finding against current owners
-→ if still valid, resume its approved gate sequence
+→ revalidate PR #70 finding against current owners
+→ if still valid, resume its accepted gate sequence
 → bounded B10 correspondence revalidation
 → resume B20
 → continue D6-R2 block-by-block
 ```
 
-The expected benefit is that each frontend block can locate its current Product/architecture authority directly and reopen only the smallest owner when frontend evidence falsifies an older planning assumption.
-
 ## 10. Rejected approaches
 
-### 10.1 Add another methodology/profile/router layer — REJECTED
-
-This recreates the failure class. Methods remain local reasoning standards; repository authority remains local/current.
-
-### 10.2 Move old material to `docs/archive/` — REJECTED
-
-An archive folder preserves the same duplicate active-tree/history cost. Git is the archive.
-
-### 10.3 Delete everything called finding/ratification — REJECTED
-
-Filename is not evidence of redundancy. Surviving unique meaning/evidence must be rehomed or retained until its consumer closes.
-
-### 10.4 Rewrite old historical documents to current status — REJECTED
-
-This destroys truthful historical snapshots. Prefer rehome + retirement when a historical execution artifact no longer owns current state.
-
-### 10.5 Split every large canonical document — REJECTED
-
-Large current owner files may be legitimate. Split only after accidental history/routing cost is removed and a responsibility boundary is proven.
-
-### 10.6 Disable Product verification to speed CI — REJECTED
-
-Current Product proof remains mandatory for Product-affecting changes. Only unrelated/historical replay cost is removed from the default path.
+- another methodology/profile/router layer;
+- `docs/archive/`;
+- deletion based on filename/prefix;
+- rewriting historical documents to fake current status;
+- splitting every large canonical file;
+- disabling/weaking Product verification for speed.
 
 ## 11. Proof strategy
 
-The health implementation plan must prove at least:
+The implementation plan proves at least:
 
-1. **Bootstrap:** a fresh session can identify current stage and next action from AGENTS + roadmap without a historical route pack.
-2. **Selective index:** representative questions (Product identity, publication, B20 Listing read, runtime) each resolve to a small current-owner set.
-3. **No current-authority loss:** every retired artifact either has zero surviving target meaning or a cited current replacement owner containing that meaning.
-4. **No broken current refs:** repository links/references to retired active files are removed/repointed where current consumers exist.
-5. **No stale current route:** index/router does not direct a fresh agent to a known superseded status/method/count as current truth.
-6. **ADR retirement consistency:** ADR registry retirement conditions match accepted D-stage state.
-7. **Plans lifecycle:** completed plans/specs do not remain active without a named current consumer.
-8. **CI docs-only proportionality:** a documentation-only change outside Product mechanical authority executes cheap gate checks without full OAD generation/replay.
-9. **CI Product proportionality:** a Product OAD change still executes current lint/bundle/generation/semantic proof and fails on a controlled Product-contract regression.
-10. **Historical proof availability:** historical replay, if retained, is invokable as a targeted proof but is not a default prerequisite for unrelated work.
-11. **One required check:** workflow still exposes one required aggregate gate.
-12. **Product invariance:** health PR changes no Product operation/Permission/Principal count or Product semantics.
-13. **Frontend preservation:** locked current HTML evidence needed by D6-R2 remains untouched unless separately adjudicated.
-14. **Git history preservation:** no force update/history rewrite; retired files remain recoverable through Git history.
+1. fresh bootstrap reaches current status/owner without a historical route pack;
+2. representative questions resolve through a small current-owner set;
+3. every retired artifact has no surviving target meaning or an exact replacement owner;
+4. current links to retired files are removed/repointed;
+5. index does not route to known stale status/count/method versions as current truth;
+6. ADR retirement matches accepted stage state;
+7. completed plans do not remain active without a named consumer;
+8. docs/frontend-only CI skips the heavy Product proof while cheap checks still run;
+9. Product/proof-input changes still run the exact existing heavy Product proof;
+10. one required check remains;
+11. Product semantics/counts remain unchanged;
+12. current locked frontend evidence remains unchanged;
+13. Git history remains recoverable history.
 
-Do not add a CI test that lints prose status/version strings across historical docs. Staleness/authority quality is an engineering-review concern; mechanical proof should protect routing/reachability/current machine contracts only where objectively expressible.
+Do not add prose-status lint as CI ceremony.
 
 ## 12. Success criteria
 
-The health increment is successful when:
+Health succeeds when:
 
-- the normal fresh-session route is understandable from `AGENTS.md`, `docs/roadmap.md`, the applicable method and `docs/index.md`;
-- `docs/index.md` routes directly to current owners rather than a comprehensive D6-R2 history pack;
-- absorbed intermediate D6-R2/NOTIF/review/ratification/plan material is removed from active tree after surviving meaning is rehomed;
-- legacy ADRs whose explicit retirement conditions are satisfied are removed and the registry is current;
-- Product OAD canonical semantics remain unchanged;
-- docs-only planning CI no longer executes recursive Product OAD historical replay;
-- Product-affecting changes retain strong current-contract proof;
-- Git history remains the historical archive;
-- PR #69/#70 remain safely resumable from the cleaned governance baseline.
+- normal fresh-session routing is clear from AGENTS/roadmap/method/index;
+- index routes directly to current owners;
+- absorbed intermediate D6-R2/review/ratification/plan material is retired only after rehome proof;
+- ADR residues with satisfied conditions are retired;
+- Product OAD is unchanged;
+- unrelated frontend/docs work no longer pays for the heavy Product proof;
+- Product/proof-input changes retain the current full proof;
+- Git history is the archive;
+- PR #69/#70 remain resumable from cleaned main.
 
-A numerical file-count target is deliberately not frozen. The goal is **minimal sufficient active authority/evidence**, not arbitrary deletion volume.
+No numerical file-count target is frozen.
 
 ## 13. Reopen triggers
 
-Reopen this design if implementation evidence shows:
+Reopen if:
 
-- a supposedly historical artifact is the only surviving owner of a current invariant;
-- Git history alone cannot satisfy a named current evidence/proof obligation;
-- current Product contract correctness genuinely depends on replaying an older 95/99 transition on every Product change;
-- direct owner routing makes a material current decision undiscoverable without a bounded supplemental registry;
-- removing a route/ledger would lose operator-locked frontend meaning that has no current replacement owner;
-- a canonical large file, after cleanup, still creates repeated task-level context overflow and has a provable responsibility split.
+- a supposed historical artifact is the only surviving owner of a current invariant;
+- Git history cannot satisfy a named current evidence obligation;
+- diff-aware routing would skip a proof for a file the verifier materially consumes;
+- Product-changing CI itself becomes a material bottleneck and proof decomposition can be justified with assertion-level parity;
+- direct owner routing makes a material decision undiscoverable without a bounded registry;
+- retiring a ledger would lose operator-locked frontend meaning with no replacement owner;
+- after cleanup a canonical large file still causes repeated task-level overflow and has a proven responsibility split.
 
-## 14. Explicit non-goals
+## 14. Non-goals
 
-This health rebaseline does **not**:
-
-- redesign Marketplace Central Product semantics;
-- change the accepted Global Maximum/read-projection finding in PR #70;
-- change Product OAD operation/Permission/Principal counts;
-- implement backend/frontend/runtime code;
-- restart D0–D8;
-- create a new methodology repository dependency;
-- create an archive folder;
-- introduce a document database, knowledge graph, generated documentation portal or semantic search system;
-- delete remote branches before branch-by-branch absorption audit;
-- merge PR #69, #70 or the health PR without explicit operator authorization.
+This health rebaseline does not redesign Product semantics, change PR #70's accepted finding, change Product counts, implement runtime/frontend/backend code, restart D0–D8, restore external methodology dependency, create an archive/knowledge platform, delete remote branches without audit, or merge any PR without explicit operator authorization.
 
 ## 15. Written-spec gate
 
-Before implementation planning:
-
-- operator reviews this written design;
-- retirement/rehoming rules are accepted;
-- CI proportionality boundary is accepted;
-- no required current authority/evidence class is missing;
-- scope remains repository health/governance only.
-
-Only after written-spec approval should an implementation plan enumerate exact files to keep/rehome/retire and exact gate predicates.
+The written design is operator-approved. Current gate is **implementation-plan review**. No cleanup/CI execution begins until the implementation plan is explicitly approved.
