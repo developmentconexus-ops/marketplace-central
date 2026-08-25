@@ -10,7 +10,7 @@ function fail(message) { throw new Error(message); }
 function assert(condition, message) { if (!condition) fail(message); }
 
 for (const path of [ratificationPath, htmlPath, roadmapPath]) {
-  assert(existsSync(path), `B10 ratification proof input missing: ${path}`);
+  assert(existsSync(path), `B10 reopen proof input missing: ${path}`);
 }
 
 const ratification = readFileSync(ratificationPath, 'utf8');
@@ -18,21 +18,21 @@ const html = readFileSync(htmlPath, 'utf8');
 const roadmap = readFileSync(roadmapPath, 'utf8');
 
 function verify(ratificationText, htmlText, roadmapText) {
-  assert(ratificationText.includes('OPERATOR-RATIFIED / LOCKED'), 'B10 ratification must record operator LOCK');
-  assert(ratificationText.includes('final disposition: LOCK'), 'B10 walkthrough must end in LOCK');
-  assert(ratificationText.includes('A01 = ACCEPT_FOR_LOCK_WITH_LATER_PROBE'), 'B10 A01 lock-time disposition missing');
-  assert(ratificationText.includes('No blocking frontend or upstream Finding remains'), 'B10 P8 lock must state its lock-time blocking-finding disposition');
-  assert(ratificationText.includes('P9 — B10 Screen Contract + bidirectional backend trace'), 'B10 LOCK must record its admitted downstream gate');
+  assert(ratificationText.includes('PRIOR P8: OPERATOR-RATIFIED / LOCKED'), 'B10 must preserve the historical operator LOCK');
+  assert(ratificationText.includes('CURRENT P8: REOPENED / CANDIDATE'), 'B10 current P8 must be reopened candidate');
+  assert(ratificationText.includes('operator-authorized bounded rebaseline'), 'B10 reopen must have operator authority');
+  assert(ratificationText.includes('A01 = ACCEPT_FOR_LOCK_WITH_LATER_PROBE'), 'accepted A01 debt must survive reopen');
+  assert(ratificationText.includes('operator walkthrough required'), 'reopened P8 must stop for a fresh operator walkthrough');
+  assert(!ratificationText.includes('CURRENT P8: OPERATOR-RATIFIED / LOCKED'), 'reopened P8 must not retain a current LOCK claim');
 
-  // The operated low-fi remains candidate evidence; ratification, not the HTML, is the operator LOCK carrier.
-  assert(htmlText.includes('data-p8-status="candidate"'), 'B10 operated HTML evidence must remain the exact candidate form');
-  assert(!htmlText.includes('data-p8-status="locked"'), 'B10 HTML must not self-author operator LOCK');
-  assert(htmlText.includes('Resumo da preparação'), 'B10 locked evidence lost the human-first summary');
-  assert(htmlText.includes('Requisito do marketplace'), 'B10 locked evidence lost the human-first requirement language');
+  assert(htmlText.includes('data-p8-status="candidate"'), 'reopened HTML must remain candidate evidence');
+  assert(htmlText.includes('data-b10-role="requirements-values-handoff"'), 'reopened HTML must use simplified B10 role');
+  assert(htmlText.includes('Campos para o marketplace'), 'reopened HTML must expose simplified operator model');
+  assert(!htmlText.includes('Atendido'), 'reopened HTML must remove per-requirement satisfaction wording');
 
-  // P8 ratification owns the existence of the LOCK, not the mutable program next action after P9 executes.
-  assert(/B10[^|\n]{0,100}P8 OPERATOR-RATIFIED \/ LOCKED/u.test(roadmapText), 'roadmap must preserve the B10 P8 LOCK while downstream gates evolve');
+  assert(roadmapText.includes('P8 REOPENED / CANDIDATE'), 'roadmap must expose current reopened P8 gate');
   assert(roadmapText.includes('A01 `ACCEPT_FOR_LOCK_WITH_LATER_PROBE`'), 'roadmap must preserve accepted A01 debt');
+  assert(roadmapText.includes('operator walkthrough'), 'roadmap next action must be fresh operator walkthrough');
 }
 
 verify(ratification, html, roadmap);
@@ -45,14 +45,16 @@ function expectFailure(name, body) {
   negativeControls += 1;
 }
 
-expectFailure('operator lock erased', () => verify(ratification.replace('final disposition: LOCK', 'final disposition: REVISE'), html, roadmap));
+expectFailure('historical lock erased', () => verify(ratification.replace('PRIOR P8: OPERATOR-RATIFIED / LOCKED', 'PRIOR P8: UNKNOWN'), html, roadmap));
+expectFailure('reopen silently relocked', () => verify(ratification.replace('CURRENT P8: REOPENED / CANDIDATE', 'CURRENT P8: OPERATOR-RATIFIED / LOCKED'), html, roadmap));
 expectFailure('A01 silently reopened', () => verify(ratification.replace('A01 = ACCEPT_FOR_LOCK_WITH_LATER_PROBE', 'A01 = PENDING'), html, roadmap));
-expectFailure('roadmap regresses to pending', () => verify(ratification, html, roadmap.replace('P8 OPERATOR-RATIFIED / LOCKED', 'P8 NOT LOCKED')));
+expectFailure('walkthrough bypassed', () => verify(ratification.replace('operator walkthrough required', 'operator walkthrough optional'), html, roadmap));
 
-assert(negativeControls === 3, `B10 ratification negative-control count mismatch: ${negativeControls}/3`);
+assert(negativeControls === 4, `B10 reopen negative-control count mismatch: ${negativeControls}/4`);
 
-console.log('d6_r_b10_p8=LOCKED');
-console.log('d6_r_b10_operator=RATIFIED');
+console.log('d6_r_b10_prior_p8=LOCKED');
+console.log('d6_r_b10_current_p8=REOPENED_CANDIDATE');
 console.log('d6_r_b10_A01=ACCEPT_FOR_LOCK_WITH_LATER_PROBE');
-console.log(`d6_r_b10_ratification_negative_controls=${negativeControls}/3`);
-console.log('d6_r_b10_ratification=PASS');
+console.log('d6_r_b10_next_gate=OPERATOR_WALKTHROUGH');
+console.log(`d6_r_b10_reopen_negative_controls=${negativeControls}/4`);
+console.log('d6_r_b10_reopen=PASS');
