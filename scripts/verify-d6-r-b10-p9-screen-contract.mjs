@@ -72,7 +72,7 @@ expectFailure('finding erased', () => verify(contract.replaceAll('F-P9-B10-01', 
 expectFailure('route drift', () => verify(contract.replace('`/preparacao`', '`/produto`'), ratification, html));
 expectFailure('write authority drift', () => verify(contract.replaceAll('readiness.manage', 'readiness.read'), ratification, html));
 expectFailure('correspondence validator erased', () => verify(contract.replaceAll('correspondence_etag', 'etag_missing'), ratification, html));
-expectFailure('downstream boundary becomes B10 write', () => verify(contract.replace('B10 does not call `CreateListingIntentDraft`', 'B10 calls `CreateListingIntentDraft`'), ratification, html));
+expectFailure('downstream boundary becomes B10 write', () => verify(contract.replaceAll('B10 does not call `CreateListingIntentDraft`', 'B10 calls `CreateListingIntentDraft`'), ratification, html));
 
 assert(negativeControls === 5, `B10 P9 negative-control count mismatch: ${negativeControls}/5`);
 
