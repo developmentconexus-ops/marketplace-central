@@ -1,9 +1,10 @@
 # D6-R2 P8 — B10 Preparação Ratification
 
-> **CURRENT P8: OPERATOR-RATIFIED / LOCKED**
+> **CURRENT P8:** MAIN STRUCTURE OPERATOR-RATIFIED / LOCKED; CORRESPONDENCE REGION BOUNDED REOPEN / CANDIDATE
 > **Block:** B10 — Preparação / R10
 > **Methods:** [DevelopmentConexus Engineering Method v1.0.0](../../development/engineering-method.md) + [Frontend Product Experience Planning Method v2.3](../../development/frontend-product-experience-planning-method.md)
 > **Locked evidence:** `qualification/d6-r2-wireframes/b10-preparation.html`
+> **Bounded candidate:** [`D6-R2-P8-B10-CORRESPONDENCE-REVALIDATION.md`](D6-R2-P8-B10-CORRESPONDENCE-REVALIDATION.md)
 > **Operator disposition:** `LOCK` on 2026-08-25
 > **Product implementation:** BLOCKED UNTIL accepted D9
 
@@ -85,13 +86,16 @@ Reopen B10 only on material evidence such as:
 - downstream ListingIntent authoring proves a required B10 handoff identity/state is missing;
 - P9 finds a contradiction against the locked experience or accepted Product authority.
 
-## 6. Next method gate
+## 6. Current bounded method gate
 
-P8 is closed for B10.
+The main B10 structure remains locked. PR #70 triggered only the previously declared correspondence-region reopen condition. The bounded candidate must be operated by the operator before that region can be re-LOCKED.
 
 ```text
-P8 OPERATOR-RATIFIED / LOCKED
-→ P9 exact Screen Contract + bidirectional backend trace
+main B10 structure OPERATOR-RATIFIED / LOCKED
++ correspondence-region CANDIDATE
+→ operator walkthrough
+→ LOCK / REVISE / UPSTREAM FINDING
+→ only after re-LOCK: rerun bounded P9 trace
 ```
 
-P10/P11, Pre-D9/D9 and Product implementation may not bypass P9.
+P10/P11, B20, Pre-D9/D9 and Product implementation may not bypass the bounded re-LOCK and P9 rerun.
