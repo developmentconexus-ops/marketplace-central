@@ -1,17 +1,10 @@
 # Marketplace Central
 
-Marketplace Central is an internal **Marketplace Operations Control Plane + Commercial Intelligence** product, initially proving its operating loop with Mercado Livre and Sankhya.
+Marketplace Central planning and Product authority repository.
 
-> **Landing page only.** This file carries no independent program status, next action or architecture authority.
-
-## Start here
-
-1. [`AGENTS.md`](AGENTS.md)
-2. [`docs/index.md`](docs/index.md)
+Start with [`AGENTS.md`](AGENTS.md). Use [`docs/index.md`](docs/index.md) as a navigation map and [`docs/roadmap.md`](docs/roadmap.md) for current stage/status.
 
 Stable Product Problem origin: `https://conexus.fun`.
-
-## Verification
 
 ```powershell
 npm run gate
