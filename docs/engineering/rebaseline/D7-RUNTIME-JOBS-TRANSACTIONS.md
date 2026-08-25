@@ -1,209 +1,267 @@
 # D7 — Runtime / Jobs / Transactions
 
-> **Status:** ACCEPTED / CLOSED — OPERATOR-RATIFIED  
-> **Program:** Architecture Rebaseline / Technical System Design  
-> **Opened:** 2026-08-21  
-> **Closed:** 2026-08-22  
-> **Parent authorities:** accepted D0–D6 semantics, `ARCHITECTURE.md`, canonical Product OAD, and bounded owner authority routed by `docs/index.md`  
-> **Method:** DevelopmentConexus Engineering Method v1.0.0
+> **Status:** ACCEPTED / CLOSED / CURRENT CONSOLIDATED AUTHORITY  
+> **Parent authorities:** accepted D0–D6 + canonical Product OAD  
+> **Current Product:** 106 operations / 31 ordinary Permissions / H-A-S  
+> **Active runtime:** NONE; implementation blocked until D9
 
-## 1. Purpose and boundary
+## 1. Target invariant
 
-D7 defines the smallest target runtime realization capable of executing the already-accepted Marketplace Central Product and frontend contracts without creating new business authority.
+> **Every admitted Product/Technical-Ingress interaction can be realized through explicit serving, persistence, transaction, durable-work, authentication and operability boundaries that preserve Organization isolation, owner authority, wire conformity, request trust, idempotency/concurrency, recoverable external-effect semantics and secret/PII safety while platform mechanisms remain business-policy-free.**
 
-D7 owns server/process topology, PostgreSQL isolation/transactions, durable work/effects, session/CSRF/OIDC and machine-token realization, Product HTTP runtime/validation, private byte custody, secrets/configuration, observability, migrations, deployment/health/backup and real-dependency proof seams.
+D7 chooses runtime mechanism only. It does not reopen Product operations, Permissions, owners or frontend meaning by convenience.
 
-D7 does **not** reopen Product operations, ordinary Permissions, Principal kinds, semantic ownership, frontend interaction meaning or provider/business-system semantics by implementation convenience. D8 golden-flow choreography, D9 adversarial review and Product implementation advance only when `docs/roadmap.md` explicitly permits them.
+## 2. Accepted runtime envelope
 
-## 2. Imported invariants
-
-1. Go is canonical backend business execution.
-2. PostgreSQL is canonical MPC-owned state storage.
-3. Organization isolation is structural, never remembered-predicate-only.
-4. Product OpenAPI is the one machine-readable Product wire authority.
-5. Q/C/E/P meaning remains semantic-owner authority.
-6. Consequential writes preserve idempotency, ambiguity, auditability and reconciliation; possible acceptance is never blindly replayed.
-7. Unknown/partial/unavailable remain honest.
-8. Provider protocol stays inside adapters; Sankhya target integration remains sanctioned API Gateway only.
-9. H browser uses server-side session + CSRF and never browser-held OIDC tokens.
-10. A/S remain audience-bound Client Credentials bearers and never become authorization shortcuts.
-11. Product implementation remains blocked until accepted D9.
-
-## 3. D7 target invariant
-
-> **Every admitted Product or Technical-Ingress interaction can be realized through explicit serving, persistence, transaction, durable-work, authentication and operability boundaries that preserve Organization isolation, owner authority, wire-contract conformity, request-trust separation, idempotency/concurrency, recoverable external-effect semantics and secret/PII safety while platform mechanisms remain business-policy-free.**
-
-## 4. Decision surface and owners
-
-| Slice | Owner | Status |
-| --- | --- | --- |
-| D7-A — Runtime Envelope & Transaction Ownership | this document | **OPERATOR-RATIFIED** |
-| D7-B — PostgreSQL Isolation & Transactions | [D7-B](D7-B-POSTGRESQL-ISOLATION-TRANSACTIONS.md) | **OPERATOR-RATIFIED** |
-| D7-C — Durable Work & External Effects | [D7-C](D7-C-DURABLE-WORK-EXTERNAL-EFFECTS.md) | **OPERATOR-RATIFIED** |
-| D7-D — Authentication / Session / CSRF / Machine Tokens | [D7-D](D7-D-AUTHENTICATION-SESSION-CSRF.md) | **OPERATOR-RATIFIED** |
-| D7-E — Operability / Secrets / Migrations / Deployment & Proof | [D7-E](D7-E-OPERABILITY-DEPLOYMENT-PROOF.md) | **OPERATOR-RATIFIED** |
-| D7-R1 — Whole-Stage Coherence Corrections | [D7-R1](D7-R1-WHOLE-STAGE-COHERENCE.md) | **OPERATOR-RATIFIED / ACCEPTED** |
-
-All five realization slices and the bounded whole-stage coherence repair are accepted. Independent review found no D0–D6 contradiction and no need to reconstruct D7.
-
-## 5. Accepted D7-A — Runtime Envelope & Transaction Ownership
-
-One Go application process per replica serves one public application origin and contains:
+One Go application process per replica contains proportionately:
 
 ```text
 same-origin frontend/static delivery
-Product API boundary
-Technical Non-Product Ingress boundary
+Product API
+Technical Non-Product Ingress
 H session / CSRF / OIDC mediation
-in-process durable worker runner
-scheduler seam
+in-process River worker runner
+scheduler/recovery seam
 PostgreSQL pool
 ```
 
-One process does not merge semantic owners. Internal Q/C/P enter explicit owner application boundaries rather than self-HTTP. E is durable only where D3 admits an independent reaction.
+One process does not merge owners. Internal Q/C/P cross explicit owner application boundaries rather than self-HTTP. E becomes durable only where D3 requires independent recoverable reaction.
 
-Owner consequential intake uses one owner-local PostgreSQL transaction for canonical owner state plus required technical correctness records. External network writes happen only after commit. No distributed business transaction spans semantic owners.
+API/worker process split is deferred until measured scaling/resource/security/deployment evidence requires it.
 
-API/worker process split reopens only for measured resource, scaling, failure, security or deployment need.
+## 3. D7-B — PostgreSQL / isolation / transactions
 
-## 6. Accepted D7-B — PostgreSQL Isolation & Transactions
-
-[D7-B](D7-B-POSTGRESQL-ISOLATION-TRANSACTIONS.md) selects:
+Accepted realization:
 
 ```text
-organization_id on organization-owned state/evidence
-+ composite Organization foreign keys
-+ transaction-local scope
-+ PostgreSQL ENABLE + FORCE RLS
-+ runtime role = non-owner / NOSUPERUSER / NOBYPASSRLS
-+ READ COMMITTED baseline + explicit row locking
-+ opaque random owner revision tokens
-+ organization/operation-scoped idempotency
-+ pgx/v5 + pgxpool
+organization_id on Organization-owned state/evidence
+composite Organization FKs
+transaction-local Organization scope
+ENABLE + FORCE RLS
+runtime role non-owner / NOSUPERUSER / NOBYPASSRLS
+READ COMMITTED baseline + explicit row locks
+opaque random owner revision tokens
+owner/operation scoped idempotency
+pgx/v5 + pgxpool
 ```
 
-D7-R1 completes the persistence taxonomy with a narrow `authentication_bootstrap` mode for one-time login transaction, ApplicationSession lookup and machine-client binding before Principal resolution. It cannot read Organization-owned business/evidence state. River engine tables are explicit platform technical/library state and do not grant business authority.
+A narrow `authentication_bootstrap` persistence mode exists before Principal resolution for one-time login/session/machine-client binding only; it cannot read Organization business/evidence state.
 
-No generic ORM/repository abstraction, database/schema/role-per-Organization or global `SERIALIZABLE` baseline is admitted.
+Owner consequential intake commits owner state + required correctness records in one owner transaction. External network effects occur only after commit. No cross-owner distributed transaction exists.
 
-## 7. Accepted D7-C — Durable Work & External Effects
+## 4. D7-C — durable work / external effects
 
-[D7-C](D7-C-DURABLE-WORK-EXTERNAL-EFFECTS.md) selects River over the accepted pgx/PostgreSQL stack:
+River over PostgreSQL is the accepted durable-reaction mechanism:
 
 ```text
-InsertTx atomic owner-state -> durable-work handoff
-no second generic MPC outbox for River work
-repeat-safe delivery / no exactly-once claim
+InsertTx atomic owner-state → durable reaction
+repeat-safe delivery; no exactly-once claim
 owner semantic idempotency = correctness
-persisted pre-dispatch marker before consequential external writes
-possible acceptance => no redispatch
-source-authoritative reconciliation
-scheduler/job state = wake-up/technical state only
+persisted pre-dispatch/attempt evidence for consequential external effect
+possible acceptance → reconciliation, not blind redispatch
+source-authoritative reread controls convergence
+scheduler/job state = technical wake-up only
 ```
 
-River completion, retry, uniqueness, rescue and schedule state never become business truth/history. Crash/timeout after possible dispatch moves to reconciliation, not generic retry.
+No second generic MPC outbox/broker/Redis is added without evidence. River completion/retry/uniqueness never becomes business truth.
 
-D7-R1 qualifies continuous-timeline crash semantics for database rollback: after a restore, absence of a marker is not proof that no external effect occurred. Consequential dispatch remains behind the recovery fence until timeline continuity or reconciliation proves safety.
+After PITR/acknowledged-state rollback, database absence is not proof no later external effect occurred. Consequential dispatch remains recovery-fenced until timeline continuity/current external truth is positively re-established.
 
-## 8. Accepted D7-D — Authentication / Session / CSRF / Machine Tokens
+## 5. D7-D — authentication / session / CSRF
 
-[D7-D](D7-D-AUTHENTICATION-SESSION-CSRF.md) selects:
+Accepted baseline:
 
 ```text
-Keycloak first OIDC/OAuth provider
-H: confidential Authorization Code + PKCE S256
-   go-oidc + x/oauth2
-   verified (issuer, sub) -> fresh opaque MPC session
-   human OIDC token set discarded after callback
-   PostgreSQL stores session-handle digest only
-   30m idle / 8h absolute baseline
-   X-CSRF-Token synchronizer + net/http.CrossOriginProtection
-A/S: Keycloak Client Credentials
-     audience includes https://conexus.fun
-     jwx/v3 trusted-JWKS verification
-     explicit machine-client -> A/S Principal binding
+Keycloak first provider
+
+H:
+  confidential Authorization Code + PKCE S256
+  verified (issuer, sub) → opaque MPC server session
+  human OIDC token set discarded after callback
+  session-handle digest persisted
+  30m idle / 8h absolute baseline
+  X-CSRF-Token synchronizer + CrossOriginProtection
+
+A/S:
+  Client Credentials
+  expected audience includes https://conexus.fun
+  trusted-JWKS verification
+  explicit machine-client → A/S Principal binding
 ```
 
-No browser bearer, persistent human refresh-token cache, Redis session store, IdP role→Permission mapping, realm-per-Organization, wildcard CORS or generic IAM engine is admitted.
+No browser bearer, persistent human refresh-token cache, IdP role→MPC Permission mapping, Redis session baseline or A/S→H impersonation.
 
-D7-R1 clarifies pre-Principal persistence scope and fail-closed multiple-carrier/OAD-validator composition.
+## 6. D7-E — HTTP / operability / deployment
 
-## 9. Accepted D7-E — Operability / Deployment / Proof Baseline
-
-[D7-E](D7-E-OPERABILITY-DEPLOYMENT-PROOF.md) selects:
+Accepted direction:
 
 ```text
-HTTP       Chi v5 + D5-pinned oapi-codegen v2.8 strict server
-validation oapi-codegen/nethttp-middleware
-policy     generated OAD operation-policy metadata; no handwritten duplicate map
-bytes      private S3 API-compatible object storage; authenticated Go delivery; no CDN baseline
-config     typed startup config + deployment-injected env/file secrets
-migrate    tern/v2 for MPC schema + version-matched River migration tool for River schema
-logs       JSON log/slog
-telemetry  OpenTelemetry traces + metrics over OTLP/HTTP; logs remain slog
-artifact   one immutable OCI application image with Go + compiled frontend
-edge       https://conexus.fun through explicit trusted TLS proxy/ingress boundary
-backup     PostgreSQL base backup + WAL/PITR or managed equivalent; restore proof
-proof      real PostgreSQL/River/Keycloak/browser/router/object-store seams
+HTTP       Chi v5 + oapi-codegen strict server
+validation canonical OAD middleware
+bytes      private S3-compatible object storage + authenticated Go delivery
+config     typed startup config + injected env/file secrets
+migrate    tern/v2 MPC schema + exact-version River migration ownership
+logs       structured slog JSON
+telemetry  OpenTelemetry traces/metrics over OTLP/HTTP
+artifact   one immutable OCI app image (Go + compiled frontend)
+edge       https://conexus.fun behind explicit trusted TLS proxy/ingress
+backup     PostgreSQL base backup + WAL/PITR or managed equivalent + restore proof
 ```
 
-No Kubernetes/service mesh, Redis, external broker, mandatory Collector/Prometheus/ELK stack, Vault dependency, hot configuration, ORM auto-schema, startup auto-migration, CDN/public bucket, multi-region or generic IaC platform is introduced.
+No Kubernetes/service mesh/Redis/external broker/Vault/CDN/public bucket/multi-region/generic IaC platform is required by baseline.
 
-## 10. Accepted D7-R1 bounded composition repairs
+## 7. AuthorizationRequest runtime — current accepted composition
 
-[D7-R1](D7-R1-WHOLE-STAGE-COHERENCE.md) preserves D7-A→D7-E while closing only five composition seams:
+The later AuthorizationRequest repair is now part of D7 current authority; no separate workflow engine/runtime stack exists.
 
-1. `authentication_bootstrap` persistence scope before Principal resolution;
-2. separate migration ownership: `tern` for MPC schema, exact-version River tooling for River schema;
-3. PITR/database-time rollback recovery fence with **affirmative external continuity witness** and automatic fail-closed arming when continuity is absent/unverifiable;
-4. scheme-aware OAD validator composition over already-established D7-D carrier context; no production no-op authentication function and no implicit dual-carrier priority;
-5. proof-timing distinction between D7 architecture closeout and later implemented real-dependency conformance.
+### 7.1 Decision intake / current carrier
 
-Independent Fable challenge on exact candidate `c08a4d025cfd89269cc071f4b307695e79f6f8cb` returned **ACCEPT WITH BOUNDED FIXES**. GPT accepted only the Important continuity/arming completion. Fable's `chi-server` generation suggestion and bootstrap-budget note remain non-blocking and require no D7 authority change.
-
-Round 2 is not justified because the blocking amendment adds no new technology, Product meaning or runtime topology.
-
-## 11. Whole-D7 proof contract
-
-D7 closeout leaves executable falsifiers for at least:
-
-- cross-Organization DB access/reference bypass and pooled-scope leakage;
-- authentication-bootstrap escape into business/evidence state;
-- stale revision/idempotency divergence;
-- owner state/handoff atomicity and duplicate/rescued/out-of-order work;
-- ambiguous external effect redispatch, including an ordinary boot after PITR with no manual fence-arming step;
-- automatic fail-closed continuity detection when restored database lineage cannot be positively established;
-- Sankhya Direct Oracle fallback;
-- browser token exposure, OIDC replay/fixation, CSRF/cross-origin bypass and disabled-Principal session use;
-- wrong machine issuer/audience/JWKS/client binding and A/S→H confusion;
-- no-op/mismatched OAD security validation and dual-carrier ambiguity;
-- `{id}:verb` runtime dispatch, OAD-invalid request rejection and technical-surface exclusion;
-- unauthorized private byte delivery and object/DB recovery integrity;
-- secret/PII leakage through logs/traces/metrics/jobs;
-- MPC/River migration skew, runtime migration-owner privilege and incompatible-schema boot;
-- trusted-proxy spoofing, provider false-death and telemetry coupling;
-- restore loss of RLS/history/effect safety, IdP subject continuity or committed binary integrity.
-
-D7 architecture closeout does **not** claim an implemented Product runtime PASS. The current repository intentionally has active runtime population `NONE`. Real PostgreSQL/River/Keycloak/browser/router-validator/object-store execution becomes mandatory for implementation acceptance when the implementation gate opens after D9; mock-only tests cannot substitute for those claims.
-
-## 12. Whole-D7 closeout result
+`CreateAuthorizationDecision` current wire:
 
 ```text
-internal coherence review        COMPLETE
-independent Fable challenge      ACCEPT WITH BOUNDED FIXES
-GPT adjudication                 CONVERGED
-surviving Important finding      PITR continuity/automatic fence arming — APPLIED
-operator closeout                APPROVED / RATIFIED
-D0–D6 reopen                     NONE
-D7 reconstruction               NONE
-Product                          99 operations / 30 Permissions / H-A-S unchanged
-active Product runtime           NONE
+POST /organizations/{organization_id}/authorization-requests/{authorization_request_id}:decide
+H only / governance.decide
+Idempotency-Key header
+body.etag = current AuthorizationRequest StrongETag
+body.outcome = authorize | reject
 ```
 
-D7 is **ACCEPTED / CLOSED** as target runtime authority and executable proof contract. This closeout does not authorize Product implementation and does not itself integrate the branch into `main`.
+The custom capability uses **typed body ETag**, not `If-Match`.
 
-## 13. Integration boundary
+Current idempotency namespace:
 
-PR #58 remains the integration vehicle for this accepted D7 authority. Until it lands in `main`, the roadmap must not open D8 on top of unintegrated D7 work.
+```text
+organization_id
++ effective PrincipalID
++ CreateAuthorizationDecision operation identity
++ digest(Idempotency-Key)
+```
 
-After integration, revalidate `main`, branches and PR state before opening D8. D9 and Product implementation remain blocked until their own roadmap gates are satisfied.
+Semantic fingerprint includes:
+
+```text
+authorization_request_id
++ typed request etag
++ outcome
+```
+
+Same raw key under another Principal is a different namespace and never replays/discloses the first Principal's Decision.
+
+### 7.2 Replay before revision precondition
+
+Inside Governance processing:
+
+```text
+current AuthN/access gate
+→ exact idempotency lookup/claim
+   ├─ committed same fingerprint → replay original result
+   ├─ different fingerprint      → reused-key validation failure
+   ├─ in-progress                → current intake conflict
+   └─ new                       → evaluate current Request
+```
+
+Exact committed replay resolves **before current Request revision-precondition evaluation**. This lets a lost 201 be recovered even though the Request's supplied revision became historical because that same Decision already committed.
+
+For a genuinely new attempt:
+
+```text
+lock exact AuthorizationRequest
+→ still PENDING
+→ compare typed body.etag
+→ current exact-human eligibility
+→ action-owner material-validity Q
+→ commit terminal meaning or known no-effect response
+```
+
+Missing/invalid ETag = 422; stale ETag = 409 revision conflict.
+
+### 7.3 Decision validity Q
+
+Material-validity Q is an in-process action-owner query over current MPC-owned/evidenced truth. Governance does not hold its owner transaction open across provider/business-system network I/O.
+
+Outcomes:
+
+```text
+VALID
+→ Decision + Request DECIDED + terminal idempotent replay mapping + durable reactions
+
+INVALID
+→ Request INVALIDATED + replayable terminal outcome + reconciliation reactions
+→ no Decision / no F14
+
+UNKNOWN_OR_UNAVAILABLE
+→ no Decision / no Request lifecycle mutation
+→ exact typed authorization-validity-unavailable 503
+```
+
+Only the exact Product Problem is known-no-effect. Bodyless/proxy/unparseable/non-matching 503 remains ambiguous potentially accepted.
+
+### 7.4 Current eligibility
+
+Actionable Request list/detail and new Decision attempts derive current decision eligibility from Governance authority/delegation + current IdentityAccess truth. No Notification/event/cache is eligibility authority.
+
+A revocation committed before the authoritative eligibility check must be observed. Later drift does not rewrite historical Decision; execution-time source-owner revalidation remains binding.
+
+### 7.5 F13 / F14 durable materialization
+
+F13 materializes only after revalidating:
+
+```text
+Request still PENDING
++ exact human still eligible now
+```
+
+Same eligibility occurrence replay is idempotent; later legitimate re-eligibility may be a new occurrence. Historical Notifications are not rewritten.
+
+F14 is anchored to immutable Decision occurrence + exact requester recipient; duplicate/rescued work cannot duplicate awareness. It remains target-oriented and grants no `governance.read`.
+
+### 7.6 Zero-decider Work
+
+```text
+PENDING Request + known-empty eligible humans
+→ ensure one explicit zero-decider Work obligation
+```
+
+When a decider exists again or Request becomes terminal, Governance/Work reconciliation closes the no-longer-applicable obligation. Assignment/escalation never grants `governance.decide`.
+
+### 7.7 Recovery sweep
+
+Correctness does not depend on every eligibility/invalidation wake-up. Fast local wakeups are paired with bounded durable recovery over PENDING Governance truth:
+
+```text
+scan durable pending Requests
+→ Q current eligibility
+→ Q material validity where required
+→ reconcile F13 / zero-decider Work / invalidation obligations
+```
+
+Scheduler cursor/tick is technical state only. A missed event/tick cannot permanently strand required current reconciliation.
+
+## 8. Notification temporal materialization
+
+For ORG_ROUTED occurrences, durable jobs carry only bounded correlation/Organization/source-commit facts; Personal Notifications resolves the route revision that applied at source commit and current eligibility continuity before new materialization.
+
+Late/replayed jobs cannot apply a newer route to an older occurrence. Source occurrence duplicate identity remains owner-semantic; River job uniqueness is only an optimization.
+
+## 9. Whole-D7 proof contract
+
+Eventual implementation must prove with real seams, not mocks alone:
+
+- cross-Organization DB/RLS/reference isolation and pooled-scope leakage prevention;
+- authentication-bootstrap containment;
+- owner revision/idempotency semantics, including Request typed-ETag replay order;
+- owner-state→River atomic handoff and duplicate/rescued/out-of-order reaction safety;
+- ambiguous external effect non-redispatch and PITR recovery fencing;
+- browser token/session/CSRF/OIDC safety;
+- machine issuer/audience/JWKS/client binding and A/S/H separation;
+- OAD validation and colon-suffix custom route behavior;
+- private byte authorization;
+- secret/PII log/job/telemetry safety;
+- migration/restore/continuity integrity;
+- current Notification temporal routing and AuthorizationRequest recovery obligations.
+
+D7 architecture closeout does **not** claim runtime implementation PASS while active runtime is NONE.
+
+## 10. Reopen triggers
+
+Reopen D7 only when real implementation/proof demonstrates the accepted mechanisms cannot preserve an invariant without materially different runtime/persistence/deployment structure. Framework preference, a desire for another broker/cache/service split or historic proof-file shape is not evidence.
