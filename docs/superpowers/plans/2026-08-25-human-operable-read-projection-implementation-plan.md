@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Rehome the approved Global Maximum into canonical D4/D5 authority and repair the Product OAD so human-facing Readiness/Offering reads are operable without changing canonical identity, operation count, Permission count, Principal kinds, or runtime topology.
+**Goal:** Rehome the approved Global Maximum into canonical D4/D5 authority and repair the Product OAD so the proven human-facing Readiness/Offering flows are operable without changing canonical identity, operation count, Permission count, Principal kinds, or runtime topology.
 
-**Architecture:** Keep canonical refs and all write/decision carriers key/ID based. Add only owner-correct current read projections and purpose/historical snapshots where the approved human job requires recognition, selection, or explanation; repair directly implicated W2→OAD drift; reuse the same MarketplaceListing presentation meaning across Offering and Performance; keep source/authored/observed media presentation trust types distinct. The prerequisite ends when the wire repair is proved and ready for integration; B10 P8/P9 revalidation happens in a later bounded frontend increment after this prerequisite lands.
+**Architecture:** Canonical refs and write/decision carriers stay key/ID based. Current human reads gain only owner-correct presentation projections; purpose/historical labels remain snapshots, not current truth. The repair also restores directly implicated W2→OAD semantics and consolidates MarketplaceListing presentation already duplicated by Performance. The prerequisite stops when its wire is proved and integration-ready; B10 correspondence P8/P9 revalidation is a later bounded frontend increment after this prerequisite lands.
 
 **Tech Stack:** OpenAPI 3.1.2 YAML; Node.js `>=26.3.0 <27`; PowerShell aggregate gate; `@redocly/cli@2.45.0`; `openapi-typescript@7.13.0`; TypeScript `5.9.3`; Go `1.25.1`; `oapi-codegen v2.8.0`; `github.com/oapi-codegen/runtime v1.7.0`.
 
@@ -12,115 +12,97 @@
 
 ## Global Constraints
 
-- Preserve **106 Product operations / 31 ordinary Permissions / Principal kinds H / A / S**. Any count change is a new material finding and must stop this plan.
-- Preserve `MarketplaceListingRef`, `SourceProductRef`, ListingIntent/PriceIntent IDs, correspondence/source candidate keys, option keys, unit keys, and other canonical decision carriers as identity/decision authority.
-- Presentation metadata must never authenticate, authorize, scope, correlate, match, converge, or replace canonical identity.
-- Client-authored request schemas must not accept presentation labels, presentation locators, server attribution, or source/provider provenance as write authority.
+- Preserve **106 Product operations / 31 ordinary Permissions / Principal kinds H / A / S**. A count change is a new material finding and stops this plan.
+- Preserve `MarketplaceListingRef`, `SourceProductRef`, ListingIntent/PriceIntent IDs, option/unit/source-candidate/correspondence keys, and other canonical decision carriers as identity/decision authority.
+- Presentation never authenticates, authorizes, scopes, correlates, matches, converges, or replaces canonical identity.
+- Request/write schemas never accept human labels, presentation locators, server attribution, or source/provider provenance as write authority.
 - Preserve `known != missing != unknown != unavailable != unsupported`; known empty remains distinct from unknown/unavailable.
-- Do not create `PresentationService`, generic `EntityRef`/`EntityPresentation`, arbitrary metadata bags, provider field bags, Product/PIM master, generic media/asset service, transformation/rule engine, or new Product search/list operation.
-- Do not use N+1 point GETs as the production baseline for a collection whose admitted human job requires scan/select/navigation.
-- Keep authored/source/observed media presentation references as distinct schema families with distinct trust meaning.
-- Runtime remains **NONE** and product implementation paths under `apps|cmd|internal|server|backend|frontend|src|migrations` remain blocked until D9.
-- B20 PR #69 remains **PAUSED / NO P8** during this plan.
-- B10's main structure remains protected. This plan does not edit B10 HTML or rerun P9; the later bounded frontend increment reopens only the correspondence region after this prerequisite is integrated.
-- CI remains one aggregate `npm run gate`. Add only one focused semantic verifier under the existing Product OAD proof; do not add another workflow/check or prose-string ratification test.
+- No `PresentationService`, generic `EntityRef`/`EntityPresentation`, metadata bag, provider field bag, Product/PIM master, generic media/asset service, transform/rule engine, or new Product search/list operation.
+- No N+1 point-GET production baseline for a collection whose admitted human job requires scan/select/navigation.
+- Source/authored/observed media presentation remain distinct trust schema families.
+- Runtime remains **NONE**; implementation paths under `apps|cmd|internal|server|backend|frontend|src|migrations` remain blocked until D9.
+- PR #69 / B20 remains **PAUSED / NO P8** throughout this plan.
+- B10 main structure remains protected. This plan does not edit B10 HTML or rerun P9.
+- CI remains one aggregate `npm run gate`; add one focused semantic verifier under the existing Product OAD proof, not another workflow/check and not prose-string ratification tests.
 - Merge remains separately operator-authorized.
 
 ---
 
-## File Structure
+## File Map
 
-### Canonical authority
+**Canonical authority**
+- `docs/engineering/rebaseline/D4-EXTERNAL-INTEGRATIONS.md`
+- `docs/engineering/rebaseline/D4-R1-PUBLICATION-INPUT.md`
+- `docs/engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md`
+- `docs/engineering/rebaseline/D5-B2-W3-COLLECTION-GRAMMAR.md`
 
-- `docs/engineering/rebaseline/D4-EXTERNAL-INTEGRATIONS.md` — external evidence/translation rule for human-operable presentation.
-- `docs/engineering/rebaseline/D4-R1-PUBLICATION-INPUT-LISTING-AUTHORING-CONTRACT.md` — publication vocabulary, source candidates, correspondence candidates, and presentation/identity fence.
-- `docs/engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md` — canonical read/write/presentation/snapshot schema grammar.
-- `docs/engineering/rebaseline/D5-B2-W3-COLLECTION-GRAMMAR.md` — collection semantic-subset law applied to human scan/select/navigation.
+**Canonical Product wire**
+- `contracts/api/product/components.yaml`
+- `contracts/api/product/paths-identity-portfolio-readiness.yaml`
+- `contracts/api/product/paths-offering-availability-market.yaml`
+- `contracts/api/product/paths-performance.yaml`
+- `contracts/api/product/paths-economics-governance-sales-materialization.yaml` only when an existing response description/binding must reflect the repaired schema
+- `contracts/api/product/openapi.yaml` only if an existing local `$ref` needs redirection; no new path
 
-### Canonical machine-readable Product wire
+**Proof**
+- Create `scripts/verify-human-operable-read-projection.mjs`
+- Modify `scripts/verify-product-oad.mjs`
+- Do not modify `scripts/gate.ps1` unless the existing Product verifier call is objectively unable to carry the proof; expected path is no change
 
-- `contracts/api/product/components.yaml` — shared Product schemas used by Readiness, Offering, Availability, Market, Economics, and selected cross-owner reads.
-- `contracts/api/product/paths-identity-portfolio-readiness.yaml` — operation descriptions only when needed to reflect the repaired Readiness semantics; operation IDs/permissions/paths remain unchanged.
-- `contracts/api/product/paths-offering-availability-market.yaml` — ListingIntent/MarketplaceListing/PriceIntent/Availability/Market operation descriptions and response bindings as needed; no new path.
-- `contracts/api/product/paths-performance.yaml` — remove Performance's parallel Listing label spelling and reuse canonical Listing presentation meaning.
-- `contracts/api/product/paths-economics-governance-sales-materialization.yaml` — only if an exact response binding needs adjustment; expected-economics operation surface remains unchanged.
-- `contracts/api/product/openapi.yaml` — no new path; touch only if an existing local `$ref` must be redirected after schema factoring.
-
-### Mechanical proof
-
-- `scripts/verify-human-operable-read-projection.mjs` — focused semantic/schema negative proof for this prerequisite.
-- `scripts/verify-product-oad.mjs` — invoke the focused verifier against the deterministic resolved bundle; keep the aggregate Product proof as the one gate home.
-- `scripts/gate.ps1` — **do not modify** unless execution proves the existing one-line `verify-product-oad.mjs` call cannot carry the targeted proof. Expected plan path is no change.
-
-### Planning/status
-
-- `docs/superpowers/specs/2026-08-25-human-operable-read-projection-design.md` — mark approved/implemented-candidate status as execution advances; never turn it into a second canonical semantic authority.
-- `docs/roadmap.md` — sole mutable status/allowed-work/next-action authority.
-- `docs/engineering/rebaseline/D6-R2-P9-B10-PREPARATION-SCREEN-CONTRACT.md` — do not rewrite historical P9 during the wire repair; after integration, the later B10 increment records the rerun. The roadmap already owns the current reopen status.
+**Status/design**
+- `docs/superpowers/specs/2026-08-25-human-operable-read-projection-design.md`
+- `docs/roadmap.md`
 
 ---
 
-### Task 1: Rehome the approved Global Maximum into canonical D4/W2/W3 authority
+### Task 1: Rehome the approved decision into canonical D4/W2/W3 authority
 
 **Files:**
-- Modify: `docs/engineering/rebaseline/D4-EXTERNAL-INTEGRATIONS.md`
-- Modify: `docs/engineering/rebaseline/D4-R1-PUBLICATION-INPUT-LISTING-AUTHORING-CONTRACT.md`
-- Modify: `docs/engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md`
-- Modify: `docs/engineering/rebaseline/D5-B2-W3-COLLECTION-GRAMMAR.md`
-- Modify: `docs/superpowers/specs/2026-08-25-human-operable-read-projection-design.md`
-- Modify: `docs/roadmap.md`
+- Modify `docs/engineering/rebaseline/D4-EXTERNAL-INTEGRATIONS.md`
+- Modify `docs/engineering/rebaseline/D4-R1-PUBLICATION-INPUT.md`
+- Modify `docs/engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md`
+- Modify `docs/engineering/rebaseline/D5-B2-W3-COLLECTION-GRAMMAR.md`
+- Modify `docs/superpowers/specs/2026-08-25-human-operable-read-projection-design.md`
+- Modify `docs/roadmap.md`
 
 **Interfaces:**
-- Consumes: approved design invariant `Canonical Ref != Current Read Projection != Purpose/Historical Snapshot`.
-- Produces: canonical authority text that Tasks 2–5 implement mechanically; no operation/path/runtime change.
+- Consumes: approved design `Canonical Ref != Current Read Projection != Purpose/Historical Snapshot`.
+- Produces: canonical authority for Tasks 2–5; no Product operation/path/runtime change.
 
-- [ ] **Step 1: Add the external-evidence presentation fence to D4**
+- [ ] **Step 1: Add D4's human-operable external-evidence fence**
 
-Add a bounded rule under Mercado Livre operational evidence and the general translation fence with this normative meaning:
+Add this normative meaning under the general translation fence and Mercado Livre Listing/publication evidence:
 
 ```markdown
 ### Human-operable external presentation evidence
 
-When a consumer-owned Product read has a proven human recognition/selection job, D4 preserves the smallest current source/provider presentation evidence needed by that consumer in addition to the canonical external key. Provider/source presentation remains mutable, non-unique evidence and never becomes MPC identity, correspondence authority, authorization, or a generic metadata bag.
+When a consumer-owned Product read has a proven human recognition/selection job, D4 preserves the smallest current source/provider presentation evidence needed by that consumer in addition to the canonical external key. Provider/source presentation is mutable, non-unique evidence and never MPC identity, correspondence authority, authorization, or a generic metadata bag.
 
-For Mercado Livre publication/listing evidence this includes, when applicable, human names/titles associated with the already-used category/product-type/attribute/allowed-value/unit/Listing identities. Adapter-local DTO/field topology remains private.
+For Mercado Livre publication/listing evidence this includes, when applicable, the human names/titles associated with already-used category/product-type/attribute/allowed-value/unit/Listing identities. Adapter DTO/field topology remains private.
 
-If presentation cannot currently be acquired, D4 returns honest unknown/unavailable presentation through the consumer-owned semantic port rather than fabricating a label or converting the external key into a name.
+When presentation cannot currently be established, D4 propagates honest unknown/unavailable presentation rather than fabricating a label or promoting the native key into a name.
 ```
 
-Do not add a shared provider presentation service or a provider-agnostic free-form field map.
+- [ ] **Step 2: Extend D4-R1's publication seam**
 
-- [ ] **Step 2: Extend D4-R1's publication seam with typed human-operability obligations**
-
-In the Readiness publication-requirements section, add the exact ownership rules:
+Record exactly:
 
 ```text
 canonical decision identity
   requirement_key / option_key / unit_key / source_candidate_key / correspondence candidate_key
 
 current human read projection
-  provider/source display label + only the bounded context needed to recognize the choice
+  source/provider display presentation needed to recognize the choice
 
 write/effect
-  canonical key only, revalidated against current owner truth
+  canonical key only + current owner revalidation
 ```
 
-State explicitly that Readiness must expose:
+Require Readiness to preserve human presentation for SourceProduct/SourceInstance, requirements, options, units, FOLLOW_SOURCE candidates, and correspondence candidates when human choice is admitted. Continue rejecting provider expressions/raw paths/arbitrary maps.
 
-```text
-SourceProduct/SourceInstance presentation for human source selection
-requirement display name
-allowed option key + display name
-allowed unit key + display name
-source candidate key + display label + current value view
-correspondence candidate key + display label when a human resolution is admissible
-```
+- [ ] **Step 3: Add W2's read-projection grammar and exact approved schema-family names**
 
-and must not expose provider expressions/raw paths/arbitrary maps.
-
-- [ ] **Step 3: Canonicalize W2 read/write/snapshot grammar**
-
-Add a W2 subsection immediately after the request-vs-read law:
+Add after the existing request-vs-read rule:
 
 ```markdown
 ### Human-operable read projection grammar
@@ -130,7 +112,7 @@ A canonical Ref/request carrier remains minimal. A current read may carry an adj
 Presentation is never accepted as identity or write authority. Equal labels never collapse distinct keys. Unknown/unavailable presentation never erases the known canonical subject.
 ```
 
-Then update the existing W2 Readiness/Offering sections so they normatively name the approved schema families used below:
+Crystallize these schema-family names as the implementation vocabulary:
 
 ```text
 SourceProductPresentation
@@ -145,17 +127,17 @@ ListingIntent requirement-resolution read views
 source/authored/observed media presentation families
 ```
 
-Also state that the current OAD drift for MarketplaceListing/ListingIntent must be repaired without changing W1/W4.
+Also record that MarketplaceListing/ListingIntent OAD drift directly implicated by the approved spec is repaired under W2 without changing W1/W4.
 
-- [ ] **Step 4: Tighten W3 ListItem law without adding generic View machinery**
+- [ ] **Step 4: Update W3's ListItem law and current SearchSourceProducts semantics**
 
-Add this bounded consequence to W3 §2.2 and the affected matrix rows:
+Add:
 
 ```markdown
-When the admitted human consumer must scan/select/navigate a member and the owner can supply current presentation without a second business conclusion, the ListItem carries that owner-semantic presentation subset directly. A point-GET fan-out is not the baseline repair for a deficient collection item. This does not admit a generic `View<T>`, projection DSL, total count, alternate sort or metadata envelope.
+When the admitted human consumer must scan/select/navigate a member and the owner can supply current presentation without a second business conclusion, the ListItem carries that owner-semantic presentation subset directly. Point-GET fan-out is not the baseline repair for a deficient collection item. This admits no generic `View<T>`, projection DSL, total count, alternate sort, or metadata envelope.
 ```
 
-Call out the currently proven collections only:
+Apply only to the currently proven collections:
 
 ```text
 SearchSourceProductsForMarketplace
@@ -168,32 +150,34 @@ ListExpectedEconomics
 ListMarketplaceListingPerformance
 ```
 
-- [ ] **Step 5: Mark the design approved and roadmap at implementation-plan gate**
+Also reconcile W3's SearchSourceProducts row with the already-accepted current contract: `source_instance_id` is optional narrowing; omission searches admitted/configured Organization-scoped sources and never selects a hidden/default source. Preserve SourceProductRef as member identity/tie-breaker.
 
-Change the spec status to:
+- [ ] **Step 5: Set execution status now that operator plan approval exists**
+
+Execution of this task occurs only after the operator has approved this plan. Therefore set:
 
 ```text
-DESIGN APPROVED — operator-approved on 2026-08-25; implementation governed by the approved implementation plan and roadmap
+spec: DESIGN APPROVED / IMPLEMENTATION PLAN APPROVED
+roadmap prerequisite: EXECUTION ACTIVE
+roadmap exact next action: execute the approved prerequisite plan task-by-task; B20 remains paused
 ```
 
-Change roadmap current prerequisite to `DESIGN APPROVED / IMPLEMENTATION PLAN APPROVAL REQUIRED`, keep B20 paused, and set exact next action to operator approval of this implementation plan. Do not authorize OAD writes yet in the roadmap until the operator approves the plan.
+Do not authorize runtime Product implementation or B10/B20 HTML.
 
 - [ ] **Step 6: Verify the authority-only diff**
-
-Run:
 
 ```powershell
 git diff --check main...HEAD
 git diff --name-only main...HEAD
 ```
 
-Expected: no whitespace/conflict-marker errors; only the approved design/plan/status and canonical D4/W2/W3 docs are added/modified at this task boundary.
+Expected: no whitespace/conflict-marker error and no OAD/runtime file changed by Task 1.
 
-- [ ] **Step 7: Commit the canonical authority rehome**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add docs/engineering/rebaseline/D4-EXTERNAL-INTEGRATIONS.md \
-        docs/engineering/rebaseline/D4-R1-PUBLICATION-INPUT-LISTING-AUTHORING-CONTRACT.md \
+        docs/engineering/rebaseline/D4-R1-PUBLICATION-INPUT.md \
         docs/engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md \
         docs/engineering/rebaseline/D5-B2-W3-COLLECTION-GRAMMAR.md \
         docs/superpowers/specs/2026-08-25-human-operable-read-projection-design.md \
@@ -203,21 +187,21 @@ git commit -m "docs(d6-r2): rehome human-operable read projection authority"
 
 ---
 
-### Task 2: Repair Readiness publication/source/correspondence read projections with a focused semantic verifier
+### Task 2: Repair Readiness/source/publication/correspondence projections and install one focused semantic verifier
 
 **Files:**
-- Create: `scripts/verify-human-operable-read-projection.mjs`
-- Modify: `scripts/verify-product-oad.mjs`
-- Modify: `contracts/api/product/components.yaml`
-- Modify only if descriptions need semantic clarification: `contracts/api/product/paths-identity-portfolio-readiness.yaml`
+- Create `scripts/verify-human-operable-read-projection.mjs`
+- Modify `scripts/verify-product-oad.mjs`
+- Modify `contracts/api/product/components.yaml`
+- Modify `contracts/api/product/paths-identity-portfolio-readiness.yaml` only for descriptions that materially clarify the repaired response
 
 **Interfaces:**
-- Consumes: Task 1 canonical W2/D4 names and the existing Readiness operations.
-- Produces: `SourceProductPresentation`, typed publication read vocabulary/value views, source candidates, correspondence candidate population, source media presentation, and a reusable focused verifier invoked by the existing Product proof.
+- Produces `SourceProductPresentation`, publication read descriptors/value views, typed source candidates, correspondence candidate population, and source-media presentation.
+- Keeps all existing Readiness operation IDs, paths, Permissions, Principal kinds and write request identities.
 
-- [ ] **Step 1: Create the failing Readiness semantic verifier**
+- [ ] **Step 1: Create a failing semantic verifier that can grow across Tasks 2–5**
 
-Create `scripts/verify-human-operable-read-projection.mjs` with this executable base:
+Create `scripts/verify-human-operable-read-projection.mjs`:
 
 ```js
 import { readFileSync } from 'node:fs';
@@ -225,32 +209,19 @@ import { readFileSync } from 'node:fs';
 const bundlePath = process.argv[2];
 if (!bundlePath) throw new Error('usage: node scripts/verify-human-operable-read-projection.mjs <resolved-bundle.json>');
 const document = JSON.parse(readFileSync(bundlePath, 'utf8'));
-const schemas = document.components?.schemas ?? {};
 let negativeControls = 0;
 
 function fail(message) { throw new Error(message); }
 function assert(condition, message) { if (!condition) fail(message); }
-function schema(name) { const value = schemas[name]; assert(value, `missing schema ${name}`); return value; }
-function requireFields(name, fields) {
-  const required = new Set(schema(name).required ?? []);
+function schemas(doc) { return doc.components?.schemas ?? {}; }
+function requireFieldsFrom(s, name, fields) {
+  assert(s[name], `missing schema ${name}`);
+  const required = new Set(s[name].required ?? []);
   for (const field of fields) assert(required.has(field), `${name} must require ${field}`);
 }
-function propertyRef(name, property, ref) {
-  assert(schema(name).properties?.[property]?.$ref === ref, `${name}.${property} must reference ${ref}`);
-}
-function noPropertyDeep(name, forbidden) {
-  const text = JSON.stringify(schema(name));
-  for (const value of forbidden) assert(!text.includes(`\"${value}\"`), `${name} must not expose write-authority field ${value}`);
-}
-function expectMutationFailure(label, mutate) {
-  const candidate = structuredClone(document);
-  let failed = false;
-  try { mutate(candidate); validateReadiness(candidate); } catch { failed = true; }
-  assert(failed, `negative control unexpectedly passed: ${label}`);
-  negativeControls++;
-}
+
 function validateReadiness(doc) {
-  const s = doc.components.schemas;
+  const s = schemas(doc);
   for (const name of [
     'SourceProductPresentationKnown','SourceProductPresentationUnknown','SourceProductPresentationUnavailable','SourceProductPresentation',
     'PublicationCategoryDescriptor','PublicationProductTypeDescriptor','PublicationContextRef','PublicationContextView',
@@ -258,35 +229,49 @@ function validateReadiness(doc) {
     'ProductChannelCorrespondenceCandidate','CorrespondenceCandidatePopulationKnown','CorrespondenceCandidatePopulationUnknown','CorrespondenceCandidatePopulationUnavailable','CorrespondenceCandidatePopulation',
     'SourceMediaPresentationKnown','SourceMediaPresentationUnavailable','SourceMediaPresentation'
   ]) assert(s[name], `missing schema ${name}`);
-  for (const field of ['source_product','presentation']) assert((s.SourceProductSearchHit.required ?? []).includes(field), `SourceProductSearchHit must require ${field}`);
-  for (const field of ['subject','subject_presentation','correspondence','correspondence_candidate_population','correspondence_etag','readiness','blockers','evaluated_at']) assert((s.ProductChannelReadiness.required ?? []).includes(field), `ProductChannelReadiness must require ${field}`);
-  for (const field of ['subject','subject_presentation','publication_context','requirements_revision','requirements','source_media_candidates','evaluated_at']) assert((s.PublicationRequirements.required ?? []).includes(field), `PublicationRequirements must require ${field}`);
-  assert((s.PublicationRequirement.required ?? []).includes('display_name'), 'PublicationRequirement must require display_name');
-  assert(JSON.stringify(s.PublicationOptionRequirementSpec).includes('PublicationOptionDescriptor'), 'option requirement must expose typed descriptors');
-  assert(JSON.stringify(s.PublicationOptionListRequirementSpec).includes('PublicationOptionDescriptor'), 'option-list requirement must expose typed descriptors');
-  assert(JSON.stringify(s.PublicationNumberUnitRequirementSpec).includes('PublicationUnitDescriptor'), 'number-unit requirement must expose typed unit descriptors');
+  requireFieldsFrom(s, 'SourceProductSearchHit', ['source_product','presentation']);
+  requireFieldsFrom(s, 'ProductChannelReadiness', ['subject','subject_presentation','correspondence','correspondence_candidate_population','correspondence_etag','readiness','blockers','evaluated_at']);
+  requireFieldsFrom(s, 'PublicationRequirements', ['subject','subject_presentation','publication_context','requirements_revision','requirements','source_media_candidates','evaluated_at']);
+  requireFieldsFrom(s, 'PublicationRequirement', ['requirement_key','display_name','requirement_class','applicability','value_spec','not_applicable_allowed','source_evidence']);
+  assert(JSON.stringify(s.PublicationOptionRequirementSpec).includes('PublicationOptionDescriptor'), 'option requirement must expose descriptors');
+  assert(JSON.stringify(s.PublicationOptionListRequirementSpec).includes('PublicationOptionDescriptor'), 'option-list requirement must expose descriptors');
+  assert(JSON.stringify(s.PublicationNumberUnitRequirementSpec).includes('PublicationUnitDescriptor'), 'number-unit requirement must expose unit descriptors');
   assert(JSON.stringify(s.PublicationSourceEvidenceKnown).includes('PublicationSourceCandidateView'), 'known source evidence must expose candidate views');
   assert(JSON.stringify(s.PublicationSourceEvidenceConflicting).includes('PublicationSourceCandidateView'), 'conflicting source evidence must expose candidate views');
-  assert(JSON.stringify(s.SourceMediaCandidate).includes('SourceMediaPresentation'), 'source media candidate must expose its own presentation trust type');
-  const writes = ['ResolveCorrespondenceRequest','ClearCorrespondenceRequest','CreateListingIntentDraftRequest','UpdateListingIntentRequest','CreatePriceIntentRequest'];
-  for (const name of writes) {
+  assert(JSON.stringify(s.SourceMediaCandidate).includes('SourceMediaPresentation'), 'source media must use its own presentation trust type');
+  for (const name of ['ResolveCorrespondenceRequest','ClearCorrespondenceRequest','ListingIntentDesired','RequirementResolution','ExplicitOverrideResolution','PublicationValue','MediaSelection','CreatePriceIntentRequest']) {
     const text = JSON.stringify(s[name] ?? {});
     for (const forbidden of ['display_name','display_label','access_ref','subject_presentation']) assert(!text.includes(`\"${forbidden}\"`), `${name} must not author ${forbidden}`);
   }
 }
 
-validateReadiness(document);
+function validateAll(doc) {
+  validateReadiness(doc);
+  if (typeof validateMarketplaceListing === 'function') validateMarketplaceListing(doc);
+  if (typeof validateConsumers === 'function') validateConsumers(doc);
+  if (typeof validateListingIntent === 'function') validateListingIntent(doc);
+}
+
+function expectMutationFailure(label, mutate) {
+  const candidate = structuredClone(document);
+  let failed = false;
+  try { mutate(candidate); validateAll(candidate); } catch { failed = true; }
+  assert(failed, `negative control unexpectedly passed: ${label}`);
+  negativeControls++;
+}
+
+validateAll(document);
 expectMutationFailure('requirement label removed', (d) => { d.components.schemas.PublicationRequirement.required = d.components.schemas.PublicationRequirement.required.filter((x) => x !== 'display_name'); });
 expectMutationFailure('correspondence candidate population removed', (d) => { d.components.schemas.ProductChannelReadiness.required = d.components.schemas.ProductChannelReadiness.required.filter((x) => x !== 'correspondence_candidate_population'); });
-expectMutationFailure('write accepts presentation label', (d) => { d.components.schemas.ResolveCorrespondenceRequest.properties.display_label = { type: 'string' }; });
-assert(negativeControls === 3, `Readiness negative-control count must be 3, found ${negativeControls}`);
-console.log('human_operable_read_projection_readiness=PASS');
+expectMutationFailure('resolve write accepts label', (d) => { d.components.schemas.ResolveCorrespondenceRequest.properties.display_label = { type: 'string' }; });
+assert(negativeControls === 3, `negative-control count must be 3, found ${negativeControls}`);
+console.log('human_operable_read_projection=PASS');
 console.log(`human_operable_read_projection_negative_controls=${negativeControls}/3`);
 ```
 
-- [ ] **Step 2: Bundle the current baseline and prove the verifier fails for the expected reason**
+Later tasks add validators and negative controls, and update the final exact count; `expectMutationFailure` always calls `validateAll`, so a mutation in MarketplaceListing/consumer/ListingIntent proof cannot accidentally be checked only against Readiness.
 
-Run:
+- [ ] **Step 2: Prove RED against the pre-repair OAD**
 
 ```powershell
 npx --yes @redocly/cli@2.45.0 bundle contracts/api/product/openapi.yaml --config contracts/api/product/redocly.yaml -o .human-projection-test.json
@@ -294,11 +279,11 @@ node scripts/verify-human-operable-read-projection.mjs .human-projection-test.js
 Remove-Item .human-projection-test.json
 ```
 
-Expected: FAIL at the first missing approved schema such as `SourceProductPresentationKnown`. A pass against the pre-repair OAD is a test defect; stop and fix the verifier.
+Expected: FAIL at the first missing approved schema, e.g. `SourceProductPresentationKnown`. A pass is a test defect.
 
-- [ ] **Step 3: Add exact Source Product presentation schemas**
+- [ ] **Step 3: Implement SourceProduct presentation and exact-subject presentation**
 
-Replace the current flat search-hit presentation with:
+Add:
 
 ```yaml
   SourceProductPresentationKnown:
@@ -312,16 +297,8 @@ Replace the current flat search-hit presentation with:
       sku: {type: string}
       gtin: {type: string}
       observed_at: {$ref: '#/schemas/Instant'}
-  SourceProductPresentationUnknown:
-    type: object
-    additionalProperties: false
-    required: [state]
-    properties: {state: {const: unknown}}
-  SourceProductPresentationUnavailable:
-    type: object
-    additionalProperties: false
-    required: [state]
-    properties: {state: {const: unavailable}}
+  SourceProductPresentationUnknown: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unknown}}}
+  SourceProductPresentationUnavailable: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unavailable}}}
   SourceProductPresentation:
     oneOf:
       - {$ref: '#/schemas/SourceProductPresentationKnown'}
@@ -336,11 +313,11 @@ Replace the current flat search-hit presentation with:
       presentation: {$ref: '#/schemas/SourceProductPresentationKnown'}
 ```
 
-Add `subject_presentation: SourceProductPresentation` to both `ProductChannelReadiness` and `PublicationRequirements` and make it required.
+Require `subject_presentation: SourceProductPresentation` on both `ProductChannelReadiness` and `PublicationRequirements`.
 
-- [ ] **Step 4: Split key-based publication context from human read context**
+- [ ] **Step 4: Split publication context and dynamic option/unit read vocabulary from key-only writes**
 
-Add:
+Add exact read/write schemas:
 
 ```yaml
   PublicationContextRef:
@@ -353,71 +330,47 @@ Add:
     type: object
     additionalProperties: false
     required: [category_key, display_name]
-    properties:
-      category_key: {$ref: '#/schemas/OpaqueKey'}
-      display_name: {type: string, minLength: 1}
+    properties: {category_key: {$ref: '#/schemas/OpaqueKey'}, display_name: {type: string, minLength: 1}}
   PublicationProductTypeDescriptor:
     type: object
     additionalProperties: false
     required: [product_type_key, display_name]
-    properties:
-      product_type_key: {$ref: '#/schemas/OpaqueKey'}
-      display_name: {type: string, minLength: 1}
+    properties: {product_type_key: {$ref: '#/schemas/OpaqueKey'}, display_name: {type: string, minLength: 1}}
   PublicationContextView:
     type: object
     additionalProperties: false
     properties:
       category: {$ref: '#/schemas/PublicationCategoryDescriptor'}
       product_type: {$ref: '#/schemas/PublicationProductTypeDescriptor'}
-```
-
-`PublicationRequirements.publication_context` must reference `PublicationContextView`. Keep query parameters key-based. Task 5 uses `PublicationContextRef` inside ListingIntent desired state.
-
-- [ ] **Step 5: Add typed option/unit read descriptors and keep write values key-only**
-
-Add:
-
-```yaml
   PublicationOptionDescriptor:
     type: object
     additionalProperties: false
     required: [option_key, display_name]
-    properties:
-      option_key: {$ref: '#/schemas/OpaqueKey'}
-      display_name: {type: string, minLength: 1}
+    properties: {option_key: {$ref: '#/schemas/OpaqueKey'}, display_name: {type: string, minLength: 1}}
   PublicationUnitDescriptor:
     type: object
     additionalProperties: false
     required: [unit_key, display_name]
-    properties:
-      unit_key: {$ref: '#/schemas/OpaqueKey'}
-      display_name: {type: string, minLength: 1}
+    properties: {unit_key: {$ref: '#/schemas/OpaqueKey'}, display_name: {type: string, minLength: 1}}
 ```
 
-Change `PublicationOptionRequirementSpec` and `PublicationOptionListRequirementSpec` from `option_keys` to `options: PublicationOptionDescriptor[]`. Change `PublicationNumberUnitRequirementSpec` from `unit_keys` to `units: PublicationUnitDescriptor[]`; keep `default_unit_key` as the canonical selected key.
+`PublicationRequirements.publication_context` references `PublicationContextView`. Query parameters remain key-only. Option and option-list requirement specs use `options: PublicationOptionDescriptor[]`; number-unit spec uses `units: PublicationUnitDescriptor[]` and keeps `default_unit_key` canonical.
 
-Do **not** change client-authored `PublicationOptionValue`, `PublicationOptionListValue`, or `PublicationNumberUnitValue` key-only shapes.
+- [ ] **Step 5: Add `PublicationValueView` and typed source candidates while preserving type-family validation**
 
-- [ ] **Step 6: Add `PublicationValueView` and typed source candidates**
-
-Add read-only value variants:
+Add:
 
 ```yaml
   PublicationOptionValueView:
     type: object
     additionalProperties: false
     required: [kind, option_key, display_name]
-    properties:
-      kind: {const: option}
-      option_key: {$ref: '#/schemas/OpaqueKey'}
-      display_name: {type: string, minLength: 1}
+    properties: {kind: {const: option}, option_key: {$ref: '#/schemas/OpaqueKey'}, display_name: {type: string, minLength: 1}}
   PublicationOptionListValueView:
     type: object
     additionalProperties: false
     required: [kind, options]
-    properties:
-      kind: {const: option_list}
-      options: {type: array, items: {$ref: '#/schemas/PublicationOptionDescriptor'}}
+    properties: {kind: {const: option_list}, options: {type: array, items: {$ref: '#/schemas/PublicationOptionDescriptor'}}}
   PublicationNumberUnitValueView:
     type: object
     additionalProperties: false
@@ -447,22 +400,20 @@ Add read-only value variants:
       value: {$ref: '#/schemas/PublicationValueView'}
 ```
 
-Change `PublicationSourceEvidenceKnown.candidates` to `array`, `minItems: 1`, items `PublicationSourceCandidateView`; change conflicting to `array`, `minItems: 2` with the same item schema. Preserve missing/unknown/unavailable/unsupported as explicit no-candidate variants.
+Change known source evidence to `candidates: array`, `minItems: 1`; conflicting to `array`, `minItems: 2`; items reference `PublicationSourceCandidateView`.
 
-Make `PublicationRequirement.display_name` non-empty and required.
+**Also update all existing type-specific source-evidence wrappers** (`PublicationTextSourceEvidence`, `PublicationExactDecimalSourceEvidence`, `PublicationBooleanSourceEvidence`, `PublicationOptionSourceEvidence`, `PublicationTextListSourceEvidence`, `PublicationOptionListSourceEvidence`, `PublicationNumberUnitSourceEvidence`) so their `known|conflicting` candidate arrays narrow each candidate's `value` to the matching value/view family. Do not leave the old object-map constraints in those wrappers.
 
-- [ ] **Step 7: Add correspondence candidate-population semantics without a new operation**
+Make `PublicationRequirement.display_name` required/non-empty.
 
-Add:
+- [ ] **Step 6: Add correspondence candidate population without a new operation**
 
 ```yaml
   ProductChannelCorrespondenceCandidate:
     type: object
     additionalProperties: false
     required: [candidate_key, display_label]
-    properties:
-      candidate_key: {$ref: '#/schemas/OpaqueKey'}
-      display_label: {type: string, minLength: 1}
+    properties: {candidate_key: {$ref: '#/schemas/OpaqueKey'}, display_label: {type: string, minLength: 1}}
   CorrespondenceCandidatePopulationKnown:
     type: object
     additionalProperties: false
@@ -470,16 +421,8 @@ Add:
     properties:
       state: {const: known}
       candidates: {type: array, items: {$ref: '#/schemas/ProductChannelCorrespondenceCandidate'}}
-  CorrespondenceCandidatePopulationUnknown:
-    type: object
-    additionalProperties: false
-    required: [state]
-    properties: {state: {const: unknown}}
-  CorrespondenceCandidatePopulationUnavailable:
-    type: object
-    additionalProperties: false
-    required: [state]
-    properties: {state: {const: unavailable}}
+  CorrespondenceCandidatePopulationUnknown: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unknown}}}
+  CorrespondenceCandidatePopulationUnavailable: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unavailable}}}
   CorrespondenceCandidatePopulation:
     oneOf:
       - {$ref: '#/schemas/CorrespondenceCandidatePopulationKnown'}
@@ -487,52 +430,36 @@ Add:
       - {$ref: '#/schemas/CorrespondenceCandidatePopulationUnavailable'}
 ```
 
-Add required `correspondence_candidate_population` to `ProductChannelReadiness`. Keep `ResolveCorrespondenceRequest` exactly key-based: `subject + correspondence_etag + candidate_key`.
+Require `correspondence_candidate_population` on `ProductChannelReadiness`. Keep `ResolveCorrespondenceRequest = subject + correspondence_etag + candidate_key`; no label is submitted.
 
-- [ ] **Step 8: Add source-media presentation as a distinct trust type**
-
-Add:
+- [ ] **Step 7: Add source-media presentation as its own trust type**
 
 ```yaml
   SourceMediaPresentationKnown:
     type: object
     additionalProperties: false
     required: [state, access_ref]
-    properties:
-      state: {const: known}
-      access_ref: {type: string, format: uri-reference, minLength: 1}
-  SourceMediaPresentationUnavailable:
-    type: object
-    additionalProperties: false
-    required: [state]
-    properties: {state: {const: unavailable}}
+    properties: {state: {const: known}, access_ref: {type: string, format: uri-reference, minLength: 1}}
+  SourceMediaPresentationUnavailable: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unavailable}}}
   SourceMediaPresentation:
     oneOf:
       - {$ref: '#/schemas/SourceMediaPresentationKnown'}
       - {$ref: '#/schemas/SourceMediaPresentationUnavailable'}
-  SourceMediaCandidate:
-    type: object
-    additionalProperties: false
-    required: [source_media_candidate_key, content_type, presentation]
-    properties:
-      source_media_candidate_key: {$ref: '#/schemas/OpaqueKey'}
-      content_type: {type: string, minLength: 1}
-      presentation: {$ref: '#/schemas/SourceMediaPresentation'}
 ```
 
-The access reference is response-only. Never add it to `MediaSelection` or client upload/write schemas.
+Require `presentation: SourceMediaPresentation` on `SourceMediaCandidate`. Do not put `access_ref` in `MediaSelection`, upload/write schemas, or history.
 
-- [ ] **Step 9: Run the focused proof, then hook it into the existing Product verifier**
+- [ ] **Step 8: Prove GREEN and hook the focused verifier into the existing Product proof**
 
-Run the bundle + verifier command from Step 2. Expected: PASS.
+Bundle and run the focused verifier; expected PASS with `3/3` negative controls.
 
-Then in `scripts/verify-product-oad.mjs` add near the other proof-path constants:
+In `scripts/verify-product-oad.mjs` add:
 
 ```js
 const humanOperableReadProjectionVerifier = join(root, 'scripts/verify-human-operable-read-projection.mjs');
 ```
 
-and inside `currentAuthProof()` after `currentProjectionProof(bundleA);` add:
+and after `currentProjectionProof(bundleA);`:
 
 ```js
 run(process.execPath, [humanOperableReadProjectionVerifier, bundleA]);
@@ -544,9 +471,9 @@ Run:
 node scripts/verify-product-oad.mjs
 ```
 
-Expected: existing historical/current/auth/generated proofs PASS plus `human_operable_read_projection_readiness=PASS`; operation count remains `106/106`.
+Expected: existing historical/auth/generated proofs PASS, `human_operable_read_projection=PASS`, Product count `106/106`.
 
-- [ ] **Step 10: Commit the Readiness repair**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add contracts/api/product/components.yaml \
@@ -558,67 +485,52 @@ git commit -m "feat(d5): make readiness reads human-operable"
 
 ---
 
-### Task 3: Repair MarketplaceListing actual-state reads and remove Performance's parallel Listing-label spelling
+### Task 3: Repair MarketplaceListing actual-state and consolidate Performance Listing presentation
 
 **Files:**
-- Modify: `contracts/api/product/components.yaml`
-- Modify: `contracts/api/product/paths-offering-availability-market.yaml` only if descriptions/bindings need clarification
-- Modify: `contracts/api/product/paths-performance.yaml`
-- Modify: `scripts/verify-human-operable-read-projection.mjs`
+- Modify `contracts/api/product/components.yaml`
+- Modify `contracts/api/product/paths-performance.yaml`
+- Modify `contracts/api/product/paths-offering-availability-market.yaml` only when response description needs clarification
+- Modify `scripts/verify-human-operable-read-projection.mjs`
 
 **Interfaces:**
-- Consumes: `PublicationContextView`, `PublicationValueView`, canonical `MarketplaceListingRef`.
-- Produces: `MarketplaceListingPresentation`, complete-enough Listing actual-state read, observed-media trust type, and one shared Listing presentation meaning reused by Performance.
+- Consumes `PublicationContextView`, `PublicationValueView`, `MarketplaceListingRef`.
+- Produces one `MarketplaceListingPresentation` meaning reused by Offering/Performance plus W2-compliant Listing actual-state presentation/media/provenance axes.
 
-- [ ] **Step 1: Extend the verifier with failing MarketplaceListing assertions**
+- [ ] **Step 1: Extend verifier RED**
 
-Add to the verifier:
+Add:
 
 ```js
 function validateMarketplaceListing(doc) {
-  const s = doc.components.schemas;
+  const s = schemas(doc);
   for (const name of [
     'MarketplaceListingPresentationKnown','MarketplaceListingPresentationUnknown','MarketplaceListingPresentationUnavailable','MarketplaceListingPresentation',
-    'MarketplaceListingObservedMedia','MarketplaceListingMediaPresentationKnown','MarketplaceListingMediaPresentationUnavailable','MarketplaceListingMediaPresentation',
-    'MarketplaceListingObservationProvenance'
+    'ListingObservedFieldKnown','ListingObservedFieldUnknown','ListingObservedFieldUnavailable','ListingObservedFieldNotApplicable','ListingObservedField',
+    'MarketplaceListingMediaPresentationKnown','MarketplaceListingMediaPresentationUnavailable','MarketplaceListingMediaPresentation','MarketplaceListingObservedMedia','MarketplaceListingObservationProvenance'
   ]) assert(s[name], `missing schema ${name}`);
-  for (const field of ['listing','presentation','lifecycle','observed_at']) assert((s.MarketplaceListingListItem.required ?? []).includes(field), `MarketplaceListingListItem must require ${field}`);
-  for (const field of ['listing','presentation','lifecycle','publication_context','observed_fields','observed_media','observed_at','provenance']) assert((s.MarketplaceListing.required ?? []).includes(field), `MarketplaceListing must require ${field}`);
-  assert(JSON.stringify(s.ListingObservedField).includes('PublicationValueView'), 'ListingObservedField must use PublicationValueView');
-  const perfText = JSON.stringify(s.MarketplaceListingPerformanceListItem ?? {});
-  assert(perfText.includes('MarketplaceListingPresentation'), 'Performance Listing item must reuse MarketplaceListingPresentation');
-  assert(!Object.hasOwn(s.MarketplaceListingPerformanceListItem?.properties ?? {}, 'display_name'), 'Performance Listing item must not keep a parallel display_name spelling');
+  requireFieldsFrom(s, 'MarketplaceListingListItem', ['listing','presentation','lifecycle','observed_at']);
+  requireFieldsFrom(s, 'MarketplaceListing', ['listing','presentation','lifecycle','publication_context','observed_fields','observed_media','observed_at','provenance']);
+  assert(JSON.stringify(s.ListingObservedFieldKnown).includes('PublicationValueView'), 'known Listing field must use PublicationValueView');
+  assert(JSON.stringify(s.MarketplaceListingPerformanceListItem).includes('MarketplaceListingPresentation'), 'Performance Listing item must reuse MarketplaceListingPresentation');
+  assert(!Object.hasOwn(s.MarketplaceListingPerformanceListItem?.properties ?? {}, 'display_name'), 'Performance Listing item must not keep parallel display_name');
 }
 ```
 
-Call `validateMarketplaceListing(document)` from the main verifier and add two negative controls: remove Listing presentation from the collection item; restore a raw Performance `display_name`. Update the expected negative-control count accordingly.
+Add two negative controls after the existing three: remove collection `presentation`; reintroduce Performance `display_name`. Change the exact final assertion for this task to `negativeControls === 5`.
 
-- [ ] **Step 2: Prove the extended verifier fails on the current branch state**
+Run bundle + verifier; expected FAIL on missing MarketplaceListing presentation.
 
-Bundle and run the focused verifier. Expected: FAIL with missing `MarketplaceListingPresentationKnown`.
-
-- [ ] **Step 3: Add MarketplaceListing presentation knowledge states**
-
-Add:
+- [ ] **Step 2: Add MarketplaceListing presentation states**
 
 ```yaml
   MarketplaceListingPresentationKnown:
     type: object
     additionalProperties: false
     required: [state, display_name]
-    properties:
-      state: {const: known}
-      display_name: {type: string, minLength: 1}
-  MarketplaceListingPresentationUnknown:
-    type: object
-    additionalProperties: false
-    required: [state]
-    properties: {state: {const: unknown}}
-  MarketplaceListingPresentationUnavailable:
-    type: object
-    additionalProperties: false
-    required: [state]
-    properties: {state: {const: unavailable}}
+    properties: {state: {const: known}, display_name: {type: string, minLength: 1}}
+  MarketplaceListingPresentationUnknown: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unknown}}}
+  MarketplaceListingPresentationUnavailable: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unavailable}}}
   MarketplaceListingPresentation:
     oneOf:
       - {$ref: '#/schemas/MarketplaceListingPresentationKnown'}
@@ -626,55 +538,13 @@ Add:
       - {$ref: '#/schemas/MarketplaceListingPresentationUnavailable'}
 ```
 
-Change `MarketplaceListingListItem` to require `presentation` adjacent to the unchanged `listing: MarketplaceListingRef`.
+Require `presentation` on `MarketplaceListingListItem` next to unchanged `listing: MarketplaceListingRef`.
 
-- [ ] **Step 4: Make observed fields human-readable without weakening knowledge state**
+- [ ] **Step 3: Make observed fields human-readable with exclusive knowledge variants**
 
-Replace the flat `ListingObservedField` with a union whose variants all require `requirement_key` and non-empty `display_name`:
+Create `ListingObservedFieldKnown|Unknown|Unavailable|NotApplicable`; every variant requires `requirement_key`, non-empty `display_name`, and its fixed state. Only `Known` requires `value: PublicationValueView`. Define `ListingObservedField` as `oneOf` those four variants.
 
-```yaml
-  ListingObservedFieldKnown:
-    type: object
-    additionalProperties: false
-    required: [requirement_key, display_name, state, value]
-    properties:
-      requirement_key: {$ref: '#/schemas/OpaqueKey'}
-      display_name: {type: string, minLength: 1}
-      state: {const: known}
-      value: {$ref: '#/schemas/PublicationValueView'}
-  ListingObservedFieldUnknown:
-    type: object
-    additionalProperties: false
-    required: [requirement_key, display_name, state]
-    properties:
-      requirement_key: {$ref: '#/schemas/OpaqueKey'}
-      display_name: {type: string, minLength: 1}
-      state: {const: unknown}
-  ListingObservedFieldUnavailable:
-    type: object
-    additionalProperties: false
-    required: [requirement_key, display_name, state]
-    properties:
-      requirement_key: {$ref: '#/schemas/OpaqueKey'}
-      display_name: {type: string, minLength: 1}
-      state: {const: unavailable}
-  ListingObservedFieldNotApplicable:
-    type: object
-    additionalProperties: false
-    required: [requirement_key, display_name, state]
-    properties:
-      requirement_key: {$ref: '#/schemas/OpaqueKey'}
-      display_name: {type: string, minLength: 1}
-      state: {const: not_applicable}
-  ListingObservedField:
-    oneOf:
-      - {$ref: '#/schemas/ListingObservedFieldKnown'}
-      - {$ref: '#/schemas/ListingObservedFieldUnknown'}
-      - {$ref: '#/schemas/ListingObservedFieldUnavailable'}
-      - {$ref: '#/schemas/ListingObservedFieldNotApplicable'}
-```
-
-- [ ] **Step 5: Restore MarketplaceListing media/provenance axes already required by W2**
+- [ ] **Step 4: Restore observed media and provenance**
 
 Add distinct observed-media presentation:
 
@@ -683,14 +553,8 @@ Add distinct observed-media presentation:
     type: object
     additionalProperties: false
     required: [state, access_ref]
-    properties:
-      state: {const: known}
-      access_ref: {type: string, format: uri-reference, minLength: 1}
-  MarketplaceListingMediaPresentationUnavailable:
-    type: object
-    additionalProperties: false
-    required: [state]
-    properties: {state: {const: unavailable}}
+    properties: {state: {const: known}, access_ref: {type: string, format: uri-reference, minLength: 1}}
+  MarketplaceListingMediaPresentationUnavailable: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unavailable}}}
   MarketplaceListingMediaPresentation:
     oneOf:
       - {$ref: '#/schemas/MarketplaceListingMediaPresentationKnown'}
@@ -712,7 +576,7 @@ Add distinct observed-media presentation:
       acquired_at: {$ref: '#/schemas/Instant'}
 ```
 
-Repair `MarketplaceListing` to require:
+Require on `MarketplaceListing`:
 
 ```text
 listing
@@ -725,23 +589,19 @@ observed_at
 provenance
 ```
 
-Keep `observed_price` optional evidence. Do not add ListingIntent/PriceIntent convergence to MarketplaceListing.
+Keep `observed_price` optional; do not add ListingIntent/PriceIntent convergence.
 
-- [ ] **Step 6: Normalize Performance to the same Listing presentation meaning**
+- [ ] **Step 5: Remove Performance's duplicate Listing-label meaning**
 
-In `paths-performance.yaml`, change `MarketplaceListingPerformanceListItem` and `MarketplaceListingPerformance` so the existing label field becomes:
+In `paths-performance.yaml`, replace local Listing `display_name` fields in `MarketplaceListingPerformanceListItem`, `MarketplaceListingPerformance`, and `RetailMediaListingScope` with required:
 
 ```yaml
 presentation: {$ref: './components.yaml#/schemas/MarketplaceListingPresentation'}
 ```
 
-and is required. Remove the local `display_name` property. Preserve Performance owner-specific period/coverage/measurement semantics unchanged.
+Keep Performance period/coverage/measurement meaning unchanged.
 
-For `RetailMediaListingScope`, replace the local Listing `display_name` with `presentation: MarketplaceListingPresentation`; keep its exact Listing key identity semantics and path/Installation qualification unchanged.
-
-- [ ] **Step 7: Run targeted and generator proofs**
-
-Run:
+- [ ] **Step 6: Prove and commit**
 
 ```powershell
 npx --yes @redocly/cli@2.45.0 lint contracts/api/product/openapi.yaml --config contracts/api/product/redocly.yaml
@@ -751,42 +611,40 @@ Remove-Item .human-projection-test.json
 node scripts/verify-product-oad.mjs
 ```
 
-Expected: lint PASS; focused verifier PASS; Product OAD generated TypeScript/Go projections PASS; `106/106` unchanged.
-
-- [ ] **Step 8: Commit the Listing actual-state repair**
+Expected: focused `5/5`; Product `106/106`; generated TS/Go PASS.
 
 ```bash
-git add contracts/api/product/components.yaml \
-        contracts/api/product/paths-offering-availability-market.yaml \
-        contracts/api/product/paths-performance.yaml \
-        scripts/verify-human-operable-read-projection.mjs
+git add contracts/api/product/components.yaml contracts/api/product/paths-performance.yaml contracts/api/product/paths-offering-availability-market.yaml scripts/verify-human-operable-read-projection.mjs
 git commit -m "feat(d5): repair marketplace listing read projection"
 ```
 
 ---
 
-### Task 4: Make the already-proven cross-owner Listing/Product consumers human-operable without enriching every opaque ID
+### Task 4: Project presentation into the bounded cross-owner consumers proven by P5
 
 **Files:**
-- Modify: `contracts/api/product/components.yaml`
-- Modify: `scripts/verify-human-operable-read-projection.mjs`
-- Modify only if response description needs clarification: `contracts/api/product/paths-offering-availability-market.yaml`
-- Modify only if response description needs clarification: `contracts/api/product/paths-economics-governance-sales-materialization.yaml`
+- Modify `contracts/api/product/components.yaml`
+- Modify `scripts/verify-human-operable-read-projection.mjs`
+- Modify operation-description files only when necessary; no path/operation change
 
 **Interfaces:**
-- Consumes: `SourceProductPresentation`, `MarketplaceListingPresentation`, unchanged canonical target/subject refs.
-- Produces: adjacent presentation axes for ListingIntent, PriceIntent, Availability, Market, Economics; no new operation or cross-owner write authority.
+- Consumes `SourceProductPresentation`, `MarketplaceListingPresentation`, unchanged canonical target/subject refs.
+- Produces adjacent presentation for ListingIntent list, PriceIntent, Availability, Market, Economics only.
 
-- [ ] **Step 1: Add failing verifier assertions for only the approved consumer set**
+- [ ] **Step 1: Verify D3 dependency coherence before changing cross-owner read shapes**
 
-Extend the verifier:
+Read accepted D3 owner edges for Offering→Availability and the existing Market/Economics/Performance consumer relationships. If any presentation field below would require a genuinely new semantic owner dependency rather than projecting an already-admitted subject/reference, **STOP / reopen D3** before editing the OAD. Do not create a hidden dependency for UI convenience.
+
+- [ ] **Step 2: Extend verifier RED for exactly the approved consumer set**
+
+Add:
 
 ```js
 function validateConsumers(doc) {
-  const s = doc.components.schemas;
+  const s = schemas(doc);
   requireFieldsFrom(s, 'ListingIntentListItem', ['source_product_presentation']);
-  requireFieldsFrom(s, 'PriceIntentListItem', ['target_presentation']);
   requireFieldsFrom(s, 'PriceIntent', ['target_presentation']);
+  requireFieldsFrom(s, 'PriceIntentListItem', ['target_presentation']);
   requireFieldsFrom(s, 'SellableAvailability', ['target_presentation']);
   requireFieldsFrom(s, 'CompetitivePosition', ['subject_presentation']);
   requireFieldsFrom(s, 'CompetitivePositionListItem', ['subject_presentation']);
@@ -797,128 +655,62 @@ function validateConsumers(doc) {
 }
 ```
 
-Add helper `requireFieldsFrom(s, name, fields)` locally. Add a negative control that removes `SellableAvailability.target_presentation` and must fail. Do **not** assert presentation on Sales, Shipment, Work, Fulfillment, PostSale or historical Governance lists.
+Add one negative control removing `SellableAvailability.target_presentation`; final exact count becomes `6`. Do not assert presentation on Sale, Shipment, Work, Fulfillment, PostSale, or historical Governance lists.
 
-- [ ] **Step 2: Prove the new consumer assertions fail before the repair**
+Run focused verifier; expected FAIL before schema repair.
 
-Bundle and run the focused verifier. Expected: FAIL because `ListingIntentListItem` does not yet require `source_product_presentation`.
+- [ ] **Step 3: Add only the adjacent presentation unions required by the approved consumers**
 
-- [ ] **Step 3: Add ListingIntent list/source presentation only where needed now**
+Add `source_product_presentation: SourceProductPresentation` to `ListingIntentListItem`.
 
-Add `source_product_presentation: SourceProductPresentation` to `ListingIntentListItem` and make it required. Task 5 adds the same field to point `ListingIntent`.
-
-Do not create a composite `ListingIntent.display_name`; the human subject remains the already-known source Product plus explicit target/lifecycle fields.
-
-- [ ] **Step 4: Add PriceIntent target presentation as a typed adjacent axis**
-
-Add:
+Define `PriceIntentTargetPresentation`:
 
 ```yaml
   PriceIntentExistingTargetPresentation:
     type: object
     additionalProperties: false
     required: [kind, listing_presentation]
-    properties:
-      kind: {const: existing_listing}
-      listing_presentation: {$ref: '#/schemas/MarketplaceListingPresentation'}
+    properties: {kind: {const: existing_listing}, listing_presentation: {$ref: '#/schemas/MarketplaceListingPresentation'}}
   PriceIntentPreCreationTargetPresentation:
     type: object
     additionalProperties: false
     required: [kind, source_product_presentation]
-    properties:
-      kind: {const: pre_creation_listing_intent}
-      source_product_presentation: {$ref: '#/schemas/SourceProductPresentation'}
+    properties: {kind: {const: pre_creation_listing_intent}, source_product_presentation: {$ref: '#/schemas/SourceProductPresentation'}}
   PriceIntentTargetPresentation:
     oneOf:
       - {$ref: '#/schemas/PriceIntentExistingTargetPresentation'}
       - {$ref: '#/schemas/PriceIntentPreCreationTargetPresentation'}
 ```
 
-Require `target_presentation` on `PriceIntent` and `PriceIntentListItem`. Keep `target: PriceIntentTarget` unchanged and key-based.
+Require `target_presentation` on `PriceIntent` and `PriceIntentListItem`; keep `target` key-based.
 
-- [ ] **Step 5: Add Availability target presentation without changing its target identity**
+Define the same two typed meanings under `AvailabilityTargetPresentation`; require it on read-only `SellableAvailability`; keep `AvailabilityTarget`/query params unchanged.
 
-Add:
-
-```yaml
-  AvailabilityExistingTargetPresentation:
-    type: object
-    additionalProperties: false
-    required: [kind, listing_presentation]
-    properties:
-      kind: {const: existing_listing}
-      listing_presentation: {$ref: '#/schemas/MarketplaceListingPresentation'}
-  AvailabilityPreCreationTargetPresentation:
-    type: object
-    additionalProperties: false
-    required: [kind, source_product_presentation]
-    properties:
-      kind: {const: pre_creation_listing_intent}
-      source_product_presentation: {$ref: '#/schemas/SourceProductPresentation'}
-  AvailabilityTargetPresentation:
-    oneOf:
-      - {$ref: '#/schemas/AvailabilityExistingTargetPresentation'}
-      - {$ref: '#/schemas/AvailabilityPreCreationTargetPresentation'}
-```
-
-Require `target_presentation` on read-only `SellableAvailability`. Leave `AvailabilityTarget` and query target params unchanged.
-
-- [ ] **Step 6: Add Market/Economics subject presentation while preserving canonical subject refs**
-
-Add owner-local adjacent presentation unions:
-
-```yaml
-  MarketExistingListingSubjectPresentation:
-    type: object
-    additionalProperties: false
-    required: [kind, listing_presentation]
-    properties:
-      kind: {const: existing_listing}
-      listing_presentation: {$ref: '#/schemas/MarketplaceListingPresentation'}
-  MarketSourceProductSubjectPresentation:
-    type: object
-    additionalProperties: false
-    required: [kind, source_product_presentation]
-    properties:
-      kind: {const: source_product_marketplace_context}
-      source_product_presentation: {$ref: '#/schemas/SourceProductPresentation'}
-  MarketSubjectPresentation:
-    oneOf:
-      - {$ref: '#/schemas/MarketExistingListingSubjectPresentation'}
-      - {$ref: '#/schemas/MarketSourceProductSubjectPresentation'}
-```
-
-Create the same two-variant shape under `EconomicsSubjectPresentation` using Economics names. Require:
+Define `MarketSubjectPresentation` and `EconomicsSubjectPresentation`, each with:
 
 ```text
-CompetitivePosition.subject_presentation
-CompetitivePositionListItem.subject_presentation
-ExpectedEconomics.subject_presentation
-ExpectedEconomicsListItem.subject_presentation
-PriceScenarioEvaluation.subject_presentation
+existing_listing -> MarketplaceListingPresentation
+source_product_marketplace_context -> SourceProductPresentation
 ```
 
-Keep `MarketSubject`, `EconomicsSubject`, and `EvaluatePriceScenarioRequest.subject` canonical/key-based.
+Require `subject_presentation` on `CompetitivePosition`, `CompetitivePositionListItem`, `ExpectedEconomics`, `ExpectedEconomicsListItem`, and `PriceScenarioEvaluation`. Keep `MarketSubject`, `EconomicsSubject`, and `EvaluatePriceScenarioRequest.subject` canonical/key-only.
 
-- [ ] **Step 7: Run focused proof and verify scope did not spread**
+- [ ] **Step 4: Prove the scope did not spread**
 
-Run the focused verifier and then inspect:
+Run focused verifier and inspect the diff. Confirm no bulk enrichment of:
 
-```powershell
-git diff -- contracts/api/product/components.yaml scripts/verify-human-operable-read-projection.mjs
+```text
+MarketplaceSaleListItem
+ShipmentListItem
+WorkListItem
+FulfillmentExecutionListItem
+PostSaleResolutionListItem
+AuthorizationDecisionListItem
 ```
 
-Confirm there is no bulk enrichment of `MarketplaceSaleListItem`, `ShipmentListItem`, `WorkListItem`, `FulfillmentExecutionListItem`, `PostSaleResolutionListItem`, or historical `AuthorizationDecisionListItem` merely because they contain IDs.
+Then run `node scripts/verify-product-oad.mjs`; expected `106/106` and focused `6/6`.
 
-Then run:
-
-```powershell
-node scripts/verify-product-oad.mjs
-```
-
-Expected: PASS and `106/106`.
-
-- [ ] **Step 8: Commit the bounded consumer repair**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add contracts/api/product/components.yaml scripts/verify-human-operable-read-projection.mjs
@@ -930,44 +722,41 @@ git commit -m "feat(d5): project listing identity for human consumers"
 ### Task 5: Restore ListingIntent current read/media/history conformance without leaking presentation into writes
 
 **Files:**
-- Modify: `contracts/api/product/components.yaml`
-- Modify: `contracts/api/product/paths-offering-availability-market.yaml` only if response descriptions need clarification
-- Modify: `scripts/verify-human-operable-read-projection.mjs`
+- Modify `contracts/api/product/components.yaml`
+- Modify `contracts/api/product/paths-offering-availability-market.yaml` only if response descriptions need clarification
+- Modify `scripts/verify-human-operable-read-projection.mjs`
 
 **Interfaces:**
-- Consumes: key-only `ListingIntentDesired`/`RequirementResolution`/`MediaSelection`, `PublicationContextRef`, `PublicationValueView`, source/authored media presentation families, `SourceProductPresentation`.
-- Produces: current human-operable ListingIntent read axes and the proportional historical attempt basis already required by W2, while write schemas stay label-free.
+- Consumes key-only `ListingIntentDesired`, `RequirementResolution`, `MediaSelection`, plus presentation/read families from Tasks 2–4.
+- Produces current human-operable ListingIntent read axes and a proportional nested historical attempt basis already required by W2.
 
-- [ ] **Step 1: Extend the verifier with failing ListingIntent conformance assertions**
+- [ ] **Step 1: Extend verifier RED**
 
 Add:
 
 ```js
 function validateListingIntent(doc) {
-  const s = doc.components.schemas;
+  const s = schemas(doc);
   for (const name of [
     'ListingIntentResolvedValueKnown','ListingIntentResolvedValueMissing','ListingIntentResolvedValueUnknown','ListingIntentResolvedValueUnavailable','ListingIntentResolvedValueUnsupported','ListingIntentResolvedValue',
     'ListingIntentFollowSourceResolutionView','ListingIntentExplicitOverrideResolutionView','ListingIntentRequirementResolutionView',
     'ListingIntentMediaPresentationKnown','ListingIntentMediaPresentationUnavailable','ListingIntentMediaPresentation','ListingIntentMediaPresentationDescriptor',
     'ListingIntentAttemptRequirementResolution','ListingIntentAttemptMediaBasis','ListingIntentAttemptAvailabilityInput','ListingIntentEffectAttempt'
   ]) assert(s[name], `missing schema ${name}`);
-  for (const field of ['source_product_presentation','resolved_requirements','authored_media_presentations','dispatch_blockers','created_by_principal_id','updated_by_principal_id','effect_history']) assert((s.ListingIntent.required ?? []).includes(field), `ListingIntent must require ${field}`);
-  assert(JSON.stringify(s.ListingIntentDesired).includes('PublicationContextRef'), 'ListingIntent desired state must carry key-based publication context');
-  const writes = ['CreateListingIntentDraftRequest','UpdateListingIntentRequest','RequirementResolution','MediaSelection','CreateListingIntentMediaMultipart'];
-  for (const name of writes) {
+  requireFieldsFrom(s, 'ListingIntent', ['source_product_presentation','resolved_requirements','authored_media_presentations','dispatch_blockers','created_by_principal_id','updated_by_principal_id','effect_history']);
+  assert(JSON.stringify(s.ListingIntentDesired).includes('PublicationContextRef'), 'ListingIntent desired must carry key-based publication context');
+  for (const name of ['ListingIntentDesired','RequirementResolution','ExplicitOverrideResolution','PublicationValue','MediaSelection','CreateListingIntentMediaMultipart']) {
     const text = JSON.stringify(s[name] ?? {});
     for (const forbidden of ['display_name','display_label','access_ref','authored_by_principal_id','subject_presentation']) assert(!text.includes(`\"${forbidden}\"`), `${name} must remain presentation-free`);
   }
 }
 ```
 
-Add negative controls that: inject `display_label` into `ExplicitOverrideResolution`; remove `effect_history` from ListingIntent; replace authored-media presentation with `SourceMediaPresentation`. Each must fail.
+Add three negative controls: inject `display_label` into `ExplicitOverrideResolution`; remove `effect_history`; replace authored-media presentation ref with `SourceMediaPresentation`. Final exact count becomes `9`.
 
-- [ ] **Step 2: Prove the ListingIntent verifier section fails before implementation**
+Run focused verifier; expected FAIL before implementation.
 
-Bundle and run the focused verifier. Expected: FAIL at a missing ListingIntent read schema such as `ListingIntentResolvedValueKnown`.
-
-- [ ] **Step 3: Put publication context in desired state as keys, not labels**
+- [ ] **Step 2: Add key-based publication context to desired state**
 
 Add optional:
 
@@ -975,32 +764,21 @@ Add optional:
 publication_context: {$ref: '#/schemas/PublicationContextRef'}
 ```
 
-to `ListingIntentDesired`. Because `CreateListingIntentDraftRequest` and `UpdateListingIntentRequest` reuse desired state, this remains key-only authored meaning.
+to `ListingIntentDesired`. This is valid client-authored key meaning; no label enters Create/Update requests.
 
-- [ ] **Step 4: Add current requirement-resolution read views**
+- [ ] **Step 3: Add current requirement-resolution read views**
 
-Add value-knowledge union:
+Define `ListingIntentResolvedValue` as a `oneOf` of:
 
-```yaml
-  ListingIntentResolvedValueKnown:
-    type: object
-    additionalProperties: false
-    required: [state, value]
-    properties: {state: {const: known}, value: {$ref: '#/schemas/PublicationValueView'}}
-  ListingIntentResolvedValueMissing: {type: object, additionalProperties: false, required: [state], properties: {state: {const: missing}}}
-  ListingIntentResolvedValueUnknown: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unknown}}}
-  ListingIntentResolvedValueUnavailable: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unavailable}}}
-  ListingIntentResolvedValueUnsupported: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unsupported}}}
-  ListingIntentResolvedValue:
-    oneOf:
-      - {$ref: '#/schemas/ListingIntentResolvedValueKnown'}
-      - {$ref: '#/schemas/ListingIntentResolvedValueMissing'}
-      - {$ref: '#/schemas/ListingIntentResolvedValueUnknown'}
-      - {$ref: '#/schemas/ListingIntentResolvedValueUnavailable'}
-      - {$ref: '#/schemas/ListingIntentResolvedValueUnsupported'}
+```text
+known(value: PublicationValueView)
+missing
+unknown
+unavailable
+unsupported
 ```
 
-Add read-only resolution views:
+Define:
 
 ```yaml
   ListingIntentFollowSourceResolutionView:
@@ -1031,25 +809,17 @@ Add read-only resolution views:
       - {$ref: '#/schemas/ListingIntentExplicitOverrideResolutionView'}
 ```
 
-Add required `resolved_requirements: ListingIntentRequirementResolutionView[]` to `ListingIntent`. Keep client-authored `RequirementResolution` unchanged.
+Require `resolved_requirements: ListingIntentRequirementResolutionView[]` on `ListingIntent`; keep request `RequirementResolution` unchanged.
 
-- [ ] **Step 5: Restore authored-media read presentation while preserving the accepted technical-delivery boundary**
-
-Add:
+- [ ] **Step 4: Restore authored-media read presentation**
 
 ```yaml
   ListingIntentMediaPresentationKnown:
     type: object
     additionalProperties: false
     required: [state, access_ref]
-    properties:
-      state: {const: known}
-      access_ref: {type: string, format: uri-reference, minLength: 1}
-  ListingIntentMediaPresentationUnavailable:
-    type: object
-    additionalProperties: false
-    required: [state]
-    properties: {state: {const: unavailable}}
+    properties: {state: {const: known}, access_ref: {type: string, format: uri-reference, minLength: 1}}
+  ListingIntentMediaPresentationUnavailable: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unavailable}}}
   ListingIntentMediaPresentation:
     oneOf:
       - {$ref: '#/schemas/ListingIntentMediaPresentationKnown'}
@@ -1063,11 +833,11 @@ Add:
       presentation: {$ref: '#/schemas/ListingIntentMediaPresentation'}
 ```
 
-Add required `authored_media_presentations: ListingIntentMediaPresentationDescriptor[]` to `ListingIntent`. Keep `CreateListingIntentMediaResult` as stable descriptor + parent validator only; do not add `access_ref` to the create result, upload body, desired media selection, or history.
+Require `authored_media_presentations` on `ListingIntent`. Keep `CreateListingIntentMediaResult` stable descriptor + parent validator only; no access locator in upload result/write/selection/history.
 
-- [ ] **Step 6: Add current source presentation, blockers and actor attribution to ListingIntent read**
+- [ ] **Step 5: Add source presentation, blockers and actor attribution to current ListingIntent read**
 
-Make these required on `ListingIntent`:
+Require:
 
 ```yaml
 source_product_presentation: {$ref: '#/schemas/SourceProductPresentation'}
@@ -1076,13 +846,13 @@ created_by_principal_id: {$ref: '#/schemas/OpaqueId'}
 updated_by_principal_id: {$ref: '#/schemas/OpaqueId'}
 ```
 
-Existing `created_at`/`updated_at`, lifecycle, dispatchability, external-effect state and convergence remain unchanged.
+Keep existing lifecycle, dispatchability, effect/convergence and created/updated times.
 
-- [ ] **Step 7: Crystallize the proportional W2 historical attempt basis using only already-accepted identities/value families**
+- [ ] **Step 6: Crystallize the proportional nested W2 historical attempt basis using only accepted identities/types**
 
-Before writing YAML, verify every field below is expressible with existing accepted types. **STOP / split a prerequisite** if implementing this step requires a new Product operation, ordinary Permission, business owner, or new durable cross-owner identity. A new nested historical occurrence key inside ListingIntent is allowed; a new standalone Product resource is not.
+Before writing this block, verify every field can be expressed with existing accepted identities/value families. **STOP / split** if it requires a new Product operation, ordinary Permission, business owner, or standalone durable cross-owner resource.
 
-Add:
+Create:
 
 ```yaml
   ListingIntentAttemptFollowSourceResolution:
@@ -1143,36 +913,14 @@ Add:
       attempted_at: {$ref: '#/schemas/Instant'}
 ```
 
-Add required `effect_history: ListingIntentEffectAttempt[]` to `ListingIntent`.
+Require `effect_history: ListingIntentEffectAttempt[]` on `ListingIntent`. This is a nested historical explanation axis, not a new `PublicationAttempt` Product resource. No presentation access locator enters history.
 
-This is a nested historical explanation axis, not a new `PublicationAttempt` resource. No presentation locator appears in history. Current labels in effect-history value views are historical snapshots within the ListingIntent attempt basis; canonical keys remain present.
+- [ ] **Step 7: Prove and commit**
 
-- [ ] **Step 8: Run the full focused verifier and write-authority negative controls**
-
-Run:
-
-```powershell
-npx --yes @redocly/cli@2.45.0 bundle contracts/api/product/openapi.yaml --config contracts/api/product/redocly.yaml -o .human-projection-test.json
-node scripts/verify-human-operable-read-projection.mjs .human-projection-test.json
-Remove-Item .human-projection-test.json
-```
-
-Expected: PASS. Verify negative controls fail when presentation fields are injected into write schemas and when authored/source media trust schemas are swapped.
-
-- [ ] **Step 9: Run canonical Product OAD proof**
-
-```powershell
-node scripts/verify-product-oad.mjs
-```
-
-Expected: Redocly/source bundle deterministic; generated TS/Go compile; auth/security proof unchanged; `product_oad_operations=106/106`; human-operable verifier PASS.
-
-- [ ] **Step 10: Commit ListingIntent conformance**
+Run focused verifier; expected `9/9`. Run `node scripts/verify-product-oad.mjs`; expected `106/106` and generated TS/Go PASS.
 
 ```bash
-git add contracts/api/product/components.yaml \
-        contracts/api/product/paths-offering-availability-market.yaml \
-        scripts/verify-human-operable-read-projection.mjs
+git add contracts/api/product/components.yaml contracts/api/product/paths-offering-availability-market.yaml scripts/verify-human-operable-read-projection.mjs
 git commit -m "feat(d5): restore listing intent read conformance"
 ```
 
@@ -1181,60 +929,50 @@ git commit -m "feat(d5): restore listing intent read conformance"
 ### Task 6: Global conformance review, independent challenge, aggregate gate, and integration-ready closure
 
 **Files:**
-- Modify: `docs/superpowers/specs/2026-08-25-human-operable-read-projection-design.md`
-- Modify: `docs/roadmap.md`
-- Modify: PR #70 body through GitHub metadata only
-- Modify technical files only if a Critical/Important review finding proves a defect against the approved spec
+- Modify `docs/superpowers/specs/2026-08-25-human-operable-read-projection-design.md`
+- Modify `docs/roadmap.md`
+- Update PR #70 body/comments through GitHub metadata
+- Technical files only when a valid review finding proves a defect
 
 **Interfaces:**
-- Consumes: Tasks 1–5 complete wire repair and mechanical proof.
-- Produces: one reviewable prerequisite candidate ready for explicit operator merge authorization; B20 remains paused and B10 revalidation remains the next post-integration increment.
+- Produces an integration-ready prerequisite candidate; does not merge, re-LOCK B10, rerun B10 P9, or resume B20.
 
-- [ ] **Step 1: Run the spec-coverage backcheck**
+- [ ] **Step 1: Backcheck implementation against the approved spec**
 
-Read the approved design beside the diff and explicitly verify each required area has a concrete implementation/proof home:
+Account explicitly for:
 
 ```text
 SourceProduct/SourceInstance presentation
-requirement/option/unit/context read/write split
-FOLLOW_SOURCE source-candidate presentation
+requirement/option/unit/context read-write split
+FOLLOW_SOURCE source candidates
 correspondence candidate population
 MarketplaceListing current presentation + actual-state axes
-Performance de-duplication
-ListingIntent/PriceIntent/Availability/Market/Economics human consumer projections
-ListingIntent current resolved requirements
+Performance presentation de-duplication
+ListingIntent/PriceIntent/Availability/Market/Economics bounded human projections
+ListingIntent current resolution/media/actor/blocker axes
 source/authored/observed media trust separation
-ListingIntent historical attempt basis
+ListingIntent nested historical attempt basis
 no write-label authority
 no new operation/Permission/Principal kind
 ```
 
-If any item has no implementation or deliberate stop outcome, do not proceed.
+Any missing item without an explicit STOP outcome blocks closure.
 
-- [ ] **Step 2: Scan for accidental platform expansion**
+- [ ] **Step 2: Adversarially inspect for accidental platform expansion**
 
-Run:
-
-```powershell
-git diff main...HEAD -- contracts/api/product docs/engineering/rebaseline scripts
-```
-
-Reject any accidental introduction of:
+Review `git diff main...HEAD` and reject accidental introduction of:
 
 ```text
 PresentationService
-EntityPresentation / generic EntityRef
-metadata bag / arbitrary map
-provider_fields
+Generic EntityPresentation/EntityRef
+metadata/provider_fields bag
 Product/PIM master
 new /presentation or /candidates Product path
-new operationId
-new ordinary Permission
-new Principal kind
-new generic media/asset Product operation
+new operationId/Permission/Principal kind
+generic media/asset Product CRUD
 ```
 
-The focused verifier should mechanically cover operation counts and key write-authority fences; architecture-quality judgment remains review, not CI string matching.
+Do not encode this architecture-quality judgment as prose grep CI; the focused verifier mechanically protects the objective wire fences.
 
 - [ ] **Step 3: Run the one aggregate repository gate**
 
@@ -1242,126 +980,86 @@ The focused verifier should mechanically cover operation counts and key write-au
 npm run gate
 ```
 
-Expected terminal evidence includes:
+Expected evidence includes:
 
 ```text
 gate: PASS
 product_oad_proof: PASS
 product_oad_operations=106/106
 product_oad_auth_profile=PASS
-human_operable_read_projection_readiness=PASS
+human_operable_read_projection=PASS
+human_operable_read_projection_negative_controls=9/9
 ```
 
-Do not add a second workflow/check for this prerequisite.
+- [ ] **Step 4: Trigger one fresh independent full PR review**
 
-- [ ] **Step 4: Request a fresh independent code/contract review**
-
-Use the `superpowers:requesting-code-review` skill against:
+PR #70 already has CodeRabbit installed. Post this exact PR comment:
 
 ```text
-BASE_SHA = main at the prerequisite branch point
-HEAD_SHA = current prerequisite HEAD
-DESCRIPTION = Human-operable Readiness/Offering read projection + W2/OAD conformance repair
-PLAN_OR_REQUIREMENTS = this plan + docs/superpowers/specs/2026-08-25-human-operable-read-projection-design.md
+@coderabbitai full review
 ```
 
-Reviewer focus must include:
+This requests a fresh full review of all files rather than another incremental slice. Review findings are evidence, not authority. Adjudicate them against the approved spec and canonical repo authority, with special focus on duplicate/shifted authority, presentation becoming identity/write authority, provider DTO leakage, knowledge-state collapse, hidden cross-owner dependency, current-vs-historical presentation confusion, media trust collapse, operation/Permission expansion, and remaining directly implicated W2/OAD drift.
 
-```text
-duplicate/shifted authority
-presentation becoming identity/write authority
-provider DTO leakage
-unknown/empty collapse
-cross-owner dependency invention
-historical/current presentation confusion
-media trust collapse
-new operation/Permission disguised as repair
-W2/OAD drift left unresolved in directly implicated areas
-```
+Fix valid Critical/Important findings before proceeding. Do not implement a reviewer preference that creates a new requirement/authority; record the technical reason when rejecting such a suggestion.
 
-Fix every valid Critical/Important finding before continuing. Minor findings are fixed only when they improve correctness/clarity without scope expansion; otherwise record why they are non-blocking.
-
-- [ ] **Step 5: Rerun targeted proof and aggregate gate after review fixes**
+- [ ] **Step 5: Re-run proof after every accepted review fix**
 
 ```powershell
 node scripts/verify-product-oad.mjs
 npm run gate
 ```
 
-Expected: both PASS on the final HEAD. Do not claim completion from an earlier run.
+Only the final-HEAD results count as closure evidence.
 
-- [ ] **Step 6: Mark the spec and roadmap as implementation-complete candidate, not operator-accepted integration**
+- [ ] **Step 6: Mark implementation candidate complete, not integrated**
 
-Update the spec header to:
-
-```text
-DESIGN APPROVED / IMPLEMENTATION CANDIDATE COMPLETE — proof + independent challenge complete; integration still requires operator authorization
-```
-
-Update roadmap current prerequisite to:
+Set:
 
 ```text
-IMPLEMENTATION CANDIDATE COMPLETE / PROOF PASS / INTEGRATION AUTHORIZATION REQUIRED
+spec: DESIGN APPROVED / IMPLEMENTATION CANDIDATE COMPLETE — proof and independent challenge complete; integration requires operator authorization
+roadmap prerequisite: IMPLEMENTATION CANDIDATE COMPLETE / PROOF PASS / INTEGRATION AUTHORIZATION REQUIRED
+roadmap exact next action: obtain explicit operator authorization to integrate PR #70; B20 remains paused; after integration open a fresh bounded B10 correspondence-region revalidation increment
 ```
 
-Set exact next action:
+Do not mark D6-R2 closed or authorize runtime Product implementation.
 
-```text
-Obtain explicit operator authorization to integrate PR #70. Do not resume B20. After prerequisite integration, open a fresh bounded B10 correspondence-region P8 revalidation increment, rerun P9 after operator re-LOCK, then resume B20.
-```
-
-Do not mark D6-R2 accepted/closed and do not authorize Product runtime implementation.
-
-- [ ] **Step 7: Commit closure metadata/docs**
+- [ ] **Step 7: Commit closure docs**
 
 ```bash
 git add docs/superpowers/specs/2026-08-25-human-operable-read-projection-design.md docs/roadmap.md
 git commit -m "docs(d6-r2): close read projection prerequisite candidate"
 ```
 
-- [ ] **Step 8: Re-run final verification after the closure commit**
+- [ ] **Step 8: Verify the closure commit itself**
 
 ```powershell
 npm run gate
 ```
 
-Expected: PASS on the closure commit itself.
+Expected: PASS on the closure commit.
 
-- [ ] **Step 9: Update PR #70 body without changing files**
+- [ ] **Step 9: Update PR #70 body**
 
-Record:
-
-```text
-approved Global Maximum
-canonical authority rehome complete
-Readiness/Offering OAD repair complete
-focused semantic negative proof complete
-full gate PASS
-independent challenge disposition
-Product remains 106/31/H-A-S
-B20 remains paused
-next gate = explicit operator integration authorization
-```
-
-Do not mark the PR ready/merge it until explicit operator authorization.
+Record the accepted Global Maximum, canonical authority rehome, Readiness/Offering wire repair, focused negative proof, full gate, independent review disposition, unchanged 106/31/H-A-S inventory, B20 paused state, and exact next gate = explicit operator merge authorization. Do not mark ready/merge without that authorization.
 
 ---
 
-## Plan Completion Boundary
+## Completion Boundary
 
 This plan is complete only when PR #70 is an **integration-ready prerequisite candidate** with canonical authority rehomed, OAD repaired, focused semantic proof and aggregate gate green, and independent challenge adjudicated.
 
-This plan explicitly does **not**:
+This plan does **not**:
 
 ```text
 merge PR #70
 edit B10 HTML
 re-LOCK B10
 rerun B10 P9
-render B20
+render/resume B20
 start B23/B24/B30/B40/B50 P8
 begin Pre-D9/D9
-implement runtime/Product code
+implement runtime Product code
 ```
 
-After operator-authorized integration of the prerequisite, create a fresh bounded frontend increment for the B10 correspondence region. That increment must supply real candidate selection states in executable low-fidelity HTML, obtain operator re-LOCK for the affected region, rerun P9 against the repaired canonical OAD, and only then allow PR #69 / B20 to resume.
+After operator-authorized integration of the prerequisite, open a fresh bounded frontend increment for the B10 correspondence region. That later increment renders real candidate-selection/known-empty/unknown/unavailable states, obtains operator re-LOCK for the affected region, reruns P9 against the repaired OAD, and only then allows PR #69 / B20 to resume.
