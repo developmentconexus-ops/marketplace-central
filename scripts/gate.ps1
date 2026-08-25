@@ -96,10 +96,14 @@ if ($base) {
 }
 
 if ($implementationBlocked) {
-    foreach ($file in $changedFiles) {
+    # With a reliable diff, reject only newly changed implementation surfaces.
+    # Without one, fail safe against any tracked implementation population while
+    # the roadmap says runtime/Product implementation is still blocked.
+    $implementationCandidates = if ($base) { $changedFiles } else { $trackedFiles }
+    foreach ($file in $implementationCandidates) {
         $normalized = $file.Replace('\', '/')
         if ($normalized -match '^(apps|cmd|internal|server|backend|frontend|src|migrations)/') {
-            Fail "implementation is blocked by roadmap but candidate changes implementation surface: $normalized"
+            Fail "implementation is blocked by roadmap but candidate contains implementation surface: $normalized"
         }
     }
 }
