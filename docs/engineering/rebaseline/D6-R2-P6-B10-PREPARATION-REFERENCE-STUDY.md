@@ -1,6 +1,6 @@
 # D6-R2 P6 — B10 Preparation Reference Study
 
-> **Status:** DERIVED / REVALIDATED — B10 structure confirmed; P8 candidate pending operator walkthrough
+> **Status:** DERIVED / REVALIDATED — B10 structure confirmed; operator-language P8 candidate pending walkthrough
 > **Block:** B10 Preparation / R10
 > **Method profile:** `developmentconexus-ops/conexus-methodology@9c7210d1504bef01c0d134a6c3ae8627deebb535` → `METHOD.md + FRONTEND-METHOD.md`
 > **Product implementation:** BLOCKED UNTIL accepted D9
@@ -85,7 +85,7 @@ The browser-operable candidate must prove:
 - Organization switch invalidates Installation context;
 - material search works;
 - known-empty != unknown/unavailable;
-- exact SourceInstance + native key remain visible;
+- exact source identity remains technically preserved;
 - complete applicable publication-requirement census is inspectable;
 - correspondence effects require an authoritative re-read;
 - ListingIntent is an explicit unopened downstream boundary;
@@ -180,7 +180,7 @@ number_unit
 
 Known/conflicting source evidence preserves opaque candidate identity. Conflicting evidence preserves multiple candidates rather than choosing one. `not_applicable` remains an explicit override value only; source evidence does not synthesize it.
 
-The P8 candidate must therefore show wire truth without introducing frontend shorthand as Product truth. Human-friendly labels may explain the contract, but the underlying distinctions remain visible and testable.
+The P8 candidate must preserve this machine truth without turning the wire vocabulary into the primary user language. The technical contract remains encoded and testable even when the operator surface translates it.
 
 ### 11.1 LOCK impact sweep
 
@@ -197,9 +197,59 @@ B110 | UNAFFECTED
 
 No existing LOCK is reopened.
 
-### 11.2 Current P8 gate
+## 12. Operator REVISE — human language projection
 
-The rebaselined candidate must remain browser-operable and **CANDIDATE / NOT LOCKED** until the operator actually uses it.
+The operator rejected the first post-PR68 P8 candidate as operationally unreadable even though its contract representation was technically accurate.
+
+Root cause:
+
+```text
+wire-contract vocabulary
+→ copied into primary screen language
+→ operator must understand backend/API semantics to perform a normal preparation task
+```
+
+This conflicts with the accepted frontend-method rule **human needs before screens**. The frontend must project accepted truth into the user's job language; backend coherence does not authorize backend-shaped UX.
+
+The Product/OAD authority remains sufficient. This is a bounded frontend P8 correction, not a new upstream finding.
+
+### 12.1 Human questions the primary surface must answer
+
+```text
+O que o marketplace está pedindo?
+O que já está atendido?
+O que está faltando ou não pôde ser verificado?
+Qual informação existe hoje?
+O que o operador precisa fazer agora?
+```
+
+Primary table language therefore becomes:
+
+```text
+Requisito do marketplace
+Exigência
+Situação
+Informação atual
+O que fazer
+```
+
+Wire states are translated into operator states such as:
+
+```text
+Atendido
+Falta informação
+Há informações diferentes
+Não foi possível verificar
+Não disponível na fonte
+```
+
+Technical identities, revision keys, source-candidate keys and downstream resolution vocabulary move behind explicit secondary disclosure for support/audit. They remain encoded in the artifact and verifier; they are not deleted or reinterpreted.
+
+### 12.2 P8 disposition after operator REVISE
+
+The search→detail structure is unchanged. PR #68 semantics are unchanged. Existing LOCK impact remains unchanged.
+
+The revised candidate must remain browser-operable and **CANDIDATE / NOT LOCKED** until the operator operates this human-language version.
 
 `Operator walkthrough: PENDING`.
 
