@@ -39,6 +39,20 @@ function validateReadiness(doc) {
   }
 }
 
+function validateMarketplaceListing(doc) {
+  const s = schemas(doc);
+  for (const name of [
+    'MarketplaceListingPresentationKnown', 'MarketplaceListingPresentationUnknown', 'MarketplaceListingPresentationUnavailable', 'MarketplaceListingPresentation',
+    'ListingObservedFieldKnown', 'ListingObservedFieldUnknown', 'ListingObservedFieldUnavailable', 'ListingObservedFieldNotApplicable', 'ListingObservedField',
+    'MarketplaceListingMediaPresentationKnown', 'MarketplaceListingMediaPresentationUnavailable', 'MarketplaceListingMediaPresentation', 'MarketplaceListingObservedMedia', 'MarketplaceListingObservationProvenance',
+  ]) assert(s[name], `missing schema ${name}`);
+  requireFieldsFrom(s, 'MarketplaceListingListItem', ['listing', 'presentation', 'lifecycle', 'observed_at']);
+  requireFieldsFrom(s, 'MarketplaceListing', ['listing', 'presentation', 'lifecycle', 'publication_context', 'observed_fields', 'observed_media', 'observed_at', 'provenance']);
+  assert(JSON.stringify(s.ListingObservedFieldKnown).includes('PublicationValueView'), 'known Listing field must use PublicationValueView');
+  assert(JSON.stringify(s.MarketplaceListingPerformanceListItem).includes('MarketplaceListingPresentation'), 'Performance Listing item must reuse MarketplaceListingPresentation');
+  assert(!Object.hasOwn(s.MarketplaceListingPerformanceListItem?.properties ?? {}, 'display_name'), 'Performance Listing item must not keep parallel display_name');
+}
+
 function validateAll(doc) {
   validateReadiness(doc);
   if (typeof validateMarketplaceListing === 'function') validateMarketplaceListing(doc);
@@ -58,6 +72,8 @@ validateAll(document);
 expectMutationFailure('requirement label removed', (d) => { d.components.schemas.PublicationRequirement.required = d.components.schemas.PublicationRequirement.required.filter((x) => x !== 'display_name'); });
 expectMutationFailure('correspondence candidate population removed', (d) => { d.components.schemas.ProductChannelReadiness.required = d.components.schemas.ProductChannelReadiness.required.filter((x) => x !== 'correspondence_candidate_population'); });
 expectMutationFailure('resolve write accepts label', (d) => { d.components.schemas.ResolveCorrespondenceRequest.properties.display_label = { type: 'string' }; });
-assert(negativeControls === 3, `negative-control count must be 3, found ${negativeControls}`);
+expectMutationFailure('Listing collection presentation removed', (d) => { d.components.schemas.MarketplaceListingListItem.required = d.components.schemas.MarketplaceListingListItem.required.filter((x) => x !== 'presentation'); });
+expectMutationFailure('Performance parallel display name restored', (d) => { d.components.schemas.MarketplaceListingPerformanceListItem.properties.display_name = { type: 'string' }; });
+assert(negativeControls === 5, `negative-control count must be 5, found ${negativeControls}`);
 console.log('human_operable_read_projection=PASS');
-console.log(`human_operable_read_projection_negative_controls=${negativeControls}/3`);
+console.log(`human_operable_read_projection_negative_controls=${negativeControls}/5`);

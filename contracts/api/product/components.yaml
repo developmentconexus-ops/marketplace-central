@@ -596,21 +596,121 @@ schemas:
     additionalProperties: false
     required: [marketplace_installation_id, native_listing_key]
     properties: {marketplace_installation_id: {$ref: '#/schemas/OpaqueId'}, native_listing_key: {$ref: '#/schemas/OpaqueKey'}}
-  ListingObservedField:
+  MarketplaceListingPresentationKnown:
     type: object
     additionalProperties: false
-    required: [requirement_key, state]
-    properties: {requirement_key: {$ref: '#/schemas/OpaqueKey'}, state: {type: string, enum: [known, unknown, unavailable, not_applicable]}, value: {$ref: '#/schemas/PublicationValue'}}
+    required: [state, display_name]
+    properties:
+      state: {const: known}
+      display_name: {type: string, minLength: 1}
+  MarketplaceListingPresentationUnknown:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: unknown}}
+  MarketplaceListingPresentationUnavailable:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: unavailable}}
+  MarketplaceListingPresentation:
+    oneOf:
+      - {$ref: '#/schemas/MarketplaceListingPresentationKnown'}
+      - {$ref: '#/schemas/MarketplaceListingPresentationUnknown'}
+      - {$ref: '#/schemas/MarketplaceListingPresentationUnavailable'}
+  ListingObservedFieldKnown:
+    type: object
+    additionalProperties: false
+    required: [requirement_key, display_name, state, value]
+    properties:
+      requirement_key: {$ref: '#/schemas/OpaqueKey'}
+      display_name: {type: string, minLength: 1}
+      state: {const: known}
+      value: {$ref: '#/schemas/PublicationValueView'}
+  ListingObservedFieldUnknown:
+    type: object
+    additionalProperties: false
+    required: [requirement_key, display_name, state]
+    properties:
+      requirement_key: {$ref: '#/schemas/OpaqueKey'}
+      display_name: {type: string, minLength: 1}
+      state: {const: unknown}
+  ListingObservedFieldUnavailable:
+    type: object
+    additionalProperties: false
+    required: [requirement_key, display_name, state]
+    properties:
+      requirement_key: {$ref: '#/schemas/OpaqueKey'}
+      display_name: {type: string, minLength: 1}
+      state: {const: unavailable}
+  ListingObservedFieldNotApplicable:
+    type: object
+    additionalProperties: false
+    required: [requirement_key, display_name, state]
+    properties:
+      requirement_key: {$ref: '#/schemas/OpaqueKey'}
+      display_name: {type: string, minLength: 1}
+      state: {const: not_applicable}
+  ListingObservedField:
+    oneOf:
+      - {$ref: '#/schemas/ListingObservedFieldKnown'}
+      - {$ref: '#/schemas/ListingObservedFieldUnknown'}
+      - {$ref: '#/schemas/ListingObservedFieldUnavailable'}
+      - {$ref: '#/schemas/ListingObservedFieldNotApplicable'}
+  MarketplaceListingMediaPresentationKnown:
+    type: object
+    additionalProperties: false
+    required: [state, access_ref]
+    properties:
+      state: {const: known}
+      access_ref: {type: string, format: uri-reference, minLength: 1}
+  MarketplaceListingMediaPresentationUnavailable:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: unavailable}}
+  MarketplaceListingMediaPresentation:
+    oneOf:
+      - {$ref: '#/schemas/MarketplaceListingMediaPresentationKnown'}
+      - {$ref: '#/schemas/MarketplaceListingMediaPresentationUnavailable'}
+  MarketplaceListingObservedMedia:
+    type: object
+    additionalProperties: false
+    required: [content_type, presentation]
+    properties:
+      content_type: {type: string, minLength: 1}
+      presentation: {$ref: '#/schemas/MarketplaceListingMediaPresentation'}
+  MarketplaceListingObservationProvenance:
+    type: object
+    additionalProperties: false
+    required: [source_authority, evidence_custody, acquired_at]
+    properties:
+      source_authority: {const: marketplace_provider}
+      evidence_custody: {type: string, enum: [current_source_observation, preserved_source_evidence]}
+      acquired_at: {$ref: '#/schemas/Instant'}
   MarketplaceListing:
     type: object
     additionalProperties: false
-    required: [listing, lifecycle, observed_fields, observed_at]
-    properties: {listing: {$ref: '#/schemas/MarketplaceListingRef'}, lifecycle: {type: string, enum: [active, paused, closed, unknown]}, observed_fields: {type: array, items: {$ref: '#/schemas/ListingObservedField'}}, observed_price: {$ref: '#/schemas/Money'}, observed_at: {$ref: '#/schemas/Instant'}}
+    required: [listing, presentation, lifecycle, publication_context, observed_fields, observed_media, observed_at, provenance]
+    properties:
+      listing: {$ref: '#/schemas/MarketplaceListingRef'}
+      presentation: {$ref: '#/schemas/MarketplaceListingPresentation'}
+      lifecycle: {type: string, enum: [active, paused, closed, unknown]}
+      publication_context: {$ref: '#/schemas/PublicationContextView'}
+      observed_fields: {type: array, items: {$ref: '#/schemas/ListingObservedField'}}
+      observed_media: {type: array, items: {$ref: '#/schemas/MarketplaceListingObservedMedia'}}
+      observed_price: {$ref: '#/schemas/Money'}
+      observed_at: {$ref: '#/schemas/Instant'}
+      provenance: {$ref: '#/schemas/MarketplaceListingObservationProvenance'}
   MarketplaceListingListItem:
     type: object
     additionalProperties: false
-    required: [listing, lifecycle, observed_at]
-    properties: {listing: {$ref: '#/schemas/MarketplaceListingRef'}, lifecycle: {type: string, enum: [active, paused, closed, unknown]}, observed_at: {$ref: '#/schemas/Instant'}}
+    required: [listing, presentation, lifecycle, observed_at]
+    properties:
+      listing: {$ref: '#/schemas/MarketplaceListingRef'}
+      presentation: {$ref: '#/schemas/MarketplaceListingPresentation'}
+      lifecycle: {type: string, enum: [active, paused, closed, unknown]}
+      observed_at: {$ref: '#/schemas/Instant'}
   MarketplaceListingsCollection:
     type: object
     additionalProperties: false

@@ -636,11 +636,11 @@ schemas:
   MarketplaceListingPerformanceListItem:
     type: object
     additionalProperties: false
-    required: [marketplace_installation_id, native_listing_key, period, traffic, sales_activity, retail_media_summary]
+    required: [marketplace_installation_id, native_listing_key, presentation, period, traffic, sales_activity, retail_media_summary]
     properties:
       marketplace_installation_id: {$ref: './components.yaml#/schemas/OpaqueId'}
       native_listing_key: {$ref: './components.yaml#/schemas/OpaqueKey'}
-      display_name: {type: string, minLength: 1, description: Non-authoritative Listing presentation label; never Listing identity.}
+      presentation: {$ref: './components.yaml#/schemas/MarketplaceListingPresentation'}
       period: {$ref: '#/schemas/PerformancePeriod'}
       traffic: {$ref: '#/schemas/TrafficPerformance'}
       sales_activity: {$ref: '#/schemas/SalesActivityPerformance'}
@@ -661,11 +661,11 @@ schemas:
   MarketplaceListingPerformance:
     type: object
     additionalProperties: false
-    required: [marketplace_installation_id, native_listing_key, period, reporting_time_zone, traffic, sales_activity, retail_media]
+    required: [marketplace_installation_id, native_listing_key, presentation, period, reporting_time_zone, traffic, sales_activity, retail_media]
     properties:
       marketplace_installation_id: {$ref: './components.yaml#/schemas/OpaqueId'}
       native_listing_key: {$ref: './components.yaml#/schemas/OpaqueKey'}
-      display_name: {type: string, minLength: 1, description: Non-authoritative Listing presentation label; never Listing identity.}
+      presentation: {$ref: './components.yaml#/schemas/MarketplaceListingPresentation'}
       period: {$ref: '#/schemas/PerformancePeriod'}
       comparison_period: {$ref: '#/schemas/PerformancePeriod'}
       reporting_time_zone: {$ref: '#/schemas/ReportingTimeZone'}
@@ -690,11 +690,11 @@ schemas:
   RetailMediaListingScope:
     type: object
     additionalProperties: false
-    required: [kind, native_listing_key]
+    required: [kind, native_listing_key, presentation]
     properties:
       kind: {const: listing}
       native_listing_key: {$ref: './components.yaml#/schemas/OpaqueKey'}
-      display_name: {type: string, minLength: 1}
+      presentation: {$ref: './components.yaml#/schemas/MarketplaceListingPresentation'}
   RetailMediaCatalogGroupScope:
     type: object
     additionalProperties: false
