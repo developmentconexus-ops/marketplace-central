@@ -10,8 +10,6 @@
 
 **Outcome: `RESTRUCTURE NOW` — restore Marketplace Central to a small active-authority graph, retire absorbed intermediate material to Git history, and make CI proportional to the changed claim.**
 
-This is repository-governance/context-health correction, not another methodology framework.
-
 Target operating path:
 
 ```text
@@ -37,47 +35,17 @@ investigate
 → RETIRE intermediate material from active tree
 ```
 
-This created three failure classes.
+This created three failure classes: context-authority inflation, retirement drift, and verification inflation.
 
-### 2.1 Context authority inflation
+D6-R2 has a large `NOTIF-01`/finding/ratification/review chain; accumulated parent/ledger files still contain stale counts/status/method versions; and the single `npm run gate` runs heavy Product proof even for unrelated docs-only work.
 
-D6-R2 contains a large `NOTIF-01` / finding / ratification / repair / feed-forward / review chain. `D6-R2-AUTHORITY-ROUTE.md` intentionally keeps the chain reachable even when its surviving meaning has already been rehomed.
-
-Observed consequences:
-
-- agents encounter multiple historical snapshots while answering a current question;
-- stale counts/status/method versions are repeatedly reconciled;
-- task reads expand into project-history reconstruction;
-- context grows without equivalent decision-quality gain.
-
-Concrete examples:
-
-- `D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md` still contains older 99-operation / 30-Permission and early-lock-state prose;
-- `D6-R2-P8-BLOCK-LEDGER.md` still contains older B12/B10 status and Frontend Method v2.1 prose;
-- `D6-R2-AUTHORITY-ROUTE.md` routes the complete historical chain despite roadmap owning current status.
-
-### 2.2 Retirement drift
-
-The ADR registry kept some legacy ADRs only until D7 adjudication. D7 is accepted/closed, but those entries still remain active residues.
-
-### 2.3 Verification inflation
-
-The single `npm run gate` currently invokes the heavy Product OAD proof for unrelated documentation changes. Recent docs-only evidence showed roughly 85 seconds spent in Product proof while Product files did not change.
-
-Implementation-planning refinement found that the 95/99 replay is not pure history: it still protects valid current invariants. Therefore this health increment makes the heavy proof **diff-aware without weakening or splitting it**. Physical current-vs-history proof decomposition is deferred until a separate parity exercise can prove every current protection survives.
+Implementation planning found one important correction: the current 95/99 replay is not pure history; it still carries valid current Product protections. Therefore this health increment **does not split or weaken that proof**. It makes the heavy proof diff-aware so unrelated frontend/docs work skips it. A future split is a separate reopen only when Product-changing CI itself is a material bottleneck and assertion-level proof parity is demonstrated.
 
 ## 3. Governing invariants
 
 ### G1 — Active tree is current, not archival
 
-Keep a document active only while it:
-
-1. owns current Product/architecture/contract/repository semantics;
-2. owns current mutable status/routing/method authority;
-3. is evidence for a live unresolved/proof obligation; or
-4. is explicitly required by a current owner to interpret current meaning.
-
-Otherwise Git history is the archive.
+Keep a document active only while it owns current semantics/status/routing/method authority, is current evidence for a live obligation, or is explicitly required by a current owner. Otherwise Git history is sufficient archive.
 
 ### G2 — Rehome before retire
 
@@ -96,43 +64,28 @@ A finding, review, ratification, plan or proof does not remain parallel semantic
 
 ### G4 — Index routes current questions, not history
 
-`docs/index.md` answers: **where is the smallest current authority likely to answer this question?** It is not a complete document catalog.
+`docs/index.md` answers where the smallest current authority likely lives. It is not a complete document catalog.
 
 ### G5 — Methods reason; repository owns state
 
-Preserve local:
-
-- `engineering-method.md`;
-- `frontend-product-experience-planning-method.md`;
-- `engineering-rules.md`.
-
-Do not restore external methodology router/pin/profile machinery.
+Preserve local Engineering Method, Frontend Method and repository engineering rules. Do not restore external methodology router/pin/profile machinery.
 
 ### G6 — Inquiry may expand; default context stays selective
 
-There is no hard context/file budget. Start at current owners and expand only when extra evidence can materially change/falsify the conclusion.
+No hard context/file budget. Start at current owners and expand only when extra evidence can materially change/falsify the conclusion.
 
 ### G7 — CI proves the changed claim proportionately
 
-One required aggregate check remains. Cheap universal checks run always. The heavy existing Product proof runs only when Product/proof inputs change; when diff evidence is unavailable it runs fail-safe.
+One required aggregate check remains. Cheap universal checks run always. The existing heavy Product proof runs only when Product/proof inputs change; when diff evidence is unavailable it runs fail-safe.
 
 ## 4. Target governance model
 
-### Bootstrap
-
-`AGENTS.md` remains small: revalidate repo/branch/PR, read roadmap, route to the applicable method, use index for current owners, preserve Marketplace/Git safety rails.
-
-### Roadmap
-
-`docs/roadmap.md` remains sole mutable current-stage/status/allowed-work/next-action authority and stays compact.
-
-### Index
-
-`docs/index.md` routes directly to current owners such as D0/D1/D2/D4/D4-R1/D5/W2/W3/W4/D6/D7/D8 and current block-specific frontend evidence when needed. It does not route through a stage-wide historical pack.
-
-### Decision/status registry
-
-Do not create a new decision database. Existing ADR registry remains ADR-file status authority. D-stage owners remain semantic authority.
+- `AGENTS.md`: small bootstrap/router.
+- `docs/roadmap.md`: sole mutable current status/allowed-work/next-action authority.
+- `docs/index.md`: direct current-owner map.
+- D-stage/current contract owners: one current semantic home each.
+- Evidence/history: read only when a concrete claim needs it.
+- No new giant decision database or archive folder.
 
 ## 5. Active-tree lifecycle
 
@@ -147,23 +100,23 @@ Every removal cites its current replacement owner or states that no target meani
 
 ## 6. Health audit scope
 
-The implementation audits:
+Audit:
 
 - every `D6-R2-NOTIF-01-*`, D6-R2 Fable/finding/ratification/review artifact;
 - `D6-R2-AUTHORITY-ROUTE.md`;
 - accumulated D6-R2 frontend parent/ledger material;
 - P5/P8/P9 block-specific current evidence;
 - ADRs 008/010/018/026/030 against satisfied D7 retirement conditions;
-- 017/034 against their separate Fact condition; 035 remains;
+- ADR 017/034 against their separate Fact condition; ADR 035 remains;
 - completed `docs/plans/**`;
 - current locked HTML evidence;
-- verification scripts only as needed to distinguish current proof from historical/targeted proof.
+- verification scripts only as needed to preserve current proof while removing unrelated CI cost.
 
 Large canonical files such as `components.yaml`, D4 and W2 are not split merely because they are large. Reassess only after accidental history/routing cost is removed.
 
 ## 7. CI target
 
-Keep:
+Keep exactly:
 
 ```text
 required
@@ -172,9 +125,20 @@ required
 
 Every change retains cheap checks such as required files, one Product OpenAPI entrypoint, unsafe workflow rejection, diff/conflict checks and implementation-block enforcement.
 
-The heavy Product proof runs when changed paths can affect Product contract/proof semantics. Unrelated frontend/docs planning skips it.
+Diff-aware routing:
 
-The current 95/99/pre-auth/current proof chain remains intact in this health increment because it still carries current protections. If Product-changing CI later becomes a real bottleneck, reopen a bounded proof-decomposition task and require assertion-level parity before removing replay.
+```text
+unrelated frontend/docs change
+→ cheap checks only
+
+Product/proof-input change
+→ existing full Product proof unchanged
+
+no reliable diff base
+→ full Product proof fail-safe
+```
+
+Do not physically split the current 95/99/pre-auth/current chain in this health increment because it still protects current invariants. Reopen decomposition only with assertion-level parity proof.
 
 ## 8. Branch hygiene
 
@@ -209,14 +173,14 @@ Reject another methodology/profile/router layer, `docs/archive/`, filename-based
 Health proves:
 
 1. fresh bootstrap reaches current owners without historical route pack;
-2. representative questions resolve through a small owner set;
+2. representative questions resolve through a small current-owner set;
 3. every retired artifact has no surviving target meaning or an exact replacement owner;
 4. no current links point to retired files;
 5. index does not route stale status/count/method versions as current truth;
 6. ADR retirement matches accepted stage state;
 7. completed plans do not remain active without a live consumer;
 8. unrelated docs/frontend CI skips heavy Product proof while cheap checks remain;
-9. Product/proof-input changes retain the exact heavy proof currently green;
+9. Product/proof-input changes retain the exact heavy Product proof currently green;
 10. one required check remains;
 11. Product semantics/counts remain unchanged;
 12. locked frontend evidence remains unchanged;
@@ -236,7 +200,7 @@ AGENTS
 → task owner(s)
 ```
 
-Absorbed intermediate D6-R2/review/ratification/plan material is retired only after rehome proof; satisfied ADR residues are retired; Product OAD is unchanged; unrelated frontend/docs work no longer pays for heavy Product proof; Product/proof changes retain full protection; #69/#70 remain resumable.
+Absorbed intermediate material is retired only after rehome proof; satisfied ADR residues are retired; Product OAD is unchanged; unrelated frontend/docs work no longer pays for heavy Product proof; Product/proof changes retain full protection; #69/#70 remain resumable.
 
 No arbitrary file-count target is frozen.
 
