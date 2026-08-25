@@ -30,7 +30,7 @@ function verify(ratificationText, htmlText, roadmapText) {
   assert(htmlText.includes('Resumo da preparação'), 'B10 locked evidence lost the human-first summary');
   assert(htmlText.includes('Requisito do marketplace'), 'B10 locked evidence lost the human-first requirement language');
 
-  assert(roadmapText.includes('B10 P8 OPERATOR-RATIFIED / LOCKED'), 'roadmap must expose current B10 P8 LOCK');
+  assert(/B10[^|\n]{0,100}P8 OPERATOR-RATIFIED \/ LOCKED/u.test(roadmapText), 'roadmap must expose current B10 P8 LOCK');
   assert(roadmapText.includes('A01 `ACCEPT_FOR_LOCK_WITH_LATER_PROBE`'), 'roadmap must expose accepted A01 debt');
   assert(roadmapText.includes('P9 — B10 Screen Contract + bidirectional backend trace'), 'roadmap next action must be P9');
 }
@@ -47,7 +47,7 @@ function expectFailure(name, body) {
 
 expectFailure('operator lock erased', () => verify(ratification.replace('final disposition: LOCK', 'final disposition: REVISE'), html, roadmap));
 expectFailure('A01 silently reopened', () => verify(ratification.replace('A01 = ACCEPT_FOR_LOCK_WITH_LATER_PROBE', 'A01 = PENDING'), html, roadmap));
-expectFailure('roadmap regresses to pending', () => verify(ratification, html, roadmap.replace('B10 P8 OPERATOR-RATIFIED / LOCKED', 'B10 P8 NOT LOCKED')));
+expectFailure('roadmap regresses to pending', () => verify(ratification, html, roadmap.replace('P8 OPERATOR-RATIFIED / LOCKED', 'P8 NOT LOCKED')));
 
 assert(negativeControls === 3, `B10 ratification negative-control count mismatch: ${negativeControls}/3`);
 
