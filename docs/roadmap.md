@@ -12,7 +12,7 @@
 | Current stage | **D6-R2 — Complete Frontend Realization Closure — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | Integrated checkpoints | **PR #61 → `b54d17bfe6d794645d198a9160f4a2a1c63647e8`; PR #62 methodology → `689dab34b0a756cbd7c790a6c5277d887ced0b4c`; PR #65 proportional CI → `a2aeac19816c90ee30bf373cef0448d52a486c7e`; PR #68 PublicationRequirements wire → `ed3d164b0574b7950c2c7467d150c89576bba1ec`** |
-| Method profile | **`developmentconexus-ops/conexus-methodology@9c7210d1504bef01c0d134a6c3ae8627deebb535` → `METHOD + FRONTEND-METHOD`** |
+| Method profile | **local [`engineering-method.md`](development/engineering-method.md) + [`frontend-product-experience-planning-method.md`](development/frontend-product-experience-planning-method.md) v2.3** |
 | Current acceptance increment | **PR #64 / B10 — P8 REOPENED / CANDIDATE; A01 `ACCEPT_FOR_LOCK_WITH_LATER_PROBE`; P9 PAUSED** |
 | B10 Global Maximum | **requirements + source values + downstream authoring/provider validation; `source_sufficiency` REJECTED; NO NEW UPSTREAM WIRE FIELD** |
 | B10 evidence | **[P6 / Global Maximum revalidation](engineering/rebaseline/D6-R2-P6-B10-PREPARATION-REFERENCE-STUDY.md) + [P8 reopen record](engineering/rebaseline/D6-R2-P8-B10-PREPARATION-RATIFICATION.md) + [paused P9](engineering/rebaseline/D6-R2-P9-B10-PREPARATION-SCREEN-CONTRACT.md)** |
