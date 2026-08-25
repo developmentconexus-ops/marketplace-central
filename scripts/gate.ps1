@@ -136,8 +136,28 @@ if ($productProofAffected) {
     $productProofStatus = 'SKIPPED_NOT_AFFECTED'
 }
 
+$b10CorrespondenceProofPatterns = @(
+    '^qualification/d6-r2-wireframes/b10-preparation\.html$',
+    '^scripts/verify-d6-r-b10-correspondence-wireframe\.mjs$',
+    '^docs/engineering/rebaseline/D6-R2-P8-B10-',
+    '^docs/engineering/rebaseline/D6-R2-P9-B10-',
+    '^docs/engineering/rebaseline/D6-R2-P8-BLOCK-LEDGER\.md$'
+)
+$b10CorrespondenceProofAffected = if (-not $base) { $true } else { Test-ChangedPathMatches $b10CorrespondenceProofPatterns }
+
+if ($b10CorrespondenceProofAffected) {
+    $b10CorrespondenceProof = & node 'scripts/verify-d6-r-b10-correspondence-wireframe.mjs' 2>&1
+    $b10CorrespondenceProofExit = $LASTEXITCODE
+    $b10CorrespondenceProof | ForEach-Object { Write-Host $_ }
+    if ($b10CorrespondenceProofExit -ne 0) { Fail 'B10 correspondence wireframe proof failed' }
+    $b10CorrespondenceProofStatus = 'PASS'
+} else {
+    $b10CorrespondenceProofStatus = 'SKIPPED_NOT_AFFECTED'
+}
+
 Write-Host 'gate: PASS'
 Write-Host "required_files: $($requiredFiles.Count)"
 Write-Host "implementation_blocked: $implementationBlocked"
 Write-Host "diff_range: $diffRange changed_files: $($changedFiles.Count)"
 Write-Host "product_oad_proof: $productProofStatus"
+Write-Host "b10_correspondence_proof: $b10CorrespondenceProofStatus"

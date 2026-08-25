@@ -1,6 +1,6 @@
 # D6-R2 P9 — B10 Preparação Screen Contract
 
-> **Status:** DERIVED / PASS — P8 LOCKED; BACKEND SUFFICIENT; UPSTREAM FINDING NONE
+> **Status:** PREVIOUS PASS / CORRESPONDENCE REGION BOUNDED REOPEN — rerun only after operator re-LOCK
 > **Block:** B10 — Preparação / R10
 > **Methods:** [DevelopmentConexus Engineering Method v1.0.0](../../development/engineering-method.md) + [Frontend Product Experience Planning Method v2.3](../../development/frontend-product-experience-planning-method.md)
 > **Locked P8 evidence:** `qualification/d6-r2-wireframes/b10-preparation.html`
@@ -229,7 +229,7 @@ P9 explicitly rejects these regressions:
 
 All are avoidable with the accepted wire and the operator-LOCKED projection.
 
-## 7. P9 closure
+## 7. Previous P9 closure / current bounded reopen
 
 ```text
 P8 OPERATOR-RATIFIED / LOCKED
@@ -242,6 +242,8 @@ P8 OPERATOR-RATIFIED / LOCKED
 → UPSTREAM FINDING NONE
 ```
 
-**P9: PASS / CLOSED for B10.**
+**Previous P9: PASS / CLOSED for the prior B10 wire.**
 
-P10 may now consolidate only patterns already repeated in LOCKED evidence. P11, Pre-D9/D9 and Product implementation remain outside this P9 closure.
+PR #70 repaired the correspondence candidate read projection and triggered the smallest declared P8/P9 reopen. Sections unaffected by that region remain valid reference, but the correspondence trace is not current closure until the operator re-LOCKs the bounded candidate and P9 is rerun against the integrated OAD.
+
+P10/P11, B20, Pre-D9/D9 and Product implementation remain blocked from bypassing that rerun.
