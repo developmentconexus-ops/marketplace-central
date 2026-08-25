@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   required:
-    name: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == true && 'quick' || 'required' }}
+    name: required
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -29,15 +29,9 @@ jobs:
         with:
           node-version-file: .node-version
       - uses: actions/setup-go@v6
-        if: ${{ github.event_name == 'push' || github.event.pull_request.draft == false }}
         with:
           go-version: stable
           cache: false
-      - name: quick gate
-        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == true }}
+      - name: aggregate gate
         shell: pwsh
         run: npm run gate
-      - name: full gate
-        if: ${{ github.event_name == 'push' || github.event.pull_request.draft == false }}
-        shell: pwsh
-        run: npm run gate:full

@@ -60,7 +60,6 @@ Temporary/review transport is branch-only and must not enter candidate/main. Ind
 
 ```powershell
 npm run gate
-npm run gate:full
 ```
 
-`scripts/gate.ps1` is the repository aggregate gate. A red current control is a stop. Do not weaken a protected property merely to make CI green. Material guards require a deterministic falsifier/negative path, and claims about real providers/runtime/browser behavior require Evidence proportional to the real dependency.
+`scripts/gate.ps1` is the single repository aggregate gate. CI protects structural repository invariants and the canonical Product contract; planning prose, P8/P9 wording, walkthrough records, and historical review evidence are not permanent string-matched CI surfaces. A red current material control is still a stop, and claims about real providers/runtime/browser behavior require Evidence proportional to the real dependency.

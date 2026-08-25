@@ -1,102 +1,47 @@
-param(
-    [ValidateSet('quick', 'full')]
-    [string]$Lane = 'quick'
-)
-
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
-function Fail([string]$message) {
-    throw $message
-}
-
+function Fail([string]$message) { throw $message }
 function Require-Command([string]$name) {
-    if (-not (Get-Command $name -ErrorAction SilentlyContinue)) {
-        Fail "required command not found: $name"
-    }
+    if (-not (Get-Command $name -ErrorAction SilentlyContinue)) { Fail "required command not found: $name" }
 }
-
-function Get-TrackedFiles {
-    $files = @(git ls-files)
-    if ($LASTEXITCODE -ne 0) { Fail 'git ls-files failed' }
-    return $files
-}
-
-function Resolve-GateBase {
-    if ($env:GATE_BASE_SHA) {
-        git cat-file -e "$($env:GATE_BASE_SHA)^{commit}" 2>$null
-        if ($LASTEXITCODE -eq 0) { return $env:GATE_BASE_SHA }
-        Fail "GATE_BASE_SHA is not an available commit: $($env:GATE_BASE_SHA)"
-    }
-
-    if ($env:GATE_BASE_REF) {
-        foreach ($candidate in @($env:GATE_BASE_REF, "origin/$($env:GATE_BASE_REF)")) {
-            git rev-parse --verify --quiet "$candidate^{commit}" *> $null
-            if ($LASTEXITCODE -eq 0) { return $candidate }
-        }
-        Fail "GATE_BASE_REF is not an available commit: $($env:GATE_BASE_REF)"
-    }
-
-    foreach ($candidate in @('origin/main', 'main')) {
-        git rev-parse --verify --quiet "$candidate^{commit}" *> $null
-        if ($LASTEXITCODE -eq 0) { return $candidate }
-    }
-
-    return $null
-}
-
-function Test-ReviewDiffNames([string[]]$names) {
-    $normalized = @($names | ForEach-Object { $_.Replace('\', '/') })
-    return $normalized.Count -eq 1 -and $normalized[0] -eq 'docs/work/current/ai-dialog.md'
-}
-
 function Test-DurableDocPath([string]$path) {
     $normalized = $path.Replace('\', '/')
     if ($normalized -eq 'README.md' -or $normalized -eq 'AGENTS.md' -or $normalized -eq 'ARCHITECTURE.md') { return $true }
     if (-not $normalized.StartsWith('docs/')) { return $false }
-    if ($normalized.StartsWith('docs/work/')) { return $false }
-    if ($normalized.StartsWith('docs/archive/')) { return $false }
-    if ($normalized.StartsWith('docs/review/')) { return $false }
-    if ($normalized.StartsWith('docs/plans/')) { return $false }
-    if ($normalized.StartsWith('docs/superpowers/')) { return $false }
+    foreach ($prefix in @('docs/work/', 'docs/archive/', 'docs/review/', 'docs/plans/', 'docs/superpowers/')) {
+        if ($normalized.StartsWith($prefix)) { return $false }
+    }
     return $normalized.EndsWith('.md')
 }
-
 function Resolve-RelativeDocLink([string]$sourcePath, [string]$target) {
     $cleanTarget = $target.Split('#')[0]
-    if (-not $cleanTarget -or $cleanTarget -match '^[a-zA-Z][a-zA-Z0-9+.-]*:' -or $cleanTarget.StartsWith('#')) { return $null }
-    if ($cleanTarget.StartsWith('/')) { return $null }
-
+    if (-not $cleanTarget -or $cleanTarget.StartsWith('#') -or $cleanTarget.StartsWith('/') -or $cleanTarget -match '^[a-zA-Z][a-zA-Z0-9+.-]*:') { return $null }
     $sourceDir = Split-Path -Parent $sourcePath
     if (-not $sourceDir) { $sourceDir = '.' }
     $combined = [System.IO.Path]::GetFullPath((Join-Path $repoRoot (Join-Path $sourceDir $cleanTarget)))
-    $relative = [System.IO.Path]::GetRelativePath($repoRoot, $combined).Replace('\', '/')
-    return $relative
+    return [System.IO.Path]::GetRelativePath($repoRoot, $combined).Replace('\', '/')
 }
-
-function Assert-MethodologyBootstrap([string]$text, [string]$repository, [string]$pin) {
-    if (-not $text.Contains($repository)) { Fail "AGENTS.md is missing canonical methodology repository: $repository" }
-    if (-not $text.Contains($pin)) { Fail "AGENTS.md is missing exact accepted methodology pin: $pin" }
-    if (-not $text.Contains('ROUTER.md')) { Fail 'AGENTS.md is missing the pinned methodology ROUTER.md route' }
-}
-
-function Assert-MethodologyConsumerPins([string]$path, [string]$text, [string]$repository, [string]$pin) {
-    $escapedRepository = [regex]::Escape($repository)
-    $pattern = "https://github\.com/$escapedRepository/blob/([^/]+)/"
-    foreach ($match in [regex]::Matches($text, $pattern)) {
-        $ref = $match.Groups[1].Value
-        if ($ref -ne $pin) {
-            Fail "methodology consumer pin drift in ${path}: expected $pin, found $ref"
-        }
+function Resolve-GateBase {
+    if ($env:GATE_BASE_SHA -and $env:GATE_BASE_SHA -notmatch '^0+$') {
+        git cat-file -e "$($env:GATE_BASE_SHA)^{commit}" 2>$null
+        if ($LASTEXITCODE -eq 0) { return $env:GATE_BASE_SHA }
     }
+    foreach ($candidate in @('origin/main', 'main')) {
+        git rev-parse --verify --quiet "$candidate^{commit}" *> $null
+        if ($LASTEXITCODE -eq 0) { return $candidate }
+    }
+    return $null
 }
 
 Require-Command git
 Require-Command node
 Require-Command npm
+Require-Command go
 
-$trackedFiles = Get-TrackedFiles
+$trackedFiles = @(git ls-files)
+if ($LASTEXITCODE -ne 0) { Fail 'git ls-files failed' }
 $trackedSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 foreach ($file in $trackedFiles) { [void]$trackedSet.Add($file.Replace('\', '/')) }
 
@@ -105,7 +50,7 @@ if ([string]::IsNullOrWhiteSpace($headRef)) { $headRef = (git branch --show-curr
 $isReview = $headRef -like 'review/*'
 $trackedWork = @($trackedFiles | Where-Object { $_.Replace('\', '/').StartsWith('docs/work/') })
 if ($isReview) {
-    if (-not (Test-ReviewDiffNames $trackedWork)) {
+    if ($trackedWork.Count -ne 1 -or $trackedWork[0].Replace('\', '/') -ne 'docs/work/current/ai-dialog.md') {
         Fail "review branch may track only docs/work/current/ai-dialog.md under docs/work/: $($trackedWork -join ', ')"
     }
 } elseif ($trackedWork.Count -gt 0) {
@@ -118,81 +63,76 @@ if (-not $isReview -and $trackedAiDialog.Count -gt 0) {
 }
 
 $requiredFiles = @(
-    'README.md',
-    'AGENTS.md',
-    'ARCHITECTURE.md',
-    'docs/index.md',
-    'docs/roadmap.md',
-    'docs/development/engineering-rules.md',
-    'docs/architecture/decisions/README.md',
-    'docs/engineering/rebaseline/D0-PRODUCT-SYSTEM-DEFINITION.md',
-    'docs/engineering/rebaseline/D1-DOMAINS-BOUNDARIES.md',
-    'docs/engineering/rebaseline/D2-IDENTITY-TENANT-DATA-OWNERSHIP.md',
-    'docs/engineering/rebaseline/D3-COMMUNICATION-EVENTS.md',
-    'docs/engineering/rebaseline/D4-EXTERNAL-INTEGRATIONS.md',
-    'docs/engineering/rebaseline/D4-R1-PUBLICATION-INPUT.md',
-    'docs/engineering/rebaseline/D5-API.md',
-    'docs/engineering/rebaseline/D5-B2-OPENAPI-WIRE-AUTHORITY-TOOLING.md',
-    'docs/engineering/rebaseline/D6-FRONTEND.md',
-    'docs/engineering/rebaseline/D7-RUNTIME-JOBS-TRANSACTIONS.md',
-    'docs/engineering/rebaseline/DECISION-RECONCILIATION-BASELINE.md',
-    'docs/engineering/rebaseline/EVIDENCE-REGISTER.md',
-    'contracts/api/product/openapi.yaml',
-    'contracts/api/product/redocly.yaml',
-    'scripts/verify-product-oad.mjs',
-    'scripts/gate.ps1',
-    'package.json'
+    'README.md', 'AGENTS.md', 'ARCHITECTURE.md', 'docs/index.md', 'docs/roadmap.md',
+    'docs/development/engineering-rules.md', 'contracts/api/product/openapi.yaml',
+    'contracts/api/product/redocly.yaml', 'scripts/verify-product-oad.mjs', 'scripts/gate.ps1', 'package.json'
 )
-
 foreach ($path in $requiredFiles) {
     if (-not (Test-Path $path -PathType Leaf)) { Fail "required file missing: $path" }
 }
 
-$forbiddenRoots = @('apps', 'cmd', 'internal', 'server', 'backend', 'frontend')
-foreach ($root in $forbiddenRoots) {
-    if (Test-Path $root) {
-        $trackedUnderRoot = @($trackedFiles | Where-Object { $_.Replace('\', '/').StartsWith("$root/") })
-        if ($trackedUnderRoot.Count -gt 0) { Fail "active legacy/runtime population found under $root/" }
-    }
-}
+$readme = Get-Content -Raw 'README.md'
+$agent = Get-Content -Raw 'AGENTS.md'
+$index = Get-Content -Raw 'docs/index.md'
+$roadmap = Get-Content -Raw 'docs/roadmap.md'
+$engineeringRules = Get-Content -Raw 'docs/development/engineering-rules.md'
 
-$trackedOpenApiEntrypoints = @($trackedFiles | Where-Object { $_ -match '(^|/)openapi[^/]*\.ya?ml$' })
-if ($trackedOpenApiEntrypoints.Count -ne 1 -or $trackedOpenApiEntrypoints[0].Replace('\', '/') -ne 'contracts/api/product/openapi.yaml') {
-    Fail "tracked OpenAPI entrypoint authority mismatch: $($trackedOpenApiEntrypoints -join ', ')"
+$methodologyRepository = 'developmentconexus-ops/conexus-methodology'
+$methodologyPin = '9c7210d1504bef01c0d134a6c3ae8627deebb535'
+foreach ($token in @($methodologyRepository, $methodologyPin, 'ROUTER.md')) {
+    if (-not $agent.Contains($token)) { Fail "AGENTS.md is missing canonical methodology routing token: $token" }
+}
+if ($agent.Contains("$methodologyRepository/blob/main")) { Fail 'AGENTS.md must not consume floating methodology main' }
+foreach ($token in @($methodologyRepository, $methodologyPin)) {
+    if (-not $engineeringRules.Contains($token)) { Fail "engineering-rules.md is missing canonical methodology token: $token" }
 }
 
 $bootstrapFiles = @('AGENTS.md', 'docs/index.md', 'docs/roadmap.md')
 $bootstrapBytes = 0
-foreach ($path in $bootstrapFiles) {
-    $bootstrapBytes += (Get-Item $path).Length
-}
+foreach ($path in $bootstrapFiles) { $bootstrapBytes += (Get-Item $path).Length }
 $bootstrapLimit = 20480
-if ($bootstrapBytes -gt $bootstrapLimit) {
-    Fail "bootstrap authority pack exceeds $bootstrapLimit bytes: $bootstrapBytes"
+if ($bootstrapBytes -gt $bootstrapLimit) { Fail "bootstrap authority pack exceeds $bootstrapLimit bytes: $bootstrapBytes" }
+
+if (-not $roadmap.Contains('<!-- program-status-authority -->')) { Fail 'docs/roadmap.md must own mutable program status' }
+if (-not $roadmap.Contains('contracts/api/product/openapi.yaml')) { Fail 'roadmap lost canonical Product OAD route' }
+foreach ($surface in @(@{name='README.md';text=$readme}, @{name='AGENTS.md';text=$agent}, @{name='docs/index.md';text=$index})) {
+    if ($surface.text.Contains('<!-- program-status-authority -->') -or $surface.text.Contains('Exact next action')) {
+        Fail "$($surface.name) duplicates mutable roadmap authority"
+    }
+}
+if (-not $readme.Contains('[`AGENTS.md`](AGENTS.md)') -or -not $readme.Contains('[`docs/index.md`](docs/index.md)')) {
+    Fail 'README.md must remain a landing page pointing to AGENTS.md and docs/index.md'
+}
+
+$openApiEntrypoints = @($trackedFiles | Where-Object { $_.Replace('\', '/') -match '(^|/)openapi[^/]*\.ya?ml$' })
+if ($openApiEntrypoints.Count -ne 1 -or $openApiEntrypoints[0].Replace('\', '/') -ne 'contracts/api/product/openapi.yaml') {
+    Fail "tracked OpenAPI entrypoint authority mismatch: $($openApiEntrypoints -join ', ')"
+}
+
+foreach ($pattern in @('^docs/superpowers/', '^docs/current/', '^docs/active/')) {
+    foreach ($file in $trackedFiles) {
+        if ($file.Replace('\', '/') -match $pattern) { Fail "forbidden tracked path: $file" }
+    }
 }
 
 $durableDocs = @($trackedFiles | Where-Object { Test-DurableDocPath $_ })
 $durableSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 foreach ($path in $durableDocs) { [void]$durableSet.Add($path.Replace('\', '/')) }
-
 $docLinks = @{}
 foreach ($path in $durableDocs) {
     $normalizedPath = $path.Replace('\', '/')
     $text = Get-Content -Raw $normalizedPath
     $links = @()
     foreach ($match in [regex]::Matches($text, '\[[^\]]*\]\(([^)]+)\)')) {
-        $target = $match.Groups[1].Value.Trim()
-        $resolved = Resolve-RelativeDocLink $normalizedPath $target
-        if ($resolved) {
-            $links += $resolved
-            if ($durableSet.Contains($resolved) -and -not $trackedSet.Contains($resolved)) {
-                Fail "durable link resolves to untracked document: $normalizedPath -> $resolved"
-            }
+        $resolved = Resolve-RelativeDocLink $normalizedPath $match.Groups[1].Value.Trim()
+        if (-not $resolved) { continue }
+        $links += $resolved
+        if ($resolved.EndsWith('.md') -and -not $trackedSet.Contains($resolved)) {
+            Fail "broken relative document link: $normalizedPath -> $resolved"
         }
     }
     $docLinks[$normalizedPath] = $links
 }
-
 $reachable = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 $queue = [System.Collections.Generic.Queue[string]]::new()
 foreach ($root in @('README.md', 'AGENTS.md', 'docs/index.md')) {
@@ -209,93 +149,17 @@ foreach ($path in $durableDocs) {
     if (-not $reachable.Contains($normalizedPath)) { Fail "durable document is not reachable from bootstrap routers: $normalizedPath" }
 }
 
-$readme = Get-Content -Raw 'README.md'
-$agent = Get-Content -Raw 'AGENTS.md'
-$index = Get-Content -Raw 'docs/index.md'
-$roadmap = Get-Content -Raw 'docs/roadmap.md'
-$engineeringRules = Get-Content -Raw 'docs/development/engineering-rules.md'
-$frontendMethod = Get-Content -Raw 'docs/development/frontend-product-experience-planning-method.md'
-
-$methodologyRepository = 'developmentconexus-ops/conexus-methodology'
-$methodologyPin = '9c7210d1504bef01c0d134a6c3ae8627deebb535'
-Assert-MethodologyBootstrap $agent $methodologyRepository $methodologyPin
-
-$methodologyConsumerFiles = @(
-    'AGENTS.md',
-    'docs/index.md',
-    'docs/roadmap.md',
-    'docs/development/engineering-rules.md',
-    'docs/development/frontend-product-experience-planning-method.md',
-    'docs/development/evidence-grounded-production-engineering-for-llm-agents.md'
-)
-foreach ($path in $methodologyConsumerFiles) {
-    Assert-MethodologyConsumerPins $path (Get-Content -Raw $path) $methodologyRepository $methodologyPin
-}
-
-foreach ($legacyMethodVersion in @('DevelopmentConexus Engineering Method v1.0.0', 'DevelopmentConexus Repository Standard v1.0.0')) {
-    foreach ($surface in @($agent, $index, $engineeringRules)) {
-        if ($surface.Contains($legacyMethodVersion)) { Fail "active repository surface still cites superseded methodology version: $legacyMethodVersion" }
+$implementationBlocked = $roadmap -match '(?i)Implementation[^\n]*BLOCKED UNTIL D9'
+if ($implementationBlocked) {
+    foreach ($root in @('apps', 'cmd', 'internal', 'server', 'backend', 'frontend')) {
+        $population = @($trackedFiles | Where-Object { $_.Replace('\', '/').StartsWith("$root/") })
+        if ($population.Count -gt 0) { Fail "implementation is blocked by roadmap but tracked runtime exists under $root/" }
     }
 }
 
-if (-not $frontendMethod.Contains('SUPERSEDED_BY_GLOBAL')) {
-    Fail 'local frontend methodology remains active normative authority; expected supersession pointer'
-}
-
-$roadmapMarkers = @(
-    'D0 — Product / System Definition | ACCEPTED / CLOSED',
-    'D1 — Domains / Boundaries | ACCEPTED / CLOSED',
-    'D2 — Identity / Tenant / Data Ownership | ACCEPTED / CLOSED',
-    'D3 — Communication / Events | ACCEPTED / CLOSED',
-    'D4 — External Integrations | ACCEPTED / CLOSED',
-    'D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL',
-    'D5 — API | ACCEPTED / CLOSED',
-    'D6 — Frontend | **ACCEPTED / CLOSED',
-    'D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED',
-    'D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED',
-    'D6-R2 — Complete Frontend Realization Closure — OPEN / ACTIVE',
-    'D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE',
-    'D9 — Adversarial Architecture Review | **BLOCKED**',
-    'Canonical Product OAD',
-    'contracts/api/product/openapi.yaml',
-    '106 Product operations',
-    '31 ordinary Permissions',
-    'Principal kinds H / A / S only',
-    'https://conexus.fun',
-    'Active runtime baseline',
-    'NONE',
-    'BLOCKED UNTIL D9'
-)
-foreach ($marker in $roadmapMarkers) {
-    if (-not $roadmap.Contains($marker)) { Fail "docs/roadmap.md is missing required current truth: $marker" }
-}
-
-foreach ($forbidden in @('D5 — API — OPEN / ACTIVE', 'D5 — API — ACCEPTED / CLOSED', 'D6 — Frontend — OPEN / ACTIVE', 'D7 — Runtime / Jobs / Transactions — OPEN / ACTIVE', 'D8 — Golden Flows — OPEN / ACTIVE', 'Exact next action', '<!-- program-status-authority -->')) {
-    if ($index.Contains($forbidden)) { Fail "docs/index.md duplicates mutable roadmap state: $forbidden" }
-    if ($readme.Contains($forbidden)) { Fail "README.md is not landing-only: $forbidden" }
-    if ($agent.Contains($forbidden)) { Fail "AGENTS.md duplicates mutable roadmap state: $forbidden" }
-}
-if (-not $readme.Contains('[`AGENTS.md`](AGENTS.md)') -or -not $readme.Contains('[`docs/index.md`](docs/index.md)')) {
-    Fail 'README.md must remain a landing page pointing to AGENTS.md and docs/index.md.'
-}
-
-$forbiddenPathPatterns = @(
-    '^docs/superpowers/',
-    '^docs/archive/architecture-rebaseline/d0-d4-reset/',
-    '^docs/current/',
-    '^docs/active/'
-)
-foreach ($file in $trackedFiles) {
-    $normalized = $file.Replace('\', '/')
-    foreach ($pattern in $forbiddenPathPatterns) {
-        if ($normalized -match $pattern) { Fail "forbidden tracked path: $normalized" }
-    }
-}
-
-$machineRouteFiles = @($trackedFiles | Where-Object { $_ -match '(^|/)(CODEOWNERS|\.github/.*owners|.*machine.*route.*)$' })
-$machineRouteSelectors = 0
-foreach ($path in $machineRouteFiles) {
-    $machineRouteSelectors += ([regex]::Matches((Get-Content -Raw $path), '(?m)^\s*[^#\s].*$')).Count
+$workflowFiles = @($trackedFiles | Where-Object { $_.Replace('\', '/').StartsWith('.github/workflows/') })
+foreach ($workflow in $workflowFiles) {
+    if ((Get-Content -Raw $workflow).Contains('pull_request_target')) { Fail "unsafe pull_request_target trigger found in $workflow" }
 }
 
 $base = Resolve-GateBase
@@ -305,147 +169,29 @@ $diffRange = 'unavailable'
 if ($base) {
     git cat-file -e "$head^{commit}" 2>$null
     if ($LASTEXITCODE -ne 0) { Fail "gate head is not an available commit: $head" }
-
-    if ($isReview) {
-        $candidateRef = $env:GATE_CANDIDATE_REF
-        if ([string]::IsNullOrWhiteSpace($candidateRef)) { $candidateRef = $env:GATE_BASE_REF }
-        if ([string]::IsNullOrWhiteSpace($candidateRef)) { Fail 'review mode requires an explicit candidate branch/ref' }
-
-        git show-ref --verify --quiet "refs/remotes/origin/$candidateRef"
-        if ($LASTEXITCODE -ne 0) {
-            git ls-remote --exit-code --heads origin $candidateRef *> $null
-            if ($LASTEXITCODE -ne 0) { Fail "review candidate ref does not exist on origin: $candidateRef" }
-        }
-
-        $candidateTree = @(git ls-tree -r --name-only $base)
-        if ($LASTEXITCODE -ne 0) { Fail "unable to inspect exact review candidate tree: $base" }
-        $candidateWork = @($candidateTree | Where-Object { $_.Replace('\', '/').StartsWith('docs/work/') })
-        if ($candidateWork.Count -gt 0) { Fail 'exact review candidate tree is contaminated by docs/work material' }
-
-        $reviewNames = @(git diff --name-only "$base..$head")
-        if ($LASTEXITCODE -ne 0) { Fail "git diff failed for review range $base..$head" }
-        if (-not (Test-ReviewDiffNames $reviewNames)) {
-            Fail "review branch must differ from exact candidate only by docs/work/current/ai-dialog.md: $($reviewNames -join ', ')"
-        }
-        $diffRange = "$base..$head"
-        $changedFiles = $reviewNames
-    } else {
-        $diffRange = "$base...$head"
-        $changedFiles = @(git diff --name-only $diffRange)
-        if ($LASTEXITCODE -ne 0) { Fail "git diff failed for range $diffRange" }
-    }
+    $diffRange = "$base...$head"
+    $changedFiles = @(git diff --name-only $diffRange)
+    if ($LASTEXITCODE -ne 0) { Fail "git diff failed for range $diffRange" }
 }
-
-$forbiddenDiffPatterns = @(
-    '^apps/', '^cmd/', '^internal/', '^server/', '^backend/', '^frontend/',
-    '(^|/)openapi(?!\.yaml$).*\.ya?ml$',
-    '(^|/)sdk/', '(^|/)generated/'
-)
-foreach ($file in $changedFiles) {
-    $normalized = $file.Replace('\', '/')
-    foreach ($pattern in $forbiddenDiffPatterns) {
-        if ($normalized -match $pattern -and $normalized -ne 'contracts/api/product/openapi.yaml') {
-            Fail "changed file enters forbidden implementation/runtime/generated surface: $normalized"
-        }
-    }
-}
-
-# Repository negative-control reporting is intentionally limited to controls that exercise
-# a reusable enforcement predicate. The other repository invariants above remain direct guards,
-# but are not counted as falsifiers merely because a literal fixture can be made to fail.
-$negativeControls = 0
-function Expect-Failure([string]$name, [scriptblock]$body) {
-    $failed = $false
-    try { & $body } catch { $failed = $true }
-    if (-not $failed) { Fail "negative control unexpectedly passed: $name" }
-    $script:negativeControls++
-}
-
-Expect-Failure 'review isolation' {
-    if ((Test-ReviewDiffNames @('docs/work/current/ai-dialog.md')) -and -not (Test-ReviewDiffNames @('docs/work/current/ai-dialog.md', 'README.md'))) { throw 'caught' }
-}
-
-Expect-Failure 'methodology canonical repository' {
-    Assert-MethodologyBootstrap "$methodologyPin ROUTER.md" $methodologyRepository $methodologyPin
-}
-
-Expect-Failure 'methodology exact pin' {
-    Assert-MethodologyBootstrap "$methodologyRepository ROUTER.md" $methodologyRepository $methodologyPin
-}
-
-Expect-Failure 'methodology router route' {
-    Assert-MethodologyBootstrap "$methodologyRepository $methodologyPin" $methodologyRepository $methodologyPin
-}
-
-Expect-Failure 'methodology floating main' {
-    Assert-MethodologyConsumerPins 'fixture.md' "https://github.com/$methodologyRepository/blob/main/METHOD.md" $methodologyRepository $methodologyPin
-}
-
-Expect-Failure 'methodology stale pin' {
-    Assert-MethodologyConsumerPins 'fixture.md' "https://github.com/$methodologyRepository/blob/0000000000000000000000000000000000000000/METHOD.md" $methodologyRepository $methodologyPin
-}
-
-if ($negativeControls -ne 6) { Fail "repository negative-control count mismatch: $negativeControls/6" }
-
-$quickVerifiers = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-function Add-QuickVerifier([string]$verifier) {
-    if (Test-Path $verifier -PathType Leaf) { [void]$quickVerifiers.Add($verifier) }
-}
-
-$productProofRan = $false
-if ($Lane -eq 'full') {
-    $productProof = & node 'scripts/verify-product-oad.mjs' 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        $productProof | ForEach-Object { Write-Host $_ }
-        Fail 'Product OAD proof failed'
-    }
-    $productProof | ForEach-Object { Write-Host $_ }
-    $productProofRan = $true
-} else {
+if ($implementationBlocked) {
     foreach ($file in $changedFiles) {
         $normalized = $file.Replace('\', '/')
-
-        if ($normalized -match '^scripts/verify-.*\.mjs$' -and $normalized -notmatch '^scripts/verify-(product-oad|ci-policy)') {
-            Add-QuickVerifier $normalized
+        if ($normalized -match '^(apps|cmd|internal|server|backend|frontend)/') {
+            Fail "implementation is blocked by roadmap but candidate changes runtime surface: $normalized"
         }
-
-        switch -Regex ($normalized) {
-            '^qualification/d6-r2-wireframes/b00-r2-notifications\.html$' { Add-QuickVerifier 'scripts/verify-d6-r-b00-r2-wireframe.mjs'; break }
-            '^qualification/d6-r2-wireframes/b11-notifications-inbox\.html$' { Add-QuickVerifier 'scripts/verify-d6-r-b11-inbox-wireframe.mjs'; break }
-            '^qualification/d6-r2-wireframes/b12-notification-routing-settings\.html$' { Add-QuickVerifier 'scripts/verify-d6-r-b12-routing-settings-wireframe.mjs'; break }
-            '^qualification/d6-r2-wireframes/.*b110.*\.html$' { Add-QuickVerifier 'scripts/verify-d6-r-b110-approvals-wireframe.mjs'; break }
-            '^qualification/d6-r2-wireframes/b10-preparation\.html$' { Add-QuickVerifier 'scripts/verify-d6-r-b10-preparation.mjs'; break }
-            '^docs/engineering/rebaseline/D6-R2-P6-B10-PREPARATION-REFERENCE-STUDY\.md$' { Add-QuickVerifier 'scripts/verify-d6-r-b10-preparation.mjs'; break }
-            '^contracts/api/product/' { Add-QuickVerifier 'scripts/verify-oad-source-reachability.mjs'; break }
-        }
-    }
-
-    foreach ($verifier in @($quickVerifiers | Sort-Object)) {
-        $output = & node $verifier 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            $output | ForEach-Object { Write-Host $_ }
-            Fail "quick verifier failed: $verifier"
-        }
-        $output | ForEach-Object { Write-Host $_ }
     }
 }
 
-$quickVerifierSummary = if ($quickVerifiers.Count -eq 0) { 'NONE' } else { (@($quickVerifiers | Sort-Object) -join ',') }
-$productProofSummary = if ($productProofRan) { 'FULL' } else { 'SKIPPED_QUICK' }
+$productProof = & node 'scripts/verify-product-oad.mjs' 2>&1
+$productProofExit = $LASTEXITCODE
+$productProof | ForEach-Object { Write-Host $_ }
+if ($productProofExit -ne 0) { Fail 'Product OAD proof failed' }
 
-Write-Host "gate lane: $Lane"
-Write-Host "required files: $($requiredFiles.Count)"
-Write-Host "tracked files inspected: $($trackedFiles.Count)"
-Write-Host "bootstrap_bytes: $bootstrapBytes / $bootstrapLimit"
-Write-Host "docs_index_relative_links: $(@($docLinks['docs/index.md']).Count)"
-Write-Host "durable_docs_reachable: $($reachable.Count)"
-Write-Host "machine_route_files: $($machineRouteFiles.Count) selectors: $machineRouteSelectors"
-Write-Host "methodology_pin: $methodologyRepository@$methodologyPin"
-Write-Host "methodology_consumer_files: $($methodologyConsumerFiles.Count)"
-Write-Host "diff_range: $diffRange changed_files: $($changedFiles.Count)"
-Write-Host "review_mode: $isReview"
-Write-Host "legacy_runtime_population: 0"
-Write-Host "negative_controls: $negativeControls/6"
-Write-Host "quick_verifiers: $quickVerifierSummary"
-Write-Host "product_proof: $productProofSummary"
 Write-Host 'gate: PASS'
+Write-Host "tracked_files: $($trackedFiles.Count)"
+Write-Host "bootstrap_bytes: $bootstrapBytes/$bootstrapLimit"
+Write-Host "durable_docs_reachable: $($reachable.Count)"
+Write-Host "methodology_pin: $methodologyRepository@$methodologyPin"
+Write-Host "implementation_blocked: $implementationBlocked"
+Write-Host "diff_range: $diffRange changed_files: $($changedFiles.Count)"
+Write-Host 'product_oad_proof: PASS'

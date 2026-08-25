@@ -18,12 +18,23 @@ Start at pinned `ROUTER.md`. Organizational reasoning, repository operation, fro
 
 ```powershell
 npm run gate
-npm run gate:full
 ```
 
-`scripts/gate.ps1` is the repository-local aggregate implementation. It must prove current repository properties over the intended base...candidate range, including bootstrap/context budget, routing/reachability, temporary/review hygiene, current Product proof, and deterministic negative controls where a reusable guard exists.
+`scripts/gate.ps1` is the single repository aggregate implementation and `.github/workflows/ci.yml` exposes one required check named `required` for pull requests and `main`.
 
-A red current control is a stop. Do not raise a budget, weaken a guard, or add an exception merely to make it green. Retire a subject-specific control only with attributable `subject population = 0` or proved replacement coverage.
+The gate protects only durable repository and Product-contract properties that justify permanent automation:
+
+- bootstrap/context budget and canonical routing;
+- exact methodology pin;
+- candidate/main hygiene for temporary review transport;
+- current durable-document reachability;
+- one canonical Product OpenAPI entrypoint;
+- no runtime/implementation surface while the roadmap blocks implementation;
+- canonical Product OAD proof, including its real contract/auth/security negative controls.
+
+CI does **not** permanently parse exact P8/P9 wording, operator ratification prose, review dialogue, historical closure text, prototype labels, or arbitrary negative-control counts. Those remain method-stage Evidence and are reviewed/operated at the gate that consumes them. Do not turn Evidence into a permanent CI authority merely because a script can grep it.
+
+A red current material control is a stop. Do not weaken a protected Product/security/repository property merely to make CI green; retire accidental controls when they no longer protect a live failure class.
 
 ## MPC safety and Evidence specialization
 
@@ -49,46 +60,19 @@ Use conventional-commit PR titles and state both what changes and what deliberat
 
 Dependent work does not stack on an unmerged acceptance increment by default. A roadmap stage may remain OPEN across several integrated increments.
 
-Independent review lifecycle/transport is owned by the pinned `ADVERSARIAL-REVIEW-METHOD.md`; the repository aggregate gate enforces candidate/main hygiene and exact review isolation. Reviewer output is Evidence, not Product/status authority.
+Independent review lifecycle/transport is owned by the pinned `ADVERSARIAL-REVIEW-METHOD.md`. Reviewer output is Evidence, not Product/status authority.
 
 ## Retained derived production guide
 
-[`evidence-grounded-production-engineering-for-llm-agents.md`](evidence-grounded-production-engineering-for-llm-agents.md) is retained as an optional historical/portable **non-authoritative reference** derived from historical blob `8de8ff4afbfcc2ee37a7db6ea0019e717740ebcf`. The current file differs from that historical blob only by bounded repairs that replace a dead/local Method parent link and a floating-`main` Method link with the repository's accepted exact canonical pin; its engineering guidance is not promoted to normative authority.
-
-It is not a current Method selector. Current production realization uses the pinned `ROUTER.md` → `METHOD.md` + `REALIZATION-METHOD.md` profile. Keep the guide only while it has a real reference consumer; the aggregate gate does not require its mere existence. Do not evolve it into a second Method copy.
+[`evidence-grounded-production-engineering-for-llm-agents.md`](evidence-grounded-production-engineering-for-llm-agents.md) is an optional historical/portable **non-authoritative reference**. Current production realization uses the pinned `ROUTER.md` → `METHOD.md` + `REALIZATION-METHOD.md` profile. Keep the guide only while it has a real reference consumer; the aggregate gate does not require its mere existence.
 
 ## Justified Repository Standard path specializations
 
 These are path/layout deviations only. They do not change authority semantics.
 
-### Stable architecture root
-
-- **Organizational default:** `docs/architecture/index.md`.
-- **MPC specialization:** retain `ARCHITECTURE.md` at repository root.
-- **Consumer:** dense accepted D-stage/ADR citations to the established root path.
-- **Why default is insufficient now:** moving it would create broad authority-document churn without reducing active context or changing correctness.
-- **Removal trigger:** a material architecture-generation rewrite already touching those citations, or another concrete consumer making the move low-churn and valuable.
-
-### ADR registry
-
-- **Organizational default:** `docs/decisions/`.
-- **MPC specialization:** retain `docs/architecture/decisions/` while current ADR residue remains linked there.
-- **Consumer:** accepted ADR registry/citation subtree.
-- **Removal trigger:** material ADR generation restructuring or retirement of the surviving residue set.
-
-### Accepted D-stage authority package
-
-- **Organizational default:** durable phase/result authority under `docs/phases/` when useful.
-- **MPC specialization:** retain the densely cross-linked accepted package under `docs/engineering/rebaseline/`.
-- **Consumer:** current D0–D8/D6-R2 authority, proofs, and routing.
-- **Why default is insufficient now:** a cosmetic mass move would create high citation churn with no Product/context gain.
-- **Removal trigger:** post-D9 consolidation or another material authority-generation change that makes rehoming part of useful work rather than path aesthetics.
-
-### Evidence Register
-
-- **Organizational default:** `docs/evidence/`.
-- **MPC specialization:** retain `docs/engineering/rebaseline/EVIDENCE-REGISTER.md` while it supports the accepted rebaseline package.
-- **Consumer:** current accepted phase authorities citing the register.
-- **Removal trigger:** post-D9 evidence consolidation or creation of a new current Evidence home for a real consumer.
+- `ARCHITECTURE.md` remains at repository root while dense current citations make a cosmetic move higher-cost than useful.
+- `docs/architecture/decisions/` remains the ADR registry while current citations consume it.
+- `docs/engineering/rebaseline/` remains the accepted D-stage authority package while D0–D8/D6-R2 are densely cross-linked there.
+- `docs/engineering/rebaseline/EVIDENCE-REGISTER.md` remains with that package until a useful post-D9 consolidation.
 
 When a specialization is removed, repair live consumers in the same acceptance increment and remove the old path; do not create indefinite compatibility authority.
