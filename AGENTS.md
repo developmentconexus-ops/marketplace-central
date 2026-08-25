@@ -8,9 +8,9 @@ Before relying on chat, handoff, or remembered state:
 2. read [`docs/roadmap.md`](docs/roadmap.md) to understand the current Product/planning state and implementation gate;
 3. for material engineering decisions, follow [`docs/development/engineering-method.md`](docs/development/engineering-method.md);
 4. for frontend Product Experience planning, follow [`docs/development/frontend-product-experience-planning-method.md`](docs/development/frontend-product-experience-planning-method.md);
-5. use [`docs/index.md`](docs/index.md) as a navigation aid when useful, never as a reading boundary.
+5. use [`docs/index.md`](docs/index.md) to locate the smallest current owner set when needed.
 
-There is **no fixed file count, owner count, or context budget**. Investigate any repository area, Git history, Evidence, code, contracts, runtime behavior, research, or external source that can materially change, challenge, or falsify the conclusion. Whole-repository review is explicitly allowed when the task calls for it. Context efficiency is an optimization, not a correctness boundary.
+Start with the smallest current owner set likely to answer the task. Expand into additional owners, Evidence, Git history, runtime or external sources only when they can materially change or falsify the conclusion. There is no fixed file count, owner count, or context budget: whole-repository review remains allowed when the task genuinely requires it, but historical artifact chains are not a default read path.
 
 ## Methods and authority
 
