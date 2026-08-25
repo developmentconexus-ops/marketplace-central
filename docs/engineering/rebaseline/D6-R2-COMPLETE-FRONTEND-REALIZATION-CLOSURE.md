@@ -3,7 +3,7 @@
 > **Status:** OPEN / ACTIVE — P0–P4 DERIVED; accepted D6 IA survives bounded revalidation as the D6-R2 `CANDIDATE`; no D6-R2 UX block is operator-`LOCKED`
 > **Program:** Architecture Rebaseline / Technical System Design
 > **Parent authority:** accepted D0–D8, accepted D6 frontend authority, canonical Product OAD
-> **Execution method:** [`Frontend Product Experience Planning Method v2.1`](../../development/frontend-product-experience-planning-method.md), tailored as recorded here
+> **Execution methods:** [DevelopmentConexus Engineering Method v1.0.0](../../development/engineering-method.md) + [Frontend Product Experience Planning Method v2.3](../../development/frontend-product-experience-planning-method.md)
 > **Product implementation:** BLOCKED UNTIL accepted D9
 
 ## 1. Purpose and boundary
@@ -56,7 +56,7 @@ The bounded recovery uses accepted composition authorities instead of recursivel
 | D6-B1 Interaction Map | 99/99 Product operations already have coherent interaction homes across 39 derived route/screen states; these homes are coverage evidence, not P8 locks. |
 | Canonical Product OAD | OpenAPI 3.1.2; 99 Product operations; 30 ordinary Permissions; Principal kinds H/A/S only; human browser uses server-side session + CSRF; Product implementation remains blocked until D9. |
 | D8 Golden Flows / proof closure | Representative system behavior is 3 business golden flows + SR-01; P1/P3 converged, P2 is operator-ratified redefer, P5 narrows full alternate destination to external-required/unsupported, P4/P6 were not triggered; no D0–D7 reopen. |
-| Frontend Product Experience Planning Method v2.1 | Human needs before screens, coverage before layout, operator-only `LOCKED`, no screen-shaped API, P0–P14 readiness discipline. |
+| Local Engineering Method v1.0.0 + Frontend Product Experience Planning Method v2.3 | Global Maximum/root-cause/proof discipline plus human needs before screens, coverage before layout, operator-only `LOCKED`, no screen-shaped API, P0–P14 readiness discipline. |
 
 ### 3.1 Accepted frontend architecture that D6-R2 must preserve
 
@@ -154,7 +154,7 @@ D6-R2 uses D0 actor classes as role contexts, **not invented personas**.
 
 | Actor context | Trigger / situation | User need / job | Desired outcome | Information needed | Handoffs / constraints |
 | --- | --- | --- | --- | --- | --- |
-| Marketplace Operations Operator | A marketplace account/product/listing/sale requires normal operation or exception handling | Prepare channel participation, control listings/price intent within policy, understand performance/market/economics, inspect sales and resolve operational exceptions | Marketplace participation is convergent, explainable and operable without bypassing policy | Readiness, requirements, Listing/Intent state, availability, market/economic evidence, performance, sale/work state | Hands physical execution to Fulfillment; hands exceptional authority to Governance/manager; cannot redefine policy to make an action permissible |
+| Marketplace Operations Operator | A marketplace account/product/listing/sale requires normal operation or exception handling | Prepare channel participation, control listings/price intent within policy, understand performance/market/economics, inspect sales and resolve operational exceptions | Marketplace participation is convergent, explainable and operable without bypassing policy | Marketplace requirements, source values/correspondence, Listing/Intent state, availability, market/economic evidence, performance, sale/work state | Hands physical execution to Fulfillment; hands exceptional authority to Governance/manager; cannot redefine policy to make an action permissible |
 | Fulfillment / Dispatch Operator | A marketplace sale reaches internally operated physical execution | Know what is ready, separate/confer correctly, trigger/observe the accepted fiscal/provider prerequisites, pack and hand off dispatch safely | Correct physical goods reach verified dispatch without premature invoicing or fabricated readiness | Sale/execution identity, separation/conference state, fiscal/provider readiness, artifacts, shipment state, exception work | Physical inconsistency blocks the normal path and becomes explicit Work; UI cannot self-authorize physical checkpoints |
 | Commercial / Marketplace Manager | Commercial evidence, policy thresholds or exceptions require a decision | Compare market/performance/economics, evaluate price trade-offs, manage legitimate MPC-owned policy and resolve bounded commercial/economic ambiguity | Commercial actions remain profitable/explainable and inside governing policy | Performance, market evidence, expected/realized economics, effective policy/provenance, approvals/exceptions | Does not edit externally governed rules; does not become integration/security administrator by default |
 | Owner / Administrator / Policy Approver | Access, integrations, exceptional authority, delegation or containment requires governance | Establish valid access/channel configuration and approve exceptional actions above delegated authority | Organization remains safely operable with explicit accountability and least necessary authority | Access context, members/roles, Installations, authorization decisions/delegations, configuration state | Not a routine approval bottleneck; cannot configure away audit/reconciliation/safety invariants |
@@ -169,9 +169,9 @@ When a human enters MPC or changes workspace, they need to know which Organizati
 
 When the organization needs to operate on a supported marketplace, an authorized human needs to create/configure the Marketplace Installation and complete any required external authorization ceremony, so that later Product operations have an explicit valid channel context.
 
-### N03 — Determine whether a source product is publishable
+### N03 — Prepare a source product for marketplace authoring
 
-When a product should participate in a marketplace, the operator needs to discover the exact source product and understand readiness/requirements/correspondence, so that missing or conflicting conditions are resolved before publication intent is submitted.
+When a product should participate in a marketplace, the operator needs to discover the exact source product, understand which fields the marketplace asks for, inspect which source values are available, and resolve correspondence when necessary, so that listing configuration starts from explicit source truth without treating missing source data as publication impossibility.
 
 ### N04 — Express controlled listing and price intent
 
@@ -306,10 +306,11 @@ Failure/alternate: no generic provider catalog, no invented `ConnectMarketplace`
 enter with exact Organization + marketplace context
 → search admitted source products; SourceInstance may narrow but omission never chooses hidden default
 → select exact SourceInstance + native product key
-→ inspect channel readiness + publication requirements
+→ inspect marketplace publication requirements + available source values/evidence
+→ preserve missing/conflicting/unknown/unavailable/unsupported evidence explicitly
 → resolve/clear correspondence only when needed and authorized
-→ re-read readiness
-→ outcome: ready state or explicit missing/conflicting/unsupported conditions
+→ authoritative reread after a correspondence effect
+→ outcome: exact prepared subject + explicit values/gaps ready for ListingIntent authoring
 ```
 
 ### UF04 — Author and submit listing/price intent
@@ -530,7 +531,7 @@ Exact per-operation owner/`operationId`/Permission/Principal-kind/identity/state
 | --- | ---: | --- | --- | --- | --- | --- | --- | --- |
 | Identity / Access | 5 | N01, N14 / UF01, UF14 | shell + Configurações/Acesso | current access, members, roles | assign/revoke AccessRole | H browser session; `access.read/manage` where applicable; server auth wins | canonical Organization, display labels never identity, stale/deep-link access fails closed | COVERED |
 | Marketplace Portfolio | 6 | N02, N08 / UF02, UF10 | Configurações/Canais + Selling Entity context | Installations, Selling Entities | create/update/deactivate Installation | `portfolio.read/manage`; OAuth is separate Technical Ingress | available kind != connected Installation; no fake provider catalog; exact Installation identity | COVERED |
-| Product & Channel Readiness | 5 | N03 / UF03 | Preparação | source-product search, readiness, requirements | resolve/clear correspondence | `readiness.read/manage` | SourceInstance explicit; omission is bounded search, never hidden default; unsupported/missing stays visible | COVERED |
+| Product & Channel Readiness | 5 | N03 / UF03 | Preparação | source-product search, publication requirements/source evidence, correspondence/current context | resolve/clear correspondence | `readiness.read/manage` | SourceInstance explicit; omission is bounded search, never hidden default; missing/conflicting/unknown/unavailable/unsupported stays visible; no per-requirement satisfaction inference | COVERED |
 | Offering | 12 | N04, N06 / UF04, UF08 | Publicações / ListingIntent / PriceIntent | listings, intents, current state | ListingIntent create/update/discard/media/submit; PriceIntent create | `offering.read`, `listing.manage`, `price.manage` as exact OAD binds | ETag/If-Match, idempotency, no provider direct write, accepted/pending/rejected/ambiguous distinct | COVERED |
 | Availability | 9 | N07 / UF09 | Disponibilidade + Configurações/Disponibilidade | sellable state, Inventory Sources, effective policy | source/policy configuration only | `availability.read/manage` | derived availability not manual quantity truth; unknown != zero; no generic sync | COVERED |
 | Market Intelligence | 3 | N06 / UF08 | Mercado | competitive position/offers | none | `market.read` | evidence/read composition only; no Price write authority | COVERED |
@@ -634,7 +635,7 @@ Accepted primary IA labels remain accepted D6 authority. Detailed object/action 
 | Selling Entity | Entidade vendedora | legal-entity DTO/package names | accepted Settings grouping |
 | Source Product | Produto de origem | Product master MPC | source remains external/source-qualified |
 | SourceInstance | Fonte de origem | source instance id as user noun | exact technical key may be secondary evidence |
-| Product Channel Readiness | Preparação / prontidão para publicação | readiness service/domain | primary nav label **Preparação** is accepted |
+| Product Channel Readiness | Preparação | readiness/prontidão como status por campo | primary nav label **Preparação** is accepted; owner truth supplies requirements/correspondence without the UI inventing satisfaction |
 | Publication Requirements | Requisitos de publicação | provider requirement DTO | provenance/unsupported state stays explicit |
 | Product Channel Correspondence | Correspondência do produto | linkage entity/package | detail term remains candidate pending A03 |
 | Marketplace Listing | Publicação | listing resource as unexplained English noun | primary nav label **Publicações** is accepted |
@@ -673,7 +674,7 @@ Terminology falsifier result: no accepted user need requires a backend package/A
 | --- | --- | --- | --- | --- | --- |
 | Organization shell | establishes scope for everything | confirm/switch current workspace | all Product contexts | persistent global context | **KEEP** global shell context; not a content route |
 | Visão geral | orientation/attention entry | understand bounded current posture | Portfolio, Economics, Work, Performance when permitted | home/entry composition | **KEEP** accepted landing; content priority remains A04 |
-| Preparação | determine whether a product can participate | search source product, inspect readiness/requirements, resolve correspondence | Publicações, Disponibilidade | search-first task context | **KEEP** independent operational destination |
+| Preparação | prepare marketplace-required data before authoring | search source product, inspect marketplace fields/source values, resolve correspondence | Publicações / ListingIntent | search-first task context | **KEEP** independent operational destination |
 | Publicações | operate provider-facing offering intent/state | browse listings/intents, author/submit listing/price intent | Preparação, Disponibilidade, Performance, Mercado, Economia | primary operational destination + contextual detail | **KEEP** independent destination |
 | Disponibilidade | know sellable availability | inspect sellable state; reach source/policy configuration | Publicações, Configurações | operational read destination | **KEEP** independent destination; configuration remains Settings |
 | Vendas | understand source-qualified sale and next safe handoff | browse sale, inspect composed cross-owner state | Economia, materialization, Expedição, Pós-venda, Trabalho | primary sale entry + contextual composition | **KEEP** independent destination |
@@ -762,7 +763,7 @@ Mechanisms below are the smallest justified baseline. Exact filters/sorts are ad
 
 | Collection/task | Baseline findability | Explicitly not assumed |
 | --- | --- | --- |
-| source products for readiness | **search-first** in Preparação | global search, hidden SourceInstance default |
+| source products for marketplace preparation | **search-first** in Preparação | global search, hidden SourceInstance default |
 | Marketplace Listings | browse/list under Publicações with exact Installation | synthetic all-provider merged list |
 | ListingIntents / PriceIntents | local browse/work contexts under Publicações | separate top-level Intent areas, generic mutation inbox |
 | Listing performance | Performance/Publicações + contextual Listing link | survivorship filtering that hides unknown/unavailable Performance |
@@ -784,7 +785,7 @@ No saved-view platform, alternate-view framework or bulk-selection model is just
 | --- | --- | --- | --- |
 | N01 correct Organization | persistent Organization shell | Configurações/Acesso only for administration | **PASS** |
 | N02 usable marketplace channel | Configurações → Canais | external OAuth ceremony for exact account when required | **PASS** |
-| N03 determine publishability | Preparação | Publicações only after readiness work | **PASS** |
+| N03 prepare marketplace data | Preparação | Publicações/ListingIntent after source-value inspection and correspondence when needed | **PASS** |
 | N04 listing/price intent | Publicações | contextual availability/economics and approval when required | **PASS** |
 | N05 marketplace Performance | Performance → Resumo/Publicações/Mídia | Listing contextual link where useful | **PASS** |
 | N06 competitive/economic position | Mercado + Economia | PriceIntent continuation returns to Publicações/Offering | **PASS** |
@@ -856,7 +857,7 @@ accepted D6 IA
 → P4 CANDIDATE REVALIDATED
 ```
 
-This does **not** create a new D6-R2 `LOCKED` decision. Under Method v2.1, the global frame becomes eligible for an operator `LOCKED` decision only after the first required rendered global-frame block cycle. Existing D6 operator ratification remains architectural input authority; D6-R2 does not pretend that an unrendered P4 trace is the P8 visual lock.
+This does **not** create a new D6-R2 `LOCKED` decision. Under Frontend Product Experience Planning Method v2.3, the global frame becomes eligible for an operator `LOCKED` decision only after the first required rendered global-frame block cycle. Existing D6 operator ratification remains architectural input authority; D6-R2 does not pretend that an unrendered P4 trace is the P8 visual lock.
 
 ### Open evidence carried forward
 

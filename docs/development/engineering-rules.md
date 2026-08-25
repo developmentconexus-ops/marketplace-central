@@ -1,94 +1,59 @@
 # Marketplace Central — Engineering Rules
 
-> **Scope:** repository-local execution, CI/proof, safety rails, and justified Repository Standard specializations. This file owns no Product semantics, methodology kernel, or mutable program status.
+> **Scope:** repository-local execution, Git, CI, proof, and Marketplace safety specialization. This file does not own Product semantics, current program status, or the content of the adopted engineering/frontend methods.
 
-## Canonical methodology
+## Adopted local methods
 
-Canonical repository:
+Use the repository-local copies without locally redefining them:
 
-`developmentconexus-ops/conexus-methodology`
+- [`engineering-method.md`](engineering-method.md) — DevelopmentConexus Engineering Method v1.0.0;
+- [`frontend-product-experience-planning-method.md`](frontend-product-experience-planning-method.md) — Frontend Product Experience Planning Method v2.3.
 
-Accepted pin:
+`AGENTS.md` and `docs/index.md` route to these files directly. There is no external methodology router, pin, profile-selection step, file-count limit, or owner-count limit.
 
-`9c7210d1504bef01c0d134a6c3ae8627deebb535`
-
-Start at pinned `ROUTER.md`. Organizational reasoning, repository operation, frontend planning, realization, and independent review are owned by the applicable pinned Method files. MPC does not copy or redefine them here.
-
-## Local aggregate verification
+## Verification
 
 ```powershell
 npm run gate
-npm run gate:full
 ```
 
-`scripts/gate.ps1` is the repository-local aggregate implementation. It must prove current repository properties over the intended base...candidate range, including bootstrap/context budget, routing/reachability, temporary/review hygiene, current Product proof, and deterministic negative controls where a reusable guard exists.
+The required gate is intentionally one objective aggregate check. It protects only properties suited to mechanical verification: required operating files, one canonical Product OpenAPI entrypoint, unsafe workflow triggers, unresolved merge-conflict markers, the current implementation block on changed paths, and the canonical Product OAD proof.
 
-A red current control is a stop. Do not raise a budget, weaken a guard, or add an exception merely to make it green. Retire a subject-specific control only with attributable `subject population = 0` or proved replacement coverage.
+Do not use CI to judge Global Maximum, evidence quality, architecture quality, UX quality, how many files were read, or whether a planning artifact used a preferred format. Those are engineering-review questions governed by the adopted methods.
 
-## MPC safety and Evidence specialization
+For a claim that touches a specific wireframe, authorization slice, provider behavior, runtime property, or another protected surface, run the relevant targeted proof when the claim requires it. Do not make every historical proof a permanent prerequisite for unrelated planning work.
+
+A mock/fake proves only the local mock boundary. Claims about Mercado Livre, Sankhya, runtime, persistence, browser behavior, or another real dependency require Evidence proportional to the real claim.
+
+## Marketplace safety boundaries
 
 - Sankhya and marketplace providers are external systems. Sankhya target access is through its sanctioned API Gateway; Direct Oracle/database is not a target fallback.
 - Unknown, absent, partial, unavailable, or unproved facts never become plausible known defaults.
 - Organization isolation fails closed across Organizations.
-- Consequential external writes require explicit owner meaning, duplicate protection/idempotency where required, auditability, reconciliation, and no blind retry after ambiguous possible acceptance.
-- Provider PII is minimized; secrets/PII never enter commits, logs, review transport, fixtures, or durable docs.
+- Consequential external writes require explicit owner meaning, duplicate protection/idempotency where required, auditability, reconciliation, and no blind retry after an ambiguous potentially accepted write.
+- Provider PII is minimized; secrets/PII never enter commits, logs, review material, fixtures, or durable documentation.
 - Mercado Livre is the first proving marketplace. Provider DTO/protocol detail remains behind the consuming semantic boundary.
 - Do not create an MPC Product/PIM master, generic Integration/Mutation/Workflow authority, provider-plugin platform, or AI-specific business bypass by convenience.
 - Live Mercado Livre writes require explicit operator authorization.
-- Mocks/fakes prove local behavior only. Claims about Mercado Livre, Sankhya, runtime, persistence, or browser behavior require Evidence proportional to the real dependency.
 
-## MPC dependency / target-architecture specialization
+## Dependency and target-architecture rule
 
-Dependency or lockfile changes must be explicitly inside the declared acceptance increment, including why the dependency is required now and the proof that exercises it.
+A dependency or lockfile change must be inside the declared work scope, with a real current consumer and proof appropriate to the dependency claim.
 
-Never bend accepted target architecture merely to preserve removed/superseded code or tests. Preserve current security, PII, Organization-isolation, data-integrity, Product-contract, and irreversible/external-effect protections.
+Never bend accepted target architecture merely to preserve removed or superseded code/tests. Preserve current security, PII, Organization-isolation, data-integrity, Product-contract, and irreversible/external-effect protections.
 
-## Publication specialization
+## Git and publication
 
-Use conventional-commit PR titles and state both what changes and what deliberately does not change. Never force-push or rewrite shared history. Explicit operator merge authorization remains required where `docs/roadmap.md` or the active increment requires it.
+Preserve unowned state. Do not reset, clean, stash, force-update, force-push, or rewrite shared history by convenience.
 
-Dependent work does not stack on an unmerged acceptance increment by default. A roadmap stage may remain OPEN across several integrated increments.
+Use the existing branch/PR when work is already in progress. Keep changes attributable and reviewable. Squash merge remains the normal integration mechanism where used by the repository, and merge requires explicit operator authorization.
 
-Independent review lifecycle/transport is owned by the pinned `ADVERSARIAL-REVIEW-METHOD.md`; the repository aggregate gate enforces candidate/main hygiene and exact review isolation. Reviewer output is Evidence, not Product/status authority.
+Independent review is Evidence, not authority. Use it when material risk justifies it; do not create review ceremony merely because a template or prior workflow once required it.
 
-## Retained derived production guide
+## Documentation and context
 
-[`evidence-grounded-production-engineering-for-llm-agents.md`](evidence-grounded-production-engineering-for-llm-agents.md) is retained as an optional historical/portable **non-authoritative reference** derived from historical blob `8de8ff4afbfcc2ee37a7db6ea0019e717740ebcf`. The current file differs from that historical blob only by bounded repairs that replace a dead/local Method parent link and a floating-`main` Method link with the repository's accepted exact canonical pin; its engineering guidance is not promoted to normative authority.
+`docs/roadmap.md` owns current stage/status/allowed-work/next-action. `docs/index.md` is a navigation aid.
 
-It is not a current Method selector. Current production realization uses the pinned `ROUTER.md` → `METHOD.md` + `REALIZATION-METHOD.md` profile. Keep the guide only while it has a real reference consumer; the aggregate gate does not require its mere existence. Do not evolve it into a second Method copy.
+There is no fixed task-pack size. Start where useful and expand into any Product, architecture, contract, Evidence, research, Git history, code, runtime, or external source that can materially change or falsify the conclusion. Whole-repository analysis is allowed when the task warrants it.
 
-## Justified Repository Standard path specializations
-
-These are path/layout deviations only. They do not change authority semantics.
-
-### Stable architecture root
-
-- **Organizational default:** `docs/architecture/index.md`.
-- **MPC specialization:** retain `ARCHITECTURE.md` at repository root.
-- **Consumer:** dense accepted D-stage/ADR citations to the established root path.
-- **Why default is insufficient now:** moving it would create broad authority-document churn without reducing active context or changing correctness.
-- **Removal trigger:** a material architecture-generation rewrite already touching those citations, or another concrete consumer making the move low-churn and valuable.
-
-### ADR registry
-
-- **Organizational default:** `docs/decisions/`.
-- **MPC specialization:** retain `docs/architecture/decisions/` while current ADR residue remains linked there.
-- **Consumer:** accepted ADR registry/citation subtree.
-- **Removal trigger:** material ADR generation restructuring or retirement of the surviving residue set.
-
-### Accepted D-stage authority package
-
-- **Organizational default:** durable phase/result authority under `docs/phases/` when useful.
-- **MPC specialization:** retain the densely cross-linked accepted package under `docs/engineering/rebaseline/`.
-- **Consumer:** current D0–D8/D6-R2 authority, proofs, and routing.
-- **Why default is insufficient now:** a cosmetic mass move would create high citation churn with no Product/context gain.
-- **Removal trigger:** post-D9 consolidation or another material authority-generation change that makes rehoming part of useful work rather than path aesthetics.
-
-### Evidence Register
-
-- **Organizational default:** `docs/evidence/`.
-- **MPC specialization:** retain `docs/engineering/rebaseline/EVIDENCE-REGISTER.md` while it supports the accepted rebaseline package.
-- **Consumer:** current accepted phase authorities citing the register.
-- **Removal trigger:** post-D9 evidence consolidation or creation of a new current Evidence home for a real consumer.
-
-When a specialization is removed, repair live consumers in the same acceptance increment and remove the old path; do not create indefinite compatibility authority.
+Temporary working material should not become a second authority. Durable accepted conclusions belong in their real owning document or Evidence home; do not create parallel roadmaps or permanent session handoff/dialogue trees by default.

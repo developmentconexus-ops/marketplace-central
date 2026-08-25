@@ -15,7 +15,6 @@ Stable Product Problem origin: `https://conexus.fun`.
 
 ```powershell
 npm run gate
-npm run gate:full
 ```
 
 Repository history and closed PRs preserve superseded implementation and operating-envelope evidence; they are not active Product authority.

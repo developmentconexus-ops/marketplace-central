@@ -2,7 +2,7 @@
 
 > **Status:** DERIVED / CANDIDATE — P5 complete; no P8 block is operator-`LOCKED`
 > **Parent:** [D6-R2 Complete Frontend Realization Closure](D6-R2-COMPLETE-FRONTEND-REALIZATION-CLOSURE.md)
-> **Method:** [Frontend Product Experience Planning Method v2.1](../../development/frontend-product-experience-planning-method.md)
+> **Methods:** [DevelopmentConexus Engineering Method v1.0.0](../../development/engineering-method.md) + [Frontend Product Experience Planning Method v2.3](../../development/frontend-product-experience-planning-method.md)
 > **Inputs:** P0–P3 N01–N16 / UF01–UF16 / 99-operation coverage + P4 revalidated candidate IA
 > **Boundary:** screen/surface inventory only; no rendered wireframes, no Product implementation, no P9 wire binding yet
 
@@ -78,7 +78,7 @@ Primary route-family authority remains accepted D6. The more specific P5 suffixe
 | ID | Candidate route/page home | Material surfaces inside the home | Need / flow coverage | P5 disposition |
 | --- | --- | --- | --- | --- |
 | R01 | `/visao-geral` | installation posture; bounded economics summary; Work preview; per-Installation Performance entry point | N01/N05/N06/N12 · UF01/UF05/UF13 | **KEEP** small read-only composition; A04 controls later hierarchy |
-| R10 | `/preparacao` | source-product search/results; selected source identity/readiness; publication requirements; correspondence resolution; continuation to ListingIntent | N03 · UF03/UF04 | **KEEP** one search-first workspace; real structural ambiguity triggers P6 |
+| R10 | `/preparacao` | source-product search/results; selected source identity; marketplace publication requirements + source values/evidence; correspondence resolution; continuation to ListingIntent | N03 · UF03/UF04 | **KEEP** one search-first workspace; real structural ambiguity triggers P6 |
 | R20 | `/publicacoes` | Marketplace Listing collection; exact Installation context; explicit knowledge/status presentation | N04 · UF04 | **KEEP** collection home |
 | R21 | `/publicacoes/:nativeListingKey` + exact Installation URL state | Offering truth; availability context; Performance material region; optional Market/Economics evidence; related Work/intents | N04/N05/N06/N07 · UF04/UF06/UF08/UF09 | **KEEP** one source-qualified Listing detail; old S22 absorbed as separate material region |
 | R22 | `/publicacoes/intencoes` | ListingIntent collection/work context | N04 · UF04 | **KEEP** local Publicações subcontext |
@@ -268,7 +268,7 @@ P4 found no IA-level ambiguity. P5 does find a small number of **block-level str
 | --- | --- | --- | --- |
 | B00 App Shell + global IA | accepted D6 frame is stable and conventional | **NOT TRIGGERED** | **NOT TRIGGERED** |
 | B01 Overview | priority evidence A04 is missing, but external pattern research cannot decide organization-specific priority | **NOT TRIGGERED**; resolve through operator/P12 evidence | **NOT TRIGGERED** |
-| B10 Preparation | search-first multi-source selection + readiness/requirements/correspondence can plausibly be split-view, progressive detail or list→detail | **TRIGGERED** | **CONDITIONAL after P6** if >1 credible structure remains |
+| B10 Preparation | search-first multi-source selection + marketplace requirements/source values/correspondence can plausibly be split-view, progressive detail or list→detail | **TRIGGERED** | **CONDITIONAL after P6** if >1 credible structure remains |
 | B20 Publications collection/detail | conventional collection/detail; authority separation is already explicit | **NOT TRIGGERED** | **NOT TRIGGERED** |
 | B23 ListingIntent editor | revision-aware draft + media + contextual evidence + submit/discard + consequential outcomes create a high-impact editor problem | **TRIGGERED** | **CONDITIONAL after P6** |
 | B24 PriceIntent | bounded collection/detail/create pattern | **NOT TRIGGERED** | **NOT TRIGGERED** |
@@ -365,4 +365,4 @@ P6 is required before P8 for **B10 Preparation, B23 ListingIntent editor, B40 Pe
 
 P8 remains **NOT STARTED**. No D6-R2 UX block is `LOCKED`.
 
-The first renderable block is **B00 App Shell + global IA**, because it has no P6/P7 trigger and downstream blocks inherit its frame. Per Method v2.1, it must be rendered as a structural candidate and explicitly operator-adjudicated before dependent block rendering becomes baseline.
+The first renderable block is **B00 App Shell + global IA**, because it has no P6/P7 trigger and downstream blocks inherit its frame. Per Frontend Product Experience Planning Method v2.3, it must be rendered as a structural candidate and explicitly operator-adjudicated before dependent block rendering becomes baseline.
