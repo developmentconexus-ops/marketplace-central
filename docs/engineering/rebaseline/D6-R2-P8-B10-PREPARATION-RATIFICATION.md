@@ -1,40 +1,17 @@
-# D6-R2 P8 — B10 Preparação Ratification / Reopen Record
+# D6-R2 P8 — B10 Preparação Ratification
 
-> **PRIOR P8: OPERATOR-RATIFIED / LOCKED**
-> **CURRENT P8: REOPENED / CANDIDATE**
+> **CURRENT P8: OPERATOR-RATIFIED / LOCKED**
 > **Block:** B10 — Preparação / R10
 > **Methods:** [DevelopmentConexus Engineering Method v1.0.0](../../development/engineering-method.md) + [Frontend Product Experience Planning Method v2.3](../../development/frontend-product-experience-planning-method.md)
-> **Candidate evidence:** `qualification/d6-r2-wireframes/b10-preparation.html`
+> **Locked evidence:** `qualification/d6-r2-wireframes/b10-preparation.html`
+> **Operator disposition:** `LOCK` on 2026-08-25
 > **Product implementation:** BLOCKED UNTIL accepted D9
 
-## 1. Historical operator LOCK
+## 1. Why B10 was reopened
 
-The prior human-first B10 candidate was operated and explicitly LOCKED by the operator after the earlier backend-language revision.
+The prior B10 LOCK projected `source_evidence.state = known` as `Atendido`. P9 showed that source evidence did not authorize a per-requirement satisfaction conclusion.
 
-Historical walkthrough:
-
-```text
-OPERATED
-actual task attempted: inspect the revised human-first Preparation flow as a normal operator
-material issues found: none after the human-language revision
-final disposition: LOCK
-```
-
-That decision remains historical evidence; it is not erased by the current bounded reopen.
-
-## 2. A01 remains accepted
-
-The prior lock-time assumption remains:
-
-`A01 = ACCEPT_FOR_LOCK_WITH_LATER_PROBE`.
-
-A01 concerns the choice of search/list → exact-subject detail rather than a persistent split view. The current simplification does not falsify that structure, so A01 is not reopened.
-
-## 3. Why the LOCK reopened
-
-P9 exposed that `source_evidence.state = known` had been projected as `Atendido`. The operator then required a Global Maximum evaluation rather than a cosmetic label change.
-
-Fresh marketplace-hub/provider research showed that the simpler sustainable model is:
+The operator required a Global Maximum re-evaluation rather than a cosmetic label patch. Current marketplace-hub/provider evidence supported the smaller sustainable model:
 
 ```text
 marketplace requirement
@@ -43,29 +20,13 @@ marketplace requirement
 + provider-specific validation/feedback
 ```
 
-The proposed `source_sufficiency` layer was rejected as overengineering. No new Product wire field is required.
+The proposed generic `source_sufficiency` layer was rejected as accidental complexity. No new Product operation, Permission, Principal kind or wire field was required.
 
-The operator explicitly approved this **operator-authorized bounded rebaseline**.
+## 2. Operator walkthrough and LOCK
 
-Because the visible requirement model changes from five columns with a satisfaction/status projection to four columns focused on requirement/value/handoff, the old B10 LOCK cannot silently carry forward.
+The simplified browser-operable candidate was supplied to the operator for the fresh P8 walkthrough required by the Frontend Product Experience Planning Method.
 
-## 4. Current candidate boundary
-
-The reopened P8 preserves:
-
-- search/list → exact-subject detail;
-- exact Organization + Marketplace Installation;
-- no ambient/default SourceInstance;
-- known-empty distinct from unknown/unavailable;
-- complete provider/context-specific requirement census;
-- PR #68 class/applicability/value/source distinctions beneath the UI;
-- missing source truth not becoming publication-impossible;
-- correspondence Resolve/Clear under ProductChannelReadiness with authoritative reread;
-- ListingIntent as downstream authoring boundary;
-- technical identifiers/details as secondary disclosure;
-- B00/B01/B00-R2/B11/B12/B110 as UNAFFECTED.
-
-The primary operator projection now removes per-requirement satisfaction semantics and presents:
+The candidate exposed:
 
 ```text
 Campo do marketplace
@@ -74,18 +35,63 @@ Valor encontrado
 Na configuração do anúncio
 ```
 
-## 5. Current gate
+and kept the search/list → exact-subject detail → correspondence → ListingIntent boundary executable.
 
-**CURRENT P8: REOPENED / CANDIDATE.**
-
-The revised browser-operable candidate must pass its structural proof and then a fresh **operator walkthrough required** gate.
-
-Only the operator may choose the next P8 disposition:
+After receiving the exact candidate, the operator returned **`Aprovado`** as the disposition. Under the previously stated P8 choice set (`LOCK / REVISE / UPSTREAM FINDING`), that approval is recorded as:
 
 ```text
-LOCK
-REVISE
-UPSTREAM FINDING
+final disposition: LOCK
+material revision requested: NONE
+upstream finding raised: NONE
 ```
 
-P9 remains paused while P8 is reopened. Do not begin P10, Pre-D9/D9 or Product implementation before a fresh operator LOCK and P9 rerun.
+## 3. Locked B10 structure
+
+The current LOCK protects:
+
+- `OFERTA > Preparação` as the B10 placement;
+- search/list → exact source-qualified subject detail;
+- exact Organization + Marketplace Installation context;
+- no ambient/default SourceInstance;
+- known-empty distinct from unknown/unavailable;
+- complete provider/context-specific marketplace requirement census;
+- primary projection `Campo do marketplace / Exigência / Valor encontrado / Na configuração do anúncio`;
+- no `Situação`, `Atendido`, readiness score or per-field sufficiency label;
+- `known / missing / conflicting / unknown / unavailable / unsupported` remaining distinguishable beneath the human projection;
+- missing/conflicting source data not becoming publication-impossible;
+- Product↔channel correspondence as a separate ProductChannelReadiness concern;
+- explicit Resolve/Clear correspondence followed by authoritative reread;
+- `Continuar para configurar o anúncio` as a downstream Offering/ListingIntent boundary, not a publication effect;
+- technical identifiers/details as secondary support disclosure rather than primary operator vocabulary;
+- responsive search→detail/mobile-stack behavior without changing authority meaning.
+
+The LOCK does **not** freeze final visual design, production components, final typography/palette, provider payload validation UI, or the unopened ListingIntent editor.
+
+## 4. A01 disposition
+
+`A01 = ACCEPT_FOR_LOCK_WITH_LATER_PROBE` remains unchanged.
+
+A01 concerns the search/list → exact-subject detail structure and relative task-frequency/density evidence. The bounded requirement/value simplification did not falsify that structure.
+
+## 5. Authority and reopen triggers
+
+No D0–D5 Product authority, Product operation, Permission, Principal kind, D7/D8 authority or implementation authorization changes with this LOCK.
+
+Reopen B10 only on material evidence such as:
+
+- a real provider requirement cannot be represented without losing material meaning;
+- a real operator task proves the search/detail structure materially insufficient;
+- source/provider evidence cannot remain honest in the four-column projection;
+- downstream ListingIntent authoring proves a required B10 handoff identity/state is missing;
+- P9 finds a contradiction against the locked experience or accepted Product authority.
+
+## 6. Next method gate
+
+P8 is closed for B10.
+
+```text
+P8 OPERATOR-RATIFIED / LOCKED
+→ P9 exact Screen Contract + bidirectional backend trace
+```
+
+P10/P11, Pre-D9/D9 and Product implementation may not bypass P9.

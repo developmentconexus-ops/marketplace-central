@@ -1,40 +1,38 @@
 # D6-R2 P9 — B10 Preparação Screen Contract
 
-> **Status:** PAUSED — P8 REOPENED
+> **Status:** DERIVED / PASS — P8 LOCKED; BACKEND SUFFICIENT; UPSTREAM FINDING NONE
 > **Block:** B10 — Preparação / R10
 > **Methods:** [DevelopmentConexus Engineering Method v1.0.0](../../development/engineering-method.md) + [Frontend Product Experience Planning Method v2.3](../../development/frontend-product-experience-planning-method.md)
+> **Locked P8 evidence:** `qualification/d6-r2-wireframes/b10-preparation.html`
 > **Canonical Product OAD:** `contracts/api/product/openapi.yaml`
 > **Product implementation:** BLOCKED UNTIL accepted D9
 
-## 1. Why P9 is paused
+## 1. P9 result
 
-The first P9 pass found:
+P9 was rerun only after the operator re-LOCKED the simplified B10 candidate.
 
-**`F-P9-B10-01` — `known` source evidence does not equal requirement satisfied.**
+The locked human job is:
 
-The initial local correction proposed replacing `Atendido` with `Informação disponível`. The operator challenged that local maximum and required a full Global Maximum evaluation against the DevelopmentConexus Method and current marketplace-hub/provider evidence.
+```text
+exact Organization + Marketplace Installation
+→ search exact source-qualified product
+→ inspect marketplace requirements + source values/evidence
+→ resolve/clear correspondence when needed
+→ authoritative reread after correspondence effect
+→ continue to downstream ListingIntent authoring
+```
 
-Result: **GLOBAL MAXIMUM REVALIDATED.**
+The current Product contract is sufficient for this job. No screen-shaped endpoint, per-requirement satisfaction field, generic mapping engine, provider-field bag or new frontend business authority is required.
 
-The correct simplification is not another status label and not another backend state. B10 should project:
+**P9 verdict: PASS / BACKEND SUFFICIENT / UPSTREAM FINDING NONE.**
 
-**requirements + source values + downstream authoring/provider validation**.
+## 2. Route, identity and client-state ownership
 
-The unnecessary intermediate layer is **REJECTED — `source_sufficiency`**.
+Production route family:
 
-**NO NEW UPSTREAM WIRE FIELD** is required. The current Product contracts already preserve the essential distinctions; the accidental complexity was in the frontend projection.
+`/org/:organizationId/preparacao`
 
-Because P8 was materially reopened and the new candidate is not yet operator-LOCKED, this P9 cannot be represented as closed. **rerun P9 after operator re-LOCK**.
-
-## 2. Stable authority that survives the reopen
-
-The bounded rebaseline does not change the accepted route or Product operation ownership.
-
-Canonical workspace:
-
-`/preparacao`
-
-Stable identity/navigation carriers remain:
+Material carriers:
 
 ```text
 organization_id
@@ -45,124 +43,205 @@ selected_source_instance_id
 selected_native_product_key
 ```
 
-The source-qualified selected identity remains exact. Organization changes invalidate Installation and selected-subject context; Installation changes invalidate selected-subject state. URL state is navigation, never business authority.
+Client-state classes:
 
-## 3. Stable Product operation trace
+| State class | B10 ownership |
+| --- | --- |
+| `GLOBAL_WORKSPACE_CONTEXT` | `organization_id`; changing Organization invalidates incompatible Installation, selected-subject and server state |
+| `URL_NAVIGATION_STATE` | `marketplace_installation_id`, `q`, optional `source_instance_id`, selected source/native product identity when deep-linkable |
+| `SERVER_STATE` | Installation collection, source search results, ProductChannelReadiness/correspondence, PublicationRequirements and their revisions/evidence |
+| `LOCAL_EPHEMERAL` | mobile navigation disclosure, technical-details disclosure and other non-business presentation state |
 
-B10 continues to consume:
+Prototype-only scenario selectors are Evidence controls, not production Product state.
 
-- `ListMarketplaceInstallations` when the exact page-local account selector needs population;
-- `SearchSourceProductsForMarketplace` — owner ProductChannelReadiness, `readiness.read`;
-- `GetProductChannelReadiness` — exact subject/correspondence truth, `readiness.read`;
-- `GetPublicationRequirements` — provider/context requirement census + source evidence, `readiness.read`;
-- `ResolveProductChannelCorrespondence` — `readiness.manage`;
-- `ClearProductChannelCorrespondence` — `readiness.manage`.
+URL/router state never becomes business authority. TanStack Query remains the accepted production owner of server state; no normalized frontend business-entity mirror is introduced.
 
-The downstream operation remains `CreateListingIntentDraft`, owned by Offering with `listing.manage` and `Idempotency-Key` semantics.
+## 3. Product operation / access binding
 
-**B10 does not call `CreateListingIntentDraft`.** Its continue control is a navigation handoff because B10 does not own the final desired listing representation.
+| Screen need | Operation | Semantic owner | Permission | Principal kinds | P9 disposition |
+| --- | --- | --- | --- | --- | --- |
+| populate exact account selector | `ListMarketplaceInstallations` | MarketplacePortfolio | `portfolio.read` | H/A/S | admitted read; human surface consumes H |
+| search source products | `SearchSourceProductsForMarketplace` | ProductChannelReadiness | `readiness.read` | H/A/S | exact source-qualified results; optional SourceInstance is narrowing only |
+| read exact subject/correspondence | `GetProductChannelReadiness` | ProductChannelReadiness | `readiness.read` | H/A/S | supplies correspondence/current-read basis; no mandatory per-field readiness label |
+| read marketplace fields/source evidence | `GetPublicationRequirements` | ProductChannelReadiness | `readiness.read` | H/A/S | complete provider/context requirement census + source evidence |
+| define correspondence | `ResolveProductChannelCorrespondence` | ProductChannelReadiness | `readiness.manage` | H/A | explicit consequential action |
+| remove correspondence | `ClearProductChannelCorrespondence` | ProductChannelReadiness | `readiness.manage` | H/A | explicit consequential action |
+| downstream draft creation | `CreateListingIntentDraft` | Offering | `listing.manage` | H/A | **no B10 mutation home**; future ListingIntent authoring boundary only |
 
-## 4. Simplified screen contract candidate
+Human browser realization remains server-side session + CSRF. Permission-conditioned control visibility is usability only; server authorization is authoritative.
 
-The new P8 projection deliberately avoids a per-field `satisfied`, `ready`, `met` or sufficiency conclusion.
+`CreateListingIntentDraft` has `Idempotency-Key` semantics in the OAD, but B10 does not call it merely to leave Preparação.
 
-| Frontend region | Product truth | Human projection |
-| --- | --- | --- |
-| marketplace account | MarketplacePortfolio / exact Installation | Conta do marketplace |
-| source search | `SearchSourceProductsForMarketplace` | Produto + cadastro de origem |
-| requirement field | `GetPublicationRequirements.requirement_class` | Campo do marketplace + Exigência |
-| source evidence | `GetPublicationRequirements.source_evidence` | Valor encontrado or honest absence/ambiguity |
-| downstream handoff | Offering boundary | Na configuração do anúncio |
-| correspondence | `GetProductChannelReadiness` + Resolve/Clear | Vínculo com o marketplace |
+## 4. Material screen contract
 
-The provider declaration and source value remain distinct even when the UI places them side by side.
+### 4.1 Organization + marketplace account context
 
-A `known` source value may be carried forward; a `missing`, `unsupported`, `unknown`, `unavailable` or `conflicting` value remains honest evidence. B10 does not need to label any of them as a satisfied requirement.
+**GOAL / FLOW:** establish the exact operating context before source search.  
+**ROUTE / SURFACE:** global Organization shell + B10 account selector.  
+**INFORMATION ROLE:** scope/navigation context.  
+**OWNER + READ TRUTH:** Organization access context + MarketplacePortfolio `ListMarketplaceInstallations`.  
+**WRITE CONTROL:** none.  
+**IDENTITY SOURCE:** canonical `organization_id` + exact `marketplace_installation_id`.  
+**CLIENT STATE CLASS:** global workspace + URL navigation + server collection state.  
+**WIRE MECHANICS:** account list may populate the selector; no first/default account is selected.  
+**MATERIAL FAILURES:** no accessible Organization; exact Installation missing/invalid/inaccessible; Installation list unavailable.  
+**FAILURE MESSAGE INTENT:** name missing/unavailable context without inventing fallback.  
+**SUCCESS CONSEQUENCE:** exact Installation context established; changing Organization/Installation invalidates selected-subject state.  
+**AUTHZ / DISCLOSURE:** `portfolio.read` for population; server auth remains authoritative.  
+**FORBIDDEN FRONTEND AUTHORITY:** ambient/default tenant/account or account-derived authorization.  
+**BACKEND SUFFICIENCY:** sufficient.
 
-Missing/conflicting source values do not become publication-impossible by themselves. ListingIntent may later choose `FOLLOW_SOURCE` or `EXPLICIT_OVERRIDE` under Offering authority.
+### 4.2 Source-product search and selection
 
-## 5. Correspondence safety remains unchanged
+**GOAL / FLOW:** find the exact source product intended for this marketplace context.  
+**ROUTE / SURFACE:** B10 search/results.  
+**INFORMATION ROLE:** source-qualified discovery evidence.  
+**OWNER + READ TRUTH:** ProductChannelReadiness `SearchSourceProductsForMarketplace`.  
+**WRITE CONTROL:** none.  
+**IDENTITY SOURCE:** returned SourceInstance + native product key; optional `source_instance_id` only narrows search.  
+**CLIENT STATE CLASS:** URL navigation (`q`, optional source filter) + server search state.  
+**WIRE MECHANICS:** bounded search; omission of source filter searches admitted Organization-scoped sources and never picks a hidden default.  
+**MATERIAL FAILURES:** blank query validation; known-empty; unavailable search; inaccessible/not-found source identity.  
+**FAILURE MESSAGE INTENT:** preserve `known-empty != unavailable`; never present transport/source failure as no product.  
+**SUCCESS CONSEQUENCE:** one exact source-qualified subject is selected for detail.  
+**AUTHZ / DISCLOSURE:** `readiness.read`; technical source keys may be secondary support detail.  
+**FORBIDDEN FRONTEND AUTHORITY:** MPC Product master/PIM, source identity merge, hidden source default.  
+**BACKEND SUFFICIENCY:** sufficient.
 
-Resolve/Clear continues to use the exact subject + current `correspondence_etag`.
+### 4.3 Marketplace fields + source values
+
+**GOAL / FLOW:** show what the marketplace asks for and what source value/evidence exists before authoring.  
+**ROUTE / SURFACE:** locked four-column `Campos para o marketplace` region.  
+**INFORMATION ROLE:** provider/context requirement + source evidence comparison, not final draft validation.  
+**OWNER + READ TRUTH:** ProductChannelReadiness `GetPublicationRequirements`.  
+**WRITE CONTROL:** none in B10.  
+**IDENTITY SOURCE:** exact Organization + Installation + SourceInstance + native product key; optional provider `category_key` / `product_type_key` context; `requirements_revision` remains server truth.  
+**CLIENT STATE CLASS:** server state.  
+**WIRE MECHANICS:** preserve independent requirement class/applicability/value specification/source evidence; human projection is `Campo do marketplace / Exigência / Valor encontrado / Na configuração do anúncio`.  
+**MATERIAL FAILURES:** source evidence `missing`, `conflicting`, `unknown`, `unavailable`, `unsupported`; provider/context requirement read unavailable or invalid.  
+**FAILURE MESSAGE INTENT:** distinguish genuine absence from inability to determine/consult and from multiple candidates; do not label any as generic `Atendido`/`Não atendido`.  
+**SUCCESS CONSEQUENCE:** operator understands available values and unresolved authoring work; missing source value does not block ListingIntent entry by itself.  
+**AUTHZ / DISCLOSURE:** `readiness.read`; technical evidence/candidate keys remain secondary.  
+**FORBIDDEN FRONTEND AUTHORITY:** `source_sufficiency`, per-field `satisfied/met/ready`, generic provider rule engine, raw provider field bag.  
+**BACKEND SUFFICIENCY:** sufficient; no new wire field required.
+
+### 4.4 Product↔channel correspondence
+
+**GOAL / FLOW:** establish or remove exact product correspondence when needed, then return to authoritative current truth.  
+**ROUTE / SURFACE:** `Vínculo com o marketplace`.  
+**INFORMATION ROLE:** current correspondence + explicit correction control.  
+**OWNER + READ TRUTH:** ProductChannelReadiness `GetProductChannelReadiness`.  
+**WRITE CONTROL:** `ResolveProductChannelCorrespondence` / `ClearProductChannelCorrespondence`.  
+**IDENTITY SOURCE:** exact Organization + Installation + SourceInstance + native product key + current `correspondence_etag` carried by the accepted write schema.  
+**CLIENT STATE CLASS:** server state plus local pending-control state only while submitting.  
+**WIRE MECHANICS:** explicit action; current correspondence validator; successful or potentially accepted effect is followed by authoritative reread; requirements reread when current context/revision can change.  
+**MATERIAL FAILURES:** 401/403/404/409/422/500; stale/conflicting correspondence; transport outcome where acceptance cannot be ruled out.  
+**FAILURE MESSAGE INTENT:** never claim known failure after ambiguous potential acceptance; direct operator to refresh/reconcile current state.  
+**SUCCESS CONSEQUENCE:** refreshed current correspondence/requirement context; continuation is re-enabled only from current reread truth.  
+**AUTHZ / DISCLOSURE:** `readiness.manage`, H/A; browser POSTs remain CSRF-protected; hidden control is not authorization.  
+**FORBIDDEN FRONTEND AUTHORITY:** blind retry, local correspondence truth, write-success assumption without reread.  
+**BACKEND SUFFICIENCY:** sufficient.
+
+### 4.5 Continue to ListingIntent authoring
+
+**GOAL / FLOW:** leave preparation and continue the human job in Offering authoring.  
+**ROUTE / SURFACE:** `Continuar para configurar o anúncio` → explicit unopened ListingIntent/B23 boundary.  
+**INFORMATION ROLE:** navigation handoff only.  
+**OWNER + READ TRUTH:** Offering owns ListingIntent desired state; B10 owns none of it.  
+**WRITE CONTROL:** none in B10.  
+**IDENTITY SOURCE:** exact prepared subject/context may be carried as navigation context; ListingIntent identity is created/owned downstream.  
+**CLIENT STATE CLASS:** URL/navigation only.  
+**WIRE MECHANICS:** no B10 call to `CreateListingIntentDraft`; the unopened B23 block will decide exact downstream authoring route/mechanics.  
+**MATERIAL FAILURES:** correspondence authority not established; downstream access not permitted; stale context before authoring.  
+**FAILURE MESSAGE INTENT:** explain why continuation is unsafe/unavailable without pretending an advertisement was created or published.  
+**SUCCESS CONSEQUENCE:** B10 ends; no marketplace effect has occurred.  
+**AUTHZ / DISCLOSURE:** downstream authoring requires `listing.manage`; server authorization at the downstream surface remains authoritative.  
+**FORBIDDEN FRONTEND AUTHORITY:** creating desired ListingIntent state as a navigation side effect, direct provider publication, treating navigation as provider validation.  
+**BACKEND SUFFICIENCY:** sufficient for B10; exact B23 UX remains future block design, not a B10 backend gap.
+
+## 5. Bidirectional trace — PASS
+
+### Frontend → Product/backend
 
 ```text
-explicit operator action
-→ Resolve/Clear
-→ no blind retry after ambiguous possible acceptance
-→ authoritative GetProductChannelReadiness reread
-→ requirement reread when the current context/revision can change
-```
+Organization + Conta do marketplace
+→ access/MarketplacePortfolio context
+→ ListMarketplaceInstallations when population is required
 
-This safety property is unrelated to the removed requirement-status UI and remains binding.
-
-## 6. Bidirectional trace to re-prove after LOCK
-
-### frontend → backend
-
-```text
-Organization/account context
-→ Product scope/navigation
-
-search
+Buscar produto + cadastro de origem
 → SearchSourceProductsForMarketplace
+
+Produto selecionado + vínculo
+→ GetProductChannelReadiness
 
 Campo do marketplace / Exigência / Valor encontrado
 → GetPublicationRequirements
 
-Vínculo com o marketplace
-→ GetProductChannelReadiness
+Definir vínculo / Remover vínculo
 → ResolveProductChannelCorrespondence / ClearProductChannelCorrespondence
+→ authoritative reread
 
 Continuar para configurar o anúncio
-→ downstream navigation boundary
+→ downstream Offering boundary
 → NOT a B10 CreateListingIntentDraft call
 ```
 
-### backend → frontend
+### Product/backend → Frontend
 
 ```text
+ListMarketplaceInstallations
+→ exact account selector choices
+
 SearchSourceProductsForMarketplace
 → source-qualified result list
 
-GetProductChannelReadiness
-→ exact subject + correspondence + reread basis
-
 GetPublicationRequirements
-→ marketplace fields + obligation/type/value constraints + source values/evidence
+→ full marketplace requirement census + source values/evidence
+
+GetProductChannelReadiness
+→ exact subject/correspondence + current reread basis
+→ overall readiness does not force a per-field/status UI
 
 Resolve/Clear correspondence
-→ explicit correspondence controls + authoritative reread
+→ explicit write controls + reread/reconciliation behavior
 
 CreateListingIntentDraft
-→ no B10 mutation home; downstream Offering authoring only
+→ no B10 mutation home
+→ downstream Offering authoring only
 ```
 
-The final P9 must re-check these mappings against the exact operator-LOCKED P8 artifact. This document records the stable candidate trace only; it does not substitute for that rerun.
+No admitted B10 operation is orphaned from the locked screen job, and no material locked screen control requires a missing Product operation.
 
-## 7. Forbidden shortcuts
+## 6. Adversarial checks
 
-B10 must not:
+P9 explicitly rejects these regressions:
 
-- create a Product/PIM master;
-- introduce `source_sufficiency` or another generic per-field readiness state;
-- compute `satisfied` in React from requirement/source data;
-- add a provider field bag;
-- treat missing source data as publication impossible;
-- turn provider validation into MPC-owned universal business truth;
-- blindly retry ambiguous correspondence writes;
-- manufacture ListingIntent desired state merely to leave B10.
+- `known` source evidence becoming `Atendido`;
+- missing source value becoming publication-impossible;
+- frontend-computed `source_sufficiency`/`satisfied`;
+- hidden/default Marketplace Installation or SourceInstance;
+- unknown/unavailable collapsing into known-empty;
+- correspondence write treated as locally final without reread;
+- blind retry after ambiguous possible acceptance;
+- B10 creating a ListingIntent merely to navigate;
+- direct marketplace publication/validation authority inside B10;
+- reopening Product/OAD merely to make the screen easier to code.
 
-## 8. Current disposition
+All are avoidable with the accepted wire and the operator-LOCKED projection.
+
+## 7. P9 closure
 
 ```text
-F-P9-B10-01
-→ Global Maximum revalidation
-→ source_sufficiency rejected
-→ simplified P8 operator projection
-→ P8 REOPENED / CANDIDATE
-→ operator walkthrough + re-LOCK required
-→ rerun P9 after operator re-LOCK
-→ P10 only after P9 closure
+P8 OPERATOR-RATIFIED / LOCKED
+→ exact route/state/identity binding
+→ exact owner/operation/Permission binding
+→ frontend → backend trace PASS
+→ backend → frontend trace PASS
+→ adversarial shortcuts rejected
+→ BACKEND SUFFICIENT
+→ UPSTREAM FINDING NONE
 ```
 
-**P9: PAUSED — P8 REOPENED.**
+**P9: PASS / CLOSED for B10.**
+
+P10 may now consolidate only patterns already repeated in LOCKED evidence. P11, Pre-D9/D9 and Product implementation remain outside this P9 closure.
