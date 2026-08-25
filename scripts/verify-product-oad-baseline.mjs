@@ -9,6 +9,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const contractDir = join(root, 'contracts/api/product');
 const entrypoint = join(contractDir, 'openapi.yaml');
 const redoclyConfig = join(contractDir, 'redocly.yaml');
+const baselineFixture = JSON.parse(readFileSync(join(root, 'scripts/fixtures/product-oad-baseline-95.json'), 'utf8'));
 const sourceNames = [
   'openapi.yaml',
   'components.yaml',
@@ -18,9 +19,6 @@ const sourceNames = [
   'paths-fulfillment-postsale-work.yaml',
 ];
 const sourceTreeText = sourceNames.map((name) => readFileSync(join(contractDir, name), 'utf8')).join('\n');
-const w4Text = readFileSync(join(root, 'docs/engineering/rebaseline/D5-B2-W4-PERMISSION-CLIENT-CLASS-ENFORCEMENT.md'), 'utf8');
-const w2Text = readFileSync(join(root, 'docs/engineering/rebaseline/D5-B2-W2-SCHEMA-GRAMMAR.md'), 'utf8');
-const admissionText = readFileSync(join(root, 'docs/engineering/rebaseline/D5-B2-OPERATION-ADMISSION-MATRIX.md'), 'utf8');
 const temp = mkdtempSync(join(tmpdir(), 'mpc-product-oad-'));
 const go = process.platform === 'win32' ? 'go.exe' : 'go';
 const npxCli = process.env.npm_execpath
@@ -143,57 +141,23 @@ function generatedGoStruct(text, name) {
   return match[1];
 }
 
-function parseW4(text) {
-  const start = text.indexOf('# 8. Exact 95-operation enforcement matrix');
-  const end = text.indexOf('\n---\n\n## 9.', start);
-  assert(start >= 0 && end > start, 'unable to locate W4 exact matrix');
-  const rows = [];
-  for (const line of text.slice(start, end).split(/\r?\n/)) {
-    const match = line.match(/^\|\s*`([^`]+)`\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*$/);
-    if (!match) continue;
-    const [, operationId, classCell, permissionCell, principalCell] = match;
-    const operationClass = classCell.includes('Q') ? 'Q' : classCell.includes('C') ? 'C' : null;
-    const permission = permissionCell.match(/`([^`]+)`/)?.[1] ?? (permissionCell.includes('authenticated special condition') ? 'authenticated' : null);
-    const principalKinds = [...principalCell.matchAll(/\b([HAS])\b/g)].map((m) => m[1]);
-    assert(operationClass && permission && principalKinds.length, `unparseable W4 row: ${line}`);
-    rows.push({ operationId, operationClass, permission, principalKinds: normalize(principalKinds), qualifiedPhysical: /currently qualified S/.test(principalCell) });
-  }
-  assert(rows.length === 95, `W4 row count changed: ${rows.length}`);
-  assert(new Set(rows.map((row) => row.operationId)).size === 95, 'W4 operation IDs are not unique');
-  return rows;
-}
-function parseProblemSlugs(text) {
-  const start = text.indexOf('# 19. Problem Details catalog');
-  const end = text.indexOf('Problem `type` is an absolute stable URI', start);
-  assert(start >= 0 && end > start, 'unable to locate W2 Problem catalog');
-  const slugs = [...text.slice(start, end).matchAll(/^- `([^`]+)`[;.]/gm)].map((m) => m[1]);
-  assert(slugs.length === 15, `W2 Product Problem count changed: ${slugs.length}`);
-  return slugs;
-}
-function parseMandatoryIdempotency(text) {
-  const start = text.indexOf('# 7. Whole-Matrix complete C-operation safety sweep');
-  const end = text.indexOf('### 7.6 Safety-sweep result', start);
-  assert(start >= 0 && end > start, 'unable to locate admission safety sweep');
-  const result = [];
-  for (const line of text.slice(start, end).split(/\r?\n/)) {
-    if (!line.startsWith('|')) continue;
-    const cells = line.split('|').slice(1, -1).map((cell) => cell.trim());
-    if (cells.length !== 4 || cells[0] === 'Operation' || /^-+$/.test(cells[0])) continue;
-    const operation = cells[0].replace(/^`|`$/g, '');
-    if (/mandatory client key/i.test(cells[2])) result.push(operation);
-  }
-  assert(result.length === 14, `mandatory Idempotency-Key disposition count changed: ${result.length}`);
-  return normalize(result);
-}
-
-const w4 = parseW4(w4Text);
+const w4 = baselineFixture.operations.map(([operationId, operationClass, permission, principalKinds, qualifiedPhysical]) => ({
+  operationId,
+  operationClass,
+  permission,
+  principalKinds: normalize(principalKinds),
+  qualifiedPhysical: qualifiedPhysical === true,
+}));
+assert(w4.length === 95, `baseline fixture operation row count changed: ${w4.length}`);
+assert(new Set(w4.map((row) => row.operationId)).size === 95, 'baseline fixture operation IDs are not unique');
 const w4ById = new Map(w4.map((row) => [row.operationId, row]));
 const expectedPermissions = normalize(w4.map((row) => row.permission).filter((permission) => permission !== 'authenticated'));
-const expectedProblems = parseProblemSlugs(w2Text).map((slug) => `${PROBLEM_PREFIX}${slug}`);
-const expectedIdempotency = parseMandatoryIdempotency(admissionText);
+const expectedProblems = baselineFixture.problemSlugs.map((slug) => `${PROBLEM_PREFIX}${slug}`);
+const expectedIdempotency = normalize(baselineFixture.mandatoryIdempotencyOperations);
 assert(expectedPermissions.length === 29, `ordinary Permission count changed: ${expectedPermissions.length}`);
-assert(w4ById.has('UpdateAvailabilityAllocationScopePolicy'), 'W4 final Availability policy operation name is missing');
-assert(admissionText.includes('| update allocation/scope policy |'), 'accepted pre-wire Availability policy safety row is missing');
+assert(expectedProblems.length === 15, `Product Problem fixture count changed: ${expectedProblems.length}`);
+assert(expectedIdempotency.length === 14, `mandatory Idempotency-Key fixture count changed: ${expectedIdempotency.length}`);
+assert(w4ById.has('UpdateAvailabilityAllocationScopePolicy'), 'baseline Availability policy operation name is missing');
 
 function validate(document) {
   assert(document.openapi === '3.1.2', `OpenAPI must be 3.1.2, found ${document.openapi}`);
@@ -214,7 +178,7 @@ function validate(document) {
   const ids = all.map((entry) => entry.operation.operationId);
   assert(all.length === 95, `Product operation count must be 95, found ${all.length}`);
   assert(new Set(ids).size === 95, 'operationId values are not unique');
-  sameSet(ids, [...w4ById.keys()], 'OAD/W4 operation IDs');
+  sameSet(ids, [...w4ById.keys()], 'OAD/baseline-fixture operation IDs');
 
   for (const path of Object.keys(document.paths ?? {})) {
     assert(path === '/access-context' || path.startsWith('/organizations/{organization_id}/'), `path outside canonical Product roots: ${path}`);
@@ -423,7 +387,7 @@ function typescriptProof() {
   const publication = generatedSchemaExpression(generated, 'PublicationValue', 'TypeScript');
   for (const branch of ['PublicationTextValue', 'PublicationExactDecimalValue', 'PublicationBooleanValue', 'PublicationOptionValue', 'PublicationTextListValue', 'PublicationOptionListValue', 'PublicationNumberUnitValue', 'PublicationNotApplicableValue']) assert(publication.includes(`components["schemas"]["${branch}"]`), `TypeScript PublicationValue lost ${branch}`);
   const desiredQuantity = generatedSchemaExpression(generated, 'DesiredQuantity', 'TypeScript');
-  for (const branch of ['DesiredQuantityKnown', 'DesiredQuantityUnknown', 'DesiredQuantityUnavailable']) assert(desiredQuantity.includes(`components["schemas"]["${branch}"]`), `TypeScript DesiredQuantity lost ${branch}`);
+  for (const branch of ['DesiredQuantityKnown', 'DesiredQuantityUnknown', 'DesiredQuantityUnavailable']) assert(desiredQuantity.includes(`components["schemas"]["${branch}"]`), `TypeScript DesiredQuantity lost ${branch} knowledge-state projection`);
   const mediaMultipart = generatedObjectBlock(generated, 'CreateListingIntentMediaMultipart', 'TypeScript');
   assert(/\bfile:\s*[^;]+;/.test(mediaMultipart), 'TypeScript multipart projection lost file part');
   assert(/etag:\s*components\["schemas"\]\["StrongETag"\];/.test(mediaMultipart), 'TypeScript multipart projection lost typed etag part');
