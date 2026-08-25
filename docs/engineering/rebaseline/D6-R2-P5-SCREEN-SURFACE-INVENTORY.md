@@ -222,7 +222,21 @@ B10 Preparação main structure
 
 The B10 correspondence region remains a bounded future revalidation after the paused human-operable read-projection prerequisite. No other locked block is reopened by that finding unless new evidence proves impact.
 
-## 8. Product coverage / upstream findings
+## 8. Open P12 evidence obligations
+
+These are **not accepted Product facts** and must not silently become assumptions-by-default. They remain open until a real P12 probe or stronger evidence explicitly closes/revises them; P14 closure must account for them.
+
+| ID | Current assumption / unknown | Affected planning | Required probe before closure | Status |
+| --- | --- | --- | --- | --- |
+| **A01** | Relative frequency/information density of the accepted human jobs is not quantitatively evidenced. | density/default emphasis, especially B10 search/list→detail | operator-validate typical daily/weekly task mix and high-frequency queues | **OPEN — ACCEPT_FOR_LOCK_WITH_LATER_PROBE where already used** |
+| **A02** | Fulfillment users may require stronger tablet/mobile ergonomics than strategy/configuration users; real device/work-floor distribution is not evidenced. | B80 Fulfillment / responsive work-floor interaction | validate actual devices, gloves/scanning/standing constraints and viewport use | **OPEN** |
+| **A03** | Current Portuguese IA is accepted, but detailed field/action terminology has not been user-tested. | labels/glossary/comprehension across later P8 blocks | run terminology/comprehension walkthrough on material objects/actions | **OPEN** |
+| **A04** | The small Overview composition is accepted, but the first visual priority among permitted signals is not directly evidenced. | B01 hierarchy/emphasis and later refinement | task-based operator walkthrough: what must be noticed first and why | **OPEN** |
+| **A05** | No bulk-selection/bulk-action UX is justified beyond Product operations actually admitted by the OAD. | collection actions across later blocks | probe real repeated-task pain before proposing any bulk interaction | **OPEN** |
+
+These obligations may influence presentation/density/interaction only; they do not authorize new Product operations, bulk semantics, device capabilities, labels-as-business-truth or backend changes without the normal smallest-owner/Global-Maximum path.
+
+## 9. Product coverage / upstream findings
 
 Current Product input is 106/31/H-A-S. P5 does not require one visual home per operation; non-human/technical/history/helper operations may be bound inside existing human surfaces or have no separate screen by design.
 
