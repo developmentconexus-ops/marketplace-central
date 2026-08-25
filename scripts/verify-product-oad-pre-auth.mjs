@@ -10,10 +10,10 @@ const contractDir = join(root, 'contracts/api/product');
 const entrypoint = join(contractDir, 'openapi.yaml');
 const redoclyConfig = join(contractDir, 'redocly.yaml');
 const baselineVerifier = join(root, 'scripts/verify-product-oad-baseline.mjs');
-const repairDoc = join(root, 'docs/engineering/rebaseline/D6-R1-MARKETPLACE-PERFORMANCE-INTELLIGENCE.md');
-const w4Doc = join(root, 'docs/engineering/rebaseline/D5-B2-W4-PERMISSION-CLIENT-CLASS-ENFORCEMENT.md');
-const baselineMatrixText = readFileSync(w4Doc, 'utf8');
-const repairText = readFileSync(repairDoc, 'utf8');
+const baselineFixturePath = join(root, 'scripts/fixtures/product-oad-baseline-95.json');
+const performanceFixturePath = join(root, 'scripts/fixtures/product-oad-performance-99.json');
+const baselineFixture = JSON.parse(readFileSync(baselineFixturePath, 'utf8'));
+const performanceFixture = JSON.parse(readFileSync(performanceFixturePath, 'utf8'));
 const temp = mkdtempSync(join(tmpdir(), 'mpc-product-oad-d6r1-'));
 const go = process.platform === 'win32' ? 'go.exe' : 'go';
 const HTTP_METHODS = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);
@@ -104,59 +104,41 @@ function schemaBySuffix(document, suffix) {
   assert(matches.length === 1, `expected exactly one bundled schema ending ${suffix}, found ${matches.map(([name]) => name).join(', ')}`);
   return resolveRef(document, matches[0][1]);
 }
-function parseMatrixRows(text, start, end) {
-  const startAt = text.indexOf(start);
-  const endAt = text.indexOf(end, startAt + start.length);
-  assert(startAt >= 0 && endAt > startAt, `unable to locate matrix ${start}`);
-  const rows = [];
-  for (const line of text.slice(startAt, endAt).split(/\r?\n/)) {
-    const match = line.match(/^\|\s*`([^`]+)`\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*$/);
-    if (!match) continue;
-    const [, operationId, classCell, permissionCell, principalCell] = match;
-    const operationClass = classCell.includes('Q') ? 'Q' : classCell.includes('C') ? 'C' : null;
-    const permission = permissionCell.match(/`([^`]+)`/)?.[1] ?? (permissionCell.includes('authenticated special condition') ? 'authenticated' : null);
-    const principalKinds = [...principalCell.matchAll(/\b([HAS])\b/g)].map((m) => m[1]);
-    assert(operationClass && permission && principalKinds.length, `unparseable matrix row: ${line}`);
-    rows.push({ operationId, operationClass, permission, principalKinds: normalize(principalKinds) });
-  }
-  return rows;
-}
-function baselineRows() {
-  const rows = parseMatrixRows(baselineMatrixText, '# 8. Exact 95-operation enforcement matrix', '\n---\n\n## 9.');
-  assert(rows.length === 95, `baseline W4 row count changed: ${rows.length}`);
-  return rows;
-}
-function repairRows() {
-  const rows = parseMatrixRows(repairText, '<!-- performance-operation-matrix:start -->', '<!-- performance-operation-matrix:end -->');
-  assert(rows.length === 4, `performance repair row count must be 4, found ${rows.length}`);
+function fixtureRows(entries, label) {
+  const rows = entries.map(([operationId, operationClass, permission, principalKinds]) => ({
+    operationId,
+    operationClass,
+    permission,
+    principalKinds: normalize(principalKinds),
+  }));
+  assert(new Set(rows.map((row) => row.operationId)).size === rows.length, `${label} operation IDs are not unique`);
   return rows;
 }
 
-const acceptedBaselineRows = baselineRows();
-const acceptedRepairRows = repairRows();
+const acceptedBaselineRows = fixtureRows(baselineFixture.operations, 'baseline fixture');
+const acceptedRepairRows = fixtureRows(performanceFixture.operations, 'performance fixture');
+assert(acceptedBaselineRows.length === 95, `baseline fixture row count changed: ${acceptedBaselineRows.length}`);
+assert(acceptedRepairRows.length === 4, `performance fixture row count must be 4, found ${acceptedRepairRows.length}`);
 const acceptedRows = [...acceptedBaselineRows, ...acceptedRepairRows];
 const acceptedById = new Map(acceptedRows.map((row) => [row.operationId, row]));
 const expectedPermissions = normalize(acceptedRows.map((row) => row.permission).filter((permission) => permission !== 'authenticated'));
 const expectedPerformanceIds = normalize(acceptedRepairRows.map((row) => row.operationId));
-assert(acceptedById.size === 99, `combined operation authority must be 99 unique rows, found ${acceptedById.size}`);
-assert(expectedPermissions.length === 30, `combined ordinary Permission authority must be 30, found ${expectedPermissions.length}`);
-sameSet(expectedPerformanceIds, ['GetMarketplaceListingPerformance', 'GetMarketplacePerformanceSummary', 'ListMarketplaceListingPerformance', 'ListRetailMediaPerformance'], 'performance operation authority');
+assert(acceptedById.size === 99, `combined operation fixture must be 99 unique rows, found ${acceptedById.size}`);
+assert(expectedPermissions.length === 30, `combined ordinary Permission fixture must be 30, found ${expectedPermissions.length}`);
+sameSet(expectedPerformanceIds, ['GetMarketplaceListingPerformance', 'GetMarketplacePerformanceSummary', 'ListMarketplaceListingPerformance', 'ListRetailMediaPerformance'], 'performance operation fixture');
 
 function baselineProof() {
   const baselineRoot = join(temp, 'baseline-root');
   const baselineContracts = join(baselineRoot, 'contracts/api/product');
-  const baselineDocs = join(baselineRoot, 'docs/engineering/rebaseline');
   const baselineScripts = join(baselineRoot, 'scripts');
+  const baselineFixtures = join(baselineScripts, 'fixtures');
   mkdirSync(baselineContracts, { recursive: true });
-  mkdirSync(baselineDocs, { recursive: true });
-  mkdirSync(baselineScripts, { recursive: true });
+  mkdirSync(baselineFixtures, { recursive: true });
 
   cpSync(baselineVerifier, join(baselineScripts, 'verify-product-oad.mjs'));
+  cpSync(baselineFixturePath, join(baselineFixtures, 'product-oad-baseline-95.json'));
   for (const name of ['components.yaml', 'paths-identity-portfolio-readiness.yaml', 'paths-offering-availability-market.yaml', 'paths-economics-governance-sales-materialization.yaml', 'paths-fulfillment-postsale-work.yaml', 'redocly.yaml']) {
     cpSync(join(contractDir, name), join(baselineContracts, name));
-  }
-  for (const name of ['D5-B2-W4-PERMISSION-CLIENT-CLASS-ENFORCEMENT.md', 'D5-B2-W2-SCHEMA-GRAMMAR.md', 'D5-B2-OPERATION-ADMISSION-MATRIX.md']) {
-    cpSync(join(root, 'docs/engineering/rebaseline', name), join(baselineDocs, name));
   }
 
   let source = readFileSync(entrypoint, 'utf8');
@@ -203,7 +185,7 @@ function validatePerformance(document) {
 
   assert(all.length === 99, `Product operation count must be 99, found ${all.length}`);
   assert(new Set(ids).size === 99, 'operationId values are not unique in repaired Product OAD');
-  sameSet(ids, [...acceptedById.keys()], 'repaired OAD/accepted operation IDs');
+  sameSet(ids, [...acceptedById.keys()], 'repaired OAD/accepted fixture operation IDs');
 
   for (const entry of all) {
     const expected = acceptedById.get(entry.operation.operationId);
