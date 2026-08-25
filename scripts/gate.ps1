@@ -112,6 +112,7 @@ $productProofPatterns = @(
     '^contracts/api/product/',
     '^scripts/gate\.ps1$',
     '^scripts/verify-product-oad(?:-[^/]+)?\.mjs$',
+    '^scripts/verify-human-operable-read-projection\.mjs$',
     '^scripts/fixtures/product-oad-[^/]+\.json$',
     '^scripts/verify-oad-source-reachability\.mjs$',
     '^scripts/verify-operational-read-contract\.mjs$',

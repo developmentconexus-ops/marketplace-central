@@ -169,9 +169,9 @@ try {
   console.log(`oad_source_allowed_orphans=${result.orphans.length}/${manifest.total_count}`);
   console.log('oad_source_new_orphans=0');
   console.log('publication_requirements_proof=PARSED_BUNDLE');
-  console.log('publication_requirements_candidate_identity=STRUCTURAL_OBJECT_KEY');
+  console.log('publication_requirements_candidate_identity=TYPED_OPAQUE_KEY_VIEW');
   console.log('publication_requirements_source_value_families=7/7');
-  console.log(`publication_requirements_negative_controls=${publicationProof.negativeControls}/10`);
+  console.log(`publication_requirements_negative_controls=${publicationProof.negativeControls}/13`);
 
   let negativeControls = 0;
 
