@@ -1000,11 +1000,19 @@ schemas:
     additionalProperties: false
     required: [price_intent_id, target, target_presentation, desired_price, state, created_at]
     properties: {price_intent_id: {$ref: '#/schemas/OpaqueId'}, target: {$ref: '#/schemas/PriceIntentTarget'}, target_presentation: {$ref: '#/schemas/PriceIntentTargetPresentation'}, desired_price: {$ref: '#/schemas/Money'}, state: {type: string, enum: [pending, applied, rejected, ambiguous, superseded]}, supersedes_price_intent_id: {$ref: '#/schemas/OpaqueId'}, convergence: {type: string, enum: [pending, converged, divergent, unknown, not_applicable]}, created_at: {$ref: '#/schemas/Instant'}}
+    allOf:
+      - oneOf:
+          - {properties: {target: {$ref: '#/schemas/PriceIntentExistingTarget'}, target_presentation: {$ref: '#/schemas/PriceIntentExistingTargetPresentation'}}}
+          - {properties: {target: {$ref: '#/schemas/PriceIntentPreCreationTarget'}, target_presentation: {$ref: '#/schemas/PriceIntentPreCreationTargetPresentation'}}}
   PriceIntentListItem:
     type: object
     additionalProperties: false
     required: [price_intent_id, target, target_presentation, desired_price, state, created_at]
     properties: {price_intent_id: {$ref: '#/schemas/OpaqueId'}, target: {$ref: '#/schemas/PriceIntentTarget'}, target_presentation: {$ref: '#/schemas/PriceIntentTargetPresentation'}, desired_price: {$ref: '#/schemas/Money'}, state: {type: string, enum: [pending, applied, rejected, ambiguous, superseded]}, created_at: {$ref: '#/schemas/Instant'}}
+    allOf:
+      - oneOf:
+          - {properties: {target: {$ref: '#/schemas/PriceIntentExistingTarget'}, target_presentation: {$ref: '#/schemas/PriceIntentExistingTargetPresentation'}}}
+          - {properties: {target: {$ref: '#/schemas/PriceIntentPreCreationTarget'}, target_presentation: {$ref: '#/schemas/PriceIntentPreCreationTargetPresentation'}}}
   PriceIntentsCollection:
     type: object
     additionalProperties: false
@@ -1051,6 +1059,10 @@ schemas:
     additionalProperties: false
     required: [target, target_presentation, control, desired_quantity, provider_quantity, convergence, evaluated_at]
     properties: {target: {$ref: '#/schemas/AvailabilityTarget'}, target_presentation: {$ref: '#/schemas/AvailabilityTargetPresentation'}, control: {type: string, enum: [mpc_managed, external_required, unsupported]}, desired_quantity: {$ref: '#/schemas/DesiredQuantity'}, provider_quantity: {$ref: '#/schemas/ProviderQuantity'}, convergence: {type: string, enum: [pending, converged, divergent, unknown, not_applicable]}, evaluated_at: {$ref: '#/schemas/Instant'}}
+    allOf:
+      - oneOf:
+          - {properties: {target: {$ref: '#/schemas/AvailabilityExistingTarget'}, target_presentation: {$ref: '#/schemas/AvailabilityExistingTargetPresentation'}}}
+          - {properties: {target: {$ref: '#/schemas/AvailabilityPreCreationTarget'}, target_presentation: {$ref: '#/schemas/AvailabilityPreCreationTargetPresentation'}}}
   SellableAvailabilityCollection:
     type: object
     additionalProperties: false
@@ -1131,11 +1143,19 @@ schemas:
     additionalProperties: false
     required: [subject, subject_presentation, coverage, evidence_sufficiency, relation, evaluated_at]
     properties: {subject: {$ref: '#/schemas/MarketSubject'}, subject_presentation: {$ref: '#/schemas/MarketSubjectPresentation'}, coverage: {type: string, enum: [complete_for_declared_source_scope, partial, unknown, unavailable]}, evidence_sufficiency: {type: string, enum: [sufficient, insufficient, unavailable]}, relation: {type: string, enum: [ahead, equal, behind, unknown]}, delivered_price_gap: {$ref: '#/schemas/Money'}, evaluated_at: {$ref: '#/schemas/Instant'}}
+    allOf:
+      - oneOf:
+          - {properties: {subject: {$ref: '#/schemas/MarketExistingListingSubject'}, subject_presentation: {$ref: '#/schemas/MarketExistingListingPresentation'}}}
+          - {properties: {subject: {$ref: '#/schemas/MarketSourceProductSubject'}, subject_presentation: {$ref: '#/schemas/MarketSourceProductPresentation'}}}
   CompetitivePositionListItem:
     type: object
     additionalProperties: false
     required: [subject, subject_presentation, relation, evaluated_at]
     properties: {subject: {$ref: '#/schemas/MarketSubject'}, subject_presentation: {$ref: '#/schemas/MarketSubjectPresentation'}, relation: {type: string, enum: [ahead, equal, behind, unknown]}, evaluated_at: {$ref: '#/schemas/Instant'}}
+    allOf:
+      - oneOf:
+          - {properties: {subject: {$ref: '#/schemas/MarketExistingListingSubject'}, subject_presentation: {$ref: '#/schemas/MarketExistingListingPresentation'}}}
+          - {properties: {subject: {$ref: '#/schemas/MarketSourceProductSubject'}, subject_presentation: {$ref: '#/schemas/MarketSourceProductPresentation'}}}
   CompetitivePositionsCollection:
     type: object
     additionalProperties: false
@@ -1191,11 +1211,19 @@ schemas:
     additionalProperties: false
     required: [subject, subject_presentation, components, conclusion, evaluated_at]
     properties: {subject: {$ref: '#/schemas/EconomicsSubject'}, subject_presentation: {$ref: '#/schemas/EconomicsSubjectPresentation'}, components: {$ref: '#/schemas/EconomicsComponents'}, conclusion: {$ref: '#/schemas/EconomicsConclusion'}, evaluated_at: {$ref: '#/schemas/Instant'}}
+    allOf:
+      - oneOf:
+          - {properties: {subject: {$ref: '#/schemas/EconomicsExistingListingSubject'}, subject_presentation: {$ref: '#/schemas/EconomicsExistingListingPresentation'}}}
+          - {properties: {subject: {$ref: '#/schemas/EconomicsSourceProductSubject'}, subject_presentation: {$ref: '#/schemas/EconomicsSourceProductPresentation'}}}
   ExpectedEconomicsListItem:
     type: object
     additionalProperties: false
     required: [subject, subject_presentation, conclusion, evaluated_at]
     properties: {subject: {$ref: '#/schemas/EconomicsSubject'}, subject_presentation: {$ref: '#/schemas/EconomicsSubjectPresentation'}, conclusion: {$ref: '#/schemas/EconomicsConclusion'}, evaluated_at: {$ref: '#/schemas/Instant'}}
+    allOf:
+      - oneOf:
+          - {properties: {subject: {$ref: '#/schemas/EconomicsExistingListingSubject'}, subject_presentation: {$ref: '#/schemas/EconomicsExistingListingPresentation'}}}
+          - {properties: {subject: {$ref: '#/schemas/EconomicsSourceProductSubject'}, subject_presentation: {$ref: '#/schemas/EconomicsSourceProductPresentation'}}}
   ExpectedEconomicsCollection:
     type: object
     additionalProperties: false
@@ -1211,6 +1239,10 @@ schemas:
     additionalProperties: false
     required: [subject, subject_presentation, candidate_price, components, conclusion, evaluated_at]
     properties: {subject: {$ref: '#/schemas/EconomicsSubject'}, subject_presentation: {$ref: '#/schemas/EconomicsSubjectPresentation'}, candidate_price: {$ref: '#/schemas/Money'}, components: {$ref: '#/schemas/EconomicsComponents'}, conclusion: {$ref: '#/schemas/EconomicsConclusion'}, evaluated_at: {$ref: '#/schemas/Instant'}}
+    allOf:
+      - oneOf:
+          - {properties: {subject: {$ref: '#/schemas/EconomicsExistingListingSubject'}, subject_presentation: {$ref: '#/schemas/EconomicsExistingListingPresentation'}}}
+          - {properties: {subject: {$ref: '#/schemas/EconomicsSourceProductSubject'}, subject_presentation: {$ref: '#/schemas/EconomicsSourceProductPresentation'}}}
   MarketplaceSaleRef:
     type: object
     additionalProperties: false
