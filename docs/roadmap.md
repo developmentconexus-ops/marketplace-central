@@ -11,10 +11,10 @@
 | Product | **Marketplace Operations Control Plane + Commercial Intelligence** |
 | Current stage | **D6-R2 — Complete Frontend Realization Closure — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
-| Main baseline | **`181f606ceaf5fadd7b25aab2008d0256ed6ad7de` — PR #71 repository-health rebaseline integrated; required CI PASS** |
+| Main baseline | **PR #70 — human-operable read-projection prerequisite integrated over `181f606ceaf5fadd7b25aab2008d0256ed6ad7de`; required CI PASS** |
 | Method profile | **local [`engineering-method.md`](development/engineering-method.md) + [`frontend-product-experience-planning-method.md`](development/frontend-product-experience-planning-method.md) v2.3** |
-| Current prerequisite | **PR #70 — Human-Operable Read Projection & Wire Conformance — IMPLEMENTATION CANDIDATE COMPLETE / PROOF PASS / INTEGRATION AUTHORIZATION REQUIRED** |
-| Written design | **[`docs/superpowers/specs/2026-08-25-human-operable-read-projection-design.md`](superpowers/specs/2026-08-25-human-operable-read-projection-design.md) — DESIGN APPROVED / IMPLEMENTATION CANDIDATE COMPLETE; integration requires operator authorization** |
+| Current prerequisite | **PR #70 — Human-Operable Read Projection & Wire Conformance — ACCEPTED / INTEGRATED / PROOF PASS** |
+| Written design | **[`docs/superpowers/specs/2026-08-25-human-operable-read-projection-design.md`](superpowers/specs/2026-08-25-human-operable-read-projection-design.md) — DESIGN ACCEPTED / IMPLEMENTATION INTEGRATED through PR #70** |
 | Implementation plan | **[`docs/superpowers/plans/2026-08-25-human-operable-read-projection-implementation-plan.md`](superpowers/plans/2026-08-25-human-operable-read-projection-implementation-plan.md) — FINAL REANCHORED / OPERATOR-APPROVED 2026-08-25** |
 | B20 increment | **PR #69 — PAUSED / NO P8; cannot resume before prerequisite acceptance/integration and bounded B10 correspondence revalidation** |
 | B10 status | **Global Maximum + main structure/operator LOCK preserved; correspondence region REOPEN REQUIRED by upstream contract falsifier; P9 must rerun after repaired wire** |
@@ -25,7 +25,7 @@
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
 | Aggregate CI | **one required check / one `npm run gate`; universal checks always run; Product proof is diff-aware and fails safe when reliable changed-surface detection is unavailable** |
-| Exact next action | **Obtain explicit operator authorization to integrate PR #70; B20 remains paused; after integration open a fresh bounded B10 correspondence-region revalidation increment.** |
+| Exact next action | **Open a fresh bounded B10 correspondence-region revalidation increment against the integrated PR #70 contract; rerun P9 and obtain operator re-LOCK before B20 resumes.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -38,28 +38,28 @@
 | D1 — Domains / Boundaries | ACCEPTED / CLOSED; Personal Notifications + AuthorizationRequest boundaries consolidated by PR #71 |
 | D2 — Identity / Tenant / Data Ownership | ACCEPTED / CLOSED; Notification + AuthorizationRequest identity/lifecycle consolidated by PR #71 |
 | D3 — Communication / Events | ACCEPTED / CLOSED; bounded prerequisite execution must STOP if it proves a genuinely new semantic dependency |
-| D4 — External Integrations | ACCEPTED / CLOSED; **bounded presentation-evidence repair realized in PR #70 candidate; integration pending** |
-| D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL; **bounded human-operability repair realized in PR #70 candidate; integration pending** |
-| D5 — API | ACCEPTED / CLOSED; **PR #70 OAD repair candidate complete at unchanged 106/31/H-A-S; current `main` authority unchanged until integration** |
+| D4 — External Integrations | ACCEPTED / CLOSED; **bounded presentation-evidence repair integrated through PR #70** |
+| D4-R1 — Publication Input / Listing Authoring | ACCEPTED / CANONICAL; **bounded human-operability repair integrated through PR #70** |
+| D5 — API | ACCEPTED / CLOSED; **PR #70 OAD repair integrated at unchanged 106/31/H-A-S** |
 | D5-R2 — Operational Read Projection Repair | ACCEPTED / CANONICAL / current consumer evidence retargeted to P5 |
 | D6 — Frontend | ACCEPTED / CLOSED baseline; B00/B01/B00-R2/B11/B12/B110/B10 operator-LOCK evidence preserved |
 | D7 — Runtime / Jobs / Transactions | ACCEPTED / CLOSED; runtime baseline remains NONE |
 | D8 — Golden Flows | ACCEPTED / CLOSED / INTEGRATED |
 | D8-R2 — GF-02 Operational Read Revalidation | ACCEPTED / PASS |
-| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — PR #70 candidate awaits explicit integration authorization; PR #69 / B20 PAUSED** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — PR #70 integrated; fresh bounded B10 correspondence revalidation is next; PR #69 / B20 PAUSED** |
 | Pre-D9 readiness | BLOCKED |
 | D9 — Adversarial Architecture Review | BLOCKED |
 | Implementation | BLOCKED UNTIL D9 |
 
 ## Current result
 
-- PR #71 is integrated at `181f606ceaf5fadd7b25aab2008d0256ed6ad7de`; current authority owners, proportional CI and Git-as-history lifecycle are active on `main`.
-- PR #70 was reanchored without rewriting history. Its design/plan reference no path retired by #71, and all required D4/D5/P5/OAD owners remain current.
+- PR #70 is integrated over the PR #71 baseline; repaired D4/D4-R1/W2/W3/OAD authority, proportional CI and Git-as-history lifecycle are active on `main`.
+- PR #70 was reanchored without rewriting history before execution. Its design/plan reference no path retired by #71, and all required D4/D5/P5/OAD owners remain current.
 - Reanchor analysis added the new focused verifier to the diff-aware Product-proof trigger set required by #71; a verifier-only change must not skip the proof it protects.
 - PR #64 is integrated; B10's simplified Global Maximum remains accepted: marketplace requirements + source values + downstream ListingIntent authoring/provider validation.
 - B20 planning exposed that Offering `MarketplaceListing` collection/detail reads do not provide sufficient human presentation for an operator, while Performance already carries a local non-authoritative Listing label.
 - The operator approved the Global Maximum design: **Canonical Ref ≠ Current Read Projection ≠ Purpose/Historical Snapshot**, with owner-specific typed projections only for proven human recognition/selection/explanation jobs.
-- The implementation plan is finalized, reanchored and **operator-approved**; Tasks 1–6 are complete as the PR #70 integration candidate.
+- The implementation plan is finalized, reanchored and **operator-approved**; Tasks 1–6 and the human-operable read-projection repair are integrated through PR #70.
 - The focused proof passes **12/12 negative controls**, the publication source guard passes **13/13**, `npm run gate` passes, and required CI is green.
 - Independent full review was adjudicated: two correctness findings were accepted and repaired; one stale authorization/status finding was rejected against current repository authority. All review threads are resolved.
 - Product inventory remains **106 operations / 31 Permissions / H-A-S** with zero new Product paths, operations, Permissions, Principal kinds, generic presentation services or metadata bags.
@@ -74,9 +74,9 @@ PR #64 integrated
 → #70 reanchored on current main
 → operator implementation-plan approval
 → Tasks 1–6 prerequisite implementation/proof complete
-→ explicit operator authorization to integrate PR #70   ← CURRENT
-→ prerequisite integration
-→ fresh bounded B10 correspondence-region revalidation increment + P9 + operator re-LOCK
+→ explicit operator authorization to integrate PR #70
+→ prerequisite integration complete
+→ fresh bounded B10 correspondence-region revalidation increment + P9 + operator re-LOCK   ← CURRENT
 → resume B20
 ```
 

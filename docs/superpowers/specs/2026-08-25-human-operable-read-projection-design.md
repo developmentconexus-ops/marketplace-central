@@ -1,11 +1,11 @@
 # Human-Operable Read Projection & Wire Conformance — Design
 
-> **Status:** DESIGN APPROVED / IMPLEMENTATION CANDIDATE COMPLETE — proof and independent challenge complete; integration requires operator authorization
+> **Status:** DESIGN ACCEPTED / IMPLEMENTATION INTEGRATED — PR #70 integration explicitly authorized by the operator on 2026-08-25
 > **Trigger:** D6-R2 B20 planning after B10 integration
 > **Method:** DevelopmentConexus Engineering Method v1.0.0 + Frontend Product Experience Planning Method v2.3
 > **Baseline:** `main@181f606ceaf5fadd7b25aab2008d0256ed6ad7de` — PR #71 integrated; Product OAD and operator-locked P8 evidence unchanged
 > **Reanchor:** current D4/D5/P5 owners verified; zero references to paths retired by PR #71
-> **Implementation:** CANDIDATE COMPLETE / NOT INTEGRATED — Product runtime and B10/B20 HTML remain blocked; integration requires explicit operator authorization
+> **Implementation:** INTEGRATED through PR #70 — Product runtime and B10/B20 HTML remain blocked; the next bounded increment is B10 correspondence-region revalidation
 
 ## 1. Decision
 
@@ -645,6 +645,6 @@ This prerequisite does not create:
 
 ## 19. Written-spec exit gate
 
-This design, its implementation plan and Tasks 1–6 are complete as an integration candidate. Focused negative proof, the aggregate gate, required CI and independent challenge have passed with accepted findings repaired and adjudicated.
+This design, its implementation plan and Tasks 1–6 are accepted and integrated through PR #70. Focused negative proof, the aggregate gate, required CI and independent challenge passed with accepted findings repaired and adjudicated.
 
-Integration remains a separate operator-authorized action. D4/D4-R1/W2/W3/OAD authority on `main` is unchanged until that integration. Product runtime and B10/B20 frontend work remain separately gated.
+D4/D4-R1/W2/W3/OAD now carry the repaired authority on `main`. Product runtime and B20 frontend work remain gated; B10 may reopen only as a fresh bounded correspondence-region revalidation increment.
