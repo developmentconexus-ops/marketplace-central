@@ -43,10 +43,14 @@ function verify(text) {
   }
   const known = schemaBlock(text, 'PublicationSourceEvidenceKnown');
   assert(known.includes('required: [state, candidates]'), 'known source evidence must expose candidates');
-  assert(/candidates: \{type: array, minItems: 1,/u.test(known), 'known source evidence requires at least one candidate');
+  assert(known.includes('minItems: 1'), 'known source evidence requires at least one candidate');
+  assert(known.includes('uniqueItems: true'), 'known source evidence must reject duplicate candidate objects');
+  assert(known.includes('x-mpc-unique-by: candidate_key'), 'known source evidence must require candidate identity uniqueness');
   const conflicting = schemaBlock(text, 'PublicationSourceEvidenceConflicting');
   assert(conflicting.includes('required: [state, candidates]'), 'conflicting source evidence must expose conflicting candidates');
-  assert(/candidates: \{type: array, minItems: 2,/u.test(conflicting), 'conflicting source evidence requires at least two candidates');
+  assert(conflicting.includes('minItems: 2'), 'conflicting source evidence requires at least two candidates');
+  assert(conflicting.includes('uniqueItems: true'), 'conflicting source evidence must reject duplicate candidate objects');
+  assert(conflicting.includes('x-mpc-unique-by: candidate_key'), 'conflicting source evidence must require at least two distinct candidate identities');
 
   const evidence = schemaBlock(text, 'PublicationSourceEvidence');
   for (const [schema] of evidenceVariants) {
@@ -127,13 +131,15 @@ expectFailure('unsupported source state collapsed', (text) => text.replace('stat
 expectFailure('provider requirement class collapsed', (text) => text.replace('[required, recommended, optional, conditional]', '[required, optional]'));
 expectFailure('text max constraint erased', (text) => text.replace('      max_length:', '      erased_length:'));
 expectFailure('candidate knowledge duplicated', (text) => text.replace('required: [candidate_key, value]', 'required: [candidate_key, state]'));
-expectFailure('conflict cardinality weakened', (text) => text.replace('candidates: {type: array, minItems: 2,', 'candidates: {type: array, minItems: 1,'));
+expectFailure('conflict cardinality weakened', (text) => text.replace('      minItems: 2', '      minItems: 1'));
+expectFailure('candidate identity uniqueness erased', (text) => text.replaceAll('x-mpc-unique-by: candidate_key', 'x-mpc-unique-by: none'));
 expectFailure('response publication context omitted', (text) => text.replace('[subject, publication_context, requirements_revision, requirements, source_media_candidates, evaluated_at]', '[subject, requirements_revision, requirements, source_media_candidates, evaluated_at]'));
 
-assert(negativeControls === 7, `publication requirements negative-control count mismatch: ${negativeControls}/7`);
+assert(negativeControls === 8, `publication requirements negative-control count mismatch: ${negativeControls}/8`);
 console.log('publication_requirements_context=EXPLICIT');
 console.log('publication_requirements_class=FOUR_WAY');
 console.log('publication_requirements_value_spec=BOUNDED_BY_PUBLICATION_VALUE');
+console.log('publication_requirements_candidate_identity=UNIQUE_BY_CANDIDATE_KEY');
 console.log('publication_requirements_source_evidence=KNOWN_MISSING_CONFLICTING_UNKNOWN_UNAVAILABLE_UNSUPPORTED');
-console.log(`publication_requirements_negative_controls=${negativeControls}/7`);
+console.log(`publication_requirements_negative_controls=${negativeControls}/8`);
 console.log('publication_requirements_oad=PASS');
