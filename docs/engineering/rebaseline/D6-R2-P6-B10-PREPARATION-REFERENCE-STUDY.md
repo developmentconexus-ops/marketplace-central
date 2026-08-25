@@ -1,14 +1,13 @@
 # D6-R2 P6 — B10 Preparation Reference Study
 
-> **Status:** DERIVED — bounded reference evidence for B10; P7 NOT TRIGGERED
-> **Parent ledger:** [D6-R2 P8 Structural Wireframe Block Ledger](D6-R2-P8-BLOCK-LEDGER.md)
+> **Status:** DERIVED / REVALIDATED — B10 structure confirmed; P8 candidate pending operator walkthrough
 > **Block:** B10 Preparation / R10
-> **Authority boundary:** references inform task structure only; accepted MPC Product/IA remains authoritative
+> **Method profile:** `developmentconexus-ops/conexus-methodology@9c7210d1504bef01c0d134a6c3ae8627deebb535` → `METHOD.md + FRONTEND-METHOD.md`
 > **Product implementation:** BLOCKED UNTIL accepted D9
 
-## 1. Question
+## 1. Human job and accepted boundary
 
-B10 must support this accepted job without hidden source authority:
+B10 supports:
 
 ```text
 exact Organization + Marketplace Installation
@@ -16,357 +15,201 @@ exact Organization + Marketplace Installation
 → select exact SourceInstance + native product key
 → inspect readiness + publication requirements
 → resolve/clear correspondence when needed and authorized
-→ re-read readiness
-→ continue to ListingIntent only when current state permits
+→ re-read readiness after consequential correspondence effect
+→ continue to ListingIntent only when current pre-ListingIntent state permits
 ```
 
-P5 left three plausible presentation patterns:
+B10 does not own source master data, a generic PIM, provider mutation, ListingIntent editing, Offering dispatchability, or Authorization.
+
+## 2. Reference evidence
+
+P6 studied mature products only for task structure, never as MPC authority:
+
+- Google Merchant Center — search/triage → affected product → issue detail:  
+  <https://support.google.com/merchants/answer/12476548>
+- Akeneo — product grid → readiness/completeness → exact product detail:  
+  <https://help.akeneo.com/en_US/product-readiness/product-readiness-overview>
+- Amazon Seller Central — inventory search/filter → status/reason → exact listing/product correction context:  
+  <https://sellercentral.amazon.com/seller-forums/discussions/t/a8234e1f-f065-44d8-a4c4-f23cf92b3f4b>
+- Mirakl/Lowe's — validation feedback remains tied to exact product/import identity:  
+  <https://seller.lowes.com/mirakl-seller-documentation/>
+
+Shared useful pattern:
 
 ```text
-A  persistent split-view / master-detail
-B  progressive inline detail inside the search workspace
-C  search/list → selected-subject detail state
+search/filter
+→ compact issue/readiness signal
+→ exact subject detail
+→ explicit correction/revalidation boundary
 ```
 
-P6 studies mature products solving analogous catalog-diagnostics/readiness tasks. It does not copy their visual design or import their business authority.
+MPC-specific rejection: none of those products authorize MPC to edit arbitrary source attributes, invent readiness scores, or expose raw provider DTO/field bags.
 
-## 2. References
+## 3. Structure decision
 
-### R1 — Google Merchant Center — Needs attention
-
-Primary evidence:
-
-- <https://support.google.com/merchants/answer/12476548>
-- <https://support.google.com/merchants/answer/12153802>
-
-Observed task pattern:
+Three structures were considered:
 
 ```text
-Products / Needs attention
-→ issue prioritization + filters
-→ affected-product collection
-→ compact issue explanation in collection
-→ product / issue detail for material diagnosis and correction
+A persistent split-view
+B progressive full inline expansion
+C search/list → selected exact-subject detail
 ```
 
-Useful lessons:
+**C remains selected.**
 
-- triage context remains in the collection;
-- product rows expose enough issue/status information to choose the next subject;
-- complex explanation/correction moves to a dedicated product or issue detail;
-- issue state and business impact are not reduced to a single generic readiness color;
-- filters reduce noise without replacing exact product identity.
+- A has no evidence-backed need for high-frequency rapid cycling, is vertically fragile for deep requirements, and complicates responsive behavior.
+- B weakens exact source identity and recovery/revalidation context.
+- C preserves scanability in search and gives requirements/correspondence enough durable detail space.
 
-Mismatch/risk for MPC:
+**CURRENT STRUCTURE CONFIRMED.**
 
-- Merchant Center owns Google-side issue correction mechanisms that MPC does not own;
-- MPC must never convert marketplace/provider mutation patterns into local Product writes;
-- Google prioritization/click-potential models are not authority for an MPC score.
+**P7 layout hypotheses remain NOT TRIGGERED.** Rendering rejected alternatives would manufacture ambiguity rather than resolve a real Product question.
 
-### R2 — Akeneo — Product Grid + Product Readiness
+## 4. P7 feasibility disposition
 
-Primary evidence:
+| Question | Disposition |
+| --- | --- |
+| Required fields / summaries | PRESENT-IN-AUTHORITY through source search, ProductChannelReadiness and PublicationRequirements |
+| Identity sources | PRESENT-IN-AUTHORITY: Organization + exact Installation + SourceInstance + native product key |
+| Pagination / scale | PRESENT-IN-AUTHORITY: cursor/limit; no total-count inference |
+| Sort / filter | admitted query/source narrowing only; additional generic sort rejected by YAGNI |
+| Preview / content truth | owner-local readiness/requirements/correspondence projections only |
+| Material writes | Resolve/Clear correspondence only; ListingIntent creation is the downstream boundary |
 
-- <https://help.akeneo.com/en_US/product-readiness/product-readiness-overview>
-- <https://help.akeneo.com/en_US/serenity-take-the-power-over-your-products/serenity-get-familiar-with-the-product-grid>
+## 5. P8 structural obligations
 
-Observed task pattern:
+The browser-operable candidate must prove:
 
-```text
-product grid
-→ readiness/completeness summary per product
-→ select exact product
-→ product edit/detail form
-→ readiness panel exposes unmet requirements
-→ correct material product information in the durable subject context
-```
+- locked B00 shell/IA remains intact;
+- exact Organization and Marketplace Installation behavior;
+- Organization switch invalidates Installation context;
+- material search works;
+- known-empty != unknown/unavailable;
+- exact SourceInstance + native key remain visible;
+- complete applicable publication-requirement census is inspectable;
+- correspondence effects require an authoritative re-read;
+- ListingIntent is an explicit unopened downstream boundary;
+- mobile drawer supports Escape and focus return;
+- no frontend-created business truth.
 
-Useful lessons:
+## 6. Lock-time assumption A01
 
-- a collection can expose a compact readiness summary without becoming the correction workspace;
-- the detailed unmet-requirement list belongs beside the exact product identity;
-- channel/context qualification matters to readiness;
-- durable detail is suitable when several requirement groups may need inspection.
+A01: real high-frequency rapid cycling across many products is not yet evidenced. It influenced rejection of persistent split-view but does not block the current search→detail candidate by itself.
 
-Mismatch/risk for MPC:
+**A01 disposition: PENDING OPERATOR.**
 
-- Akeneo is itself a product-information authority/editor; MPC source products are externally owned;
-- B10 may resolve only admitted correspondence, not edit arbitrary source-product attributes;
-- completeness percentages are not an MPC readiness model unless Product authority explicitly supplies them.
-
-### R3 — Amazon Seller Central — Manage All Inventory / Fix Your Products
-
-Reference evidence:
-
-- <https://sellercentral.amazon.com/seller-forums/discussions/t/a8234e1f-f065-44d8-a4c4-f23cf92b3f4b>
-- <https://sellercentral.amazon.com/seller-forums/discussions/t/03276fe9-b943-4308-b2b9-02a76b915dfd>
-
-Observed task pattern from Amazon guidance:
-
-```text
-Manage All Inventory
-→ filter/search inactive, suppressed or incomplete listing
-→ inspect status/reason
-→ Fix Your Products / exact listing context
-→ material edit/detail when required
-```
-
-Useful lessons:
-
-- search/filter first is appropriate when the operator starts from a product identity or known problem;
-- reason/status belongs in the collection so the operator can choose the correct subject;
-- material corrections are anchored to the exact listing/product context rather than a global inline editor.
-
-Mismatch/risk for MPC:
-
-- Amazon Seller Central mixes marketplace-owned listing mutation with diagnostics; MPC must preserve its Offering/Readiness owner boundary;
-- forum/help evidence is weaker than a formal interaction contract and is used only as corroboration.
-
-### R4 — Mirakl / Lowe's Seller Portal — catalog validation feedback
-
-Reference evidence:
-
-- <https://seller.lowes.com/mirakl-seller-documentation/>
-
-Observed task pattern:
-
-```text
-catalog submission/import
-→ validation feedback/errors
-→ row/product-specific issue information
-→ correction
-→ resubmit/revalidate
-```
-
-Useful lessons:
-
-- validation feedback must stay tied to the exact source/import/product identity;
-- errors should explain what failed rather than expose only a red/green status;
-- revalidation after correction is a distinct state.
-
-Mismatch/risk for MPC:
-
-- the Mirakl example is batch/file-oriented while B10 is an interactive source-product search flow;
-- MPC does not introduce upload/import UX or batch correction from this reference.
-
-## 3. Evidence matrix
-
-| Criterion | Google Merchant Center | Akeneo | Amazon Seller Central | Mirakl/Lowe's | MPC implication |
-| --- | --- | --- | --- | --- | --- |
-| search/filter before subject | strong | strong | strong | batch-oriented | **YES** — B10 remains search-first |
-| compact readiness/issue signal in collection | strong | strong | strong | strong | **YES**, but no invented score |
-| full material correction inline in collection | limited | no | limited/mixed | no | **NO baseline** |
-| dedicated exact-subject detail | strong | strong | strong | error-detail/report analogue | **YES** |
-| durable exact identity during correction | strong | strong | strong | strong | **YES** — SourceInstance + native key stay explicit |
-| permanent split-view required | no | no | no | no | **NO evidence** |
-| re-read/revalidation after correction | yes | yes | eventual refresh | yes | **YES** — readiness re-read stays explicit |
-
-## 4. Derived B10 structure
-
-Reference evidence plus accepted MPC authority supports one leading structure:
-
-```text
-B10 Preparation — one search-first workspace
-
-SEARCH MODE
-├─ exact Marketplace Installation in page-local context
-├─ search input
-├─ optional explicit SourceInstance narrowing
-└─ structured result list
-   ├─ source-product presentation
-   ├─ SourceInstance + native key qualification
-   ├─ compact readiness state
-   ├─ requirements/correspondence signal when known
-   └─ open preparation
-
-SELECTED-SUBJECT MODE
-├─ exact source identity header
-├─ readiness summary / knowledge state
-├─ publication requirements
-├─ correspondence state
-│  └─ resolve / clear only when Product authority admits it
-├─ re-read readiness after consequential resolution
-└─ continuation to ListingIntent when current state permits
-```
-
-`SEARCH MODE` and `SELECTED-SUBJECT MODE` remain inside accepted R10/Preparação. P6 does not choose the exact TanStack route/search-param carrier; P9 binds canonical identity/navigation inputs later.
-
-The search context should remain recoverable when returning from the selected subject, but this is navigation state, not Product truth.
-
-## 5. Alternative disposition
-
-### A — Persistent split-view / master-detail — REJECTED for baseline
-
-Why it remains technically possible but is not materially justified now:
-
-- no accepted evidence yet shows high-frequency rapid cycling across many products; A01 remains OPEN;
-- readiness + requirements + correspondence can become vertically deep, making a permanent narrow detail pane fragile;
-- responsive/mobile realization would need a mode switch anyway;
-- no studied mature reference requires permanent split-view for this class of correction.
-
-A later P12 frequency finding may justify a productivity enhancement without changing Product authority, but P8 does not assume it now.
-
-### B — Full progressive inline expansion — REJECTED for material detail
-
-A compact issue/readiness preview in a result row is useful. Full inline correction is not selected because:
-
-- exact SourceInstance/native identity must stay unmistakable;
-- requirements and correspondence resolution can be materially deep;
-- recovery/revalidation after resolution deserves durable selected-subject context;
-- long expanded rows degrade scanning and responsive behavior.
-
-### C — Search/list → selected-subject detail state — SELECTED CANDIDATE BASIS
-
-This pattern preserves search-first findability while giving the material subject enough space for identity, requirements, correspondence and revalidation.
-
-## 6. P7 trigger disposition
-
-**P7 NOT TRIGGERED.** After P6, only one structure remains materially justified by both references and current MPC evidence.
-
-```text
-persistent split-view       plausible implementation technique, not evidence-backed baseline
-full inline expansion       insufficient for material detail/recovery
-list → selected detail      evidence-backed candidate basis
-```
-
-Creating three rendered hypotheses would therefore manufacture ambiguity for ceremony rather than resolve a real product question.
-
-## 7. B10 negative controls entering P8
-
-The B10 HTML candidate must make these visibly invalid:
-
-```text
-hidden/default SourceInstance
-first search result silently selected
-Marketplace Installation used as ambient authority
-source product edited as if MPC owned its master data
-provider write exposed from Readiness
-readiness percentage/health score invented by frontend
-known-empty confused with unknown/unavailable/unsupported
-correspondence resolution represented as generic product edit
-bulk preparation/actions introduced without authority/evidence
-permanent split-view treated as mandatory product structure
-```
-
-## 8. P6 exit
-
-**DERIVED.** B10 should render one low-fidelity HTML candidate using a search/list → selected exact-subject detail pattern inside the accepted Preparação workspace. P7 is not triggered. No Product operation, Permission, owner or D0–D8 authority is reopened.
-
-## 9. Post-methodology adoption revalidation
-
-**Method profile:** `developmentconexus-ops/conexus-methodology@9c7210d1504bef01c0d134a6c3ae8627deebb535` → `METHOD.md + FRONTEND-METHOD.md`.
-
-**Outcome:** `CURRENT STRUCTURE CONFIRMED`.
-
-The accepted methodology adds stronger P7 feasibility and P8 operating/assumption proof, but it does not provide Evidence that falsifies B10's search/list → exact-subject detail structure. **P7 layout hypotheses remain NOT TRIGGERED**: rendering rejected split-view/inline alternatives would manufacture ambiguity.
-
-The pre-adoption HTML does require bounded P8 correction before operator adjudication: its search control is a no-op; it does not inspect a known-empty search result; its Organization selector does not prove invalidation of Installation context; its shell still projects an older IA snapshot; its ListingIntent continuation is a no-op rather than an explicit unopened-block boundary; and its mobile drawer does not fully expose keyboard/focus state. These are prototype-proof defects, not Product capability gaps.
-
-### 9.1 P7 feasibility disposition under the accepted method
-
-| Feasibility question | Current authority | Disposition |
-| --- | --- | --- |
-| Required fields / summaries | `SearchSourceProductsForMarketplace`, `GetProductChannelReadiness`, `GetPublicationRequirements` expose the source-qualified search/readiness/requirements truth needed by R10. | **PRESENT-IN-AUTHORITY** |
-| Identity sources | Organization + exact Marketplace Installation + explicit `SourceInstance` + native product key are accepted identities; no hidden/default source is admitted. | **PRESENT-IN-AUTHORITY** |
-| Pagination / scale | Search admits `limit + cursor`; no `total_count` or complete-corpus inference is required. P8 may use deterministic local fixtures without claiming global totals. | **PRESENT-IN-AUTHORITY** |
-| Sort / filter | Search query + optional exact `source_instance_id` narrowing are admitted. No material user need or Product contract currently justifies an additional sort surface. | **PRESENT-IN-AUTHORITY** for admitted filters; additional sort **REJECTED — YAGNI / no evidenced need** |
-| Preview / content truth | Compact readiness/requirements/correspondence signals are projections of `ProductChannelReadiness`, never frontend scores or source-master edits. | **PRESENT-IN-AUTHORITY** |
-| Material writes | B10 may expose only `ResolveProductChannelCorrespondence` / `ClearProductChannelCorrespondence` when authorized. `CreateListingIntentDraft` is the explicit downstream B10 boundary, not a B10 editor implementation. | **PRESENT-IN-AUTHORITY** |
-
-`UPSTREAM FINDING: NONE`.
-
-### 9.2 Lock-time assumption and walkthrough gate
-
-A01 materially influenced rejection of a permanent split-view because real high-frequency rapid cycling is not evidenced. Under the accepted Method its lock-time disposition remains **PENDING OPERATOR**. Before B10 can LOCK, the operator must choose exactly one:
+Before B10 can LOCK, the operator selects exactly one:
 
 ```text
 ACCEPT_FOR_LOCK_WITH_LATER_PROBE
 BLOCK_LOCK
 ```
 
-A03 detailed terminology remains an OPEN P12 comprehension probe, but current Evidence does not make it a structural B10 blocker unless the operator walkthrough exposes material confusion. A05 continues to support no invented bulk baseline; absence of Product bulk authority is not converted into a convenience UI.
+## 7. First P8 candidate result
 
-`Operator walkthrough: PENDING`.
+The first operated candidate exposed a material simplification: one generic `Categoria / atributos` bucket could not let the operator inspect the full marketplace-specific requirement basis.
 
-`P8 status: CANDIDATE / NOT LOCKED`.
+The initial interpretation was that accepted narrative authority already covered the distinction and therefore no upstream repair was necessary. Subsequent wire-level proof falsified that conclusion.
 
-## 10. Operator REVISE — requirement census and provider-specific readiness
+## 8. Downstream falsification result
 
-Operator walkthrough inquiry exposed one material P8 simplification defect after the first GREEN candidate:
+B10 demonstrated that the accepted publication meaning was richer than the machine-readable Product OAD realization. The affected downstream scope was paused and the smallest owner — Product OAD wire realization — was reopened.
 
-```text
-B10 summary-only "Categoria / atributos"
-≠
-operator ability to inspect every applicable marketplace publication requirement
-```
+This became the PR #68 prerequisite rather than a frontend workaround.
 
-The accepted D4-R1 publication-input authority already resolves the semantic question, so this is **not** an upstream Product/backend gap.
+## 9. Source truth vs ListingIntent truth
 
-### 10.1 Authority recovered
-
-Provider publication requirements are **provider-authoritative** evidence. ProductChannelReadiness owns the MPC semantic projection needed to understand them for this exact subject:
+The Product distinction remains:
 
 ```text
-Organization
-+ exact Marketplace Installation
-+ SourceInstance-qualified Product
-+ provider/category/product-type context
-→ applicable publication requirements
+source evidence
+!=
+ListingIntent desired publication value
 ```
 
-The applicable set may legitimately differ across Mercado Livre, Amazon, Mirakl-class providers, category, product type, account/context and provider schema revision. MPC must preserve those meaningful differences instead of manufacturing one universal ProductAttribute/provider-field catalog.
-
-B10 therefore needs the complete **applicable requirement census**, not every arbitrary attribute that happens to exist in Sankhya. For every material requirement the operator must be able to inspect, when supplied by current authority:
-
-- provider/context-qualified requirement identity;
-- required / recommended / optional / conditional applicability;
-- data kind, cardinality, options and constraints when material;
-- source-qualified candidate/value evidence;
-- missing / conflicting / unknown / unavailable / unsupported state;
-- current requirements revision/provenance sufficient to know which rule set is being inspected.
-
-### 10.2 Source sufficiency is not final draft dispatchability
-
-The first candidate also collapsed one cross-owner distinction:
+In particular:
 
 ```text
 missing source != publication impossible
 ```
 
-Readiness may truthfully state that the external source lacks a value while Offering later creates a valid ListingIntent resolution using one of the accepted modes:
+A missing source fact stays missing. Later, ListingIntent/Offering may author a permitted resolution such as `FOLLOW_SOURCE(candidate_key)` or `EXPLICIT_OVERRIDE(PublicationValue)` without rewriting source truth. B10 does not decide final draft dispatchability and does not edit the override.
+
+## 10. Superseded pre-PR68 disposition
+
+The earlier B10 candidate used shorthand states such as `met` and treated `required/recommended/conditional` as an applicability dimension. That representation is superseded by the accepted PR #68 wire contract.
+
+The prior statement `UPSTREAM FINDING: NONE` is superseded for this exact wire issue.
+
+## 11. PR #68 integrated — bounded B10 rebaseline
+
+PR #68 is integrated into `main` at:
+
+`ed3d164b0574b7950c2c7467d150c89576bba1ec`
+
+**UPSTREAM FINDING: RESOLVED.**
+
+The bounded rebaseline preserves the existing B10 search→detail structure and changes only how accepted publication truth is represented.
+
+Canonical distinctions now carried by P8:
 
 ```text
-FOLLOW_SOURCE(source_candidate_key)
-EXPLICIT_OVERRIDE(PublicationValue)
+requirement_class != applicability
+
+requirement_class
+= required / recommended / optional / conditional
+
+applicability
+= current / draft_dependent
+
+source_evidence.state
+= known / missing / conflicting / unknown / unavailable / unsupported
 ```
 
-An `EXPLICIT_OVERRIDE` is ListingIntent/Offering-authored desired listing meaning. It never rewrites or falsifies the Sankhya/source fact. Therefore a source-missing requirement that is override-eligible may progress from B10 into the ListingIntent block, where the draft must actually resolve it before Offering can decide dispatchability.
+Each requirement also carries a bounded `value_spec`, `not_applicable_allowed`, and source evidence compatible with the requirement value family. The seven value-spec families are:
 
-B10 must still block progression when current authority truly cannot establish a safe next subject/context, for example:
+```text
+text
+exact_decimal
+boolean
+option
+text_list
+option_list
+number_unit
+```
 
-- required correspondence is unresolved;
-- requirement/readiness authority is unknown/unavailable in a way that prevents establishing the current basis;
-- another accepted pre-ListingIntent condition explicitly blocks continuation.
+Known/conflicting source evidence preserves opaque candidate identity. Conflicting evidence preserves multiple candidates rather than choosing one. `not_applicable` remains an explicit override value only; source evidence does not synthesize it.
 
-The UI must not infer which provider requirement is override-eligible when current authority does not provide that meaning.
+The P8 candidate must therefore show wire truth without introducing frontend shorthand as Product truth. Human-friendly labels may explain the contract, but the underlying distinctions remain visible and testable.
 
-### 10.3 P8 disposition
+### 11.1 LOCK impact sweep
 
-**Disposition:** `REVISE`.
+The PR #68 change affects B10's PublicationRequirements projection only. Existing LOCKED blocks do not consume that wire meaning:
 
-**UPSTREAM FINDING: NONE`** — accepted Product architecture already contains the necessary distinction.
+```text
+B00 | UNAFFECTED
+B01 | UNAFFECTED
+B00-R2 | UNAFFECTED
+B11 | UNAFFECTED
+B12 | UNAFFECTED
+B110 | UNAFFECTED
+```
 
-The corrected P8 candidate must:
+No existing LOCK is reopened.
 
-1. show all applicable marketplace requirements for the selected exact context;
-2. expose the marketplace/category/product-type/revision basis;
-3. show source evidence per requirement rather than a generic attributes bucket;
-4. preserve provider-specific differences without raw provider DTO/field-bag authority;
-5. distinguish source-missing debt from true pre-ListingIntent blockers;
-6. allow `EXPLICIT_OVERRIDE`-eligible source debt to continue only to the ListingIntent boundary;
-7. keep actual override editing outside B10;
-8. keep correspondence resolution and its required reread inside Readiness/B10.
+### 11.2 Current P8 gate
+
+The rebaselined candidate must remain browser-operable and **CANDIDATE / NOT LOCKED** until the operator actually uses it.
 
 `Operator walkthrough: PENDING`.
 
 `P8 status: CANDIDATE / NOT LOCKED`.
+
+A01 remains **PENDING OPERATOR** with the same two lawful dispositions:
+
+```text
+ACCEPT_FOR_LOCK_WITH_LATER_PROBE
+BLOCK_LOCK
+```
+
+Only after explicit operator LOCK may B10 proceed to P9.
