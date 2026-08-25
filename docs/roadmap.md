@@ -11,16 +11,16 @@
 | Product | **Marketplace Operations Control Plane + Commercial Intelligence** |
 | Current stage | **D6-R2 — Complete Frontend Realization Closure — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
-| Integrated checkpoints | **PR #61 Product/frontend checkpoint → `b54d17bfe6d794645d198a9160f4a2a1c63647e8`; PR #62 methodology adoption → `689dab34b0a756cbd7c790a6c5277d887ced0b4c`** |
+| Integrated checkpoints | **PR #61 → `b54d17bfe6d794645d198a9160f4a2a1c63647e8`; PR #62 methodology → `689dab34b0a756cbd7c790a6c5277d887ced0b4c`; PR #65 proportional CI → `a2aeac19816c90ee30bf373cef0448d52a486c7e`; PR #68 PublicationRequirements wire → `ed3d164b0574b7950c2c7467d150c89576bba1ec`** |
 | Method profile | **`developmentconexus-ops/conexus-methodology@9c7210d1504bef01c0d134a6c3ae8627deebb535` → `METHOD + FRONTEND-METHOD`** |
-| Current acceptance increment | **PR #64 / B10 — Preparação — P6/P7 REVALIDATED; P8 GREEN CANDIDATE; OPERATOR ADJUDICATION NEXT; NOT LOCKED** |
-| B10 structural proof | **CI #667 PASS — search→exact-subject detail; no upstream finding; 4/4 B10 falsifiers; A01 PENDING OPERATOR** |
-| LOCKED frontend blocks | **B00 · B01 · B00-R2 · B11 · B12 · B110** |
+| Current acceptance increment | **PR #64 / B10 — Preparação — PR #68 bounded rebaseline applied; P8 CANDIDATE / NOT LOCKED; proof pending** |
+| Resolved upstream finding | **PublicationRequirements machine-readable wire lacked accepted provider/context/source distinctions; RESOLVED by integrated PR #68** |
+| LOCK impact | **B00 / B01 / B00-R2 / B11 / B12 / B110 UNAFFECTED** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **106 Product operations · 31 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Operator operates the browser B10 candidate and returns REVISE / UPSTREAM FINDING / explicit LOCK, plus A01 disposition `ACCEPT_FOR_LOCK_WITH_LATER_PROBE` or `BLOCK_LOCK`. Do not begin B10 P9 before explicit LOCK.** |
+| Exact next action | **Prove the rebaselined B10 P8 candidate against current `main`; if GREEN, return the browser-operable candidate for operator walkthrough and A01 disposition. Do not begin P9 before explicit operator LOCK.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -41,21 +41,27 @@
 | D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED baseline; D7-R ACCEPTED** |
 | D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED; D8-R ACCEPTED** |
 | D8-R2 — GF-02 Operational Read Revalidation | **ACCEPTED / PASS** |
-| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B10 P8 GREEN CANDIDATE / OPERATOR ADJUDICATION NEXT** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B10 P8 rebaselined after PR #68; CANDIDATE / NOT LOCKED** |
 | Pre-D9 readiness | **BLOCKED** |
 | D9 — Adversarial Architecture Review | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
 
 ## Current result
 
-- Methodology adoption is integrated; accepted Product/frontend authority remains intact.
-- B10 post-methodology revalidation confirms the search/list → exact-subject detail structure. P7 layout hypotheses remain not triggered and `UPSTREAM FINDING: NONE`.
-- The P8 candidate now proves locked shell IA, material search, exact source identity, known-empty vs unavailable, Organization→Installation invalidation, correspondence reread, explicit ListingIntent boundary and mobile drawer keyboard/focus behavior.
-- Product **106/31/H-A-S**, AuthorizationRequest/W1, D7-R, D8-R, OAD source hygiene and existing operator LOCKs remain unchanged.
-- B10 may advance to P9 only after explicit operator LOCK of its operated P8 candidate.
+- PR #68 is integrated and `main` ruleset-required/full CI passed at `ed3d164b0574b7950c2c7467d150c89576bba1ec`.
+- B10 remains the same search/list → exact-subject detail structure; P7 layout hypotheses remain not triggered.
+- B10 now projects `PublicationRequirements` with independent `requirement_class` and `applicability`, all six source-evidence states, bounded `value_spec`, `not_applicable_allowed`, opaque source-candidate identity and separate source-media candidates.
+- `missing source` remains source truth, not `publication impossible`; actual `FOLLOW_SOURCE` / `EXPLICIT_OVERRIDE` authoring remains downstream in ListingIntent/Offering.
+- Existing LOCKED frontend blocks are unaffected. Product **106/31/H-A-S**, runtime NONE and Pre-D9/D9/implementation blocks remain unchanged.
+- A01 remains **PENDING OPERATOR**: `ACCEPT_FOR_LOCK_WITH_LATER_PROBE` or `BLOCK_LOCK`.
 
 ```text
-B10 P8 GREEN → operator walkthrough + A01 disposition → LOCK only if explicit → B10 P9/P10 → integrate increment → next Bxx
+PR #68 INTEGRATED / MAIN GREEN
+→ B10 bounded rebaseline
+→ candidate proof
+→ operator walkthrough + A01 disposition
+→ explicit LOCK only if accepted
+→ P9 only after LOCK
 ```
 
 One coherent acceptance increment lands before the next. Return to [`index.md`](index.md) for task routing.
