@@ -9,30 +9,23 @@ const htmlPath = resolve(root, 'qualification/d6-r2-wireframes/b10-preparation.h
 function fail(message) { throw new Error(message); }
 function assert(condition, message) { if (!condition) fail(message); }
 
-assert(existsSync(contractPath), 'B10 P9 screen contract missing');
-assert(existsSync(ratificationPath), 'B10 P8 ratification missing');
-assert(existsSync(htmlPath), 'B10 locked candidate evidence missing');
+for (const path of [contractPath, ratificationPath, htmlPath]) assert(existsSync(path), `B10 P9 input missing: ${path}`);
 
 const contract = readFileSync(contractPath, 'utf8');
 const ratification = readFileSync(ratificationPath, 'utf8');
 const html = readFileSync(htmlPath, 'utf8');
 
 function verify(contractText, ratificationText, htmlText) {
-  assert(ratificationText.includes('OPERATOR-RATIFIED / LOCKED'), 'P9 requires a ratified P8 input');
-  assert(contractText.includes('DERIVED / BLOCKED — P8 REOPEN REQUIRED'), 'P9 must expose the current blocked disposition');
-  assert(contractText.includes('F-P9-B10-01'), 'P9 frontend finding identity missing');
-  assert(contractText.includes('UPSTREAM FINDING: NONE'), 'P9 must distinguish the frontend mismatch from an upstream Product finding');
-  assert(contractText.includes('`known` source evidence does not equal requirement satisfied'), 'P9 must state the exact overclaim finding');
-  assert(htmlText.includes('Atendido'), 'P9 finding proof expects the locked candidate wording that was falsified');
+  assert(ratificationText.includes('CURRENT P8: REOPENED / CANDIDATE'), 'P9 must see the reopened P8 candidate');
+  assert(contractText.includes('PAUSED — P8 REOPENED'), 'P9 must be paused while P8 is reopened');
+  assert(contractText.includes('F-P9-B10-01'), 'P9 must preserve the finding that triggered revalidation');
+  assert(contractText.includes('GLOBAL MAXIMUM REVALIDATED'), 'P9 must record the Global Maximum decision');
+  assert(contractText.includes('REJECTED — `source_sufficiency`'), 'P9 must reject the unnecessary sufficiency layer');
+  assert(contractText.includes('NO NEW UPSTREAM WIRE FIELD'), 'P9 must not invent a new Product field');
+  assert(contractText.includes('requirements + source values + downstream authoring/provider validation'), 'P9 simplified model missing');
+  assert(contractText.includes('rerun P9 after operator re-LOCK'), 'P9 must not close against an unratified candidate');
 
-  assert(contractText.includes('`/preparacao`'), 'B10 canonical route missing');
-  for (const stateClass of ['GLOBAL_WORKSPACE_CONTEXT', 'URL_NAVIGATION_STATE', 'SERVER_STATE', 'LOCAL_EPHEMERAL']) {
-    assert(contractText.includes(stateClass), `B10 P9 state class missing: ${stateClass}`);
-  }
-  for (const key of ['marketplace_installation_id', 'q', 'source_instance_id', 'selected_source_instance_id', 'selected_native_product_key']) {
-    assert(contractText.includes(`\`${key}\``), `B10 P9 URL/navigation key missing: ${key}`);
-  }
-
+  assert(contractText.includes('`/preparacao`'), 'B10 route must remain /preparacao');
   for (const operation of [
     'SearchSourceProductsForMarketplace',
     'GetProductChannelReadiness',
@@ -40,22 +33,14 @@ function verify(contractText, ratificationText, htmlText) {
     'ResolveProductChannelCorrespondence',
     'ClearProductChannelCorrespondence',
     'CreateListingIntentDraft',
-  ]) {
-    assert(contractText.includes(operation), `B10 P9 operation trace missing: ${operation}`);
-  }
+  ]) assert(contractText.includes(operation), `B10 operation trace missing: ${operation}`);
 
-  for (const marker of [
-    'readiness.read', 'readiness.manage', 'listing.manage',
-    'ProductChannelReadiness', 'Offering',
-    'correspondence_etag', 'Idempotency-Key', 'requirements_revision',
-    'no blind retry', 'candidate evidence', 'Informação disponível',
-  ]) {
-    assert(contractText.includes(marker), `B10 P9 contract marker missing: ${marker}`);
-  }
-
-  assert(contractText.includes('B10 does not call `CreateListingIntentDraft`'), 'P9 must preserve the unopened ListingIntent boundary');
-  assert(contractText.includes('frontend → backend'), 'P9 frontend-to-backend trace missing');
-  assert(contractText.includes('backend → frontend'), 'P9 backend-to-frontend trace missing');
+  assert(contractText.includes('B10 does not call `CreateListingIntentDraft`'), 'B10 must preserve downstream ListingIntent boundary');
+  assert(contractText.includes('frontend → backend'), 'frontend-to-backend trace marker missing');
+  assert(contractText.includes('backend → frontend'), 'backend-to-frontend trace marker missing');
+  assert(htmlText.includes('data-b10-role="requirements-values-handoff"'), 'P9 must target the simplified B10 candidate');
+  assert(!htmlText.includes('Atendido'), 'P9 target must not carry satisfaction overclaim');
+  assert(!htmlText.includes('source_sufficiency'), 'P9 target must not invent sufficiency state');
 }
 
 verify(contract, ratification, html);
@@ -68,16 +53,16 @@ function expectFailure(name, body) {
   negativeControls += 1;
 }
 
-expectFailure('finding erased', () => verify(contract.replaceAll('F-P9-B10-01', 'F-P9-B10-XX'), ratification, html));
-expectFailure('route drift', () => verify(contract.replace('`/preparacao`', '`/produto`'), ratification, html));
-expectFailure('write authority drift', () => verify(contract.replaceAll('readiness.manage', 'readiness.read'), ratification, html));
-expectFailure('correspondence validator erased', () => verify(contract.replaceAll('correspondence_etag', 'etag_missing'), ratification, html));
-expectFailure('downstream boundary becomes B10 write', () => verify(contract.replaceAll('B10 does not call `CreateListingIntentDraft`', 'B10 calls `CreateListingIntentDraft`'), ratification, html));
+expectFailure('P9 closed before relock', () => verify(contract.replace('PAUSED — P8 REOPENED', 'CLOSED'), ratification, html));
+expectFailure('sufficiency layer returns', () => verify(contract.replace('REJECTED — `source_sufficiency`', 'ACCEPTED — `source_sufficiency`'), ratification, html));
+expectFailure('wire field invented', () => verify(contract.replace('NO NEW UPSTREAM WIRE FIELD', 'ADD NEW UPSTREAM WIRE FIELD'), ratification, html));
+expectFailure('ListingIntent boundary collapses', () => verify(contract.replace('B10 does not call `CreateListingIntentDraft`', 'B10 calls `CreateListingIntentDraft`'), ratification, html));
 
-assert(negativeControls === 5, `B10 P9 negative-control count mismatch: ${negativeControls}/5`);
+assert(negativeControls === 4, `B10 P9 paused negative-control count mismatch: ${negativeControls}/4`);
 
-console.log('d6_r_b10_p9=BLOCKED_P8_REOPEN_REQUIRED');
-console.log('d6_r_b10_p9_finding=F-P9-B10-01');
-console.log('d6_r_b10_p9_upstream_finding=NONE');
-console.log(`d6_r_b10_p9_negative_controls=${negativeControls}/5`);
+console.log('d6_r_b10_p9=PAUSED_P8_REOPENED');
+console.log('d6_r_b10_p9_global_maximum=REQUIREMENTS_VALUES_HANDOFF');
+console.log('d6_r_b10_p9_source_sufficiency=REJECTED');
+console.log('d6_r_b10_p9_new_wire_field=NONE');
+console.log(`d6_r_b10_p9_negative_controls=${negativeControls}/4`);
 console.log('d6_r_b10_p9_contract=PASS');
