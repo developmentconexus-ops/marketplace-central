@@ -1,22 +1,15 @@
 # D6-R2 P8 — B110 Approvals Operator Ratification
 
-> **Status:** OPERATOR-RATIFIED / ACCEPTED / LOCKED
-> **Operator adjudication:** 2026-08-24
-> **Reviewed candidate:** [B110 Approvals Candidate](D6-R2-P8-B110-APPROVALS-CANDIDATE.md)
-> **P5 input:** [B110 AuthorizationRequest Targeted Supersession](D6-R2-P5-B110-AUTHORIZATION-REQUEST-SUPERSESSION.md)
-> **Canonical wire:** [D5-R6 AuthorizationRequest OAD Proof](D6-R2-NOTIF-01-D5-R6-AUTHORIZATION-REQUEST-OAD-WIRE-PROOF.md)
-> **Reviewed artifact:** [`qualification/d6-r2-wireframes/b110-approvals.html`](../../../qualification/d6-r2-wireframes/b110-approvals.html)
-> **Implementation:** BLOCKED UNTIL accepted D9
+> **Status:** OPERATOR-RATIFIED / ACCEPTED / LOCKED / CURRENT EVIDENCE  
+> **Operator adjudication:** 2026-08-24  
+> **Artifact:** `qualification/d6-r2-wireframes/b110-approvals.html`  
+> **Current Product:** 106 operations / 31 ordinary Permissions / H-A-S
 
-## 1. Operator decision
+## 1. Operator LOCK
 
-The operator visually adjudicated the exact rendered B110 candidate and responded **“Aprovado”** after interactive review. Under Frontend Method v2.1, this is the explicit operator `LOCK` for B110 only.
+The operator visually approved the rendered B110 structure. The immutable HTML may still self-label `candidate`; this record owns the LOCK.
 
-The reviewed HTML remains an immutable `data-p8-status="candidate"` evidence snapshot. It must not be edited to self-claim operator authority; this ratification record owns the `LOCK` disposition.
-
-## 2. Locked B110 contract
-
-B110 locks the existing `CONTROLE > Aprovações` destination with two local, independently authorized lenses:
+B110 preserves one `CONTROLE > Aprovações` destination with two independently authorized lenses:
 
 ```text
 Para decidir → governance.decide
@@ -25,61 +18,61 @@ Histórico    → governance.read
 
 Neither Permission implies the other.
 
-Locked laws:
+## 2. Locked human structure
 
-- one global `Aprovações` destination only; no second global history destination;
-- `Para decidir` is the exact-human actionable `AuthorizationRequest` queue using a structured list and cursor continuation only;
-- request detail is a real route and renders exactly one of the four typed review-basis families: `listing_intent`, `price_intent`, `business_order_intent`, `invoicing_intent`;
-- `CreateAuthorizationDecision` uses inline confirmation with evidence still visible, request-local `If-Match`, `Idempotency-Key`, and outcome-only client body;
+### Para decidir
+
+- exact-human actionable `AuthorizationRequest` queue;
+- structured list + cursor only;
+- request detail is a real route;
+- exactly one typed review-basis family: `listing_intent | price_intent | business_order_intent | invoicing_intent`;
+- Approve/Reject uses inline confirmation with evidence still visible;
 - consequential decision auto-retry is forbidden;
-- stale/412 rereads Governance truth and never silently overwrites or leaks history without `governance.read`;
-- validity unavailable/503 records no Decision and leaves the request pending;
-- successful Decision does not execute the source action; the action owner retains execution-time revalidation/authority;
-- `Abrir origem` reauthorizes the current source owner and Governance never grants source-read by implication;
-- `Histórico` is immutable `AuthorizationDecision` truth with admitted date filters and no decision controls;
-- F13 deep-links by `AuthorizationRequestRef`, but Notification remains awareness, never a capability token;
-- Organization switch invalidates request/history transient context;
-- mobile stacks decision actions without changing authority semantics;
-- no approval search, totals, bulk decision model, approver filter, generic review payload or workflow/lifecycle platform is admitted.
+- current source continuation reauthorizes the source owner;
+- successful AuthorizationDecision does **not** execute the target action;
+- F13 deep-link by `AuthorizationRequestRef` is awareness only, not capability.
 
-## 3. Executable evidence
+### Histórico
 
-TDD sequence:
+- immutable `AuthorizationDecision` history;
+- independent `governance.read`;
+- admitted date filters only;
+- no Approve/Reject controls.
 
-```text
-RED  CI #596
-all prior authority/OAD/P8 proofs PASS
-B110 rendered artifact missing
+No approval search, total count, bulk decision, approver filter, generic review payload or workflow/case platform is admitted.
 
-GREEN HEAD db0c87bc110bf0a05185b23c0c3841e38c6f8579
-CI #597 SUCCESS
-pr-title #666 SUCCESS
-```
+## 3. Current decision carrier after bounded W1 repair
 
-Final reviewed candidate checkpoint before operator lock:
+The later operator-ratified W1 correction changed **only the transport carrier**, not B110 structure:
 
 ```text
-HEAD 3e9c24b35f3449558512f22d8e1e5a931620c97b
-CI #598 SUCCESS
-pr-title #667/#668 SUCCESS
+POST /organizations/{organization_id}/authorization-requests/{authorization_request_id}:decide
+Idempotency-Key: required
+body:
+  etag: current AuthorizationRequest StrongETag
+  outcome: authorize | reject
 ```
 
-Structural proof:
+Current failure grammar:
 
 ```text
-d6_r_b110_lenses=ACTIONABLE+HISTORY
-d6_r_b110_permissions=governance.decide|governance.read_INDEPENDENT
-d6_r_b110_review_basis=4/4
-d6_r_b110_confirmation=INLINE
-d6_r_b110_stale_and_503=EXPLICIT
-d6_r_b110_notification=AWAWARENESS_NOT_CAPABILITY
-d6_r_b110_wireframe=PASS
+missing/invalid body.etag → 422
+stale Request revision    → 409 resource-revision-conflict
+current state conflict    → 409
+known validity unavailable→ typed 503, known no Decision recorded
 ```
 
-Historical 95/29 + 99/30 and current 106/31 Product OAD proofs remain green in the same gate.
+There is no `If-Match`, 412 or 428 on this custom `:decide` operation.
 
-## 4. Supersession and next gate
+This change was explicitly revalidated as **STRUCTURE UNAFFECTED / P8 reopen NO**. The same human stale/recovery state remains visible; only the underlying technical carrier/status spelling changed.
 
-This record supersedes only the prior B110 `RENDERED CANDIDATE / NOT LOCKED` disposition. It does not imply D6-R2 closure, D7-R authorization, D8-R authorization, merge authorization, B10 resumption or Product implementation.
+## 4. Scope/authority laws
 
-Exact next work is the final P9 Screen Contract + bidirectional backend trace over the locked affected frontend surfaces and canonical 106/31 Product authority. After P9, the complete AuthorizationRequest package must receive independent Fable review and finding adjudication before Global-Maximum closure or D7-R may open.
+- `governance.decide` does not grant Governance history or source-owner read;
+- `governance.read` does not grant decision authority;
+- Notification does not supply Request ETag, decision eligibility or source access;
+- Work may represent a zero-decider operational blocking condition but never becomes approver;
+- Organization switch invalidates transient Request/history context;
+- mobile stacking does not change decision/source authority.
+
+Exact current wire/state binding lives in the current P9 contract. Mutable stage/next action belongs only to `docs/roadmap.md`.
