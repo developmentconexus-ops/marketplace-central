@@ -53,10 +53,10 @@ function expectFailure(name, body) {
   negativeControls += 1;
 }
 
-expectFailure('P9 closed before relock', () => verify(contract.replace('PAUSED — P8 REOPENED', 'CLOSED'), ratification, html));
-expectFailure('sufficiency layer returns', () => verify(contract.replace('REJECTED — `source_sufficiency`', 'ACCEPTED — `source_sufficiency`'), ratification, html));
-expectFailure('wire field invented', () => verify(contract.replace('NO NEW UPSTREAM WIRE FIELD', 'ADD NEW UPSTREAM WIRE FIELD'), ratification, html));
-expectFailure('ListingIntent boundary collapses', () => verify(contract.replace('B10 does not call `CreateListingIntentDraft`', 'B10 calls `CreateListingIntentDraft`'), ratification, html));
+expectFailure('P9 closed before relock', () => verify(contract.replaceAll('PAUSED — P8 REOPENED', 'CLOSED'), ratification, html));
+expectFailure('sufficiency layer returns', () => verify(contract.replaceAll('REJECTED — `source_sufficiency`', 'ACCEPTED — `source_sufficiency`'), ratification, html));
+expectFailure('wire field invented', () => verify(contract.replaceAll('NO NEW UPSTREAM WIRE FIELD', 'ADD NEW UPSTREAM WIRE FIELD'), ratification, html));
+expectFailure('ListingIntent boundary collapses', () => verify(contract.replaceAll('B10 does not call `CreateListingIntentDraft`', 'B10 calls `CreateListingIntentDraft`'), ratification, html));
 
 assert(negativeControls === 4, `B10 P9 paused negative-control count mismatch: ${negativeControls}/4`);
 
