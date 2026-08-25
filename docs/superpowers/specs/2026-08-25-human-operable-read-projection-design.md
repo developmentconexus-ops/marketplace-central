@@ -1,10 +1,10 @@
 # Human-Operable Read Projection & Wire Conformance — Design
 
-> **Status:** DESIGN CANDIDATE — architecture/authority direction operator-approved on 2026-08-25; written-spec review still required before contract implementation
+> **Status:** DESIGN APPROVED — operator-approved on 2026-08-25; implementation plan review remains required before contract execution
 > **Trigger:** D6-R2 B20 planning after B10 integration
 > **Method:** DevelopmentConexus Engineering Method v1.0.0 + Frontend Product Experience Planning Method v2.3
 > **Baseline:** `main@bdbbef43ed3a5e9d912e67ddac5173024352eaa3`
-> **Implementation:** BLOCKED until this written design is operator-reviewed, an implementation plan is approved, and the repository roadmap authorizes execution
+> **Implementation:** BLOCKED until the implementation plan is explicitly approved and the repository roadmap authorizes execution
 
 ## 1. Decision
 
@@ -437,28 +437,10 @@ observed_fields[]
 observed_media[] when materially available
 observed_price? when materially available
 observed_at
-provenance
+source observation/provenance sufficient to distinguish current/preserved evidence where the owner can serve both
 ```
 
-Minimum owner-local observation provenance:
-
-```text
-MarketplaceListingObservationProvenance
-  source_authority = marketplace_provider
-  evidence_custody = current_source_observation | preserved_source_evidence
-  acquired_at
-```
-
-Installation qualification continues to identify the provider namespace; no provider ID is duplicated into provenance merely for display.
-
-`ListingObservedField` carries:
-
-```text
-requirement_key
-display_name
-state = known | unknown | unavailable | not_applicable
-value: PublicationValueView   # only when state=known
-```
+`ListingObservedField` carries `requirement_key`, human requirement presentation, explicit knowledge state and `PublicationValueView` when known.
 
 The actual-state read never owns ListingIntent convergence or PriceIntent convergence.
 
@@ -466,83 +448,25 @@ The actual-state read never owns ListingIntent convergence or PriceIntent conver
 
 Performance currently has a local `display_name` solution for Listing. Normalize it to the same **MarketplaceListing presentation meaning** rather than preserving a parallel spelling.
 
-Availability, Market and Economics reads that enumerate existing Listings reuse this typed presentation projection where their accepted P5 human job requires recognition. Reuse does not transfer Offering business authority; it is source-attributed presentation of the same external Listing identity.
+Availability, Market and Economics reads that enumerate existing Listings may reuse this typed presentation projection only where their admitted P5 human job needs it. Reuse does not transfer Offering business authority; it is source-attributed presentation of the same external Listing identity.
 
 Do not automatically attach presentation to every nested `MarketplaceListingRef` in every schema. Canonical refs inside machine/historical correlations remain minimal unless the specific human read requires adjacent presentation.
 
-## 10. ListingIntent / Offering target read conformance
+## 10. ListingIntent read conformance
 
-Canonical W2 already requires ListingIntent reads to preserve more axes than the current OAD. Directly implicated conformance repair restores them without changing write authority.
+Canonical W2 already requires ListingIntent reads to preserve more axes than the current OAD. Directly implicated conformance repair must restore, proportionately:
 
-### 10.1 ListingIntent current read
+- key-based publication context where selected;
+- current resolved requirement values/provenance sufficient to render and explain current draft state;
+- authored-media stable descriptors;
+- authored-media presentation descriptors for currently authorized reads;
+- desired media selection/order;
+- lifecycle, dispatchability/blockers, current external-effect/convergence evidence;
+- actor/time attribution and historical attempt basis already required by W2 where the current OAD omitted them.
 
-Current read carries, proportionately:
+Writes remain sparse/declarative and do not gain response-only labels, presentation locators or server attribution.
 
-```text
-listing_intent_id
-source_product: SourceProductRef
-source_product_presentation: SourceProductPresentation
-target: canonical ListingIntentTarget
-target_presentation?          # response-only, keyed by target kind
-publication_context: PublicationContextRef?  # desired canonical keys
-desired                        # canonical label-free desired meaning
-resolved_requirements[]        # response-only current read axis
-authored_media stable descriptors
-authored_media presentation descriptors
-dispatchability + blockers
-external-effect/convergence evidence
-created/updated + required actor attribution
-historical attempt basis already required by W2
-```
-
-`target_presentation` never changes target identity. Existing-listing target uses `MarketplaceListingPresentation`; new-listing target uses current MarketplaceInstallation/source-product presentation already available under the read.
-
-### 10.2 Resolved requirement view
-
-A current ListingIntent read needs to explain what its canonical desired resolution means now:
-
-```text
-ListingIntentResolvedRequirementView
-  requirement_key
-  display_name
-  mode = follow_source | explicit_override
-  current_value
-```
-
-`current_value` is an explicit knowledge union:
-
-```text
-known(PublicationValueView)
-unknown
-unavailable
-```
-
-For FOLLOW_SOURCE, the view carries the selected `source_candidate_key`; current value is re-resolved from current Readiness evidence and may be unknown/unavailable.
-
-For EXPLICIT_OVERRIDE, the view carries server-attributed author Principal/time required by W2; the canonical authored `PublicationValue` remains label-free in write meaning while the read value uses `PublicationValueView` for presentation.
-
-This axis is current explanation, not historical attempt truth. Historical dispatch basis remains append-only and preserves the material value/provenance established at the attempt.
-
-### 10.3 ListingIntent collection
-
-`ListingIntentListItem` adds only the adjacent presentation needed to scan/select:
-
-- source Product presentation;
-- target presentation when material;
-- existing lifecycle/dispatchability/created-at meaning.
-
-It does not return the full editor/detail payload.
-
-### 10.4 PriceIntent / Availability target presentation
-
-Canonical `PriceIntentTarget` and `AvailabilityTarget` remain unchanged for writes/correlation.
-
-Human collection/read schemas add response-only target presentation keyed by target kind:
-
-- existing Listing → `MarketplaceListingPresentation`;
-- pre-creation ListingIntent → source Product / ListingIntent presentation sufficient to identify the intended publication.
-
-No generic `TargetPresentation` platform type is created; each owner uses the smallest typed projection required by its admitted read.
+No giant workflow/status aggregate is introduced.
 
 ## 11. Media presentation — preserve trust boundaries
 
@@ -558,7 +482,7 @@ ListingIntentMediaPresentationDescriptor
   stable descriptor + volatile authorized presentation reference
 ```
 
-`CreateListingIntentMedia` returns the stable descriptor and parent validator, not a durable access locator. `GetListingIntent` returns presentation descriptors under current authorized read semantics.
+`CreateListingIntentMedia` returns the stable descriptor and parent validator, not a durable access locator. `GetListingIntent` may return presentation descriptors under current authorized read semantics.
 
 Authored byte delivery remains the already-accepted authenticated technical presentation surface, outside Product operation count/SDK business operations.
 
@@ -566,7 +490,7 @@ Authored byte delivery remains the already-accepted authenticated technical pres
 
 Source media remains external Readiness/D4 evidence and must not reuse authored-media access semantics merely because both display images.
 
-When B23 requires preview, `SourceMediaCandidate` carries a distinct response-only `SourceMediaPresentationDescriptor` with volatile access reference under the appropriate source/Organization authorization model.
+When B23 requires preview, `SourceMediaCandidate` may carry a distinct response-only `SourceMediaPresentationDescriptor` with volatile access reference under the appropriate source/Organization authorization model.
 
 No generic Asset/Media owner, Product media library, arbitrary client URL or freely forwardable durable CDN locator is introduced.
 
@@ -582,7 +506,7 @@ The invariant is applied by proven human job, not by mechanically adding labels 
 
 | Consumer | Why presentation is proven now |
 | --- | --- |
-| B10 / R10 | source namespace/product, requirement/context/options/units/source candidates/correspondence choices are human authoring inputs |
+| B10 / R10 | requirement/context/options/units/correspondence choices are human authoring inputs |
 | B20 / R20–R21 | Listing collection/detail must support scan/select/understand |
 | B23 / R22–R23 | ListingIntent collection/editor must identify source/target and render dynamic publication vocabulary/media |
 | B24 / R24 | PriceIntent target must be recognizable to the operator |
@@ -609,14 +533,18 @@ marketplace requirements
 + provider validation where applicable
 ```
 
-Preserve search-first structure, exact Organization/Installation/source subject, requirement/value table, honest knowledge states, ListingIntent handoff and accepted operator language/layout.
+Preserve:
 
-Reopen only the affected interaction/read assumptions:
+- search-first structure;
+- exact Organization/Installation/source subject;
+- requirement/value table;
+- missing/conflicting/unknown/unavailable honesty;
+- ListingIntent handoff;
+- operator wording/layout already accepted.
+
+Reopen only:
 
 ```text
-source/search presentation
-  → source namespace + exact selected Product remain contract-supplied
-
 correspondence region
   → real candidate presentation/selection when resolvable
   → known-empty / unknown / unavailable candidate population
@@ -626,7 +554,7 @@ P9
   → rerun against repaired canonical OAD
 ```
 
-The visual/table structure remains protected. The correspondence interaction itself requires a fresh operator LOCK because its selectable candidate behavior was not previously supplied by the canonical contract. Other B10 regions change only if the repaired wire produces a new material falsifier.
+Because the correspondence interaction itself was not contract-supplied, the affected P8 region requires a fresh operator LOCK after executable candidate repair. Unaffected B10 structure remains protected under Frontend Method §5.3 bounded rebaseline.
 
 ## 14. B20 sequencing
 
@@ -634,9 +562,9 @@ PR #69 / B20 remains **PAUSED / NO P8** until this prerequisite is accepted and 
 
 After prerequisite integration:
 
-1. repair/revalidate the bounded B10 source/correspondence interaction evidence;
+1. repair/revalidate the bounded B10 correspondence region;
 2. rerun B10 P9;
-3. obtain operator re-LOCK for the affected interaction region;
+3. obtain operator re-LOCK for the affected region only;
 4. resume B20 R20/R21 structural design from the repaired Listing read contract.
 
 Do not render B20 against the currently deficient Listing projection.
@@ -646,54 +574,43 @@ Do not render B20 against the currently deficient Listing projection.
 Before contract implementation, the implementation plan must define proof capable of falsifying at least:
 
 1. **Identity fence:** equal labels never collapse distinct IDs/keys; requests still use canonical keys.
-2. **No write-label authority:** generated write/request schemas cannot author display names, option names, unit names, presentation locators or source attribution.
-3. **Source-product operability:** multi-source search and exact Readiness subject carry contract-supplied source/Product presentation; reload does not depend on previous UI memory.
-4. **Requirement operability:** every dynamic requirement/option/unit/source candidate displayed by B10/B23 has contract-supplied human presentation.
-5. **FOLLOW_SOURCE safety:** human selection sends only the current `source_candidate_key`; stale/removed candidate cannot silently resolve after evidence drift.
-6. **Correspondence operability:** a known candidate population can drive Resolve by key; unknown/unavailable cannot be presented as selectable; known empty remains distinct.
-7. **Correspondence stale safety:** candidate chosen from a stale correspondence revision cannot silently resolve after current evidence changes.
-8. **Listing collection operability:** R20 can identify/select a Listing without N+1 point GETs and without fabricating a label.
-9. **Presentation unavailability:** missing presentation does not erase a known Product/Listing or become known empty.
-10. **Performance de-duplication:** no parallel second Listing-label meaning survives between Offering and Performance.
-11. **W2 conformance:** repaired OAD covers the directly implicated W2 MarketplaceListing and ListingIntent read axes; no already-accepted axis is silently dropped.
-12. **Current vs historical distinction:** current presentation changes do not rewrite authorization/history labels or frozen dispatch evidence.
-13. **Media trust separation:** source, authored and observed Listing media presentation references remain distinct trust types; no arbitrary URL becomes write authority.
-14. **OAD tooling:** source lint/bundle/generation/type compilation remain green; operation/Permission/Principal counts remain 106/31/H-A-S unless a new explicit finding stops the work.
-15. **Frontend bounded rebaseline:** unchanged B10 regions remain protected; only falsified interaction assumptions are reopened before re-LOCK.
+2. **No write-label authority:** generated write/request schemas cannot author `display_name`, option names, unit names, presentation locators or source attribution.
+3. **Requirement operability:** every dynamic requirement/option/unit displayed by B10/B23 has contract-supplied human presentation.
+4. **Correspondence operability:** a known candidate population can drive Resolve by key; unknown/unavailable cannot be presented as selectable; known empty remains distinct.
+5. **Stale candidate safety:** candidate chosen from a stale correspondence revision cannot silently resolve after current evidence changes.
+6. **Listing collection operability:** R20 can identify/select a Listing without N+1 point GETs and without fabricating a label.
+7. **Presentation unavailability:** missing presentation does not erase a known Listing or become known empty.
+8. **Performance de-duplication:** no parallel second Listing-label meaning survives between Offering and Performance.
+9. **W2 conformance:** repaired OAD covers the directly implicated W2 MarketplaceListing and ListingIntent read axes; no already-accepted axis is silently dropped.
+10. **Media trust separation:** source, authored and observed Listing media presentation references remain distinct trust types; no arbitrary URL becomes write authority.
+11. **OAD tooling:** source lint/bundle/generation/type compilation remain green; operation/Permission/Principal counts remain 106/31/H-A-S unless a new explicit finding stops the work.
+12. **Frontend bounded rebaseline:** unchanged B10 regions remain unchanged; only the correspondence interaction is reopened before re-LOCK.
 
-CI remains proportional: prefer semantic/schema/type negative proof and the existing aggregate gate; do not add prose-string ratification tests.
+CI remains proportional: prefer semantic/schema/type negative proof and existing aggregate gate; do not add prose-string ratification tests.
 
 ## 16. Adversarial challenge
 
-### “Why not just use native_listing_key as the label?”
+### Objection: “Why not just use native_listing_key as the label?”
 
-The Product already proves a human-recognition need through Performance and provider APIs expose separate ID/title semantics. A technical key may be shown as fallback/correlation evidence but cannot be promoted to a human name by convention.
+Because the Product already proves a human-recognition need through Performance and provider APIs expose separate ID/title semantics. A technical key may be shown as fallback/correlation evidence but cannot be promoted to a human name by convention.
 
-### “This is a frontend convenience endpoint disguised as architecture.”
+### Objection: “This is a frontend convenience endpoint disguised as architecture.”
 
 No endpoint is added. Existing reads are incomplete for already-admitted human jobs. W3 explicitly allows collection items to carry owner-semantic subsets needed to scan/select/navigate.
 
-### “One shared presentation schema will become a platform ontology.”
+### Objection: “One shared presentation schema will become a platform ontology.”
 
-The design forbids a universal Entity/Presentation envelope. Reuse is limited to the same semantic external subject (`MarketplaceListing`, `SourceProduct`) or the same publication vocabulary meaning. Other owners require their own proven need.
+The design forbids a universal Entity/Presentation envelope. Reuse is limited to the same semantic external subject (`MarketplaceListing`) or same publication vocabulary meaning. Other owners require their own proven need.
 
-### “Why expose SourceInstance presentation without a SourceInstance Product resource?”
-
-Because source namespace recognition is presentation of an already-required qualifier in a multi-source human search. It does not create a business lifecycle, CRUD surface or source registry Product authority.
-
-### “Provider labels change, so they cannot be Product data.”
+### Objection: “Provider labels change, so they cannot be Product data.”
 
 Mutability is exactly why labels are presentation, not identity. Current reads may change; historical/purpose snapshots remain explicitly separate.
 
-### “A free-form candidate detail list would make correspondence easier.”
-
-Rejected. Start with `display_label + canonical key`; add structured candidate evidence only when a real ambiguous decision proves that the bounded projection is insufficient.
-
-### “Second provider portability requires generic arbitrary metadata now.”
+### Objection: “Second provider portability requires generic arbitrary metadata now.”
 
 Rejected. The seam is typed key + presentation for meanings already provider-independent at the Product boundary. A future provider with a value family not representable without information loss reopens the smallest affected family.
 
-### “Fix every opaque ID now.”
+### Objection: “Fix every opaque ID now.”
 
 Rejected. Opaque identity is correct. Only a proven human recognition/selection/explanation job justifies an adjacent presentation projection.
 
@@ -702,7 +619,7 @@ Rejected. Opaque identity is correct. Only a proven human recognition/selection/
 Reopen this design only when material evidence shows one of:
 
 - a real provider requirement/value cannot be represented without information loss by the typed publication vocabulary;
-- human disambiguation of source/correspondence candidates requires structured semantics stronger than bounded presentation label + canonical key;
+- human disambiguation of correspondence candidates requires structured semantics stronger than bounded presentation strings;
 - current vs historical presentation cannot remain correctly separated under a proven workflow;
 - a Product read requires cross-owner presentation whose authorization cannot be preserved without a new semantic dependency;
 - the source/authored/observed media presentation trust separation cannot support a real B23 consumer;
@@ -716,7 +633,6 @@ This prerequisite does not create:
 - Product/PIM master;
 - generic `EntityRef`, `EntityPresentation`, metadata map or relationship graph;
 - PresentationService or label registry;
-- SourceInstance Product CRUD/registry surface;
 - provider field bag;
 - generic option/category/unit catalog business owner;
 - mapping/transformation/rules engine;
@@ -728,10 +644,10 @@ This prerequisite does not create:
 
 ## 19. Written-spec exit gate
 
-Before implementation planning:
+This design has been operator-approved. Contract execution still requires:
 
-- operator reviews this written spec;
-- placeholders/ambiguities/contradictions are resolved;
-- prerequisite scope is accepted as sufficient Global Maximum rather than Local Maximum or speculative platform expansion.
+- explicit operator approval of the implementation plan;
+- repository roadmap authorization for execution;
+- task-by-task proof and stop/reopen behavior defined by that approved plan.
 
-Only then create an implementation plan and touch D4/D4-R1/W2/W3/OAD/frontend evidence.
+Only then may D4/D4-R1/W2/W3/OAD be modified. B10/B20 frontend work remains separately gated.
