@@ -20,7 +20,12 @@ function extractOperatorSurface(text) {
   const start = text.indexOf('<!-- OPERATOR_SURFACE_START -->');
   const end = text.indexOf('<!-- OPERATOR_SURFACE_END -->');
   assert(start >= 0 && end > start, 'B10 operator-surface markers missing');
-  return text.slice(start, end);
+  return text
+    .slice(start, end)
+    .replace(/<script[\s\S]*?<\/script>/gu, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gu, ' ')
+    .replace(/<[^>]+>/gu, ' ')
+    .replace(/\s+/gu, ' ');
 }
 
 function verifyHtml(text) {
