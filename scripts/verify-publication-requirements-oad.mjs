@@ -25,9 +25,12 @@ function verify(text) {
   assert(context.includes('category_key:'), 'publication requirements context must expose category_key');
   assert(context.includes('product_type_key:'), 'publication requirements context must expose product_type_key');
 
-  const candidate = schemaBlock(text, 'PublicationSourceCandidate');
-  assert(candidate.includes('required: [candidate_key, value]'), 'source candidate must carry candidate_key + resolved PublicationValue');
-  assert(!candidate.includes('state:'), 'knowledge state belongs to requirement source evidence, not to each candidate');
+  const candidateValues = schemaBlock(text, 'PublicationSourceCandidateValues');
+  assert(candidateValues.includes('type: object'), 'source candidates must use a key-addressed object so candidate identity is structurally unique');
+  assert(candidateValues.includes('minProperties: 1'), 'source candidate values require at least one candidate');
+  assert(candidateValues.includes("propertyNames: {$ref: '#/schemas/OpaqueKey'}"), 'source candidate identities must remain opaque Readiness keys');
+  assert(candidateValues.includes("additionalProperties: {$ref: '#/schemas/PublicationValue'}"), 'each source candidate key must resolve to one PublicationValue');
+  assert(!candidateValues.includes('x-mpc-unique-by'), 'candidate identity uniqueness must be structural, not an unenforced vendor annotation');
 
   const evidenceVariants = [
     ['PublicationSourceEvidenceKnown', 'known'],
@@ -43,14 +46,11 @@ function verify(text) {
   }
   const known = schemaBlock(text, 'PublicationSourceEvidenceKnown');
   assert(known.includes('required: [state, candidates]'), 'known source evidence must expose candidates');
-  assert(known.includes('minItems: 1'), 'known source evidence requires at least one candidate');
-  assert(known.includes('uniqueItems: true'), 'known source evidence must reject duplicate candidate objects');
-  assert(known.includes('x-mpc-unique-by: candidate_key'), 'known source evidence must require candidate identity uniqueness');
+  assert(known.includes("candidates: {$ref: '#/schemas/PublicationSourceCandidateValues'}"), 'known source evidence must use the structurally unique candidate-key map');
   const conflicting = schemaBlock(text, 'PublicationSourceEvidenceConflicting');
   assert(conflicting.includes('required: [state, candidates]'), 'conflicting source evidence must expose conflicting candidates');
-  assert(conflicting.includes('minItems: 2'), 'conflicting source evidence requires at least two candidates');
-  assert(conflicting.includes('uniqueItems: true'), 'conflicting source evidence must reject duplicate candidate objects');
-  assert(conflicting.includes('x-mpc-unique-by: candidate_key'), 'conflicting source evidence must require at least two distinct candidate identities');
+  assert(conflicting.includes("{$ref: '#/schemas/PublicationSourceCandidateValues'}"), 'conflicting source evidence must use the structurally unique candidate-key map');
+  assert(conflicting.includes('minProperties: 2'), 'conflicting source evidence requires at least two distinct candidate identities');
 
   const evidence = schemaBlock(text, 'PublicationSourceEvidence');
   for (const [schema] of evidenceVariants) {
@@ -130,16 +130,16 @@ expectFailure('publication context erased', (text) => text.replace('  Publicatio
 expectFailure('unsupported source state collapsed', (text) => text.replace('state: {const: unsupported}', 'state: {const: unknown}'));
 expectFailure('provider requirement class collapsed', (text) => text.replace('[required, recommended, optional, conditional]', '[required, optional]'));
 expectFailure('text max constraint erased', (text) => text.replace('      max_length:', '      erased_length:'));
-expectFailure('candidate knowledge duplicated', (text) => text.replace('required: [candidate_key, value]', 'required: [candidate_key, state]'));
-expectFailure('conflict cardinality weakened', (text) => text.replace('      minItems: 2', '      minItems: 1'));
-expectFailure('candidate identity uniqueness erased', (text) => text.replaceAll('x-mpc-unique-by: candidate_key', 'x-mpc-unique-by: none'));
+expectFailure('candidate key-addressed representation erased', (text) => text.replace("propertyNames: {$ref: '#/schemas/OpaqueKey'}", 'propertyNames: {type: string}'));
+expectFailure('candidate value contract erased', (text) => text.replace("additionalProperties: {$ref: '#/schemas/PublicationValue'}", 'additionalProperties: true'));
+expectFailure('conflict distinct-identity cardinality weakened', (text) => text.replace('        - {minProperties: 2}', '        - {minProperties: 1}'));
 expectFailure('response publication context omitted', (text) => text.replace('[subject, publication_context, requirements_revision, requirements, source_media_candidates, evaluated_at]', '[subject, requirements_revision, requirements, source_media_candidates, evaluated_at]'));
 
 assert(negativeControls === 8, `publication requirements negative-control count mismatch: ${negativeControls}/8`);
 console.log('publication_requirements_context=EXPLICIT');
 console.log('publication_requirements_class=FOUR_WAY');
 console.log('publication_requirements_value_spec=BOUNDED_BY_PUBLICATION_VALUE');
-console.log('publication_requirements_candidate_identity=UNIQUE_BY_CANDIDATE_KEY');
+console.log('publication_requirements_candidate_identity=STRUCTURALLY_UNIQUE_BY_OBJECT_KEY');
 console.log('publication_requirements_source_evidence=KNOWN_MISSING_CONFLICTING_UNKNOWN_UNAVAILABLE_UNSUPPORTED');
 console.log(`publication_requirements_negative_controls=${negativeControls}/8`);
 console.log('publication_requirements_oad=PASS');
