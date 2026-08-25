@@ -1,190 +1,211 @@
 # D6-R2 P6 — B10 Preparation Reference Study
 
-> **Status:** DERIVED / REVALIDATED — B10 structure confirmed; human-first P8 operator walkthrough APPROVED; A01 pending
+> **Status:** DERIVED / GLOBAL MAXIMUM REVALIDATED — P8 REOPENED / CANDIDATE
 > **Block:** B10 Preparation / R10
 > **Method profile:** `developmentconexus-ops/conexus-methodology@9c7210d1504bef01c0d134a6c3ae8627deebb535` → `METHOD.md + FRONTEND-METHOD.md`
 > **Product implementation:** BLOCKED UNTIL accepted D9
 
 ## 1. Human job and accepted boundary
 
-B10 supports:
+B10 supports a deliberately small preparation job:
 
 ```text
 exact Organization + Marketplace Installation
 → search admitted source products
-→ select exact SourceInstance + native product key
-→ inspect readiness + publication requirements
-→ resolve/clear correspondence when needed and authorized
-→ re-read readiness after consequential correspondence effect
-→ continue to ListingIntent only when current pre-ListingIntent state permits
+→ select exact source-qualified product
+→ inspect marketplace-required fields and source values
+→ resolve/clear Product↔channel correspondence when needed
+→ continue to ListingIntent configuration
 ```
 
-B10 does not own source master data, a generic PIM, provider mutation, ListingIntent editing, Offering dispatchability, or Authorization.
-
-## 2. Reference evidence
-
-P6 studied mature products only for task structure, never as MPC authority:
-
-- Google Merchant Center — search/triage → affected product → issue detail:  
-  <https://support.google.com/merchants/answer/12476548>
-- Akeneo — product grid → readiness/completeness → exact product detail:  
-  <https://help.akeneo.com/en_US/product-readiness/product-readiness-overview>
-- Amazon Seller Central — inventory search/filter → status/reason → exact listing/product correction context:  
-  <https://sellercentral.amazon.com/seller-forums/discussions/t/a8234e1f-f065-44d8-a4c4-f23cf92b3f4b>
-- Mirakl/Lowe's — validation feedback remains tied to exact product/import identity:  
-  <https://seller.lowes.com/mirakl-seller-documentation/>
-
-Shared useful pattern:
-
-```text
-search/filter
-→ compact issue/readiness signal
-→ exact subject detail
-→ explicit correction/revalidation boundary
-```
-
-MPC-specific rejection: none of those products authorize MPC to edit arbitrary source attributes, invent readiness scores, or expose raw provider DTO/field bags.
-
-## 3. Structure decision
-
-Three structures were considered:
-
-```text
-A persistent split-view
-B progressive full inline expansion
-C search/list → selected exact-subject detail
-```
-
-**C remains selected.**
-
-- A has no evidence-backed need for high-frequency rapid cycling, is vertically fragile for deep requirements, and complicates responsive behavior.
-- B weakens exact source identity and recovery/revalidation context.
-- C preserves scanability in search and gives requirements/correspondence enough durable detail space.
-
-**CURRENT STRUCTURE CONFIRMED.**
-
-**P7 layout hypotheses remain NOT TRIGGERED.** Rendering rejected alternatives would manufacture ambiguity rather than resolve a real Product question.
-
-## 4. P7 feasibility disposition
-
-| Question | Disposition |
-| --- | --- |
-| Required fields / summaries | PRESENT-IN-AUTHORITY through source search, ProductChannelReadiness and PublicationRequirements |
-| Identity sources | PRESENT-IN-AUTHORITY: Organization + exact Installation + SourceInstance + native product key |
-| Pagination / scale | PRESENT-IN-AUTHORITY: cursor/limit; no total-count inference |
-| Sort / filter | admitted query/source narrowing only; additional generic sort rejected by YAGNI |
-| Preview / content truth | owner-local readiness/requirements/correspondence projections only |
-| Material writes | Resolve/Clear correspondence only; ListingIntent creation is the downstream boundary |
-
-## 5. P8 structural obligations
-
-The browser-operable candidate must prove:
-
-- locked B00 shell/IA remains intact;
-- exact Organization and Marketplace Installation behavior;
-- Organization switch invalidates Installation context;
-- material search works;
-- known-empty != unknown/unavailable;
-- exact source identity remains technically preserved;
-- complete applicable publication-requirement census is inspectable;
-- correspondence effects require an authoritative re-read;
-- ListingIntent is an explicit unopened downstream boundary;
-- mobile drawer supports Escape and focus return;
-- no frontend-created business truth.
-
-## 6. Lock-time assumption A01
-
-A01: real high-frequency rapid cycling across many products is not yet evidenced. It influenced rejection of persistent split-view but does not block the current search→detail candidate by itself.
-
-**A01 disposition: PENDING OPERATOR.**
-
-Before B10 can LOCK, the operator selects exactly one:
-
-```text
-ACCEPT_FOR_LOCK_WITH_LATER_PROBE
-BLOCK_LOCK
-```
-
-## 7. First P8 candidate result
-
-The first operated candidate exposed a material simplification: one generic `Categoria / atributos` bucket could not let the operator inspect the full marketplace-specific requirement basis.
-
-The initial interpretation was that accepted narrative authority already covered the distinction and therefore no upstream repair was necessary. Subsequent wire-level proof falsified that conclusion.
-
-## 8. Downstream falsification result
-
-B10 demonstrated that the accepted publication meaning was richer than the machine-readable Product OAD realization. The affected downstream scope was paused and the smallest owner — Product OAD wire realization — was reopened.
-
-This became the PR #68 prerequisite rather than a frontend workaround.
-
-## 9. Source truth vs ListingIntent truth
+B10 does **not** edit a source Product master, become a PIM, decide final ListingIntent dispatchability, validate a complete provider payload, publish to the provider, or become a second marketplace rule engine.
 
 The Product distinction remains:
 
 ```text
-source evidence
-!=
-ListingIntent desired publication value
+provider requirement
+!= source evidence/value
+!= ListingIntent desired value
+!= provider acceptance/convergence
 ```
 
-In particular:
+And specifically:
 
 ```text
 missing source != publication impossible
 ```
 
-A missing source fact stays missing. Later, ListingIntent/Offering may author a permitted resolution such as `FOLLOW_SOURCE(candidate_key)` or `EXPLICIT_OVERRIDE(PublicationValue)` without rewriting source truth. B10 does not decide final draft dispatchability and does not edit the override.
+## 2. Earlier structure and PR #68 result
 
-## 10. Superseded pre-PR68 disposition
+The previously selected navigation structure remains sound:
 
-The earlier B10 candidate used shorthand states such as `met` and treated `required/recommended/conditional` as an applicability dimension. That representation is superseded by the accepted PR #68 wire contract.
+```text
+search/list → selected exact-subject detail
+```
 
-The prior statement `UPSTREAM FINDING: NONE` is superseded for this exact wire issue.
+**CURRENT STRUCTURE CONFIRMED.**
 
-## 11. PR #68 integrated — bounded B10 rebaseline
+The earlier alternatives — persistent split view and progressive inline expansion — remain rejected because no evidence justifies their extra responsive and identity complexity. **P7 layout hypotheses remain NOT TRIGGERED.**
 
 PR #68 is integrated into `main` at:
 
 `ed3d164b0574b7950c2c7467d150c89576bba1ec`
 
-**UPSTREAM FINDING: RESOLVED.**
+It correctly preserves provider/context-qualified publication requirements, independent `requirement_class` and `applicability`, six source-evidence states, seven bounded value-spec families, source-candidate identity and source-media separation. That upstream wire repair remains accepted and is not reopened here.
 
-The bounded rebaseline preserves the existing B10 search→detail structure and changes only how accepted publication truth is represented.
+## 3. P9 trigger
 
-Canonical distinctions now carried by P8:
+The first locked human-first P8 projected source evidence into a separate per-requirement `Situação` column and used labels such as `Atendido`.
 
-```text
-requirement_class != applicability
-
-requirement_class
-= required / recommended / optional / conditional
-
-applicability
-= current / draft_dependent
-
-source_evidence.state
-= known / missing / conflicting / unknown / unavailable / unsupported
-```
-
-Each requirement also carries a bounded `value_spec`, `not_applicable_allowed`, and source evidence compatible with the requirement value family. The seven value-spec families are:
+P9 correctly proved one semantic overclaim:
 
 ```text
-text
-exact_decimal
-boolean
-option
-text_list
-option_list
-number_unit
+source_evidence.state = known
+!=
+provider/Readiness fact that the requirement is satisfied
 ```
 
-Known/conflicting source evidence preserves opaque candidate identity. Conflicting evidence preserves multiple candidates rather than choosing one. `not_applicable` remains an explicit override value only; source evidence does not synthesize it.
+The first proposed correction was only to rename `Atendido` to `Informação disponível`. Operator challenge then exposed a broader question: whether B10 needs a per-requirement satisfaction layer at all.
 
-The P8 candidate must preserve this machine truth without turning the wire vocabulary into the primary user language. The technical contract remains encoded and testable even when the operator surface translates it.
+That question is material because a convenience layer could duplicate marketplace validation, turn Readiness into a generic rules engine, or force the frontend to explain states that provide no additional operator value.
 
-### 11.1 LOCK impact sweep
+## 4. Fresh market/reference evidence
 
-The PR #68 change affects B10's PublicationRequirements projection only. Existing LOCKED blocks do not consume that wire meaning:
+The Global Maximum was re-evaluated against current marketplace-hub patterns and the Mercado Livre contract itself.
+
+### AnyMarket
+
+Official support material models channel preparation around marketplace attributes that are mandatory/optional, attribute/value binding and explicit pendencies. Missing or invalid required data is corrected from marketplace feedback; the hub does not need a separate universal per-field sufficiency ontology.
+
+Reference:
+- <https://suporte.anymarket.com.br/hc/pt-br/articles/51175297537555-Como-funciona-a-Central-de-v%C3%ADnculos>
+
+### Hub2b
+
+Official category-attribute guidance exposes the marketplace attribute, whether it is mandatory, its type and allowed values. Values are then supplied from the source system or Hub2b authoring context.
+
+Reference:
+- <https://suporte.hub2b.com.br/hc/pt-br/articles/360030486354-Atributos-por-categoria>
+
+### Magis5
+
+Official publication guidance treats omitted mandatory information as a publication/pre-publication error and lets channel-specific review remain channel-specific. The useful operator model is required information + supplied value + marketplace feedback, not another generic readiness state machine.
+
+Reference:
+- <https://ajuda.magis5.com.br/como-publicar-anuncios-em-massa-na-magis5>
+
+### Mercado Livre
+
+Mercado Livre itself supplies category/context attribute requirements, including required and conditional-required behavior, and owns validation of the effective item payload. Conditional requirements may depend on the item context; provider validation remains the strongest authority for the actual provider payload.
+
+References:
+- <https://developers.mercadolivre.com.br/pt_br/api-docs-pt-br/atributos>
+- <https://developers.mercadolivre.com.br/pt_br/api-docs-pt-br/validador-de-publicacoes>
+
+### Evidence conclusion
+
+The common sustainable pattern is:
+
+```text
+marketplace requirements
++ source/catalog values when available
++ explicit mapping/authoring for what is missing or ambiguous
++ downstream marketplace-specific validation/feedback
+```
+
+The evidence does **not** justify a generic intermediate `source_sufficiency` concept.
+
+## 5. Decision Core — GLOBAL MAXIMUM REVALIDATED
+
+### Root cause
+
+B10 had started to convert technical honesty into accidental Product complexity:
+
+```text
+requirement + source evidence
+→ invented operator satisfaction state
+→ pressure for another backend/client semantic layer
+```
+
+The actual operator job is simpler: see what the channel asks for, see what value exists now, and know what will need to be completed or chosen while configuring the listing.
+
+### Target invariant
+
+> **B10 must faithfully expose marketplace requirements and available source values, preserve missing/conflicting/unknown evidence honestly, and hand unresolved listing values to Offering authoring without creating a second validation authority. Final draft validity and provider acceptance remain with their accepted owners.**
+
+### Alternatives
+
+| Alternative | Decision | Reason |
+| --- | --- | --- |
+| add per-requirement `source_sufficiency` | **REJECTED — `source_sufficiency`** | duplicates meaning, adds states with little operator value, and risks becoming a generic rules engine |
+| frontend computes `satisfied` from `source_evidence + value_spec` | REJECTED | frontend would become parallel business authority |
+| send blindly and rely only on provider rejection | REJECTED | throws away cheap declared requirement/type/value constraints already available before dispatch |
+| **requirements + source values + downstream authoring/provider validation** | **CURRENT STRUCTURE CONFIRMED / GLOBAL MAXIMUM** | smallest model that keeps provider truth, source truth, authoring and final validation distinct |
+
+**NO NEW UPSTREAM WIRE FIELD** is required for this decision. `GetPublicationRequirements` already carries the requirement/value constraints and source evidence needed by B10; Offering/ListingIntent already owns downstream desired values and dispatchability.
+
+This is removal of accidental complexity, not removal of essential provider complexity.
+
+## 6. Revised P8 operator projection
+
+The primary detail table becomes:
+
+```text
+Campo do marketplace
+Exigência
+Valor encontrado
+Na configuração do anúncio
+```
+
+Examples:
+
+```text
+Marca       | Obrigatório | Deca          | usar o valor encontrado
+Material    | Obrigatório | —             | preencher na configuração do anúncio
+Acabamento  | Recomendado | Cromado / inox| escolher na configuração do anúncio
+```
+
+No `Situação`, `Atendido`, readiness score or per-field sufficiency status is needed.
+
+Technical evidence remains encoded beneath the UI so that:
+
+- `requirement_class != applicability`;
+- `known / missing / conflicting / unknown / unavailable / unsupported` remain distinct;
+- all seven `value_spec` families remain representable;
+- opaque source candidates remain distinguishable;
+- `not_applicable` remains override-only;
+- source media stays separate;
+- no raw `provider_fields` bag appears.
+
+Missing/conflicting source values do not by themselves block entry into ListingIntent authoring. B10 may still fail closed when its own exact identity/correspondence/read authority cannot be established.
+
+## 7. Correspondence and downstream boundary
+
+Correspondence stays inside ProductChannelReadiness:
+
+```text
+Resolve/Clear correspondence
+→ no blind retry after ambiguous possible acceptance
+→ authoritative reread
+```
+
+The B10 continue control remains a navigation handoff. B10 does not manufacture Offering-owned desired state and does not call `CreateListingIntentDraft` merely to leave the screen.
+
+ListingIntent later chooses `FOLLOW_SOURCE` or `EXPLICIT_OVERRIDE` and completes missing/ambiguous values as required. Provider-specific validation belongs after the effective draft/payload exists, not in B10.
+
+## 8. P8 reopen and LOCK impact
+
+The earlier human-first P8 was operated and later operator-ratified. Its A01 assumption was explicitly accepted:
+
+`A01 = ACCEPT_FOR_LOCK_WITH_LATER_PROBE`.
+
+The operator has now authorized this bounded Global Maximum rebaseline. Because the visible requirement model changes materially, the prior B10 LOCK is reopened only for B10.
+
+**P8 REOPENED / CANDIDATE.**
+
+A01 is **not** reopened: the current change does not alter the search/list → exact-subject structure that A01 governs.
+
+LOCK impact sweep:
 
 ```text
 B00 | UNAFFECTED
@@ -193,77 +214,20 @@ B00-R2 | UNAFFECTED
 B11 | UNAFFECTED
 B12 | UNAFFECTED
 B110 | UNAFFECTED
+B10 | REOPENED — bounded requirement/value projection only
 ```
 
-No existing LOCK is reopened.
+No D0–D5 Product authority, Product operation, Permission, Principal kind, D7/D8 authority or implementation authorization is changed.
 
-## 12. Operator REVISE — human language projection
+## 9. Current gate
 
-The operator rejected the first post-PR68 P8 candidate as operationally unreadable even though its contract representation was technically accurate.
-
-Root cause:
+The revised low-fi remains disposable P8 evidence and must be operated again before any new LOCK.
 
 ```text
-wire-contract vocabulary
-→ copied into primary screen language
-→ operator must understand backend/API semantics to perform a normal preparation task
+proof revised P8 candidate
+→ next gate: operator walkthrough
+→ operator LOCK / REVISE / UPSTREAM FINDING
+→ rerun P9 only after operator re-LOCK
 ```
 
-This conflicts with the accepted frontend-method rule **human needs before screens**. The frontend must project accepted truth into the user's job language; backend coherence does not authorize backend-shaped UX.
-
-The Product/OAD authority remains sufficient. This is a bounded frontend P8 correction, not a new upstream finding.
-
-### 12.1 Human questions the primary surface must answer
-
-```text
-O que o marketplace está pedindo?
-O que já está atendido?
-O que está faltando ou não pôde ser verificado?
-Qual informação existe hoje?
-O que o operador precisa fazer agora?
-```
-
-Primary table language therefore becomes:
-
-```text
-Requisito do marketplace
-Exigência
-Situação
-Informação atual
-O que fazer
-```
-
-Wire states are translated into operator states such as:
-
-```text
-Atendido
-Falta informação
-Há informações diferentes
-Não foi possível verificar
-Não disponível na fonte
-```
-
-Technical identities, revision keys, source-candidate keys and downstream resolution vocabulary move behind explicit secondary disclosure for support/audit. They remain encoded in the artifact and verifier; they are not deleted or reinterpreted.
-
-### 12.2 Operated human-first candidate
-
-```text
-OPERATED
-actual task attempted: inspect the revised human-first Preparation flow as a normal operator, including requirement summary and next-action language
-material issues found: none after the human-language revision
-operator result: APPROVED CANDIDATE
-LOCK gate: pending A01 disposition
-```
-
-`Operator walkthrough: APPROVED / A01 PENDING`.
-
-`P8 status: CANDIDATE / NOT LOCKED — awaiting A01 disposition`.
-
-A01 remains **PENDING OPERATOR** with the same two lawful dispositions:
-
-```text
-ACCEPT_FOR_LOCK_WITH_LATER_PROBE
-BLOCK_LOCK
-```
-
-Only after the operator selects A01 and explicitly LOCKS may B10 proceed to P9.
+Do not begin P10, Pre-D9/D9 or Product implementation from this candidate state.
