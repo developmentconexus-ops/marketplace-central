@@ -171,7 +171,7 @@ try {
   console.log('publication_requirements_proof=PARSED_BUNDLE');
   console.log('publication_requirements_candidate_identity=STRUCTURAL_OBJECT_KEY');
   console.log('publication_requirements_source_value_families=7/7');
-  console.log(`publication_requirements_negative_controls=${publicationProof.negativeControls}/8`);
+  console.log(`publication_requirements_negative_controls=${publicationProof.negativeControls}/10`);
 
   let negativeControls = 0;
 

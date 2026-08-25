@@ -282,7 +282,9 @@ schemas:
     type: object
     minProperties: 1
     propertyNames: {$ref: '#/schemas/OpaqueKey'}
-    additionalProperties: {$ref: '#/schemas/PublicationValue'}
+    additionalProperties: false
+    patternProperties:
+      '^.+$': {$ref: '#/schemas/PublicationValue'}
   PublicationSourceEvidenceKnown:
     type: object
     additionalProperties: false
@@ -361,37 +363,37 @@ schemas:
     allOf:
       - {$ref: '#/schemas/PublicationSourceEvidence'}
       - if: {properties: {state: {enum: [known, conflicting]}}, required: [state]}
-        then: {properties: {candidates: {type: object, additionalProperties: {$ref: '#/schemas/PublicationTextValue'}}}}
+        then: {properties: {candidates: {type: object, additionalProperties: false, patternProperties: {'^.+$': {$ref: '#/schemas/PublicationTextValue'}}}}}
   PublicationExactDecimalSourceEvidence:
     allOf:
       - {$ref: '#/schemas/PublicationSourceEvidence'}
       - if: {properties: {state: {enum: [known, conflicting]}}, required: [state]}
-        then: {properties: {candidates: {type: object, additionalProperties: {$ref: '#/schemas/PublicationExactDecimalValue'}}}}
+        then: {properties: {candidates: {type: object, additionalProperties: false, patternProperties: {'^.+$': {$ref: '#/schemas/PublicationExactDecimalValue'}}}}}
   PublicationBooleanSourceEvidence:
     allOf:
       - {$ref: '#/schemas/PublicationSourceEvidence'}
       - if: {properties: {state: {enum: [known, conflicting]}}, required: [state]}
-        then: {properties: {candidates: {type: object, additionalProperties: {$ref: '#/schemas/PublicationBooleanValue'}}}}
+        then: {properties: {candidates: {type: object, additionalProperties: false, patternProperties: {'^.+$': {$ref: '#/schemas/PublicationBooleanValue'}}}}}
   PublicationOptionSourceEvidence:
     allOf:
       - {$ref: '#/schemas/PublicationSourceEvidence'}
       - if: {properties: {state: {enum: [known, conflicting]}}, required: [state]}
-        then: {properties: {candidates: {type: object, additionalProperties: {$ref: '#/schemas/PublicationOptionValue'}}}}
+        then: {properties: {candidates: {type: object, additionalProperties: false, patternProperties: {'^.+$': {$ref: '#/schemas/PublicationOptionValue'}}}}}
   PublicationTextListSourceEvidence:
     allOf:
       - {$ref: '#/schemas/PublicationSourceEvidence'}
       - if: {properties: {state: {enum: [known, conflicting]}}, required: [state]}
-        then: {properties: {candidates: {type: object, additionalProperties: {$ref: '#/schemas/PublicationTextListValue'}}}}
+        then: {properties: {candidates: {type: object, additionalProperties: false, patternProperties: {'^.+$': {$ref: '#/schemas/PublicationTextListValue'}}}}}
   PublicationOptionListSourceEvidence:
     allOf:
       - {$ref: '#/schemas/PublicationSourceEvidence'}
       - if: {properties: {state: {enum: [known, conflicting]}}, required: [state]}
-        then: {properties: {candidates: {type: object, additionalProperties: {$ref: '#/schemas/PublicationOptionListValue'}}}}
+        then: {properties: {candidates: {type: object, additionalProperties: false, patternProperties: {'^.+$': {$ref: '#/schemas/PublicationOptionListValue'}}}}}
   PublicationNumberUnitSourceEvidence:
     allOf:
       - {$ref: '#/schemas/PublicationSourceEvidence'}
       - if: {properties: {state: {enum: [known, conflicting]}}, required: [state]}
-        then: {properties: {candidates: {type: object, additionalProperties: {$ref: '#/schemas/PublicationNumberUnitValue'}}}}
+        then: {properties: {candidates: {type: object, additionalProperties: false, patternProperties: {'^.+$': {$ref: '#/schemas/PublicationNumberUnitValue'}}}}}
   PublicationRequirement:
     type: object
     additionalProperties: false
