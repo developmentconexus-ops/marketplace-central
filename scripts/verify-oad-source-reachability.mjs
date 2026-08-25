@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { basename, dirname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { provePublicationRequirementsOad } from './lib/publication-requirements-oad-proof.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const contractDir = join(root, 'contracts/api/product');
@@ -149,6 +150,7 @@ try {
   run(spec.command, spec.args);
   const bundleText = readFileSync(bundlePath, 'utf8');
   const bundleHash = sha256(bundleText);
+  const publicationProof = provePublicationRequirementsOad(JSON.parse(bundleText));
 
   const files = readdirSync(contractDir).filter((name) => name.endsWith('.yaml')).sort();
   const fileTexts = new Map(files.map((file) => [file, readFileSync(join(contractDir, file), 'utf8')]));
@@ -166,6 +168,10 @@ try {
   console.log('oad_source_orphan_policy=EXACT_FROZEN_HISTORICAL_ALLOWLIST');
   console.log(`oad_source_allowed_orphans=${result.orphans.length}/${manifest.total_count}`);
   console.log('oad_source_new_orphans=0');
+  console.log('publication_requirements_proof=PARSED_BUNDLE');
+  console.log('publication_requirements_candidate_identity=STRUCTURAL_OBJECT_KEY');
+  console.log('publication_requirements_source_value_families=7/7');
+  console.log(`publication_requirements_negative_controls=${publicationProof.negativeControls}/10`);
 
   let negativeControls = 0;
 
