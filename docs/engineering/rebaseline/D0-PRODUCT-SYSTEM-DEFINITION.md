@@ -620,3 +620,36 @@ The final cold review confirmed:
 - no D1+ target architecture is invented inside D0.
 
 Those checks passed. D0 is therefore **ACCEPTED AS A WHOLE / CLOSED**. The exact next stage is **D1 — Domains / Boundaries**. No product implementation is authorized before D9.
+
+---
+
+## 12. Post-closure bounded amendment — Personal Notifications
+
+**Accepted / operator-ratified in D6-R2 and consolidated here on 2026-08-25.** This section supersedes only the earlier absence of the capability from D0; it does not reopen unrelated D0 decisions.
+
+Product 1.0 includes a bounded **Personal Notifications** awareness capability for exact human Principals. Its purpose is to surface personally relevant committed MPC facts and navigate the human back toward current source authority without turning Notification into source truth, workflow, authorization, audit history or acknowledgement.
+
+The accepted Launch-V1 awareness families are:
+
+```text
+MARKETPLACE_INSTALLATION_ATTENTION
+OFFERING_ASYNC_ACTION_RESULT
+AVAILABILITY_ATTENTION
+ECONOMIC_RECONCILIATION_ATTENTION
+NEW_MARKETPLACE_SALE
+SALE_ATTENTION
+MATERIALIZATION_ATTENTION
+FULFILLMENT_ACTIONABLE
+FULFILLMENT_ATTENTION
+SHIPMENT_EXCEPTION
+POST_SALE_ATTENTION
+WORK_ASSIGNMENT
+AUTHORIZATION_ACTION_REQUIRED
+AUTHORIZATION_DECISION_RESULT
+```
+
+The family count is derived, not protected. Each family represents a material transition into human attention rather than every source state change. Audience meaning is explicitly one of `DIRECT_SOURCE`, `OWNER_DERIVED` or bounded `ORG_ROUTED`; recipient selection never comes from a hidden all-member/admin fallback.
+
+Personal Notifications owns only personal-awareness lifecycle and routing configuration that legitimately belongs to that capability. Reading, unread/read, archiving, supersession or navigating a Notification never resolves Work, decides authorization, acknowledges the source occurrence or mutates the source owner. Current source access is always reauthorized at continuation time.
+
+Product 1.0 does not add generic subscriptions/preferences, e-mail/push/digest delivery, mark-all-read, numeric unread-total authority, arbitrary templates/payloads, generic event-bus ownership or Notification-triggered source mutation through this amendment.
