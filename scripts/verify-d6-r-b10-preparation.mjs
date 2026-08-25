@@ -16,12 +16,35 @@ const study = readFileSync(studyPath, 'utf8');
 const methodPin = '9c7210d1504bef01c0d134a6c3ae8627deebb535';
 const pr68Merge = 'ed3d164b0574b7950c2c7467d150c89576bba1ec';
 
+function extractOperatorSurface(text) {
+  const start = '<!-- OPERATOR_SURFACE_START -->';
+  const end = '<!-- OPERATOR_SURFACE_END -->';
+  const startIndex = text.indexOf(start);
+  const endIndex = text.indexOf(end);
+  assert(startIndex >= 0 && endIndex > startIndex, 'B10 operator-surface markers missing');
+  return text.slice(startIndex + start.length, endIndex);
+}
+
+function visibleText(fragment) {
+  return fragment
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/giu, ' ')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/giu, ' ')
+    .replace(/<[^>]+>/gu, ' ')
+    .replace(/&nbsp;/gu, ' ')
+    .replace(/&amp;/gu, '&')
+    .replace(/\s+/gu, ' ')
+    .trim();
+}
+
 function verifyHtml(text) {
   assert(text.includes('data-p8-status="candidate"'), 'B10 must identify itself as P8 CANDIDATE');
   assert(!text.includes('data-p8-status="locked"'), 'B10 must not self-claim operator LOCK');
   assert(text.includes('data-surface="R10"'), 'B10 must identify the R10 Preparation surface');
   assert(text.includes('data-wire-prerequisite="pr68-integrated"'), 'B10 must state that the PR68 wire prerequisite is integrated');
   assert(text.includes('data-responsive-law="search-detail-mobile-stack"'), 'B10 responsive structural law missing');
+
+  const operatorSurface = extractOperatorSurface(text);
+  const operatorText = visibleText(operatorSurface);
 
   const expectedNavLabels = [
     'Visão geral', 'Preparação', 'Anúncios', 'Preços', 'Disponibilidade',
@@ -58,14 +81,14 @@ function verifyHtml(text) {
   assert(text.includes('data-search-state="known-empty"'), 'B10 known-empty search state missing');
   assert(text.includes('Nenhum produto encontrado nesta busca conhecida.'), 'B10 known-empty human state missing');
   assert(text.includes('data-knowledge-state="unavailable"'), 'B10 unavailable search/read state missing');
-  assert(text.includes('SourceInstance'), 'B10 must expose SourceInstance qualification');
-  assert(text.includes('native product key'), 'B10 must expose native product key qualification');
+  assert(text.includes('SourceInstance'), 'B10 must retain SourceInstance qualification in technical detail');
+  assert(text.includes('native product key'), 'B10 must retain native product key qualification in technical detail');
 
   assert(text.includes('data-provider-authority="provider-authoritative"'), 'B10 must preserve provider authority for publication requirements');
   assert(text.includes('data-requirements-census="all-applicable"'), 'B10 must expose the complete applicable requirement census');
   assert(text.includes('data-provider-context="installation-category-product-type"'), 'B10 must preserve exact publication context');
-  assert(text.includes('data-requirements-revision='), 'B10 must expose requirements_revision');
-  assert(text.includes('Todos os requisitos aplicáveis'), 'B10 must label the complete applicable requirement set');
+  assert(text.includes('data-requirements-revision='), 'B10 must retain requirements_revision');
+  assert(operatorText.includes('Requisitos do marketplace'), 'B10 must label requirements in operator language');
 
   const requirementRows = [...text.matchAll(/data-requirement-key="([^"]+)"/gu)];
   assert(requirementRows.length >= 7, `B10 fixture must render a meaningful complete requirement census; found ${requirementRows.length}`);
@@ -90,15 +113,36 @@ function verifyHtml(text) {
   assert(text.includes('data-not-applicable-allowed="false"'), 'B10 must expose not_applicable_allowed=false where applicable');
 
   assert(text.includes('data-source-candidate-key='), 'B10 must expose opaque source candidate identity for known/conflicting evidence');
-  assert(text.includes('data-source-candidate-count="2"'), 'B10 conflicting evidence must visibly preserve multiple candidate identities');
+  assert(text.includes('data-source-candidate-count="2"'), 'B10 conflicting evidence must preserve multiple candidate identities');
   assert(text.includes('data-source-media-candidates='), 'B10 must expose source_media_candidates separately from requirement rows');
 
   assert(text.includes('data-source-missing-policy="preserve-source-truth"'), 'B10 must preserve missing source truth without declaring publication impossible');
-  assert(text.includes('missing source ≠ publicação impossível'), 'B10 must explain the source-missing boundary to the operator');
+  assert(operatorText.includes('Falta informação'), 'B10 must translate missing source evidence into operator language');
+  assert(operatorText.includes('Há informações diferentes'), 'B10 must translate conflicting source evidence into operator language');
+  assert(operatorText.includes('Não foi possível verificar'), 'B10 must translate unknown/unavailable evidence into operator language');
+  assert(operatorText.includes('Não disponível na fonte'), 'B10 must translate unsupported evidence into operator language');
   assert(text.includes('data-progression="listing-intent-required"'), 'B10 must admit progression to ListingIntent when no pre-ListingIntent blocker exists');
   assert(text.includes('data-progression="blocked-by-correspondence"'), 'B10 must distinguish correspondence blockers');
   assert(text.includes('data-progression="blocked-by-unknown-authority"'), 'B10 must distinguish unknown/unavailable authority blockers');
   assert(!text.includes('provider_fields'), 'B10 must not expose a raw provider field bag as Product authority');
+
+  assert(operatorText.includes('Resumo da preparação'), 'B10 must lead with an operator-oriented preparation summary');
+  for (const column of ['Requisito do marketplace', 'Exigência', 'Situação', 'Informação atual', 'O que fazer']) {
+    assert(operatorText.includes(column), `B10 operator table column missing: ${column}`);
+  }
+  assert(operatorText.includes('Atendido'), 'B10 must show human-readable satisfied state');
+  assert(operatorText.includes('Preencher ao configurar o anúncio'), 'B10 must make the next operator action explicit for missing source data');
+  assert(operatorText.includes('Ver detalhes técnicos'), 'B10 must offer technical detail through secondary progressive disclosure');
+  assert(text.includes('id="technicalDetails"'), 'B10 technical-detail disclosure missing');
+
+  for (const jargon of [
+    'SourceInstance', 'native product key', 'Readiness', 'value_spec', 'source_evidence',
+    'not_applicable', 'Handoff', 'FOLLOW_SOURCE', 'EXPLICIT_OVERRIDE', 'ListingIntent',
+    'Boundary:', 'candidate key', 'product_type_key', 'requirements_revision', 'category_key',
+    'draft_dependent', 'Product truth', 'source-qualified', 'dispatchability', 'blocker',
+  ]) {
+    assert(!operatorText.includes(jargon), `B10 primary operator surface leaks technical jargon: ${jargon}`);
+  }
 
   assert(text.includes('Re-leitura de prontidão necessária'), 'B10 must require reread after correspondence effect');
   assert(text.includes('function markCorrespondenceEffect'), 'B10 correspondence effect handler missing');
@@ -106,8 +150,8 @@ function verifyHtml(text) {
 
   assert(text.includes('data-boundary="listing-intent"'), 'B10 must terminate at an explicit ListingIntent boundary');
   assert(text.includes('data-next-operation="CreateListingIntentDraft"'), 'B10 must trace but not implement the downstream ListingIntent operation');
-  assert(text.includes('FOLLOW_SOURCE'), 'B10 boundary must preserve FOLLOW_SOURCE meaning');
-  assert(text.includes('EXPLICIT_OVERRIDE'), 'B10 boundary must preserve EXPLICIT_OVERRIDE meaning');
+  assert(text.includes('FOLLOW_SOURCE'), 'B10 technical trace must preserve FOLLOW_SOURCE meaning');
+  assert(text.includes('EXPLICIT_OVERRIDE'), 'B10 technical trace must preserve EXPLICIT_OVERRIDE meaning');
   assert(text.includes('function showListingIntentBoundary'), 'B10 downstream boundary interaction missing');
 
   assert(text.includes('aria-controls="sidebar"'), 'mobile menu must identify controlled navigation');
@@ -128,6 +172,9 @@ function verifyStudy(text) {
   assert(text.includes('known / missing / conflicting / unknown / unavailable / unsupported'), 'B10 study must preserve the six source_evidence states');
   assert(text.includes('value_spec'), 'B10 study must preserve bounded safe-authoring constraints');
   assert(text.includes('not_applicable_allowed'), 'B10 study must preserve override-only not_applicable meaning');
+  assert(text.includes('## 12. Operator REVISE — human language projection'), 'B10 must record the operator-language revision');
+  assert(text.includes('human needs before screens'), 'B10 must cite the frontend-method principle exposed by operator review');
+  assert(text.includes('technical contract remains encoded and testable'), 'B10 must preserve wire truth beneath human language');
   assert(text.includes('B00 | UNAFFECTED'), 'B10 impact sweep must explicitly preserve B00 LOCK');
   assert(text.includes('B01 | UNAFFECTED'), 'B10 impact sweep must explicitly preserve B01 LOCK');
   assert(text.includes('B00-R2 | UNAFFECTED'), 'B10 impact sweep must explicitly preserve B00-R2 LOCK');
@@ -163,8 +210,10 @@ expectFailure('source knowledge synthesized', () => verifyHtml(html.replaceAll('
 expectFailure('candidate identity erased', () => verifyHtml(html.replace(/data-source-candidate-key="[^"]+"/gu, 'data-source-candidate="anonymous"')));
 expectFailure('source missing becomes blocker', () => verifyHtml(html.replace('data-source-missing-policy="preserve-source-truth"', 'data-source-missing-policy="publication-impossible"')));
 expectFailure('PR68 integration forgotten', () => verifyHtml(html.replace('data-wire-prerequisite="pr68-integrated"', 'data-wire-prerequisite="missing"')));
+expectFailure('operator columns regress to contract language', () => verifyHtml(html.replace('O que fazer', 'Handoff')));
+expectFailure('technical jargon leaks into operator copy', () => verifyHtml(html.replace('Resumo da preparação', 'Resumo da preparação SourceInstance')));
 
-assert(negativeControls === 10, `B10 negative-control count mismatch: ${negativeControls}/10`);
+assert(negativeControls === 12, `B10 negative-control count mismatch: ${negativeControls}/12`);
 
 console.log('d6_r_b10_status=CANDIDATE');
 console.log('d6_r_b10_structure=SEARCH_TO_EXACT_SUBJECT_DETAIL');
@@ -173,9 +222,10 @@ console.log('d6_r_b10_requirements=ALL_APPLICABLE_PROVIDER_CONTEXT');
 console.log('d6_r_b10_requirement_dimensions=CLASS_PLUS_APPLICABILITY');
 console.log('d6_r_b10_source_knowledge=6_STATES');
 console.log('d6_r_b10_value_spec_families=7/7');
+console.log('d6_r_b10_operator_language=HUMAN_FIRST');
 console.log('d6_r_b10_source_missing=PRESERVE_TRUTH_CONTINUE_TO_LISTING_INTENT_WHEN_SAFE');
 console.log('d6_r_b10_p7_layout=NOT_TRIGGERED');
 console.log('d6_r_b10_upstream_finding=RESOLVED_BY_PR68');
 console.log('d6_r_b10_assumption_A01=PENDING_OPERATOR');
-console.log(`d6_r_b10_negative_controls=${negativeControls}/10`);
+console.log(`d6_r_b10_negative_controls=${negativeControls}/12`);
 console.log('d6_r_b10_wireframe=PASS');
