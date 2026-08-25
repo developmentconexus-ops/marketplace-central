@@ -22,7 +22,8 @@
 | Product surface | **106 Product operations · 31 ordinary Permissions · Principal kinds H / A / S only** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
-| Exact next action | **Confirm fresh Draft quick proof for the simplified P8 candidate, then run a fresh operator walkthrough. Only the operator may LOCK / REVISE / raise an UPSTREAM FINDING. Do not rerun/close P9, begin P10/P11, Pre-D9/D9 or Product implementation before a fresh B10 LOCK.** |
+| Aggregate CI | **one required check / one `npm run gate`; run #758 PASS at `2bb957dc447f432a16f3bb58382c5183810c22cd`; Product OAD 106/106 + auth proof PASS** |
+| Exact next action | **Run a fresh operator walkthrough of the simplified B10 P8 candidate. Only the operator may LOCK / REVISE / raise an UPSTREAM FINDING. Do not rerun/close P9, begin P10/P11, Pre-D9/D9 or Product implementation before a fresh B10 LOCK.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -43,7 +44,7 @@
 | D7 — Runtime / Jobs / Transactions | **ACCEPTED / CLOSED baseline; D7-R ACCEPTED** |
 | D8 — Golden Flows | **ACCEPTED / CLOSED — OPERATOR-RATIFIED / INTEGRATED; D8-R ACCEPTED** |
 | D8-R2 — GF-02 Operational Read Revalidation | **ACCEPTED / PASS** |
-| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B10 P8 REOPENED / CANDIDATE; operator walkthrough pending after fresh proof** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B10 P8 REOPENED / CANDIDATE; aggregate proof GREEN; operator walkthrough NEXT** |
 | Pre-D9 readiness | **BLOCKED** |
 | D9 — Adversarial Architecture Review | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -55,12 +56,13 @@
 - Fresh AnyMarket, Hub2b, Magis5 and Mercado Livre evidence supports the simpler hub model: marketplace requirements + available source values + downstream listing authoring/provider validation.
 - A generic `source_sufficiency` layer is rejected as accidental complexity. No Product operation, Permission, Principal kind or new Product wire field is required.
 - The prior B10 P8 LOCK is preserved as historical evidence, but the operator authorized a bounded reopen because the visible requirement model changes materially. A01 remains accepted and unaffected.
+- CI was simplified to one durable aggregate `required` check. Planning prose/P8/P9/ratification string verifiers and CI-self-testing were retired; the canonical Product OAD proof and structural repository rails remain protected. Run #758 passed with current Product **106/106** and authentication proof green.
 
 ```text
 P9 F-P9-B10-01
 → GLOBAL MAXIMUM REVALIDATED
 → simplified B10 P8 candidate
-→ fresh proof
+→ required aggregate proof PASS
 → operator walkthrough
 → LOCK / REVISE / UPSTREAM FINDING
 → P9 rerun only after LOCK
