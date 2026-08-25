@@ -14,7 +14,7 @@
 | Integrated checkpoints | **PR #61 → `b54d17bfe6d794645d198a9160f4a2a1c63647e8`; PR #62 methodology → `689dab34b0a756cbd7c790a6c5277d887ced0b4c`; PR #65 proportional CI → `a2aeac19816c90ee30bf373cef0448d52a486c7e`; PR #68 PublicationRequirements wire → `ed3d164b0574b7950c2c7467d150c89576bba1ec`** |
 | Method profile | **`developmentconexus-ops/conexus-methodology@9c7210d1504bef01c0d134a6c3ae8627deebb535` → `METHOD + FRONTEND-METHOD`** |
 | Current acceptance increment | **PR #64 / B10 — Preparação — human-first P8 OPERATOR WALKTHROUGH APPROVED; A01 PENDING; NOT LOCKED** |
-| B10 proof | **Human-first candidate PASS; B10 falsifiers 12/12; exact current-head proof re-running after walkthrough status update** |
+| B10 proof | **Draft quick CI #734 PASS at `b4715bbfc267e81de274b2ca25443a8b04bcbb29`; HUMAN_FIRST; walkthrough APPROVED; B10 falsifiers 12/12** |
 | Resolved upstream finding | **PublicationRequirements wire gap RESOLVED by integrated PR #68** |
 | LOCK impact | **B00 / B01 / B00-R2 / B11 / B12 / B110 UNAFFECTED** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
