@@ -16,6 +16,7 @@
 | Current acceptance increment | **PR #64 / B10 — P8 OPERATOR-RATIFIED / LOCKED; A01 `ACCEPT_FOR_LOCK_WITH_LATER_PROBE`; P9 DERIVED / BLOCKED — P8 REOPEN REQUIRED** |
 | B10 P8 evidence | **[P8 ratification](engineering/rebaseline/D6-R2-P8-B10-PREPARATION-RATIFICATION.md) — human-first candidate operated/LOCKED** |
 | B10 P9 | **[Screen contract](engineering/rebaseline/D6-R2-P9-B10-PREPARATION-SCREEN-CONTRACT.md) — `F-P9-B10-01`: `known` source evidence does not equal requirement satisfied; UPSTREAM FINDING NONE** |
+| B10 proof | **Draft quick CI #747 PASS at `2300172ef96f2d34d943deef760ebe5f6fcfbb57`; P9 falsifiers 5/5; P8 ratification falsifiers 3/3; B10 P8 falsifiers 12/12** |
 | Resolved upstream finding | **PublicationRequirements wire gap RESOLVED by integrated PR #68** |
 | LOCK impact | **B00 / B01 / B00-R2 / B11 / B12 / B110 UNAFFECTED** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
@@ -53,6 +54,7 @@
 - PR #68 remains integrated; Product **106/31/H-A-S**, runtime NONE and existing LOCKs are unchanged.
 - B10 P8 was operator-ratified with A01 accepted for later probe. P9 successfully bound route/state/read/write/failure authority and found no upstream Product gap.
 - `F-P9-B10-01` proves one frontend overclaim: source evidence `known` says information exists, not that Readiness issued a per-requirement satisfied/met fact. The only proposed repair is human wording; no layout/flow/Product change.
+- Exact current-head quick proof is GREEN; the branch remains Draft because the operator must adjudicate reopening the LOCKED wording before P9 can close.
 
 ```text
 B10 P8 LOCKED → P9 F-P9-B10-01 → OPERATOR ADJUDICATION → bounded P8 correction/re-LOCK → P9 close → P10
