@@ -3,7 +3,7 @@
 > **PRIOR P8: OPERATOR-RATIFIED / LOCKED**
 > **CURRENT P8: REOPENED / CANDIDATE**
 > **Block:** B10 — Preparação / R10
-> **Method profile:** `developmentconexus-ops/conexus-methodology@9c7210d1504bef01c0d134a6c3ae8627deebb535` → `METHOD + FRONTEND-METHOD`
+> **Methods:** [DevelopmentConexus Engineering Method v1.0.0](../../development/engineering-method.md) + [Frontend Product Experience Planning Method v2.3](../../development/frontend-product-experience-planning-method.md)
 > **Candidate evidence:** `qualification/d6-r2-wireframes/b10-preparation.html`
 > **Product implementation:** BLOCKED UNTIL accepted D9
 

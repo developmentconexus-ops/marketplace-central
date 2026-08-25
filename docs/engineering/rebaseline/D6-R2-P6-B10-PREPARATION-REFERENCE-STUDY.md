@@ -2,7 +2,7 @@
 
 > **Status:** DERIVED / GLOBAL MAXIMUM REVALIDATED — P8 REOPENED / CANDIDATE
 > **Block:** B10 Preparation / R10
-> **Method profile:** `developmentconexus-ops/conexus-methodology@9c7210d1504bef01c0d134a6c3ae8627deebb535` → `METHOD.md + FRONTEND-METHOD.md`
+> **Methods:** [DevelopmentConexus Engineering Method v1.0.0](../../development/engineering-method.md) + [Frontend Product Experience Planning Method v2.3](../../development/frontend-product-experience-planning-method.md)
 > **Product implementation:** BLOCKED UNTIL accepted D9
 
 ## 1. Human job and accepted boundary
