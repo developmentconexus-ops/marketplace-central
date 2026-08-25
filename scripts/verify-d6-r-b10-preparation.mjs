@@ -157,10 +157,10 @@ expectFailure('search no-op', () => verifyHtml(html.replace('function runSearch'
 expectFailure('known-empty collapsed', () => verifyHtml(html.replace('data-search-state="known-empty"', 'data-search-state="known-populated"')));
 expectFailure('organization context leak', () => verifyHtml(html.replace(/installation\.value\s*=\s*['"]{2}/u, "installation.value='ml-a'")));
 expectFailure('premature lock', () => verifyHtml(html.replace('data-p8-status="candidate"', 'data-p8-status="locked"')));
-expectFailure('requirement census collapsed', () => verifyHtml(html.replace('data-requirements-census="all-applicable"', 'data-requirements-census="summary-only"')));
-expectFailure('requirement class collapsed into applicability', () => verifyHtml(html.replace('data-requirement-class="required"', 'data-applicability="required"')));
-expectFailure('source knowledge synthesized', () => verifyHtml(html.replace('data-source-knowledge="known"', 'data-source-state="met"')));
-expectFailure('candidate identity erased', () => verifyHtml(html.replace(/data-source-candidate-key="[^"]+"/u, 'data-source-candidate="anonymous"')));
+expectFailure('requirement census collapsed', () => verifyHtml(html.replaceAll('data-requirements-census="all-applicable"', 'data-requirements-census="summary-only"')));
+expectFailure('requirement class collapsed into applicability', () => verifyHtml(html.replaceAll('data-requirement-class="required"', 'data-applicability="required"')));
+expectFailure('source knowledge synthesized', () => verifyHtml(html.replaceAll('data-source-knowledge="known"', 'data-source-state="met"')));
+expectFailure('candidate identity erased', () => verifyHtml(html.replace(/data-source-candidate-key="[^"]+"/gu, 'data-source-candidate="anonymous"')));
 expectFailure('source missing becomes blocker', () => verifyHtml(html.replace('data-source-missing-policy="preserve-source-truth"', 'data-source-missing-policy="publication-impossible"')));
 expectFailure('PR68 integration forgotten', () => verifyHtml(html.replace('data-wire-prerequisite="pr68-integrated"', 'data-wire-prerequisite="missing"')));
 
