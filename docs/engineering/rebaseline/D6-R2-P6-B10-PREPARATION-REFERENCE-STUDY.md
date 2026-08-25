@@ -1,6 +1,6 @@
 # D6-R2 P6 — B10 Preparation Reference Study
 
-> **Status:** DERIVED / REVALIDATED — B10 structure confirmed; operator-language P8 candidate pending walkthrough
+> **Status:** DERIVED / REVALIDATED — B10 structure confirmed; human-first P8 operator walkthrough APPROVED; A01 pending
 > **Block:** B10 Preparation / R10
 > **Method profile:** `developmentconexus-ops/conexus-methodology@9c7210d1504bef01c0d134a6c3ae8627deebb535` → `METHOD.md + FRONTEND-METHOD.md`
 > **Product implementation:** BLOCKED UNTIL accepted D9
@@ -245,15 +245,19 @@ Não disponível na fonte
 
 Technical identities, revision keys, source-candidate keys and downstream resolution vocabulary move behind explicit secondary disclosure for support/audit. They remain encoded in the artifact and verifier; they are not deleted or reinterpreted.
 
-### 12.2 P8 disposition after operator REVISE
+### 12.2 Operated human-first candidate
 
-The search→detail structure is unchanged. PR #68 semantics are unchanged. Existing LOCK impact remains unchanged.
+```text
+OPERATED
+actual task attempted: inspect the revised human-first Preparation flow as a normal operator, including requirement summary and next-action language
+material issues found: none after the human-language revision
+operator result: APPROVED CANDIDATE
+LOCK gate: pending A01 disposition
+```
 
-The revised candidate must remain browser-operable and **CANDIDATE / NOT LOCKED** until the operator operates this human-language version.
+`Operator walkthrough: APPROVED / A01 PENDING`.
 
-`Operator walkthrough: PENDING`.
-
-`P8 status: CANDIDATE / NOT LOCKED`.
+`P8 status: CANDIDATE / NOT LOCKED — awaiting A01 disposition`.
 
 A01 remains **PENDING OPERATOR** with the same two lawful dispositions:
 
@@ -262,4 +266,4 @@ ACCEPT_FOR_LOCK_WITH_LATER_PROBE
 BLOCK_LOCK
 ```
 
-Only after explicit operator LOCK may B10 proceed to P9.
+Only after the operator selects A01 and explicitly LOCKS may B10 proceed to P9.
