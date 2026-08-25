@@ -17,6 +17,15 @@ function Resolve-GateBase {
     }
     return $null
 }
+function Test-ChangedPathMatches([string[]]$patterns) {
+    foreach ($file in $changedFiles) {
+        $normalized = $file.Replace('\', '/')
+        foreach ($pattern in $patterns) {
+            if ($normalized -match $pattern) { return $true }
+        }
+    }
+    return $false
+}
 
 Require-Command git
 Require-Command node
@@ -86,13 +95,35 @@ if ($implementationBlocked) {
     }
 }
 
-$productProof = & node 'scripts/verify-product-oad.mjs' 2>&1
-$productProofExit = $LASTEXITCODE
-$productProof | ForEach-Object { Write-Host $_ }
-if ($productProofExit -ne 0) { Fail 'Product OAD proof failed' }
+$productProofPatterns = @(
+    '^contracts/api/product/',
+    '^scripts/gate\.ps1$',
+    '^scripts/verify-product-oad(?:-[^/]+)?\.mjs$',
+    '^scripts/fixtures/product-oad-[^/]+\.json$',
+    '^scripts/verify-oad-source-reachability\.mjs$',
+    '^scripts/verify-operational-read-contract\.mjs$',
+    '^scripts/verify-performance-evidence-knowledge\.mjs$',
+    '^scripts/verify-notification-oad\.mjs$',
+    '^scripts/verify-authorization-request-oad\.mjs$',
+    '^scripts/lib/publication-requirements-oad-proof\.mjs$',
+    '^package\.json$',
+    '^\.node-version$',
+    '^\.github/workflows/ci\.yml$'
+)
+$productProofAffected = if (-not $base) { $true } else { Test-ChangedPathMatches $productProofPatterns }
+
+if ($productProofAffected) {
+    $productProof = & node 'scripts/verify-product-oad.mjs' 2>&1
+    $productProofExit = $LASTEXITCODE
+    $productProof | ForEach-Object { Write-Host $_ }
+    if ($productProofExit -ne 0) { Fail 'Product OAD proof failed' }
+    $productProofStatus = 'PASS'
+} else {
+    $productProofStatus = 'SKIPPED_NOT_AFFECTED'
+}
 
 Write-Host 'gate: PASS'
 Write-Host "required_files: $($requiredFiles.Count)"
 Write-Host "implementation_blocked: $implementationBlocked"
 Write-Host "diff_range: $diffRange changed_files: $($changedFiles.Count)"
-Write-Host 'product_oad_proof: PASS'
+Write-Host "product_oad_proof: $productProofStatus"
