@@ -12,6 +12,7 @@ const redoclyConfig = join(contractDir, 'redocly.yaml');
 const historicalVerifier = join(root, 'scripts/verify-product-oad-current99.mjs');
 const preAuthVerifier = join(root, 'scripts/verify-product-oad-pre-auth.mjs');
 const baselineVerifier = join(root, 'scripts/verify-product-oad-baseline.mjs');
+const humanOperableReadProjectionVerifier = join(root, 'scripts/verify-human-operable-read-projection.mjs');
 const fixtureDir = join(root, 'scripts/fixtures');
 const temp = mkdtempSync(join(tmpdir(), 'mpc-product-current-proof-'));
 const go = process.platform === 'win32' ? 'go.exe' : 'go';
@@ -263,6 +264,8 @@ function currentAuthProof() {
   const all = validateAuth(document);
   negativeAuthControls(document);
   currentProjectionProof(bundleA);
+  const humanProjection = run(process.execPath, [humanOperableReadProjectionVerifier, bundleA]);
+  if (humanProjection.stdout?.trim()) console.log(humanProjection.stdout.trim());
   console.log(`product_oad_operations=${all.length}/106`);
   console.log('product_oad_auth_human=OIDC_SERVER_SESSION_COOKIE_CSRF');
   console.log('product_oad_auth_machine=CLIENT_CREDENTIALS_BEARER_A_S');

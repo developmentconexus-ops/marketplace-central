@@ -18,52 +18,81 @@ function schemaMap(document) {
   assert(schemas && typeof schemas === 'object', 'bundled Product OAD components.schemas missing');
   return schemas;
 }
-function typedPatternValue(schema, label) {
-  assert(schema?.type === 'object', `${label} must be an object map`);
-  assert(schema.additionalProperties === false, `${label} must remain closed`);
-  const patterns = schema.patternProperties ?? {};
-  sameSet(Object.keys(patterns), ['^.+$'], `${label} pattern keys`);
-  return refName(patterns['^.+$']);
+function arrayItemRef(schema, label) {
+  assert(schema?.type === 'array', `${label} must be an array`);
+  return refName(schema.items);
+}
+function typedCandidateValueRef(schema, label) {
+  assert(schema?.type === 'array', `${label} must be an array`);
+  assert(schema.items?.type === 'object', `${label} items must constrain a candidate object`);
+  return refName(schema.items.properties?.value);
 }
 
 const VALUE_FAMILIES = [
   ['text', 'PublicationTextRequirementSpec', 'PublicationTextValue', 'PublicationTextSourceEvidence'],
   ['exact_decimal', 'PublicationExactDecimalRequirementSpec', 'PublicationExactDecimalValue', 'PublicationExactDecimalSourceEvidence'],
   ['boolean', 'PublicationBooleanRequirementSpec', 'PublicationBooleanValue', 'PublicationBooleanSourceEvidence'],
-  ['option', 'PublicationOptionRequirementSpec', 'PublicationOptionValue', 'PublicationOptionSourceEvidence'],
+  ['option', 'PublicationOptionRequirementSpec', 'PublicationOptionValueView', 'PublicationOptionSourceEvidence'],
   ['text_list', 'PublicationTextListRequirementSpec', 'PublicationTextListValue', 'PublicationTextListSourceEvidence'],
-  ['option_list', 'PublicationOptionListRequirementSpec', 'PublicationOptionListValue', 'PublicationOptionListSourceEvidence'],
-  ['number_unit', 'PublicationNumberUnitRequirementSpec', 'PublicationNumberUnitValue', 'PublicationNumberUnitSourceEvidence'],
+  ['option_list', 'PublicationOptionListRequirementSpec', 'PublicationOptionListValueView', 'PublicationOptionListSourceEvidence'],
+  ['number_unit', 'PublicationNumberUnitRequirementSpec', 'PublicationNumberUnitValueView', 'PublicationNumberUnitSourceEvidence'],
 ];
+
+function validateDescriptor(schemas, name, key) {
+  const schema = schemas[name];
+  assert(schema?.type === 'object' && schema.additionalProperties === false, `${name} must be a closed object`);
+  requiredFields(schema, [key, 'display_name'], name);
+  assert(refName(schema.properties?.[key]) === 'OpaqueKey', `${name}.${key} must remain opaque`);
+  assert(schema.properties?.display_name?.type === 'string' && schema.properties.display_name.minLength === 1, `${name}.display_name must be non-empty presentation`);
+}
 
 function validatePublicationRequirementsOad(document) {
   const schemas = schemaMap(document);
 
-  const context = schemas.PublicationRequirementsContext;
-  assert(context?.type === 'object' && context.additionalProperties === false, 'PublicationRequirementsContext must be a closed object');
-  assert(context.properties?.category_key, 'PublicationRequirementsContext.category_key missing');
-  assert(context.properties?.product_type_key, 'PublicationRequirementsContext.product_type_key missing');
-  assert(refName(context.properties.category_key) === 'OpaqueKey', 'publication category_key must remain opaque');
-  assert(refName(context.properties.product_type_key) === 'OpaqueKey', 'publication product_type_key must remain opaque');
+  const contextRef = schemas.PublicationContextRef;
+  assert(contextRef?.type === 'object' && contextRef.additionalProperties === false, 'PublicationContextRef must be a closed object');
+  assert(contextRef.properties?.category_key, 'PublicationContextRef.category_key missing');
+  assert(contextRef.properties?.product_type_key, 'PublicationContextRef.product_type_key missing');
+  assert(refName(contextRef.properties.category_key) === 'OpaqueKey', 'publication category_key must remain opaque');
+  assert(refName(contextRef.properties.product_type_key) === 'OpaqueKey', 'publication product_type_key must remain opaque');
 
-  assert(!schemas.PublicationSourceCandidate, 'legacy array-item PublicationSourceCandidate shadow representation must be absent');
-  const candidates = schemas.PublicationSourceCandidateValues;
-  assert(candidates?.type === 'object', 'PublicationSourceCandidateValues must be an object keyed by candidate identity');
-  assert(candidates.minProperties === 1, 'PublicationSourceCandidateValues must require at least one candidate');
-  assert(refName(candidates.propertyNames) === 'OpaqueKey', 'candidate map property names must be opaque Readiness keys');
-  assert(typedPatternValue(candidates, 'PublicationSourceCandidateValues') === 'PublicationValue', 'candidate map values must use canonical PublicationValue');
+  validateDescriptor(schemas, 'PublicationCategoryDescriptor', 'category_key');
+  validateDescriptor(schemas, 'PublicationProductTypeDescriptor', 'product_type_key');
+  validateDescriptor(schemas, 'PublicationOptionDescriptor', 'option_key');
+  validateDescriptor(schemas, 'PublicationUnitDescriptor', 'unit_key');
+
+  const contextView = schemas.PublicationContextView;
+  assert(contextView?.type === 'object' && contextView.additionalProperties === false, 'PublicationContextView must be a closed object');
+  assert(refName(contextView.properties?.category) === 'PublicationCategoryDescriptor', 'PublicationContextView.category descriptor missing');
+  assert(refName(contextView.properties?.product_type) === 'PublicationProductTypeDescriptor', 'PublicationContextView.product_type descriptor missing');
+
+  sameSet((schemas.PublicationValue?.oneOf ?? []).map(refName), [
+    'PublicationTextValue', 'PublicationExactDecimalValue', 'PublicationBooleanValue', 'PublicationOptionValue',
+    'PublicationTextListValue', 'PublicationOptionListValue', 'PublicationNumberUnitValue', 'PublicationNotApplicableValue',
+  ], 'canonical PublicationValue variants');
+  sameSet((schemas.PublicationValueView?.oneOf ?? []).map(refName), [
+    'PublicationTextValue', 'PublicationExactDecimalValue', 'PublicationBooleanValue', 'PublicationOptionValueView',
+    'PublicationTextListValue', 'PublicationOptionListValueView', 'PublicationNumberUnitValueView', 'PublicationNotApplicableValue',
+  ], 'PublicationValueView variants');
+
+  const candidate = schemas.PublicationSourceCandidateView;
+  assert(candidate?.type === 'object' && candidate.additionalProperties === false, 'PublicationSourceCandidateView must be a closed object');
+  requiredFields(candidate, ['source_candidate_key', 'display_label', 'value'], 'PublicationSourceCandidateView');
+  assert(refName(candidate.properties?.source_candidate_key) === 'OpaqueKey', 'source candidate identity must remain opaque');
+  assert(candidate.properties?.display_label?.minLength === 1, 'source candidate display_label must be non-empty');
+  assert(refName(candidate.properties?.value) === 'PublicationValueView', 'source candidate value must use PublicationValueView');
 
   const known = schemas.PublicationSourceEvidenceKnown;
   requiredFields(known, ['state', 'candidates'], 'PublicationSourceEvidenceKnown');
   assert(known.properties?.state?.const === 'known', 'known source evidence discriminant changed');
-  assert(refName(known.properties?.candidates) === 'PublicationSourceCandidateValues', 'known source evidence must use candidate-key map');
+  assert(known.properties?.candidates?.minItems === 1, 'known source evidence requires at least one candidate');
+  assert(arrayItemRef(known.properties?.candidates, 'PublicationSourceEvidenceKnown.candidates') === 'PublicationSourceCandidateView', 'known source evidence must use candidate views');
 
   const conflicting = schemas.PublicationSourceEvidenceConflicting;
   requiredFields(conflicting, ['state', 'candidates'], 'PublicationSourceEvidenceConflicting');
   assert(conflicting.properties?.state?.const === 'conflicting', 'conflicting source evidence discriminant changed');
-  const conflictCandidateAllOf = conflicting.properties?.candidates?.allOf ?? [];
-  assert(conflictCandidateAllOf.some((entry) => refName(entry) === 'PublicationSourceCandidateValues'), 'conflicting source evidence must reuse candidate-key map');
-  assert(conflictCandidateAllOf.some((entry) => entry?.minProperties === 2), 'conflicting source evidence requires at least two distinct candidate identities');
+  assert(conflicting.properties?.candidates?.minItems === 2, 'conflicting source evidence requires at least two candidates');
+  assert(arrayItemRef(conflicting.properties?.candidates, 'PublicationSourceEvidenceConflicting.candidates') === 'PublicationSourceCandidateView', 'conflicting source evidence must use candidate views');
 
   const evidenceStates = {
     PublicationSourceEvidenceMissing: 'missing',
@@ -77,20 +106,21 @@ function validatePublicationRequirementsOad(document) {
     assert(schema?.properties?.state?.const === state, `${name} must preserve state=${state}`);
   }
 
-  const sourceEvidence = schemas.PublicationSourceEvidence;
   sameSet(
-    (sourceEvidence?.oneOf ?? []).map(refName),
+    (schemas.PublicationSourceEvidence?.oneOf ?? []).map(refName),
     ['PublicationSourceEvidenceKnown', 'PublicationSourceEvidenceMissing', 'PublicationSourceEvidenceConflicting', 'PublicationSourceEvidenceUnknown', 'PublicationSourceEvidenceUnavailable', 'PublicationSourceEvidenceUnsupported'],
     'PublicationSourceEvidence variants',
   );
 
-  const valueSpec = schemas.PublicationRequirementValueSpec;
-  sameSet((valueSpec?.oneOf ?? []).map(refName), VALUE_FAMILIES.map(([, spec]) => spec), 'PublicationRequirementValueSpec variants');
+  sameSet((schemas.PublicationRequirementValueSpec?.oneOf ?? []).map(refName), VALUE_FAMILIES.map(([, spec]) => spec), 'PublicationRequirementValueSpec variants');
+  assert(arrayItemRef(schemas.PublicationOptionRequirementSpec?.properties?.options, 'PublicationOptionRequirementSpec.options') === 'PublicationOptionDescriptor', 'option requirement must expose descriptors');
+  assert(arrayItemRef(schemas.PublicationOptionListRequirementSpec?.properties?.options, 'PublicationOptionListRequirementSpec.options') === 'PublicationOptionDescriptor', 'option-list requirement must expose descriptors');
+  assert(arrayItemRef(schemas.PublicationNumberUnitRequirementSpec?.properties?.units, 'PublicationNumberUnitRequirementSpec.units') === 'PublicationUnitDescriptor', 'number-unit requirement must expose descriptors');
+  assert(refName(schemas.PublicationNumberUnitRequirementSpec?.properties?.default_unit_key) === 'OpaqueKey', 'default_unit_key must remain canonical');
 
   for (const [kind, specName, valueName, evidenceName] of VALUE_FAMILIES) {
     const spec = schemas[specName];
     assert(spec?.properties?.kind?.const === kind, `${specName} must discriminate kind=${kind}`);
-
     const typedEvidence = schemas[evidenceName];
     const allOf = typedEvidence?.allOf ?? [];
     assert(allOf.some((entry) => refName(entry) === 'PublicationSourceEvidence'), `${evidenceName} must preserve owner-local source knowledge union`);
@@ -98,13 +128,13 @@ function validatePublicationRequirementsOad(document) {
     assert(conditional, `${evidenceName} must constrain known/conflicting candidate values`);
     sameSet(conditional.if?.properties?.state?.enum ?? [], ['known', 'conflicting'], `${evidenceName} constrained states`);
     assert((conditional.if?.required ?? []).includes('state'), `${evidenceName} type constraint must require state discriminant`);
-    const typedCandidates = conditional.then?.properties?.candidates;
-    assert(typedPatternValue(typedCandidates, `${evidenceName}.candidates`) === valueName, `${evidenceName} must bind candidates to ${valueName}`);
+    assert(typedCandidateValueRef(conditional.then?.properties?.candidates, `${evidenceName}.candidates`) === valueName, `${evidenceName} must bind candidates to ${valueName}`);
     assert(JSON.stringify(typedEvidence).includes('PublicationNotApplicableValue') === false, `${evidenceName} must not admit not_applicable source evidence`);
   }
 
   const requirement = schemas.PublicationRequirement;
-  requiredFields(requirement, ['requirement_key', 'requirement_class', 'applicability', 'value_spec', 'not_applicable_allowed', 'source_evidence'], 'PublicationRequirement');
+  requiredFields(requirement, ['requirement_key', 'display_name', 'requirement_class', 'applicability', 'value_spec', 'not_applicable_allowed', 'source_evidence'], 'PublicationRequirement');
+  assert(requirement.properties?.display_name?.minLength === 1, 'PublicationRequirement.display_name must be non-empty');
   sameSet(requirement.properties?.requirement_class?.enum ?? [], ['required', 'recommended', 'optional', 'conditional'], 'PublicationRequirement requirement_class');
   sameSet(requirement.properties?.applicability?.enum ?? [], ['current', 'draft_dependent'], 'PublicationRequirement applicability');
   assert(refName(requirement.properties?.value_spec) === 'PublicationRequirementValueSpec', 'PublicationRequirement.value_spec must use bounded value spec union');
@@ -117,8 +147,9 @@ function validatePublicationRequirementsOad(document) {
   assert(coupling.every((branch) => refName(branch?.properties?.value_spec) !== 'PublicationNotApplicableValue'), 'source requirement coupling must not create not_applicable source family');
 
   const requirements = schemas.PublicationRequirements;
-  requiredFields(requirements, ['subject', 'publication_context', 'requirements_revision', 'requirements', 'source_media_candidates', 'evaluated_at'], 'PublicationRequirements');
-  assert(refName(requirements.properties?.publication_context) === 'PublicationRequirementsContext', 'PublicationRequirements publication_context ref missing');
+  requiredFields(requirements, ['subject', 'subject_presentation', 'publication_context', 'requirements_revision', 'requirements', 'source_media_candidates', 'evaluated_at'], 'PublicationRequirements');
+  assert(refName(requirements.properties?.subject_presentation) === 'SourceProductPresentation', 'PublicationRequirements subject presentation missing');
+  assert(refName(requirements.properties?.publication_context) === 'PublicationContextView', 'PublicationRequirements publication context view missing');
 }
 
 function expectFailure(name, document, mutate) {
@@ -132,42 +163,47 @@ function expectFailure(name, document, mutate) {
 function publicationRequirementsNegativeControls(document) {
   const controls = [
     ['description decoy cannot replace context property', (candidate) => {
-      const context = candidate.components.schemas.PublicationRequirementsContext;
+      const context = candidate.components.schemas.PublicationContextRef;
       delete context.properties.category_key;
       context.description = 'decoy category_key: text must not satisfy structural proof';
     }],
-    ['candidate identity map weakened', (candidate) => {
-      candidate.components.schemas.PublicationSourceCandidateValues.propertyNames = { type: 'string' };
+    ['context view cannot fall back to opaque key', (candidate) => {
+      candidate.components.schemas.PublicationContextView.properties.category = { $ref: '#/components/schemas/OpaqueKey' };
     }],
-    ['candidate map opened', (candidate) => {
-      candidate.components.schemas.PublicationSourceCandidateValues.additionalProperties = true;
+    ['candidate identity weakened', (candidate) => {
+      candidate.components.schemas.PublicationSourceCandidateView.properties.source_candidate_key = { type: 'string' };
+    }],
+    ['candidate view opened', (candidate) => {
+      candidate.components.schemas.PublicationSourceCandidateView.additionalProperties = true;
     }],
     ['candidate value contract erased', (candidate) => {
-      candidate.components.schemas.PublicationSourceCandidateValues.patternProperties['^.+$'] = { type: 'string' };
+      candidate.components.schemas.PublicationSourceCandidateView.properties.value = { type: 'string' };
     }],
-    ['conflict distinct identity weakened', (candidate) => {
-      const allOf = candidate.components.schemas.PublicationSourceEvidenceConflicting.properties.candidates.allOf;
-      const bound = allOf.find((entry) => entry.minProperties === 2);
-      bound.minProperties = 1;
+    ['conflict distinct candidate bound weakened', (candidate) => {
+      candidate.components.schemas.PublicationSourceEvidenceConflicting.properties.candidates.minItems = 1;
     }],
     ['unsupported source state collapsed', (candidate) => {
       candidate.components.schemas.PublicationSourceEvidenceUnsupported.properties.state.const = 'unknown';
     }],
     ['text source candidate type widened', (candidate) => {
-      const allOf = candidate.components.schemas.PublicationTextSourceEvidence.allOf;
-      const conditional = allOf.find((entry) => entry.if && entry.then);
-      conditional.then.properties.candidates.patternProperties['^.+$'] = { $ref: '#/components/schemas/PublicationValue' };
+      const conditional = candidate.components.schemas.PublicationTextSourceEvidence.allOf.find((entry) => entry.if && entry.then);
+      conditional.then.properties.candidates.items.properties.value = { $ref: '#/components/schemas/PublicationValueView' };
     }],
     ['not-applicable leaked into text source candidates', (candidate) => {
-      const allOf = candidate.components.schemas.PublicationTextSourceEvidence.allOf;
-      const conditional = allOf.find((entry) => entry.if && entry.then);
-      conditional.then.properties.candidates.patternProperties['^.+$'] = { $ref: '#/components/schemas/PublicationNotApplicableValue' };
+      const conditional = candidate.components.schemas.PublicationTextSourceEvidence.allOf.find((entry) => entry.if && entry.then);
+      conditional.then.properties.candidates.items.properties.value = { $ref: '#/components/schemas/PublicationNotApplicableValue' };
     }],
     ['requirement value/source coupling removed', (candidate) => {
       candidate.components.schemas.PublicationRequirement.allOf = [];
     }],
+    ['requirement display name omitted', (candidate) => {
+      candidate.components.schemas.PublicationRequirement.required = candidate.components.schemas.PublicationRequirement.required.filter((field) => field !== 'display_name');
+    }],
     ['response publication context omitted', (candidate) => {
       candidate.components.schemas.PublicationRequirements.required = candidate.components.schemas.PublicationRequirements.required.filter((field) => field !== 'publication_context');
+    }],
+    ['response subject presentation omitted', (candidate) => {
+      candidate.components.schemas.PublicationRequirements.required = candidate.components.schemas.PublicationRequirements.required.filter((field) => field !== 'subject_presentation');
     }],
   ];
   for (const [name, mutate] of controls) expectFailure(name, document, mutate);
