@@ -53,6 +53,20 @@ function validateMarketplaceListing(doc) {
   assert(!Object.hasOwn(s.MarketplaceListingPerformanceListItem?.properties ?? {}, 'display_name'), 'Performance Listing item must not keep parallel display_name');
 }
 
+function validateConsumers(doc) {
+  const s = schemas(doc);
+  requireFieldsFrom(s, 'ListingIntentListItem', ['source_product_presentation']);
+  requireFieldsFrom(s, 'PriceIntent', ['target_presentation']);
+  requireFieldsFrom(s, 'PriceIntentListItem', ['target_presentation']);
+  requireFieldsFrom(s, 'SellableAvailability', ['target_presentation']);
+  requireFieldsFrom(s, 'CompetitivePosition', ['subject_presentation']);
+  requireFieldsFrom(s, 'CompetitivePositionListItem', ['subject_presentation']);
+  requireFieldsFrom(s, 'ExpectedEconomics', ['subject_presentation']);
+  requireFieldsFrom(s, 'ExpectedEconomicsListItem', ['subject_presentation']);
+  requireFieldsFrom(s, 'PriceScenarioEvaluation', ['subject_presentation']);
+  for (const name of ['PriceIntentTargetPresentation', 'AvailabilityTargetPresentation', 'MarketSubjectPresentation', 'EconomicsSubjectPresentation']) assert(s[name], `missing schema ${name}`);
+}
+
 function validateAll(doc) {
   validateReadiness(doc);
   if (typeof validateMarketplaceListing === 'function') validateMarketplaceListing(doc);
@@ -74,6 +88,7 @@ expectMutationFailure('correspondence candidate population removed', (d) => { d.
 expectMutationFailure('resolve write accepts label', (d) => { d.components.schemas.ResolveCorrespondenceRequest.properties.display_label = { type: 'string' }; });
 expectMutationFailure('Listing collection presentation removed', (d) => { d.components.schemas.MarketplaceListingListItem.required = d.components.schemas.MarketplaceListingListItem.required.filter((x) => x !== 'presentation'); });
 expectMutationFailure('Performance parallel display name restored', (d) => { d.components.schemas.MarketplaceListingPerformanceListItem.properties.display_name = { type: 'string' }; });
-assert(negativeControls === 5, `negative-control count must be 5, found ${negativeControls}`);
+expectMutationFailure('Availability target presentation removed', (d) => { d.components.schemas.SellableAvailability.required = d.components.schemas.SellableAvailability.required.filter((x) => x !== 'target_presentation'); });
+assert(negativeControls === 6, `negative-control count must be 6, found ${negativeControls}`);
 console.log('human_operable_read_projection=PASS');
-console.log(`human_operable_read_projection_negative_controls=${negativeControls}/5`);
+console.log(`human_operable_read_projection_negative_controls=${negativeControls}/6`);
