@@ -67,6 +67,24 @@ function validateConsumers(doc) {
   for (const name of ['PriceIntentTargetPresentation', 'AvailabilityTargetPresentation', 'MarketSubjectPresentation', 'EconomicsSubjectPresentation']) assert(s[name], `missing schema ${name}`);
 }
 
+function validateListingIntent(doc) {
+  const s = schemas(doc);
+  for (const name of [
+    'ListingIntentResolvedValueKnown', 'ListingIntentResolvedValueMissing', 'ListingIntentResolvedValueUnknown', 'ListingIntentResolvedValueUnavailable', 'ListingIntentResolvedValueUnsupported', 'ListingIntentResolvedValue',
+    'ListingIntentFollowSourceResolutionView', 'ListingIntentExplicitOverrideResolutionView', 'ListingIntentRequirementResolutionView',
+    'ListingIntentMediaPresentationKnown', 'ListingIntentMediaPresentationUnavailable', 'ListingIntentMediaPresentation', 'ListingIntentMediaPresentationDescriptor',
+    'ListingIntentAttemptRequirementResolution', 'ListingIntentAttemptMediaBasis', 'ListingIntentAttemptAvailabilityInput', 'ListingIntentEffectAttempt',
+  ]) assert(s[name], `missing schema ${name}`);
+  requireFieldsFrom(s, 'ListingIntent', ['source_product_presentation', 'resolved_requirements', 'authored_media_presentations', 'dispatch_blockers', 'created_by_principal_id', 'updated_by_principal_id', 'effect_history']);
+  assert(JSON.stringify(s.ListingIntentDesired).includes('PublicationContextRef'), 'ListingIntent desired must carry key-based publication context');
+  assert(JSON.stringify(s.ListingIntentMediaPresentationDescriptor).includes('ListingIntentMediaPresentation'), 'authored-media descriptor must use ListingIntent media presentation trust type');
+  assert(!JSON.stringify(s.ListingIntentMediaPresentationDescriptor).includes('SourceMediaPresentation'), 'authored media must not reuse source-media presentation trust type');
+  for (const name of ['ListingIntentDesired', 'RequirementResolution', 'ExplicitOverrideResolution', 'PublicationValue', 'MediaSelection', 'CreateListingIntentMediaMultipart']) {
+    const schemaText = JSON.stringify(s[name] ?? {});
+    for (const forbidden of ['display_name', 'display_label', 'access_ref', 'authored_by_principal_id', 'subject_presentation']) assert(!schemaText.includes(`"${forbidden}"`), `${name} must remain presentation-free`);
+  }
+}
+
 function validateAll(doc) {
   validateReadiness(doc);
   if (typeof validateMarketplaceListing === 'function') validateMarketplaceListing(doc);
@@ -89,6 +107,9 @@ expectMutationFailure('resolve write accepts label', (d) => { d.components.schem
 expectMutationFailure('Listing collection presentation removed', (d) => { d.components.schemas.MarketplaceListingListItem.required = d.components.schemas.MarketplaceListingListItem.required.filter((x) => x !== 'presentation'); });
 expectMutationFailure('Performance parallel display name restored', (d) => { d.components.schemas.MarketplaceListingPerformanceListItem.properties.display_name = { type: 'string' }; });
 expectMutationFailure('Availability target presentation removed', (d) => { d.components.schemas.SellableAvailability.required = d.components.schemas.SellableAvailability.required.filter((x) => x !== 'target_presentation'); });
-assert(negativeControls === 6, `negative-control count must be 6, found ${negativeControls}`);
+expectMutationFailure('override write accepts display label', (d) => { d.components.schemas.ExplicitOverrideResolution.properties.display_label = { type: 'string' }; });
+expectMutationFailure('ListingIntent effect history removed', (d) => { d.components.schemas.ListingIntent.required = d.components.schemas.ListingIntent.required.filter((x) => x !== 'effect_history'); });
+expectMutationFailure('authored media reuses source trust type', (d) => { d.components.schemas.ListingIntentMediaPresentationDescriptor.properties.presentation = { $ref: '#/components/schemas/SourceMediaPresentation' }; });
+assert(negativeControls === 9, `negative-control count must be 9, found ${negativeControls}`);
 console.log('human_operable_read_projection=PASS');
-console.log(`human_operable_read_projection_negative_controls=${negativeControls}/6`);
+console.log(`human_operable_read_projection_negative_controls=${negativeControls}/9`);

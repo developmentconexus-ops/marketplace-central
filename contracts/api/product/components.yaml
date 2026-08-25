@@ -753,27 +753,177 @@ schemas:
     type: object
     additionalProperties: false
     required: [lifecycle, requirement_resolutions, media_selection]
-    properties: {lifecycle: {type: string, enum: [active, paused, closed]}, requirement_resolutions: {type: array, items: {$ref: '#/schemas/RequirementResolution'}}, media_selection: {type: array, items: {$ref: '#/schemas/MediaSelection'}}}
+    properties:
+      lifecycle: {type: string, enum: [active, paused, closed]}
+      publication_context: {$ref: '#/schemas/PublicationContextRef'}
+      requirement_resolutions: {type: array, items: {$ref: '#/schemas/RequirementResolution'}}
+      media_selection: {type: array, items: {$ref: '#/schemas/MediaSelection'}}
+  ListingIntentResolvedValueKnown:
+    type: object
+    additionalProperties: false
+    required: [state, value]
+    properties:
+      state: {const: known}
+      value: {$ref: '#/schemas/PublicationValueView'}
+  ListingIntentResolvedValueMissing:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: missing}}
+  ListingIntentResolvedValueUnknown:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: unknown}}
+  ListingIntentResolvedValueUnavailable:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: unavailable}}
+  ListingIntentResolvedValueUnsupported:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: unsupported}}
+  ListingIntentResolvedValue:
+    oneOf:
+      - {$ref: '#/schemas/ListingIntentResolvedValueKnown'}
+      - {$ref: '#/schemas/ListingIntentResolvedValueMissing'}
+      - {$ref: '#/schemas/ListingIntentResolvedValueUnknown'}
+      - {$ref: '#/schemas/ListingIntentResolvedValueUnavailable'}
+      - {$ref: '#/schemas/ListingIntentResolvedValueUnsupported'}
+  ListingIntentFollowSourceResolutionView:
+    type: object
+    additionalProperties: false
+    required: [kind, requirement_key, requirement_display_name, source_candidate_key, source_candidate_display_label, current_value]
+    properties:
+      kind: {const: follow_source}
+      requirement_key: {$ref: '#/schemas/OpaqueKey'}
+      requirement_display_name: {type: string, minLength: 1}
+      source_candidate_key: {$ref: '#/schemas/OpaqueKey'}
+      source_candidate_display_label: {type: string, minLength: 1}
+      current_value: {$ref: '#/schemas/ListingIntentResolvedValue'}
+  ListingIntentExplicitOverrideResolutionView:
+    type: object
+    additionalProperties: false
+    required: [kind, requirement_key, requirement_display_name, value, authored_by_principal_id, authored_at]
+    properties:
+      kind: {const: explicit_override}
+      requirement_key: {$ref: '#/schemas/OpaqueKey'}
+      requirement_display_name: {type: string, minLength: 1}
+      value: {$ref: '#/schemas/PublicationValueView'}
+      authored_by_principal_id: {$ref: '#/schemas/OpaqueId'}
+      authored_at: {$ref: '#/schemas/Instant'}
+  ListingIntentRequirementResolutionView:
+    oneOf:
+      - {$ref: '#/schemas/ListingIntentFollowSourceResolutionView'}
+      - {$ref: '#/schemas/ListingIntentExplicitOverrideResolutionView'}
   ListingIntentMediaDescriptor:
     type: object
     additionalProperties: false
     required: [listing_intent_media_id, content_type, byte_length, authored_at]
     properties: {listing_intent_media_id: {$ref: '#/schemas/OpaqueId'}, content_type: {type: string, minLength: 1}, byte_length: {type: integer, minimum: 0}, authored_at: {$ref: '#/schemas/Instant'}}
+  ListingIntentMediaPresentationKnown:
+    type: object
+    additionalProperties: false
+    required: [state, access_ref]
+    properties:
+      state: {const: known}
+      access_ref: {type: string, format: uri-reference, minLength: 1}
+  ListingIntentMediaPresentationUnavailable:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: unavailable}}
+  ListingIntentMediaPresentation:
+    oneOf:
+      - {$ref: '#/schemas/ListingIntentMediaPresentationKnown'}
+      - {$ref: '#/schemas/ListingIntentMediaPresentationUnavailable'}
+  ListingIntentMediaPresentationDescriptor:
+    type: object
+    additionalProperties: false
+    required: [media, presentation]
+    properties:
+      media: {$ref: '#/schemas/ListingIntentMediaDescriptor'}
+      presentation: {$ref: '#/schemas/ListingIntentMediaPresentation'}
+  ListingIntentAttemptFollowSourceResolution:
+    type: object
+    additionalProperties: false
+    required: [kind, requirement_key, source_candidate_key, value, source_observed_at]
+    properties:
+      kind: {const: follow_source}
+      requirement_key: {$ref: '#/schemas/OpaqueKey'}
+      source_candidate_key: {$ref: '#/schemas/OpaqueKey'}
+      value: {$ref: '#/schemas/PublicationValueView'}
+      source_observed_at: {$ref: '#/schemas/Instant'}
+  ListingIntentAttemptExplicitOverrideResolution:
+    type: object
+    additionalProperties: false
+    required: [kind, requirement_key, value, authored_by_principal_id, authored_at]
+    properties:
+      kind: {const: explicit_override}
+      requirement_key: {$ref: '#/schemas/OpaqueKey'}
+      value: {$ref: '#/schemas/PublicationValueView'}
+      authored_by_principal_id: {$ref: '#/schemas/OpaqueId'}
+      authored_at: {$ref: '#/schemas/Instant'}
+  ListingIntentAttemptRequirementResolution:
+    oneOf:
+      - {$ref: '#/schemas/ListingIntentAttemptFollowSourceResolution'}
+      - {$ref: '#/schemas/ListingIntentAttemptExplicitOverrideResolution'}
+  ListingIntentAttemptMediaBasis:
+    type: object
+    additionalProperties: false
+    required: [selection, content_type]
+    properties:
+      selection: {$ref: '#/schemas/MediaSelection'}
+      content_type: {type: string, minLength: 1}
+  ListingIntentAttemptAvailabilityInput:
+    type: object
+    additionalProperties: false
+    required: [target, desired_quantity, evaluated_at]
+    properties:
+      target: {$ref: '#/schemas/AvailabilityTarget'}
+      desired_quantity: {$ref: '#/schemas/DesiredQuantity'}
+      evaluated_at: {$ref: '#/schemas/Instant'}
+  ListingIntentEffectAttempt:
+    type: object
+    additionalProperties: false
+    required: [attempt_key, listing_intent_revision, attempted_at, resolved_requirements, media_basis, external_effect_state, convergence]
+    properties:
+      attempt_key: {$ref: '#/schemas/OpaqueKey'}
+      listing_intent_revision: {$ref: '#/schemas/OpaqueKey'}
+      requirements_revision: {$ref: '#/schemas/OpaqueKey'}
+      resolved_requirements: {type: array, items: {$ref: '#/schemas/ListingIntentAttemptRequirementResolution'}}
+      media_basis: {type: array, items: {$ref: '#/schemas/ListingIntentAttemptMediaBasis'}}
+      price_intent_id: {$ref: '#/schemas/OpaqueId'}
+      price_intent_etag: {$ref: '#/schemas/StrongETag'}
+      availability_input: {$ref: '#/schemas/ListingIntentAttemptAvailabilityInput'}
+      authorization_decision_ids: {type: array, uniqueItems: true, items: {$ref: '#/schemas/OpaqueId'}}
+      external_effect_state: {type: string, enum: [pending, accepted, rejected, ambiguous]}
+      convergence: {type: string, enum: [pending, converged, divergent, unknown, not_applicable]}
+      attempted_at: {$ref: '#/schemas/Instant'}
   ListingIntent:
     type: object
     additionalProperties: false
-    required: [listing_intent_id, source_product, target, desired, lifecycle, authored_media, dispatchability, created_at, updated_at]
+    required: [listing_intent_id, source_product, source_product_presentation, target, desired, resolved_requirements, lifecycle, authored_media, authored_media_presentations, dispatchability, dispatch_blockers, created_by_principal_id, updated_by_principal_id, effect_history, created_at, updated_at]
     properties:
       listing_intent_id: {$ref: '#/schemas/OpaqueId'}
       source_product: {$ref: '#/schemas/SourceProductRef'}
+      source_product_presentation: {$ref: '#/schemas/SourceProductPresentation'}
       target: {$ref: '#/schemas/ListingIntentTarget'}
       desired: {$ref: '#/schemas/ListingIntentDesired'}
+      resolved_requirements: {type: array, items: {$ref: '#/schemas/ListingIntentRequirementResolutionView'}}
       lifecycle: {type: string, enum: [draft, submitted, discarded]}
       requirements_revision: {$ref: '#/schemas/OpaqueKey'}
       authored_media: {type: array, items: {$ref: '#/schemas/ListingIntentMediaDescriptor'}}
+      authored_media_presentations: {type: array, items: {$ref: '#/schemas/ListingIntentMediaPresentationDescriptor'}}
       dispatchability: {type: string, enum: [dispatchable, blocked, unknown, unavailable]}
+      dispatch_blockers: {type: array, items: {type: string}}
       external_effect_state: {type: string, enum: [not_attempted, pending, accepted, rejected, ambiguous]}
       convergence: {type: string, enum: [pending, converged, divergent, unknown, not_applicable]}
+      created_by_principal_id: {$ref: '#/schemas/OpaqueId'}
+      updated_by_principal_id: {$ref: '#/schemas/OpaqueId'}
+      effect_history: {type: array, items: {$ref: '#/schemas/ListingIntentEffectAttempt'}}
       created_at: {$ref: '#/schemas/Instant'}
       updated_at: {$ref: '#/schemas/Instant'}
   ListingIntentListItem:
