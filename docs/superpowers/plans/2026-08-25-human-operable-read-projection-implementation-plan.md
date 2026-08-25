@@ -370,7 +370,7 @@ Add:
     type: object
     additionalProperties: false
     required: [kind, options]
-    properties: {kind: {const: option_list}, options: {type: array, items: {$ref: '#/schemas/PublicationOptionDescriptor'}}}
+    properties: {kind: {const: option_list}, options: {type: array, items: {$ref: '#/schemas/PublicationOptionDescriptor'}}
   PublicationNumberUnitValueView:
     type: object
     additionalProperties: false
