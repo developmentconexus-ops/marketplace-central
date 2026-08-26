@@ -21,7 +21,7 @@ P8 HTML decides structural hierarchy/placement/density/navigation/state placemen
 | **B11 Personal Inbox** | **LOCKED** 2026-08-23 | `qualification/d6-r2-wireframes/b11-notifications-inbox.html` + Notifications P8 ratification |
 | **B12 Notification Routing Settings** | **LOCKED** 2026-08-23 | `qualification/d6-r2-wireframes/b12-notification-routing-settings.html` + Notifications P8 ratification |
 | **B110 Approvals** | **LOCKED** 2026-08-24 | `qualification/d6-r2-wireframes/b110-approvals.html` + B110 P8 ratification |
-| **B10 Preparação** | **LOCKED main structure / correspondence CANDIDATE** | `qualification/d6-r2-wireframes/b10-preparation.html` + B10 P8 ratification + bounded correspondence revalidation |
+| **B10 Preparação** | **LOCKED** 2026-08-26 (correspondence region re-LOCK) | `qualification/d6-r2-wireframes/b10-preparation.html` + B10 P8 ratification + bounded correspondence revalidation |
 
 No other D6-R2 block inherits a LOCK by proximity. Only the operator can add/change a LOCK.
 
@@ -164,7 +164,7 @@ exact Organization + Marketplace Installation
 → downstream ListingIntent authoring navigation
 ```
 
-PR #70 resolved the upstream human-operability prerequisite without revoking the full B10 LOCK. The correspondence region now has a bounded functional candidate that renders real key+label selection and known-empty/unknown/unavailable population states. It remains **CANDIDATE** until operator walkthrough; P9 rerun follows only after explicit re-LOCK. Main hierarchy/table/handoff remains protected unless new evidence proves otherwise.
+PR #70 resolved the upstream human-operability prerequisite without revoking the full B10 LOCK. The bounded correspondence candidate — real key+label selection plus known-empty/unknown/unavailable population states — was operated by the operator and **RE-LOCKED on 2026-08-26**; the bounded P9 correspondence trace was rerun against the integrated OAD and passed. B10 is fully LOCKED again. Main hierarchy/table/handoff remains protected unless new evidence proves otherwise.
 
 ## 8. LOCK law
 

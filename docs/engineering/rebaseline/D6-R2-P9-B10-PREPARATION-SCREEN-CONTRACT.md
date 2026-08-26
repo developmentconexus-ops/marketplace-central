@@ -1,6 +1,6 @@
 # D6-R2 P9 — B10 Preparação Screen Contract
 
-> **Status:** PREVIOUS PASS / CORRESPONDENCE REGION BOUNDED REOPEN — rerun only after operator re-LOCK
+> **Status:** DERIVED / PASS — bounded correspondence rerun completed 2026-08-26 after operator re-LOCK; BACKEND SUFFICIENT; UPSTREAM FINDING NONE
 > **Block:** B10 — Preparação / R10
 > **Methods:** [DevelopmentConexus Engineering Method v1.0.0](../../development/engineering-method.md) + [Frontend Product Experience Planning Method v2.3](../../development/frontend-product-experience-planning-method.md)
 > **Locked P8 evidence:** `qualification/d6-r2-wireframes/b10-preparation.html`
@@ -229,7 +229,7 @@ P9 explicitly rejects these regressions:
 
 All are avoidable with the accepted wire and the operator-LOCKED projection.
 
-## 7. Previous P9 closure / current bounded reopen
+## 7. P9 closure
 
 ```text
 P8 OPERATOR-RATIFIED / LOCKED
@@ -242,8 +242,13 @@ P8 OPERATOR-RATIFIED / LOCKED
 → UPSTREAM FINDING NONE
 ```
 
-**Previous P9: PASS / CLOSED for the prior B10 wire.**
+PR #70 repaired the correspondence candidate read projection and triggered the smallest declared P8/P9 reopen. The operator re-LOCKED the bounded correspondence candidate on 2026-08-26 (`aprovado` → `LOCK`, recorded in [`D6-R2-P8-B10-CORRESPONDENCE-REVALIDATION.md`](D6-R2-P8-B10-CORRESPONDENCE-REVALIDATION.md)), and the bounded correspondence trace was rerun against the integrated canonical OAD:
 
-PR #70 repaired the correspondence candidate read projection and triggered the smallest declared P8/P9 reopen. Sections unaffected by that region remain valid reference, but the correspondence trace is not current closure until the operator re-LOCKs the bounded candidate and P9 is rerun against the integrated OAD.
+- `GetProductChannelReadiness` carries `subject_presentation`, `correspondence` (resolved/unresolved/conflicting/unknown/unavailable), `correspondence_candidate_population` (known with `candidates[]`, unknown, unavailable) and `correspondence_etag`;
+- each known candidate is exactly `candidate_key + display_label`; no label is ever a write carrier;
+- `ResolveProductChannelCorrespondence` accepts only `subject + correspondence_etag + candidate_key`; `ClearProductChannelCorrespondence` only `subject + correspondence_etag`;
+- the locked region 4.4 mechanics (explicit selection, disabled resolve until choice, mandatory authoritative reread after consequential effect) bind one-to-one to these schemas with no missing operation and no orphaned admitted operation.
 
-P10/P11, B20, Pre-D9/D9 and Product implementation remain blocked from bypassing that rerun.
+**P9: PASS / CLOSED for B10 against the integrated PR #70 wire.**
+
+P10 may now consolidate only patterns already repeated in LOCKED evidence. P11, Pre-D9/D9 and Product implementation remain outside this P9 closure; B20 resumption follows integration of this increment per `docs/roadmap.md`.

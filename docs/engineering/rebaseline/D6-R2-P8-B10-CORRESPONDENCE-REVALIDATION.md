@@ -1,6 +1,6 @@
 # D6-R2 P8 — B10 Correspondence Region Revalidation
 
-> **Status:** CANDIDATE / OPERATOR WALKTHROUGH REQUIRED — no re-LOCK claimed
+> **Status:** OPERATOR RE-LOCKED 2026-08-26 — bounded P9 rerun PASS
 > **Block:** B10 — Preparação / R10, correspondence region only
 > **Methods:** [DevelopmentConexus Engineering Method v1.0.0](../../development/engineering-method.md) + [Frontend Product Experience Planning Method v2.3](../../development/frontend-product-experience-planning-method.md)
 > **Candidate evidence:** `qualification/d6-r2-wireframes/b10-preparation.html`
@@ -99,15 +99,15 @@ Browser-operable checks on the local deterministic artifact demonstrated:
 
 ## 6. P8 operator gate
 
-Current disposition:
+The operator received the exact candidate artifact (`b10-preparation.html` at the increment head) and, after the walkthrough, returned **`aprovado`** under the previously stated choice set (`LOCK / REVISE / UPSTREAM FINDING`). Recorded disposition:
 
 ```text
-CANDIDATE
-operator walkthrough required
-LOCK / REVISE / UPSTREAM FINDING
+final disposition: LOCK on 2026-08-26
+material revision requested: NONE
+upstream finding raised: NONE
 ```
 
-The assistant, verifier and reviewer cannot set `LOCKED`. P9 must not rerun until the operator explicitly re-LOCKs this affected region.
+The correspondence region is **RE-LOCKED**. This authorized the bounded P9 rerun, recorded in [`D6-R2-P9-B10-PREPARATION-SCREEN-CONTRACT.md`](D6-R2-P9-B10-PREPARATION-SCREEN-CONTRACT.md): the correspondence trace was re-verified against the integrated canonical OAD (`correspondence_candidate_population` known/unknown/unavailable, candidates as exactly `candidate_key + display_label`, resolve/clear writes carrying only `subject + correspondence_etag (+ candidate_key)`), with verdict **PASS / BACKEND SUFFICIENT / UPSTREAM FINDING NONE**.
 
 ## 7. Reopen triggers
 
