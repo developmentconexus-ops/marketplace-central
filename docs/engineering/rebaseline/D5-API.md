@@ -3,7 +3,7 @@
 > **Status:** CLOSED / ACCEPTED / CURRENT CONSOLIDATED AUTHORITY  
 > **Parent authorities:** accepted D0→D4 + D4-R1  
 > **Machine-readable wire authority:** `contracts/api/product/openapi.yaml`  
-> **Current Product surface:** **106 operations / 31 ordinary Permissions / Principal kinds H-A-S**  
+> **Current Product surface:** **107 operations / 31 ordinary Permissions / Principal kinds H-A-S** (SearchPublicationContexts admitted 2026-08-26 by the adjudicated category-discovery design)  
 > **Runtime:** NONE; implementation blocked until accepted D9
 
 ## 1. Purpose
@@ -77,7 +77,7 @@ P — consume a justified read-only composition
 
 API symmetry, provider endpoint symmetry, current code, debug convenience or hypothetical future need do not admit operations.
 
-The current admitted Product census is **106 operations**. The exact current operationId/path/method/owner/class/Permission/Principal mapping is the canonical OpenAPI projection of the accepted operation surface and is protected by Product OAD proof. `D5-B2-OPERATION-ADMISSION-MATRIX.md` records current admission decisions/families without duplicating another machine wire catalog.
+The current admitted Product census is **107 operations** (SearchPublicationContexts admitted 2026-08-26). The exact current operationId/path/method/owner/class/Permission/Principal mapping is the canonical OpenAPI projection of the accepted operation surface and is protected by Product OAD proof. `D5-B2-OPERATION-ADMISSION-MATRIX.md` records current admission decisions/families without duplicating another machine wire catalog.
 
 A count change is material and requires explicit operation admission/revalidation; it never enters through incidental schema/frontend work.
 

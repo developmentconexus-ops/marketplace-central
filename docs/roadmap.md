@@ -19,11 +19,11 @@
 | Read contract law | **Owner-specific typed read projections (Canonical Ref ≠ Current Read Projection ≠ Purpose/Historical Snapshot) are the only admitted human presentation basis (PR #70; extended by the PR #69 `source_product_link` repair)** |
 | Prior increments | **B10 fully LOCKED + P9 CLOSED (PR #64/#75); B20 P8 LOCKED 2026-08-26 + P9 PASS / CLOSED, integrated by PR #69** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
-| Product surface | **106 Product operations · 31 ordinary Permissions · Principal kinds H / A / S only** |
+| Product surface | **107 Product operations · 31 ordinary Permissions · Principal kinds H / A / S only — SearchPublicationContexts admitted 2026-08-26** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
 | Aggregate CI | **one required check / one `npm run gate`; universal checks always run; Product proof is diff-aware and fails safe when reliable changed-surface detection is unavailable** |
-| Exact next action | **Adjudicate the [category discovery / equivalence / product-view design](superpowers/specs/2026-08-26-category-discovery-equivalence-design.md) (C1 ratify / C2 ratify / C3 defer proposed). The B23 walkthrough is ON HOLD: C1/C2 are material to its publication-context region. After adjudication + repair, B23 P8 resumes.** |
+| Exact next action | **Operate the revised B23 R22/R23 candidate (now with real category discovery/suggestion in the context region) and obtain operator disposition `LOCK / REVISE / UPSTREAM FINDING`. No B23 P9, further blocks, Pre-D9/D9 or implementation before explicit LOCK.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -67,8 +67,9 @@ PR #69 B20 integrated
 → variations Global Maximum design adjudicated + repair applied with proof
 → B23 P8 RESUMED with full P6 dispositions + Variações region
 → operator raised category/taxonomy question; verification + evaluation increment opened
-→ category discovery / equivalence / product-view adjudication   ← CURRENT
-→ after ratified repair: B23 context region revised → operator walkthrough
+→ category discovery/equivalence adjudicated: C1+C2 RATIFIED, C3 DEFERRED; repair integrated (107/31)
+→ B23 context region revised with real discovery/suggestion
+→ operator walkthrough: LOCK / REVISE / UPSTREAM FINDING   ← CURRENT
 → P9 bidirectional Screen Contract
 → P10 pattern consolidation
 → required CI

@@ -45,6 +45,16 @@ function validate(html) {
 
   // Publication context, typed technical sheet and grouped census.
   assert(html.includes('data-publication-context="category product_type"'), 'publication context region missing');
+  assert(html.includes('data-context-discovery-read="SearchPublicationContexts"'), 'context discovery read binding missing');
+  assert(html.includes('data-suggestion-bases="provider_prediction text_search organization_history"'), 'closed suggestion-basis vocabulary missing');
+  for (const basis of ['provider_prediction', 'text_search', 'organization_history']) {
+    assert(html.includes(`data-suggestion-basis="${basis}"`), `suggestion candidate missing: ${basis}`);
+  }
+  assert(html.includes('data-context-selection="explicit-human-choice"'), 'context selection must remain an explicit human choice');
+  assert(!/<input[^>]*name="contextCandidate"[^>]*\schecked(?:\s|=|>)/i.test(html), 'context suggestion must never be preselected');
+  assert(/id="applyContext"[^>]*disabled/.test(html), 'apply-context must stay disabled before explicit selection');
+  assert(html.includes('id="contextUnavailable"') && html.includes('Isso não significa que não existam.'), 'unavailable context population honesty missing');
+  assert(html.includes('data-operation="SearchPublicationContexts"'), 'SearchPublicationContexts trace missing');
   assert(html.includes('data-value-specs="text exact_decimal boolean option option_list text_list number_unit"'), 'typed value-spec binding missing');
   for (const spec of ['data-value-spec="text"', 'data-value-spec="option"', 'data-value-spec="number_unit"', 'data-value-spec="boolean"', 'data-value-spec="text_list"', 'data-value-spec="exact_decimal"']) {
     assert(html.includes(spec), `typed field rendering missing: ${spec}`);
@@ -112,6 +122,8 @@ const controls = [
   ['per-variation scope collapsed', (value) => value.split('data-variation-scoped-fields="per_variation"').join('data-variation-scoped-fields="listing"')],
   ['price/quantity pulled into variation authoring', (value) => value.split('data-variation-excluded="price quantity"').join('data-variation-excluded="none"')],
   ['title limit removed', (value) => value.replace('maxlength="60"', '')],
+  ['context suggestion silently preselected', (value) => value.replace('<input type="radio" name="contextCandidate" data-suggestion-basis="provider_prediction">', '<input type="radio" name="contextCandidate" checked data-suggestion-basis="provider_prediction">')],
+  ['suggestion vocabulary widened', (value) => value.split('data-suggestion-bases="provider_prediction text_search organization_history"').join('data-suggestion-bases="provider_prediction text_search organization_history auto_apply"') .split('data-context-selection="explicit-human-choice"').join('data-context-selection="auto"')],
 ];
 for (const [label, mutate] of controls) expectFailure(label, mutate);
 

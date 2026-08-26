@@ -1,6 +1,6 @@
 # Category Discovery, Equivalence Memory & Organization Product View — Evaluation / Global Maximum Design
 
-> **Status:** DESIGN FOR OPERATOR ADJUDICATION — no authority changed yet
+> **Status:** ADJUDICATED 2026-08-26 — C1 RATIFIED / C2 RATIFIED / C3 DEFERRED; repair integrated (census 107/31, proof 18/18)
 > **Trigger:** operator-raised category/taxonomy question during B23; verification confirmed the product-linking model is decided (D2 §12, D4, D4-R1) but category discovery/equivalence is absent everywhere
 > **Method:** engineering-method Global Maximum + frontend method §3.10A
 > **Affected if ratified:** D4/D4-R1 (provider category evidence port) + D5 W1/OAD (new Q reads) + B23 publication-context region

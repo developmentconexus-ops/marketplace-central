@@ -72,6 +72,10 @@ paths:
     $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/ProductChannelReadiness'
   '/organizations/{organization_id}/publication-requirements':
     $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/PublicationRequirements'
+  # CAT-01 paths start
+  '/organizations/{organization_id}/publication-contexts':
+    $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/PublicationContextsSearch'
+  # CAT-01 paths end
   '/organizations/{organization_id}/product-channel-readiness:resolve-correspondence':
     $ref: './paths-identity-portfolio-readiness.yaml#/pathItems/ResolveProductChannelCorrespondence'
   '/organizations/{organization_id}/product-channel-readiness:clear-correspondence':

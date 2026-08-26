@@ -203,6 +203,14 @@ function validateVariations(doc) {
   }
   requireFieldsFrom(s, 'MarketplaceListingObservedVariation', ['option_coordinates', 'presentation']);
   requirePropertyRef(s, 'MarketplaceListingObservedVariation', 'presentation', 'MarketplaceListingPresentation');
+  // Publication-context discovery: typed candidates, closed suggestion vocabulary, honest populations, read-only.
+  requireFieldsFrom(s, 'PublicationContextCandidate', ['category_key', 'display_name', 'path_presentation', 'suggestion_basis']);
+  assert(JSON.stringify(s.PublicationContextCandidate.properties.suggestion_basis).includes('organization_history'), 'organization-history suggestion basis missing');
+  assert(JSON.stringify(s.PublicationContextCandidate.properties.suggestion_basis).includes('provider_prediction'), 'provider-prediction suggestion basis missing');
+  requireClosedDiscriminant(s, 'PublicationContextCandidatesKnown', 'state', 'known');
+  requireClosedDiscriminant(s, 'PublicationContextCandidatesUnknown', 'state', 'unknown');
+  requireClosedDiscriminant(s, 'PublicationContextCandidatesUnavailable', 'state', 'unavailable');
+  requireUnionRefs(s, 'PublicationContextCandidates', ['PublicationContextCandidatesKnown', 'PublicationContextCandidatesUnknown', 'PublicationContextCandidatesUnavailable']);
 }
 
 function validateAll(doc) {
@@ -238,6 +246,8 @@ expectMutationFailure('requirement scope removed', (d) => { d.components.schemas
 expectMutationFailure('variation option gains price', (d) => { d.components.schemas.ListingIntentVariationOption.properties.price = { type: 'string' }; });
 expectMutationFailure('variation coordinates weakened to strings', (d) => { d.components.schemas.ListingIntentVariationOption.properties.option_coordinates.items = { type: 'string' }; });
 expectMutationFailure('observed variation presentation weakened', (d) => { d.components.schemas.MarketplaceListingObservedVariation.properties.presentation = { type: 'string' }; });
-assert(negativeControls === 16, `negative-control count must be 16, found ${negativeControls}`);
+expectMutationFailure('context candidate loses suggestion basis', (d) => { d.components.schemas.PublicationContextCandidate.required = d.components.schemas.PublicationContextCandidate.required.filter((x) => x !== 'suggestion_basis'); });
+expectMutationFailure('context unavailable collapsed into unknown', (d) => { d.components.schemas.PublicationContextCandidatesUnavailable.properties.state = { const: 'unknown' }; });
+assert(negativeControls === 18, `negative-control count must be 18, found ${negativeControls}`);
 console.log('human_operable_read_projection=PASS');
-console.log(`human_operable_read_projection_negative_controls=${negativeControls}/16`);
+console.log(`human_operable_read_projection_negative_controls=${negativeControls}/18`);

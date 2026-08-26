@@ -125,15 +125,24 @@ table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1p
       <div id="staleRevision" class="notice hidden" data-revision-state="stale" role="status"><strong>As exigências do marketplace mudaram</strong><div class="row-note">Este rascunho foi montado sobre uma revisão anterior. Revise os campos antes de enviar; o envio usa sempre a verdade atual do servidor.</div></div>
     </div>
 
-    <section class="region" id="contextRegion" data-publication-context="category product_type">
-      <h3>Contexto de publicação</h3>
-      <p>A categoria e o tipo de produto decidem quais campos e variações o marketplace exige. Mudar o contexto faz o servidor reavaliar toda a ficha.</p>
+    <section class="region" id="contextRegion" data-publication-context="category product_type" data-context-discovery-read="SearchPublicationContexts" data-suggestion-bases="provider_prediction text_search organization_history" data-context-selection="explicit-human-choice">
+      <h3>Categoria no marketplace</h3>
+      <p>A categoria decide quais campos e variações o marketplace exige. O sistema sugere a partir do seu produto e do histórico da sua organização; a escolha final é sempre sua.</p>
       <div class="context-pick">
-        <div><label class="label" for="categoryPick">Categoria</label><select id="categoryPick" class="control"><option value="MLB27140">Torneiras</option><option value="MLB27141">Misturadores</option></select></div>
-        <div><label class="label" for="typePick">Tipo de produto</label><select id="typePick" class="control"><option value="TORNEIRAS">Torneira</option></select></div>
-        <button id="applyContext" class="btn" type="button">Aplicar contexto</button>
+        <div><label class="label" for="contextQuery">Buscar categoria</label><input id="contextQuery" class="control" placeholder="Ex.: torneira cozinha"></div>
+        <button id="contextSearch" class="btn" type="button">Buscar</button>
       </div>
-      <div id="contextNote" class="notice hidden" role="status">Contexto aplicado no protótipo: o servidor reavaliou o censo de campos e os eixos de variação.</div>
+      <div id="contextCandidates" data-population-state="known">
+        <label class="resolution-choice" style="display:block">
+          <label><input type="radio" name="contextCandidate" data-suggestion-basis="provider_prediction"><span><strong>Torneiras &gt; Torneiras de Cozinha</strong><div class="row-note">Sugerida pelo marketplace a partir do seu produto · confiança 92%</div></span></label>
+          <label><input type="radio" name="contextCandidate" data-suggestion-basis="organization_history"><span><strong>Torneiras &gt; Torneiras Monocomando</strong><div class="row-note">Sua organização usou esta categoria em 12 anúncios de produtos da categoria "Torneiras" do Sankhya</div></span></label>
+          <label><input type="radio" name="contextCandidate" data-suggestion-basis="text_search"><span><strong>Casa &gt; Cozinha &gt; Misturadores</strong><div class="row-note">Resultado da busca na árvore do marketplace</div></span></label>
+        </label>
+        <div class="action-row"><button id="applyContext" class="btn" type="button" disabled>Usar categoria selecionada</button></div>
+      </div>
+      <div id="contextUnavailable" class="notice hidden" data-population-state="unavailable" role="status"><strong>Categorias indisponíveis agora</strong><div class="row-note">Não conseguimos consultar as categorias deste marketplace. Isso não significa que não existam.</div></div>
+      <div id="contextNote" class="notice hidden" role="status">Categoria aplicada no protótipo: o servidor reavaliou o censo de campos e os eixos de variação.</div>
+      <p class="small">Nem todo marketplace oferece sugestão: onde não houver, aparece só a busca — e onde nada for consultável, a tela diz isso honestamente.</p>
     </section>
 
     <section class="region" id="fieldsRegion" data-resolution-kinds="follow_source explicit_override" data-value-specs="text exact_decimal boolean option option_list text_list number_unit">
@@ -308,6 +317,7 @@ table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1p
     <span data-operation="SubmitListingIntent">SubmitListingIntent</span>
     <span data-operation="CreateListingIntentMedia">CreateListingIntentMedia</span>
     <span data-operation="GetPublicationRequirements">GetPublicationRequirements</span>
+    <span data-operation="SearchPublicationContexts">SearchPublicationContexts</span>
     <span>follow_source / explicit_override</span><span>variation_axes</span><span>dispatchability + blockers</span><span>external_effect_state</span><span>convergence</span>
   </div>
 </section>
@@ -348,7 +358,9 @@ if(scenario==='ambiguous'){setEffect('ambiguous','Resultado incerto','Enviamos o
 materialInput&&(materialInput.onchange=()=>{materialFilled=!!materialInput.value;renderEditor();});
 titleInput&&(titleInput.oninput=()=>{titleCount.textContent=String(titleInput.value.length);});
 showAllFields.onclick=()=>{const opening=optionalFields.classList.contains('hidden');optionalFields.classList.toggle('hidden',!opening);showAllFields.setAttribute('aria-expanded',String(opening));showAllFields.textContent=opening?'Ocultar campos opcionais e condicionais':'Exibir todos os campos (opcionais e condicionais)';};
-applyContext.onclick=()=>{contextNote.classList.remove('hidden');};
+applyContext.onclick=()=>{if(!applyContext.disabled)contextNote.classList.remove('hidden');};
+document.querySelectorAll('input[name="contextCandidate"]').forEach(r=>r.onchange=()=>{applyContext.disabled=false;});
+document.getElementById('contextSearch').onclick=()=>{};
 addOption.onclick=()=>{};
 saveDraft.onclick=()=>{if(editorScenario.value==='draft-blocked')renderEditor();};
 submitIntent.onclick=()=>{if(!submitIntent.disabled){editorScenario.value='submitted-pending';renderEditor();}};
