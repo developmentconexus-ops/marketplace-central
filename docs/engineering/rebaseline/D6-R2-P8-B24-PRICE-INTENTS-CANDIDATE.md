@@ -1,6 +1,6 @@
-# D6-R2 P8 — B24 Preços Candidate
+# D6-R2 P8 — B24 Preços Ratification
 
-> **Status:** CANDIDATE / OPERATOR WALKTHROUGH REQUIRED — no LOCK claimed
+> **Status:** P8 OPERATOR-LOCKED 2026-08-26 (revision 5)
 > **Block:** B24 — Preços / R24
 > **Methods:** [DevelopmentConexus Engineering Method v1.0.0](../../development/engineering-method.md) + [Frontend Product Experience Planning Method v2.3](../../development/frontend-product-experience-planning-method.md)
 > **Candidate evidence:** `qualification/d6-r2-wireframes/b24-price-intents.html`
@@ -94,17 +94,11 @@ Preserved laws: rank and range come from the Market owner's comparable set (`dat
 
 Proof: `node scripts/verify-d6-r-b24-price-intents-wireframe.mjs` → **28/28** negative controls (added: market rank removed, market cell frozen against the typed price, live indicator lost its label, row density expanded back inline). Browser: 0 console issues, no 390px overflow, priced row height 156px.
 
-## 8. P8 operator gate
+## 8. P8 operator gate — LOCKED
 
-Current disposition:
+The operator operated revision 5 in the browser and returned **LOCK on 2026-08-26**. The locked structure is the compact pricing workbench: one row per pricing subject; Economics margin (current, and new-with-label at the typed price) and Market (owner delivered range + our competitive rank, live against the typed price) as read-only owner-separated facts; the waterfall and reference anchors behind a row-level expand/collapse arrow; one explicit supersede-only write per row.
 
-```text
-CANDIDATE
-operator walkthrough required
-LOCK / REVISE / UPSTREAM FINDING
-```
-
-The assistant, verifier and reviewer cannot set `LOCKED`. P9 must not run for B24 until the operator explicitly LOCKs this candidate.
+Only the operator can change this LOCK. Assistant, verifier and reviewer output cannot.
 
 ## 9. Reopen triggers
 

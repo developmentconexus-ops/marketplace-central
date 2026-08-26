@@ -24,7 +24,7 @@ P8 HTML decides structural hierarchy/placement/density/navigation/state placemen
 | **B10 Preparação** | **LOCKED** 2026-08-26 (correspondence region re-LOCK) | `qualification/d6-r2-wireframes/b10-preparation.html` + B10 P8 ratification + bounded correspondence revalidation |
 | **B20 Publicações** | **LOCKED** 2026-08-26 | `qualification/d6-r2-wireframes/b20-publications.html` + [B20 P8 ratification](D6-R2-P8-B20-PUBLICATIONS-CANDIDATE.md) |
 | **B23 Intenções de anúncio** | **LOCKED** 2026-08-26 | `qualification/d6-r2-wireframes/b23-listing-intents.html` + [B23 P8 ratification](D6-R2-P8-B23-LISTING-INTENTS-CANDIDATE.md) + [P6 study](D6-R2-P6-B23-LISTING-INTENT-REFERENCE-STUDY.md) |
-| **B24 Preços** | **CANDIDATE** — operator walkthrough required | `qualification/d6-r2-wireframes/b24-price-intents.html` + [B24 P8 candidate](D6-R2-P8-B24-PRICE-INTENTS-CANDIDATE.md) |
+| **B24 Preços** | **LOCKED** 2026-08-26 (revision 5) | `qualification/d6-r2-wireframes/b24-price-intents.html` + [B24 P8 ratification](D6-R2-P8-B24-PRICE-INTENTS-CANDIDATE.md) |
 
 No other D6-R2 block inherits a LOCK by proximity. Only the operator can add/change a LOCK.
 

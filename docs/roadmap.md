@@ -13,7 +13,7 @@
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | Main baseline | **PR #76 — B23 listing-intent authoring integrated at `6ce3902bbd8e7593249c7f4a45658c9d0027bb96`; required CI PASS** |
 | Method profile | **local [`engineering-method.md`](development/engineering-method.md) + [`frontend-product-experience-planning-method.md`](development/frontend-product-experience-planning-method.md) v2.3** |
-| Current acceptance increment | **B24 — Preços / R24 — OPEN; P8 structural design OPERATOR-APPROVED 2026-08-26; workbench + live owner-evaluated indicators rendered after four operator alignments (revision 5: compact row, labeled margin, competitive rank in the Mercado column); operator walkthrough NEXT** |
+| Current acceptance increment | **B24 — Preços / R24 — OPEN; P8 OPERATOR-LOCKED 2026-08-26 (revision 5); P9 run raised one blocking UPSTREAM FINDING (Market position projection); operator adjudication NEXT** |
 | B24 accepted input | **R24 `/publicacoes/precos` — PriceIntent collection/detail/create with Market/Economics handoff; Offering owns price writes (`price.manage`, H/A, Idempotency-Key); supersede model, no in-place price edit** |
 | Prior increment | **B23 — P8 LOCKED 2026-08-26 + P9 PASS / CLOSED (variations + category discovery repairs), integrated by PR #76** |
 | Read contract law | **Owner-specific typed read projections (Canonical Ref ≠ Current Read Projection ≠ Purpose/Historical Snapshot) are the only admitted human presentation basis (PR #70; extended by the PR #69 `source_product_link` repair)** |
@@ -22,7 +22,7 @@
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
 | Aggregate CI | **one required check / one `npm run gate`; universal checks always run; Product proof is diff-aware and fails safe when reliable changed-surface detection is unavailable** |
-| Exact next action | **Operate the browser-operable B24 R24 candidate (`qualification/d6-r2-wireframes/b24-price-intents.html`) and obtain operator disposition `LOCK / REVISE / UPSTREAM FINDING`. No B24 P9, further blocks, Pre-D9/D9 or implementation before explicit LOCK.** |
+| Exact next action | **Adjudicate the B24 P9 upstream finding — the Market owner carries no delivered range, rank or candidate-price position ([P9 contract §6](engineering/rebaseline/D6-R2-P9-B24-PRICE-INTENTS-SCREEN-CONTRACT.md)) — as RATIFIED / REJECTED / DEFERRED. No B24 P9 PASS, further blocks, Pre-D9/D9 or implementation before that adjudication.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -43,7 +43,7 @@
 | D7 — Runtime / Jobs / Transactions | ACCEPTED / CLOSED; runtime baseline remains NONE |
 | D8 — Golden Flows | ACCEPTED / CLOSED / INTEGRATED |
 | D8-R2 — GF-02 Operational Read Revalidation | ACCEPTED / PASS |
-| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00/B01/B00-R2/B11/B12/B110/B10/B20/B23 LOCKED; B24 OPEN — P8 design adjudication next** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00/B01/B00-R2/B11/B12/B110/B10/B20/B23/B24 P8 LOCKED; B24 P9 blocked on one upstream finding** |
 | Pre-D9 readiness | BLOCKED |
 | D9 — Adversarial Architecture Review | BLOCKED |
 | Implementation | BLOCKED UNTIL D9 |
@@ -67,8 +67,12 @@ PR #76 B23 integrated
 → revision 4 rendered + proof (24/24)
 → fourth alignment: compact row, labeled margin, range + competitive rank live in the Mercado column
 → revision 5 rendered + proof (28/28)
-→ operator walkthrough: LOCK / REVISE / UPSTREAM FINDING   ← CURRENT
-→ P9 bidirectional Screen Contract
+→ operator walkthrough: P8 LOCKED (2026-08-26, revision 5)
+→ P9 bidirectional Screen Contract run
+→ UPSTREAM FINDING: Market carries no delivered range / rank / candidate position   ← CURRENT
+→ operator adjudication: RATIFY / REJECT / DEFER
+→ bounded repair + proof (if ratified)
+→ P9 PASS
 → P10 pattern consolidation
 → required CI
 → operator-authorized integration

@@ -161,7 +161,7 @@ const controls = [
 ];
 for (const [label, mutate] of controls) expectFailure(label, mutate);
 
-console.log('d6_r_b24_price_intents_status=CANDIDATE');
+console.log('d6_r_b24_price_intents_status=LOCKED');
 console.log('d6_r_b24_price_intents_scope=R24_PRICE_AUTHORING');
 console.log('d6_r_b24_price_intents_change_law=SUPERSEDE_ONLY');
 console.log(`d6_r_b24_price_intents_negative_controls=${controls.length}/${controls.length}`);
