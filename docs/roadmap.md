@@ -13,7 +13,7 @@
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | Main baseline | **PR #69 — B20 publications core integrated at `675ca74e09e46ff8abe5b3d77635e25d314913ea` over the PR #75/#70 baseline; required CI PASS** |
 | Method profile | **local [`engineering-method.md`](development/engineering-method.md) + [`frontend-product-experience-planning-method.md`](development/frontend-product-experience-planning-method.md) v2.3** |
-| Current acceptance increment | **B23 — ListingIntent authoring / R22–R23 — P8 RESUMED after the integrated variations repair; revised candidate rendered; operator walkthrough NEXT** |
+| Current acceptance increment | **B23 — ListingIntent authoring / R22–R23 — P8 OPERATOR-LOCKED 2026-08-26 (revision 3, after variations + category upstream repairs); P9 PASS / CLOSED; awaiting operator-authorized integration** |
 | Resolved upstream finding | **Listing variations RATIFIED 2026-08-26 and REPAIRED: census scope + variation_axes, ListingIntentDesired.variations (coordinate-keyed, SKU-level source refs), observed_variations; 106/31/H-A-S preserved; projection proof 16/16** |
 | B23 accepted input | **R22 `/publicacoes/intencoes` ListingIntent collection/work context; R23 revision-aware ListingIntent authoring/editor/media/evidence/submit-discard outcome; Offering owns all ListingIntent writes** |
 | Read contract law | **Owner-specific typed read projections (Canonical Ref ≠ Current Read Projection ≠ Purpose/Historical Snapshot) are the only admitted human presentation basis (PR #70; extended by the PR #69 `source_product_link` repair)** |
@@ -23,7 +23,7 @@
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
 | Aggregate CI | **one required check / one `npm run gate`; universal checks always run; Product proof is diff-aware and fails safe when reliable changed-surface detection is unavailable** |
-| Exact next action | **Operate the revised B23 R22/R23 candidate (now with real category discovery/suggestion in the context region) and obtain operator disposition `LOCK / REVISE / UPSTREAM FINDING`. No B23 P9, further blocks, Pre-D9/D9 or implementation before explicit LOCK.** |
+| Exact next action | **Obtain explicit operator authorization to integrate the B23 increment (variations + SearchPublicationContexts repairs, LOCKED P8, P9 PASS) into `main` via a pull request. The next D6-R2 block opens only after integration.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -44,7 +44,7 @@
 | D7 — Runtime / Jobs / Transactions | ACCEPTED / CLOSED; runtime baseline remains NONE |
 | D8 — Golden Flows | ACCEPTED / CLOSED / INTEGRATED |
 | D8-R2 — GF-02 Operational Read Revalidation | ACCEPTED / PASS |
-| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00/B01/B00-R2/B11/B12/B110/B10/B20 LOCKED; B23 OPEN — P8 design adjudication next** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00/B01/B00-R2/B11/B12/B110/B10/B20/B23 LOCKED; B23 increment awaits operator-authorized integration** |
 | Pre-D9 readiness | BLOCKED |
 | D9 — Adversarial Architecture Review | BLOCKED |
 | Implementation | BLOCKED UNTIL D9 |
@@ -69,11 +69,10 @@ PR #69 B20 integrated
 → operator raised category/taxonomy question; verification + evaluation increment opened
 → category discovery/equivalence adjudicated: C1+C2 RATIFIED, C3 DEFERRED; repair integrated (107/31)
 → B23 context region revised with real discovery/suggestion
-→ operator walkthrough: LOCK / REVISE / UPSTREAM FINDING   ← CURRENT
-→ P9 bidirectional Screen Contract
-→ P10 pattern consolidation
+→ operator walkthrough → LOCK (2026-08-26, revision 3)
+→ P9 bidirectional Screen Contract PASS + P10 no new shared pattern
 → required CI
-→ operator-authorized integration
+→ operator-authorized integration   ← CURRENT
 → only then the next D6-R2 block
 ```
 

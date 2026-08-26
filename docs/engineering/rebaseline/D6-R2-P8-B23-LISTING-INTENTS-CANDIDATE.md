@@ -1,6 +1,6 @@
 # D6-R2 P8 — B23 Intenções de Anúncio Candidate
 
-> **Status:** CANDIDATE / OPERATOR WALKTHROUGH REQUIRED — no LOCK claimed
+> **Status:** OPERATOR-RATIFIED / LOCKED 2026-08-26 (revision 3)
 > **Block:** B23 — ListingIntent authoring / R22–R23
 > **Methods:** [DevelopmentConexus Engineering Method v1.0.0](../../development/engineering-method.md) + [Frontend Product Experience Planning Method v2.3](../../development/frontend-product-experience-planning-method.md)
 > **Candidate evidence:** `qualification/d6-r2-wireframes/b23-listing-intents.html`
@@ -50,19 +50,24 @@ The ratified variations upstream finding was repaired (see the [adjudicated desi
 
 Revised proof: verifier **14/14 negative controls** (adds: variation write widened past coordinate keys, per-variation scope collapse, price/quantity pulled into authoring, title limit removed); browser operation re-passed end to end (two blockers resolving independently → submit enable → pending; ambiguous law intact) with **0 console issues** and no 390px overflow.
 
-## 5. P8 operator gate
+## 5. Revision 3 — category discovery in the context region (2026-08-26)
 
-Current disposition:
+The operator's category/taxonomy question opened the [category discovery/equivalence evaluation](../../superpowers/specs/2026-08-26-category-discovery-equivalence-design.md); C1/C2 were ratified and repaired (`SearchPublicationContexts`, census 107/31). The context region now renders real discovery: text search, provider prediction with confidence, organization-history suggestion with usage provenance, honest unavailable state, **no preselection** and apply-only-after-explicit-choice. Verifier extended to **16/16** negative controls; browser proof re-passed with 0 console issues.
+
+## 6. P8 operator gate — resolved
+
+The operator walked through revision 3 and returned **`Aprovado`** on 2026-08-26. Under the stated choice set (`LOCK / REVISE / UPSTREAM FINDING`):
 
 ```text
-CANDIDATE
-operator walkthrough required
-LOCK / REVISE / UPSTREAM FINDING
+final disposition: LOCK on 2026-08-26 (revision 3)
+walkthrough rounds: 2 upstream-driven REVISE cycles (variations; category discovery), then LOCK
+material revision requested: NONE outstanding
+upstream finding raised: NONE outstanding (both ratified findings repaired in-increment)
 ```
 
-The assistant, verifier and reviewer cannot set `LOCKED`. P9 must not run for B23 until the operator explicitly LOCKs this candidate.
+**P8 is OPERATOR-RATIFIED / LOCKED for B23.** This authorized the B23 P9 run, recorded in [`D6-R2-P9-B23-LISTING-INTENTS-SCREEN-CONTRACT.md`](D6-R2-P9-B23-LISTING-INTENTS-SCREEN-CONTRACT.md).
 
-## 6. Reopen triggers
+## 7. Reopen triggers
 
 Reopen only if operation of this candidate proves that:
 
