@@ -475,3 +475,17 @@ No D0/D1/D2/D3/D5-B1 reopen is required.
 D4 remains **CLOSED / ACCEPTED AS A WHOLE**, now including this accepted targeted amendment. The next architecture action is **D5-B2 — Product Operation / Resource Surface**, derived from D0–D4 including this R1 amendment plus D5-B1.
 
 The existing pre-R1 D5-B2 review candidate remains non-authoritative evidence only and must be revised/re-derived against current authority before any B2 ratification.
+
+---
+
+## 16. Listing variations amendment — 2026-08-26
+
+A ratified D6-R2/B23 upstream finding (Mercado Livre variations with no MPC model) reopened this owner boundedly. The operator adjudicated the [variations Global Maximum design](../../superpowers/specs/2026-08-26-listing-variations-global-maximum-design.md); it is now authority:
+
+- provider variation vocabulary (axes/options per publication context) is census evidence served through the existing Readiness publication-requirements port: `PublicationRequirements.variation_axes` (`VariationAxisSpec`, option or text kind) and `PublicationRequirement.scope: listing | per_variation`;
+- Offering's `ListingIntentDesired` gains optional `variations` (chosen axes + authored options); each option carries coordinate identity (`VariationCoordinate`: axis/option canonical keys or axis text value), an optional SKU-level `source_product` ref, and its own per-variation `requirement_resolutions`/`media_selection` using the unchanged resolution kinds;
+- per-option quantity and price remain owned by Sellable Availability and PriceIntent; D4 composes them at dispatch under the §9 R1-G1 composition law — they never enter ListingIntent authoring;
+- the Offering `MarketplaceListing` observation gains optional `observed_variations` (coordinates + typed presentation + honest observed fields/price);
+- no new operation, path, Permission or Principal kind; the shapes are protected by `verify-human-operable-read-projection.mjs` (16 negative controls, including: no price/quantity/label in variation authoring, coordinate-typed identity, honest observed presentation).
+
+Kits/bundles remain an explicitly separate future finding. Variation-aware Performance/Economics splits remain DEFERRED with a recorded reopen trigger.
