@@ -11,18 +11,18 @@
 | Product | **Marketplace Operations Control Plane + Commercial Intelligence** |
 | Current stage | **D6-R2 — Complete Frontend Realization Closure — OPEN / ACTIVE** |
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
-| Main baseline | **PR #76 — B23 listing-intent authoring integrated at `6ce3902bbd8e7593249c7f4a45658c9d0027bb96`; required CI PASS** |
+| Main baseline | **PR #77 — B24 pricing workbench + MKT-01 Market projection integrated at `b53f34ad460d33f07e490ca84e0c054bb2689ad1`; required CI PASS** |
 | Method profile | **local [`engineering-method.md`](development/engineering-method.md) + [`frontend-product-experience-planning-method.md`](development/frontend-product-experience-planning-method.md) v2.3** |
-| Current acceptance increment | **B24 — Preços / R24 — P8 OPERATOR-LOCKED 2026-08-26 (revision 5); P9 PASS / CLOSED after the bounded MKT-01 Market projection repair; integration NEXT** |
-| B24 accepted input | **R24 `/publicacoes/precos` — PriceIntent collection/detail/create with Market/Economics handoff; Offering owns price writes (`price.manage`, H/A, Idempotency-Key); supersede model, no in-place price edit** |
-| Prior increment | **B23 — P8 LOCKED 2026-08-26 + P9 PASS / CLOSED (variations + category discovery repairs), integrated by PR #76** |
+| Current acceptance increment | **B30 — Disponibilidade / R30 — NOT OPENED; P8 structural design adjudication is the entry gate** |
+| B30 accepted input | **R30 `/disponibilidade` — sellable availability current population + provenance/knowledge/config continuation (D6-R2 P5 inventory); Availability owns the meaning, Offering owns any listing write** |
+| Prior increment | **B24 — P8 LOCKED 2026-08-26 (revision 5) + P9 PASS / CLOSED (MKT-01 Market position projection), integrated by PR #77** |
 | Read contract law | **Owner-specific typed read projections (Canonical Ref ≠ Current Read Projection ≠ Purpose/Historical Snapshot) are the only admitted human presentation basis (PR #70; extended by the PR #69 `source_product_link` repair)** |
 | Canonical Product OAD | `contracts/api/product/openapi.yaml` |
 | Product surface | **108 Product operations · 31 ordinary Permissions · Principal kinds H / A / S only — EvaluateCompetitivePositionScenario admitted 2026-08-26 (MKT-01)** |
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
 | Aggregate CI | **one required check / one `npm run gate`; universal checks always run; Product proof is diff-aware and fails safe when reliable changed-surface detection is unavailable** |
-| Exact next action | **Open the B24 integration PR (locked wireframe + MKT-01 contract repair + P8/P9 evidence), obtain required CI PASS, and integrate only with explicit operator authorization. No further D6-R2 block, Pre-D9/D9 or implementation before that.** |
+| Exact next action | **Open the B30 — Disponibilidade acceptance increment: adjudicate its bounded P8 structural design with the operator before rendering any candidate. No B30 HTML, further blocks, Pre-D9/D9 or implementation before that adjudication.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -43,38 +43,25 @@
 | D7 — Runtime / Jobs / Transactions | ACCEPTED / CLOSED; runtime baseline remains NONE |
 | D8 — Golden Flows | ACCEPTED / CLOSED / INTEGRATED |
 | D8-R2 — GF-02 Operational Read Revalidation | ACCEPTED / PASS |
-| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00/B01/B00-R2/B11/B12/B110/B10/B20/B23/B24 LOCKED; B24 P9 PASS; integration next** |
+| D6-R2 — Complete Frontend Realization Closure | **OPEN / ACTIVE — B00/B01/B00-R2/B11/B12/B110/B10/B20/B23/B24 LOCKED / integrated; B30 next** |
 | Pre-D9 readiness | BLOCKED |
 | D9 — Adversarial Architecture Review | BLOCKED |
 | Implementation | BLOCKED UNTIL D9 |
 
 ## Current result
 
-- PR #76 is integrated at `6ce3902bbd8e7593249c7f4a45658c9d0027bb96`: B23 ListingIntent authoring is **P8 OPERATOR-LOCKED (2026-08-26, revision 3) and P9 PASS / CLOSED**, carrying the variations model and the category discovery/equivalence repair; the Product surface is **107 operations / 31 Permissions / H-A-S** with historical non-regression preserved.
-- Ten D6-R2 blocks are LOCKED. **B24 — Preços (R24)** closed as the compact pricing workbench: owner facts per row (current margin; delivered range and our rank in the observed comparable population), a debounced owner evaluation of the typed price, the cascade behind a row-level disclosure, and one explicit supersede-only write per row.
-- **MKT-01** repaired the D5 projection of already-accepted Market meaning (D1 competitive-position ownership; D4-B4 §6.2 provider evidence lane): delivered range, rank and a candidate-price scenario operation, all gated by evidence sufficiency and explicitly bounded to the observed comparable population. Surface **108 / 31 / H-A-S**; historical non-regression preserved.
-- The B24 design must preserve: Offering as sole price-write owner (`price.manage`, H/A, Idempotency-Key); typed targets (existing listing / pre-creation) with typed target presentation; honest state truth (pending/applied/rejected/ambiguous/superseded) and convergence; supersede-instead-of-edit; ambiguous never blindly retried; Market/Economics evidence as read-only owner-separated context; no automatic repricing engine.
-- No bulk repricing, rule engine, screen-shaped API or speculative shared component authority is admitted by default.
+- PR #77 is integrated at `b53f34ad460d33f07e490ca84e0c054bb2689ad1`: B24 Preços is **P8 OPERATOR-LOCKED (2026-08-26, revision 5) and P9 PASS / CLOSED**. The locked shape is the compact pricing workbench — owner facts per row (current margin; delivered range and our rank in the observed comparable population), a debounced owner evaluation of the typed price, the cascade behind a row-level disclosure, and one explicit supersede-only write per row.
+- **MKT-01** projected already-accepted Market meaning into D5 (D1 competitive-position ownership; D4-B4 §6.2 provider evidence lane): `MarketDeliveredPriceRange`, `MarketRank` with a closed `observed_comparable_population` basis, and `EvaluateCompetitivePositionScenario`. Surface **108 / 31 / H-A-S**; historical non-regression preserved.
+- Ten D6-R2 blocks are LOCKED. The remaining D6-R2 surface is R30 Disponibilidade, R40+ Performance, R50 Mercado, R60+ Economia, R70+ Vendas and the rest of the P5 inventory.
+- **B30 — Disponibilidade (R30)** is the next acceptance increment and is **not yet opened**: its bounded P8 structural design must be adjudicated with the operator first.
 
 ```text
-PR #76 B23 integrated
-→ B24 acceptance increment opened
-→ bounded P8 structural design adjudicated: operator approved (2026-08-26)
-→ first R24 candidate rendered; operator alignment → listing-centric pricing workbench approved
-→ workbench revision rendered + proof (13/13)
-→ second alignment: owner-evaluated waterfall/indicators + single create home
-→ revision 3 rendered + proof (20/20)
-→ third alignment: live debounced evaluation, market range, collapsible waterfall
-→ revision 4 rendered + proof (24/24)
-→ fourth alignment: compact row, labeled margin, range + competitive rank live in the Mercado column
-→ revision 5 rendered + proof (28/28)
-→ operator walkthrough: P8 LOCKED (2026-08-26, revision 5)
-→ P9 bidirectional Screen Contract run
-→ P9 gap re-scoped against accepted D1/D4-B4 authority: D5 projection only
-→ bounded MKT-01 repair + proof (108/31/H-A-S)
-→ P9 PASS / CLOSED
-→ integration PR + required CI   ← CURRENT
-→ operator-authorized integration
+PR #77 B24 integrated
+→ B30 acceptance increment opened
+→ bounded P8 structural design adjudicated with the operator   ← NEXT
+→ candidate rendered + deterministic proof + browser operation
+→ operator walkthrough: LOCK / REVISE / UPSTREAM FINDING
+→ P9 bidirectional Screen Contract
 → P10 pattern consolidation
 → required CI
 → operator-authorized integration
