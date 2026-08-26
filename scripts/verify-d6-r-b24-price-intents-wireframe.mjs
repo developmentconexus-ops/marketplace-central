@@ -67,7 +67,7 @@ function validate(html) {
   assert(html.includes("' p.p.'") || html.includes('p.p.'), 'percentage-point delta missing');
   // Market range restored in the column, plus the positional bar on the typed price.
   assert(html.includes('data-market-range="low-high"'), 'market range must be shown in the Mercado column');
-  assert(html.includes('Faixa entregue de '), 'delivered-price range copy missing');
+  assert(html.includes('Faixa entregue entre '), 'delivered-price range copy missing');
   assert(html.includes('class="rangebar"'), 'positional range bar missing');
   // Mercado column carries range + our competitive rank and updates with the typed price.
   assert(html.includes('data-market-cell="range-plus-rank"'), 'market cell must present range plus rank');
@@ -76,6 +76,9 @@ function validate(html) {
   assert(html.includes('data-market-live-rank="'), 'live competitive rank projection missing');
   assert(html.includes('Sua posição hoje: '), 'rank copy missing');
   assert(html.includes('const rank=1+o.filter('), 'rank must be derived from the owner comparable set');
+  assert(html.includes('data-market-scenario-source="EvaluateCompetitivePositionScenario"') && html.includes('data-operation="EvaluateCompetitivePositionScenario"'), 'candidate-price position must come from the Market scenario operation');
+  assert(html.includes('data-market-rank-basis="observed_comparable_population"'), 'rank basis binding missing');
+  assert(html.includes('data-market-coverage="observed"') && html.includes('população observada, não o mercado inteiro'), 'the rank must state that it ranks the observed comparable population');
   assert(!html.includes('À frente') && !html.includes('Atrás'), 'ahead/behind wording must not return alongside the rank');
   // Compact row: the cascade lives in an expandable row, not inline in the cell.
   assert(html.includes('data-row-density="compact"'), 'compact row density binding missing');
@@ -157,6 +160,8 @@ const controls = [
   ['market cell frozen against the typed price', (value) => value.split('data-market-cell-live="true"').join('data-market-cell-live="false"')],
   ['live indicator lost its label', (value) => value.split('data-live-labels="explicit"').join('data-live-labels="none"')],
   ['row density expanded back inline', (value) => value.split('data-row-density="compact"').join('data-row-density="expanded"')],
+  ['rank basis widened past the observed population', (value) => value.split('data-market-rank-basis="observed_comparable_population"').join('data-market-rank-basis="whole_market"')],
+  ['candidate position detached from the Market owner', (value) => value.split('data-market-scenario-source="EvaluateCompetitivePositionScenario"').join('data-market-scenario-source="client-sort"')],
   ['ledger view regained a create form', (value) => value.split('data-intents-view="ledger-only"').join('data-intents-view="create-and-ledger"')],
 ];
 for (const [label, mutate] of controls) expectFailure(label, mutate);

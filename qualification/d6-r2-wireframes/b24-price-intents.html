@@ -57,6 +57,8 @@ table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1p
   data-market-anchor-gate="evidence_sufficiency"
   data-market-cell="range-plus-rank"
   data-market-cell-live="true"
+  data-market-rank-basis="observed_comparable_population"
+  data-market-scenario-source="EvaluateCompetitivePositionScenario"
   data-row-density="compact"
   data-live-labels="explicit"
   data-context-facts-kind="inline-read-only"
@@ -182,6 +184,7 @@ table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1p
     <span data-operation="ListCompetitivePositions">ListCompetitivePositions</span>
     <span data-operation="EvaluatePriceScenario">EvaluatePriceScenario</span>
     <span data-operation="ListComparableOffers">ListComparableOffers</span>
+    <span data-operation="EvaluateCompetitivePositionScenario">EvaluateCompetitivePositionScenario</span>
     <span data-operation="CreatePriceIntent">CreatePriceIntent</span>
     <span data-operation="GetPriceIntent">GetPriceIntent</span>
     <span>delivered_price</span><span>contribution + margin_rate</span><span>supersedes_price_intent_id</span><span>cursor collection</span>
@@ -212,7 +215,8 @@ function pct(n){return (n*100).toFixed(1).replace('.',',')+'%';}
 function pp(n){const v=(n*100);return (v>=0?'+':'')+v.toFixed(1).replace('.',',')+' p.p.';}
 // Simula a resposta de EvaluatePriceScenario (dono Economia).
 function ownerEvaluate(r,price){const e=r.econ;if(e.state!=='known')return{state:e.state};const fee=price*e.feeRate,tax=price*e.taxRate;const contribution=price-fee-tax-e.shipping-e.promotion-e.cost;const rate=contribution/price;return{state:'known',components:{sale_price:price,marketplace_fee:fee,tax:tax,seller_borne_shipping:e.shipping,promotion:e.promotion,cost:e.cost},contribution:contribution,rate:rate,profitability:rate>=e.policyMinRate?'acceptable':'below_policy'};}
-// Simula a resposta do dono Mercado para um preço candidato.
+// Simula EvaluateCompetitivePositionScenario (dono Mercado): faixa e colocação do preço candidato
+// dentro da população de comparáveis observada. A tela nunca ordena nem conta por conta própria.
 function ownerMarket(r,price){const m=r.market;if(m.sufficiency!=='sufficient')return{state:m.sufficiency};const delivered=price+r.buyerShipping;const o=m.others;const low=Math.min.apply(null,o),high=Math.max.apply(null,o);const cheapest=low;const gap=delivered-cheapest;const rank=1+o.filter(v=>v<delivered-0.005).length;return{state:'sufficient',delivered:delivered,gap:gap,rank:rank,total:o.length+1,low:low,high:high,cheapestDelivered:cheapest};}
 function marketRange(r){const o=r.market.others;return{low:Math.min.apply(null,o),high:Math.max.apply(null,o)};}
 function ord(n){return n+'\u00ba';}
@@ -223,7 +227,7 @@ function openDrawer(){document.body.classList.add('drawer-open');menu.setAttribu
 function closeDrawer(returnFocus=true){document.body.classList.remove('drawer-open');menu.setAttribute('aria-expanded','false');if(returnFocus)menu.focus();}
 function showView(v){const decide=v==='decide';decideView.classList.toggle('hidden',!decide);intentsView.classList.toggle('hidden',decide);tabDecide.classList.toggle('active',decide);tabIntents.classList.toggle('active',!decide);tabDecide.setAttribute('aria-selected',String(decide));tabIntents.setAttribute('aria-selected',String(!decide));}
 function rangeBar(low,high,value){const span=high-low||1;let ratio=(value-low)/span;ratio=Math.max(0,Math.min(1,ratio));return '<div class="rangebar" data-market-range="low-high" aria-hidden="true"><i style="left:0"></i><i style="right:0"></i><u style="left:calc('+(ratio*100).toFixed(1)+'% - 5px)"></u></div><div class="small">'+money(low)+' <span style="float:right">'+money(high)+'</span></div>';}
-function marketCell(r){const m=r.market;if(m.sufficiency==='unavailable')return '<td data-fact-owner="Market" data-market-evidence="unavailable">Consulta indisponível<div class="row-note">Não significa ausência de concorrência.</div></td>';if(m.sufficiency==='insufficient')return '<td data-fact-owner="Market" data-market-evidence="insufficient">Evidência insuficiente<div class="row-note">Comparáveis conhecidos não bastam para posicionar.</div></td>';const rg=marketRange(r);const mk=r.price===null?null:ownerMarket(r,r.price);return '<td data-fact-owner="Market" data-market-evidence="sufficient">'+'<strong data-market-range="low-high">'+money(rg.low)+' – '+money(rg.high)+'</strong>'+'<div class="row-note">Faixa entregue de '+(r.market.others.length+1)+' anúncios comparáveis.</div>'+(mk?'<div class="row-note" data-market-rank="'+mk.rank+'">Sua posição hoje: <span class="rank">'+ord(mk.rank)+' de '+mk.total+'</span></div>':'<div class="row-note">Sem preço publicado para posicionar.</div>')+rangeBar(rg.low,rg.high,mk?mk.delivered:rg.low)+'<div class="market-live hidden" data-market-live="'+esc(r.key)+'" role="status"></div></td>';}
+function marketCell(r){const m=r.market;if(m.sufficiency==='unavailable')return '<td data-fact-owner="Market" data-market-evidence="unavailable">Consulta indisponível<div class="row-note">Não significa ausência de concorrência.</div></td>';if(m.sufficiency==='insufficient')return '<td data-fact-owner="Market" data-market-evidence="insufficient">Evidência insuficiente<div class="row-note">Comparáveis conhecidos não bastam para posicionar.</div></td>';const rg=marketRange(r);const mk=r.price===null?null:ownerMarket(r,r.price);return '<td data-fact-owner="Market" data-market-evidence="sufficient">'+'<strong data-market-range="low-high">'+money(rg.low)+' – '+money(rg.high)+'</strong>'+'<div class="row-note" data-market-coverage="observed">Faixa entregue entre '+(r.market.others.length+1)+' anúncios comparáveis observados — população observada, não o mercado inteiro.</div>'+(mk?'<div class="row-note" data-market-rank="'+mk.rank+'">Sua posição hoje: <span class="rank">'+ord(mk.rank)+' de '+mk.total+'</span> observados</div>':'<div class="row-note">Sem preço publicado para posicionar.</div>')+rangeBar(rg.low,rg.high,mk?mk.delivered:rg.low)+'<div class="market-live hidden" data-market-live="'+esc(r.key)+'" role="status"></div></td>';}
 function contributionCell(r){const j=currentEval(r);if(r.kind==='pre_creation')return '<td data-fact-owner="Economics" data-current-margin="none">—<div class="row-note">Sem preço publicado ainda.</div></td>';if(!j||j.state!=='known')return '<td data-fact-owner="Economics" data-economics-conclusion="'+esc(j?j.state:'unavailable')+'">Não determinável</td>';const bad=j.profitability==='below_policy';return '<td data-fact-owner="Economics" data-economics-conclusion="known" data-current-margin="known" data-profitability="'+esc(j.profitability)+'"'+(bad?' class="warn"':'')+'>'+money(j.contribution)+' · '+pct(j.rate)+'<div class="row-note">'+(bad?'Abaixo da política':'Aceitável')+'</div></td>';}
 function wbRow(r){const intent=r.intent?'<span class="tag'+(r.intent.state==='pending'?'':' dashed')+'">'+esc(r.intent.price)+' · '+stateLabels[r.intent.state]+'</span>':'<span class="small">—</span>';
 return '<tr data-row-key="'+esc(r.key)+'" data-target-kind="'+esc(r.kind)+'" data-attention="'+String(needsAttention(r))+'">'
@@ -239,7 +243,7 @@ function liveHtml(r,price){const ev=ownerEvaluate(r,price);if(ev.state!=='known'
 const cur=currentEval(r);const bad=ev.profitability==='below_policy';
 const delta=cur&&cur.state==='known'?'<span class="delta" data-current-margin="known">margem atual '+money(cur.contribution)+' · '+pct(cur.rate)+' · '+pp(ev.rate-cur.rate)+'</span>':'<span class="delta">sem preço atual para comparar</span>';
 return '<div data-live-contribution><span class="k">Margem nova (contribuição · % sobre o preço)</span><strong'+(bad?' class="warn"':'')+'>'+money(ev.contribution)+' · '+pct(ev.rate)+'</strong> <span class="delta" data-profitability="'+esc(ev.profitability)+'">'+(bad?'Abaixo da política':'Aceitável')+'</span><br>'+delta+'</div>';}
-function marketLiveHtml(r,price){const m=ownerMarket(r,price);if(m.state!=='sufficient')return '<span data-market-evidence="'+esc(m.state)+'">Posição não determinável.</span>';return '<span data-market-live-rank="'+m.rank+'">Com '+money(price)+': <span class="rank">'+ord(m.rank)+' de '+m.total+'</span></span>';}
+function marketLiveHtml(r,price){const m=ownerMarket(r,price);if(m.state!=='sufficient')return '<span data-market-evidence="'+esc(m.state)+'">Posição não determinável.</span>';return '<span data-market-live-rank="'+m.rank+'">Com '+money(price)+': <span class="rank">'+ord(m.rank)+' de '+m.total+'</span> observados</span>';}
 function evalHtml(r,price){const ev=ownerEvaluate(r,price);let left='',right='';
 if(ev.state!=='known'){left='<p class="small" data-economics-conclusion="'+esc(ev.state)+'">O dono Economia não pôde avaliar este preço agora.</p>';}
 else{const c=ev.components;left='<strong>Cascata do preço</strong><table class="waterfall" data-waterfall="owner-components"><tbody>'

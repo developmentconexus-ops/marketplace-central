@@ -213,12 +213,38 @@ function validateVariations(doc) {
   requireUnionRefs(s, 'PublicationContextCandidates', ['PublicationContextCandidatesKnown', 'PublicationContextCandidatesUnknown', 'PublicationContextCandidatesUnavailable']);
 }
 
+function validateMarketPosition(doc) {
+  const s = schemas(doc);
+  // MKT-01: the delivered range and our rank are owner-issued projections, never client derivations.
+  requireFieldsFrom(s, 'MarketDeliveredPriceRange', ['low', 'high']);
+  requireFieldsFrom(s, 'MarketRank', ['position', 'comparable_count', 'basis']);
+  const basis = s.MarketRank.properties.basis;
+  assert(Array.isArray(basis?.enum) && basis.enum.length === 1 && basis.enum[0] === 'observed_comparable_population',
+    'rank basis must stay a closed vocabulary naming the observed comparable population, never general-market completeness');
+  for (const name of ['CompetitivePosition', 'CompetitivePositionListItem', 'CompetitivePositionScenarioEvaluation']) {
+    requirePropertyRef(s, name, 'delivered_price_range', 'MarketDeliveredPriceRange');
+    requirePropertyRef(s, name, 'market_rank', 'MarketRank');
+    assert((s[name].required ?? []).includes('evidence_sufficiency'),
+      `${name} must always state its evidence sufficiency; range and rank are optional so partial evidence never reads as a confident position`);
+    assert(!(s[name].required ?? []).includes('market_rank') && !(s[name].required ?? []).includes('delivered_price_range'),
+      `${name} must not require rank/range: insufficient or unavailable evidence has no position to state`);
+  }
+  requireFieldsFrom(s, 'CompetitivePosition', ['coverage']);
+  requireFieldsFrom(s, 'CompetitivePositionScenarioEvaluation', ['candidate_price', 'coverage']);
+  requireFieldsFrom(s, 'EvaluateCompetitivePositionScenarioRequest', ['subject', 'candidate_price']);
+  const req = JSON.stringify(s.EvaluateCompetitivePositionScenarioRequest);
+  for (const forbidden of ['display_name', 'display_label', 'market_rank']) {
+    assert(!req.includes(`"${forbidden}"`), `the scenario request must not carry ${forbidden}`);
+  }
+}
+
 function validateAll(doc) {
   validateReadiness(doc);
   if (typeof validateMarketplaceListing === 'function') validateMarketplaceListing(doc);
   if (typeof validateConsumers === 'function') validateConsumers(doc);
   if (typeof validateListingIntent === 'function') validateListingIntent(doc);
   validateVariations(doc);
+  validateMarketPosition(doc);
 }
 
 function expectMutationFailure(label, mutate) {
@@ -248,6 +274,11 @@ expectMutationFailure('variation coordinates weakened to strings', (d) => { d.co
 expectMutationFailure('observed variation presentation weakened', (d) => { d.components.schemas.MarketplaceListingObservedVariation.properties.presentation = { type: 'string' }; });
 expectMutationFailure('context candidate loses suggestion basis', (d) => { d.components.schemas.PublicationContextCandidate.required = d.components.schemas.PublicationContextCandidate.required.filter((x) => x !== 'suggestion_basis'); });
 expectMutationFailure('context unavailable collapsed into unknown', (d) => { d.components.schemas.PublicationContextCandidatesUnavailable.properties.state = { const: 'unknown' }; });
-assert(negativeControls === 18, `negative-control count must be 18, found ${negativeControls}`);
+expectMutationFailure('rank basis widened past the observed population', (d) => { d.components.schemas.MarketRank.properties.basis.enum = ['observed_comparable_population', 'whole_market']; });
+expectMutationFailure('rank required regardless of evidence', (d) => { d.components.schemas.CompetitivePosition.required.push('market_rank'); });
+expectMutationFailure('collection item drops evidence sufficiency', (d) => { d.components.schemas.CompetitivePositionListItem.required = d.components.schemas.CompetitivePositionListItem.required.filter((x) => x !== 'evidence_sufficiency'); });
+expectMutationFailure('delivered range weakened to a string', (d) => { d.components.schemas.CompetitivePositionScenarioEvaluation.properties.delivered_price_range = { type: 'string' }; });
+expectMutationFailure('scenario evaluation drops its coverage', (d) => { d.components.schemas.CompetitivePositionScenarioEvaluation.required = d.components.schemas.CompetitivePositionScenarioEvaluation.required.filter((x) => x !== 'coverage'); });
+assert(negativeControls === 23, `negative-control count must be 23, found ${negativeControls}`);
 console.log('human_operable_read_projection=PASS');
-console.log(`human_operable_read_projection_negative_controls=${negativeControls}/18`);
+console.log(`human_operable_read_projection_negative_controls=${negativeControls}/23`);

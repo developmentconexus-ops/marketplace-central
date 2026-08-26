@@ -115,6 +115,10 @@ paths:
     $ref: './paths-offering-availability-market.yaml#/pathItems/CompetitivePositions'
   '/organizations/{organization_id}/competitive-position':
     $ref: './paths-offering-availability-market.yaml#/pathItems/CompetitivePosition'
+  # MKT-01 paths start
+  '/organizations/{organization_id}/competitive-positions:evaluate-scenario':
+    $ref: './paths-offering-availability-market.yaml#/pathItems/EvaluateCompetitivePositionScenario'
+  # MKT-01 paths end
   '/organizations/{organization_id}/comparable-offers':
     $ref: './paths-offering-availability-market.yaml#/pathItems/ComparableOffers'
 

@@ -1,10 +1,10 @@
 # D6-R2 P9 — B24 Preços Screen Contract
 
-> **Status:** RUN / **UPSTREAM FINDING RAISED — awaiting operator adjudication**; no PASS claimed
+> **Status:** DERIVED / PASS — P8 LOCKED 2026-08-26; BACKEND SUFFICIENT after the bounded MKT-01 projection repair; UPSTREAM FINDING NONE
 > **Block:** B24 — Preços / R24
 > **Methods:** [DevelopmentConexus Engineering Method v1.0.0](../../development/engineering-method.md) + [Frontend Product Experience Planning Method v2.3](../../development/frontend-product-experience-planning-method.md)
 > **Locked P8 evidence:** `qualification/d6-r2-wireframes/b24-price-intents.html` (revision 5, LOCKED 2026-08-26)
-> **Canonical Product OAD:** `contracts/api/product/openapi.yaml` (107/31/H-A-S)
+> **Canonical Product OAD:** `contracts/api/product/openapi.yaml` (108/31/H-A-S after MKT-01)
 > **Product implementation:** BLOCKED UNTIL accepted D9
 
 ## 1. P9 result
@@ -21,7 +21,7 @@ open the pricing workbench for the organization
 → read the honest external outcome; verify (never blindly retry) on ambiguity
 ```
 
-**P9 verdict: BLOCKED on one upstream finding (§6). Everything else traces.**
+**P9 verdict: PASS / BACKEND SUFFICIENT / UPSTREAM FINDING NONE** — after the bounded D5 projection repair recorded in §6.
 
 ## 2. Route, identity and client-state ownership
 
@@ -48,6 +48,7 @@ The typed price is local and inert until it is either sent to an owner for evalu
 | margin at the typed price + waterfall + anchor evaluation | `EvaluatePriceScenario` | CommercialEconomics | `economics.read` | H/A/S |
 | current market position per row | `ListCompetitivePositions` | MarketIntelligence | `market.read` | H/A/S |
 | comparable evidence behind the range | `ListComparableOffers` | MarketIntelligence | `market.read` | H/A/S |
+| position of the **typed candidate** price | `EvaluateCompetitivePositionScenario` (MKT-01) | MarketIntelligence | `market.read` | H/A/S |
 
 The workbench composes these cursor collections **page-level**: one page of rows, one page of each owner collection, no N+1 and no screen-shaped aggregate endpoint.
 
@@ -64,33 +65,46 @@ The workbench composes these cursor collections **page-level**: one page of rows
 
 No admitted operation above is orphaned, and no locked control lacks an operation — with the single exception recorded below.
 
-## 6. UPSTREAM FINDING — the Market owner does not carry the locked position projection
+## 6. MKT-01 — bounded D5 projection repair (not a domain reopen)
 
-The LOCKED screen presents, per row and live against the typed price:
+The first P9 pass raised the locked Mercado column (delivered range, our rank, rank at the typed price) as an upstream finding. **The operator revoked that framing and was right.** Re-reading the smallest owner set proves the meaning was already accepted upstream; only its API projection was missing.
+
+| Already-accepted authority | What it says |
+| --- | --- |
+| [D1 Domains/Boundaries](D1-DOMAINS-BOUNDARIES.md) §domain table | Market Intelligence owns *comparability, **competitive position/change**, market-evidence sufficiency*; pricing authority stays with Economics and the write with Offering |
+| [D4 External Integrations](D4-EXTERNAL-INTEGRATIONS.md) §6.2 (D4-B4, ACCEPTED / CANONICAL) | The Mercado Livre lane proved catalog offer population, own/winner offer price, buyer-facing shipping and `price_to_win` as materially useful Market evidence; *"Market Intelligence may derive delivered-price/competitive explanation"* |
+
+So the delivered range and our position within the comparable population are **already inside an accepted owner's meaning**, proven against a real provider. No D0/D1/D4 reopen was warranted. What was missing was the **D5 projection**: the OAD exposed only `relation` + `delivered_price_gap`, which is strictly less than the accepted meaning and is exactly the ahead/behind wording the locked screen removed.
+
+Bounded repair executed (MKT-01), inside existing owners and Permissions:
+
+- `MarketDeliveredPriceRange` (low/high) and `MarketRank` (`position`, `comparable_count`, closed `basis: observed_comparable_population`);
+- both added as **optional** projections on `CompetitivePosition`, `CompetitivePositionListItem` and the new scenario evaluation, while `evidence_sufficiency` becomes **required** on the collection item — insufficient or unavailable evidence therefore has no rank to state and can never read as a confident position;
+- `EvaluateCompetitivePositionScenario` — stateless class C, `market.read`, H/A/S, owner MarketIntelligence — answering the position of a **candidate** price, mirroring what `EvaluatePriceScenario` does for Economics. Product surface **107 → 108**; Permissions unchanged at 31; Principal kinds unchanged.
+
+D4 §6.2's knowledge-state controls are carried into the projection rather than assumed away: *"catalog offer paging is bounded provider population, never general-market completeness."* The rank is therefore explicitly a rank **within the observed comparable population**, both in the closed `basis` vocabulary and in the locked screen's own copy (*"população observada, não o mercado inteiro"*), and `coverage` travels with every answer. This was applied as a bounded copy/binding adjustment to the LOCKED B24 evidence; the locked structure — regions, placement, density, navigation, state placement — is unchanged.
+
+Rejected alternatives remain rejected: deriving range/rank in the client (breaks the block LOCK and discards coverage/sufficiency); folding the market answer into `EvaluatePriceScenario` (collapses the D1.8 Economics/Market separation); dropping rank from the locked screen (backend-shaped UX, §3.10A).
+
+## 7. Adversarial checks
+
+P9 rejects: client-computed range, rank or margin; a rank stated without sufficient evidence; a rank implying whole-market completeness; label-carrying writes; bulk apply or an automatic repricing engine; in-place price edit; blind retry after an ambiguous external effect; hiding provider rejection feedback; collapsing known-empty into unknown or unavailable. All are excluded by the locked evidence plus `verify-d6-r-b24-price-intents-wireframe.mjs` (**30/30** negative controls) and the projection proof (**23/23**).
+
+## 8. P9 closure and P10 note
 
 ```text
-delivered price range  R$ 237,00 – R$ 289,00   (over N comparable offers)
-our rank               3º de 11                (current published price)
-our rank at the typed candidate price          (e.g. 6º de 11 at R$ 265,00)
+P8 OPERATOR-RATIFIED / LOCKED (2026-08-26, revision 5)
+→ exact route/state/identity binding
+→ exact owner/operation/Permission binding
+→ frontend → backend trace: one gap found
+→ gap re-scoped against accepted D1/D4-B4 authority: D5 projection only
+→ bounded MKT-01 repair + proof (108/31/H-A-S, historical non-regression PASS)
+→ backend → frontend trace PASS
+→ adversarial shortcuts rejected
+→ BACKEND SUFFICIENT
+→ UPSTREAM FINDING NONE
 ```
 
-The current contract cannot supply this:
+**P9: PASS / CLOSED for B24.**
 
-| Locked need | Current contract | Gap |
-| --- | --- | --- |
-| delivered range low/high | `CompetitivePosition` carries `relation` + `delivered_price_gap` only | range absent |
-| rank / comparable count | absent everywhere | rank absent |
-| evidence sufficiency per workbench row | `CompetitivePositionListItem` omits `evidence_sufficiency` | the column cannot stay honest at collection level |
-| position at a **candidate** price | `EvaluatePriceScenario` is CommercialEconomics and answers margin only | no Market scenario operation exists |
-
-`ListComparableOffers` returns the individual delivered prices, so the numbers are *derivable* — but only by the screen taking min/max and counting, which is exactly the client computation this block's LOCK forbids and which the deterministic verifier now protects against. Deriving them in the client would also silently discard `coverage` and `evidence_sufficiency`, turning partial evidence into a confident-looking rank.
-
-Per §3.10A the proven user need is not removed because the API does not yet answer it. The proposed bounded repair, for operator adjudication:
-
-1. extend `CompetitivePosition` with an owner-issued `delivered_price_range` (low/high `Money`) and `market_rank` (`position` + `comparable_count`), both **absent** unless `evidence_sufficiency = sufficient`;
-2. add `evidence_sufficiency` (and the same optional range/rank) to `CompetitivePositionListItem`, so the workbench column is honest and page-level composable;
-3. admit one stateless Market scenario operation — `EvaluateCompetitivePositionScenario` (class C, `market.read`, H/A/S, owner MarketIntelligence) — answering the position of a **candidate** delivered price, mirroring what `EvaluatePriceScenario` does for Economics. Product surface would move 107 → 108 operations, Permissions unchanged at 31, Principal kinds unchanged.
-
-Rejected alternatives: computing range/rank in the client (breaks the block LOCK and the honesty law); folding the market answer into `EvaluatePriceScenario` (collapses the Economics/Market owner boundary); dropping rank from the locked screen (backend-shaped UX, §3.10A).
-
-**No P9 PASS is claimed for B24 until this finding is RATIFIED, REJECTED or DEFERRED by the operator.**
+P10: B24 reuses the established laws (owner-issued facts vs screen rendering; known-empty ≠ unknown ≠ unavailable; navigation ≠ mutation; server-gated consequential writes; ambiguous-verify). The pricing workbench row — owner facts, a debounced scenario evaluation and one explicit supersede-only write — is B24-local until a second locked block proves the same shape; **no new shared component/pattern authority is claimed.** P11, Pre-D9/D9 and Product implementation remain outside this closure.

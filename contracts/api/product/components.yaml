@@ -1265,11 +1265,36 @@ schemas:
     oneOf:
       - {$ref: '#/schemas/MarketExistingListingPresentation'}
       - {$ref: '#/schemas/MarketSourceProductPresentation'}
+  # MKT-01 — Market Intelligence delivered-range / rank projection (D1 competitive-position ownership; D4-B4 6.2 evidence lane)
+  MarketDeliveredPriceRange:
+    type: object
+    additionalProperties: false
+    required: [low, high]
+    properties: {low: {$ref: '#/schemas/Money'}, high: {$ref: '#/schemas/Money'}}
+  MarketRank:
+    type: object
+    additionalProperties: false
+    required: [position, comparable_count, basis]
+    properties: {position: {type: integer, minimum: 1}, comparable_count: {type: integer, minimum: 1}, basis: {type: string, enum: [observed_comparable_population]}}
+  EvaluateCompetitivePositionScenarioRequest:
+    type: object
+    additionalProperties: false
+    required: [subject, candidate_price]
+    properties: {subject: {$ref: '#/schemas/MarketSubject'}, candidate_price: {$ref: '#/schemas/Money'}, buyer_shipping: {$ref: '#/schemas/Money'}}
+  CompetitivePositionScenarioEvaluation:
+    type: object
+    additionalProperties: false
+    required: [subject, subject_presentation, candidate_price, coverage, evidence_sufficiency, relation, evaluated_at]
+    properties: {subject: {$ref: '#/schemas/MarketSubject'}, subject_presentation: {$ref: '#/schemas/MarketSubjectPresentation'}, candidate_price: {$ref: '#/schemas/Money'}, candidate_delivered_price: {$ref: '#/schemas/Money'}, coverage: {type: string, enum: [complete_for_declared_source_scope, partial, unknown, unavailable]}, evidence_sufficiency: {type: string, enum: [sufficient, insufficient, unavailable]}, relation: {type: string, enum: [ahead, equal, behind, unknown]}, delivered_price_gap: {$ref: '#/schemas/Money'}, delivered_price_range: {$ref: '#/schemas/MarketDeliveredPriceRange'}, market_rank: {$ref: '#/schemas/MarketRank'}, evaluated_at: {$ref: '#/schemas/Instant'}}
+    allOf:
+      - oneOf:
+          - {properties: {subject: {$ref: '#/schemas/MarketExistingListingSubject'}, subject_presentation: {$ref: '#/schemas/MarketExistingListingPresentation'}}}
+          - {properties: {subject: {$ref: '#/schemas/MarketSourceProductSubject'}, subject_presentation: {$ref: '#/schemas/MarketSourceProductPresentation'}}}
   CompetitivePosition:
     type: object
     additionalProperties: false
     required: [subject, subject_presentation, coverage, evidence_sufficiency, relation, evaluated_at]
-    properties: {subject: {$ref: '#/schemas/MarketSubject'}, subject_presentation: {$ref: '#/schemas/MarketSubjectPresentation'}, coverage: {type: string, enum: [complete_for_declared_source_scope, partial, unknown, unavailable]}, evidence_sufficiency: {type: string, enum: [sufficient, insufficient, unavailable]}, relation: {type: string, enum: [ahead, equal, behind, unknown]}, delivered_price_gap: {$ref: '#/schemas/Money'}, evaluated_at: {$ref: '#/schemas/Instant'}}
+    properties: {subject: {$ref: '#/schemas/MarketSubject'}, subject_presentation: {$ref: '#/schemas/MarketSubjectPresentation'}, coverage: {type: string, enum: [complete_for_declared_source_scope, partial, unknown, unavailable]}, evidence_sufficiency: {type: string, enum: [sufficient, insufficient, unavailable]}, relation: {type: string, enum: [ahead, equal, behind, unknown]}, delivered_price_gap: {$ref: '#/schemas/Money'}, delivered_price_range: {$ref: '#/schemas/MarketDeliveredPriceRange'}, market_rank: {$ref: '#/schemas/MarketRank'}, evaluated_at: {$ref: '#/schemas/Instant'}}
     allOf:
       - oneOf:
           - {properties: {subject: {$ref: '#/schemas/MarketExistingListingSubject'}, subject_presentation: {$ref: '#/schemas/MarketExistingListingPresentation'}}}
@@ -1277,8 +1302,8 @@ schemas:
   CompetitivePositionListItem:
     type: object
     additionalProperties: false
-    required: [subject, subject_presentation, relation, evaluated_at]
-    properties: {subject: {$ref: '#/schemas/MarketSubject'}, subject_presentation: {$ref: '#/schemas/MarketSubjectPresentation'}, relation: {type: string, enum: [ahead, equal, behind, unknown]}, evaluated_at: {$ref: '#/schemas/Instant'}}
+    required: [subject, subject_presentation, evidence_sufficiency, relation, evaluated_at]
+    properties: {subject: {$ref: '#/schemas/MarketSubject'}, subject_presentation: {$ref: '#/schemas/MarketSubjectPresentation'}, evidence_sufficiency: {type: string, enum: [sufficient, insufficient, unavailable]}, relation: {type: string, enum: [ahead, equal, behind, unknown]}, delivered_price_range: {$ref: '#/schemas/MarketDeliveredPriceRange'}, market_rank: {$ref: '#/schemas/MarketRank'}, evaluated_at: {$ref: '#/schemas/Instant'}}
     allOf:
       - oneOf:
           - {properties: {subject: {$ref: '#/schemas/MarketExistingListingSubject'}, subject_presentation: {$ref: '#/schemas/MarketExistingListingPresentation'}}}

@@ -441,6 +441,24 @@ pathItems:
         '422': {$ref: './components.yaml#/responses/ValidationError'}
         '500': {$ref: './components.yaml#/responses/InternalError'}
 
+  EvaluateCompetitivePositionScenario:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    post:
+      operationId: EvaluateCompetitivePositionScenario
+      summary: Evaluate competitive-position scenario
+      x-mpc-operation-class: C
+      x-mpc-required-permission: market.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: MarketIntelligence
+      requestBody: {required: true, content: {'application/json': {schema: {$ref: './components.yaml#/schemas/EvaluateCompetitivePositionScenarioRequest'}}}}
+      responses:
+        '200': {description: Stateless competitive-position scenario evaluation., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/CompetitivePositionScenarioEvaluation'}}}}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
   ComparableOffers:
     parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
     get:
