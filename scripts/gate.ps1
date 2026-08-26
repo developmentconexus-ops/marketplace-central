@@ -193,6 +193,25 @@ if ($b23ListingIntentsProofAffected) {
     $b23ListingIntentsProofStatus = 'SKIPPED_NOT_AFFECTED'
 }
 
+$b24PriceIntentsProofPatterns = @(
+    '^qualification/d6-r2-wireframes/b24-price-intents\.html$',
+    '^scripts/verify-d6-r-b24-price-intents-wireframe\.mjs$',
+    '^docs/engineering/rebaseline/D6-R2-P8-B24-',
+    '^docs/engineering/rebaseline/D6-R2-P9-B24-',
+    '^docs/engineering/rebaseline/D6-R2-P8-BLOCK-LEDGER\.md$'
+)
+$b24PriceIntentsProofAffected = if (-not $base) { $true } else { Test-ChangedPathMatches $b24PriceIntentsProofPatterns }
+
+if ($b24PriceIntentsProofAffected) {
+    $b24PriceIntentsProof = & node 'scripts/verify-d6-r-b24-price-intents-wireframe.mjs' 2>&1
+    $b24PriceIntentsProofExit = $LASTEXITCODE
+    $b24PriceIntentsProof | ForEach-Object { Write-Host $_ }
+    if ($b24PriceIntentsProofExit -ne 0) { Fail 'B24 price intents wireframe proof failed' }
+    $b24PriceIntentsProofStatus = 'PASS'
+} else {
+    $b24PriceIntentsProofStatus = 'SKIPPED_NOT_AFFECTED'
+}
+
 Write-Host 'gate: PASS'
 Write-Host "required_files: $($requiredFiles.Count)"
 Write-Host "implementation_blocked: $implementationBlocked"
@@ -201,3 +220,4 @@ Write-Host "product_oad_proof: $productProofStatus"
 Write-Host "b10_correspondence_proof: $b10CorrespondenceProofStatus"
 Write-Host "b20_publications_proof: $b20PublicationsProofStatus"
 Write-Host "b23_listing_intents_proof: $b23ListingIntentsProofStatus"
+Write-Host "b24_price_intents_proof: $b24PriceIntentsProofStatus"
