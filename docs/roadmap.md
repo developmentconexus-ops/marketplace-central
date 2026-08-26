@@ -23,7 +23,7 @@
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
 | Aggregate CI | **one required check / one `npm run gate`; universal checks always run; Product proof is diff-aware and fails safe when reliable changed-surface detection is unavailable** |
-| Exact next action | **Operate the revised B23 R22/R23 candidate (`qualification/d6-r2-wireframes/b23-listing-intents.html`) and obtain operator disposition `LOCK / REVISE / UPSTREAM FINDING`. No B23 P9, further blocks, Pre-D9/D9 or implementation before explicit LOCK.** |
+| Exact next action | **Adjudicate the [category discovery / equivalence / product-view design](superpowers/specs/2026-08-26-category-discovery-equivalence-design.md) (C1 ratify / C2 ratify / C3 defer proposed). The B23 walkthrough is ON HOLD: C1/C2 are material to its publication-context region. After adjudication + repair, B23 P8 resumes.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -66,7 +66,9 @@ PR #69 B20 integrated
 → variations upstream finding RATIFIED; B23 P8 PAUSED
 → variations Global Maximum design adjudicated + repair applied with proof
 → B23 P8 RESUMED with full P6 dispositions + Variações region
-→ operator walkthrough: LOCK / REVISE / UPSTREAM FINDING   ← CURRENT
+→ operator raised category/taxonomy question; verification + evaluation increment opened
+→ category discovery / equivalence / product-view adjudication   ← CURRENT
+→ after ratified repair: B23 context region revised → operator walkthrough
 → P9 bidirectional Screen Contract
 → P10 pattern consolidation
 → required CI
