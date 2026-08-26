@@ -51,8 +51,8 @@ function validate(html) {
   }
   assert(html.includes('data-policy-judgment="owner"'), 'policy judgment must be owner-issued');
   assert(html.includes('data-profitability="'), 'acceptable/below_policy projection missing');
-  assert(html.includes('Novo preço e margem nova'), 'new-margin column heading missing');
-  assert(html.includes('preço entregue '), 'delivered-price position indicator missing');
+  assert(html.includes('Margem nova (contribuição · % sobre o preço)'), 'new-margin indicator must carry an explicit label');
+  assert(html.includes('data-live-labels="explicit"'), 'live indicator label binding missing');
   assert(html.includes('data-economics-conclusion='), 'honest economics conclusion states missing');
   assert(html.includes('data-market-evidence="insufficient"') && html.includes('data-market-evidence="unavailable"'), 'honest market evidence states missing');
   assert(html.includes('data-anchor-apply="fills-input-only"'), 'anchors must only fill the input');
@@ -62,13 +62,24 @@ function validate(html) {
   // Live indicators while typing, with the current margin preserved.
   assert(html.includes('data-live-evaluation="'), 'live evaluation region missing');
   assert(html.includes('data-live-contribution'), 'live contribution/margin indicator missing');
-  assert(html.includes('vs atual '), 'the current margin must stay visible next to the new one');
+  assert(html.includes('margem atual '), 'the current margin must stay visible next to the new one');
   assert(html.includes('data-current-margin-preserved="true"') && html.includes('data-current-margin="known"'), 'current margin column must be preserved');
   assert(html.includes("' p.p.'") || html.includes('p.p.'), 'percentage-point delta missing');
   // Market range restored in the column, plus the positional bar on the typed price.
   assert(html.includes('data-market-range="low-high"'), 'market range must be shown in the Mercado column');
-  assert(html.includes('Faixa entregue: '), 'delivered-price range copy missing');
+  assert(html.includes('Faixa entregue de '), 'delivered-price range copy missing');
   assert(html.includes('class="rangebar"'), 'positional range bar missing');
+  // Mercado column carries range + our competitive rank and updates with the typed price.
+  assert(html.includes('data-market-cell="range-plus-rank"'), 'market cell must present range plus rank');
+  assert(html.includes('data-market-cell-live="true"'), 'market cell must update with the typed price');
+  assert(html.includes('data-market-rank="'), 'current competitive rank projection missing');
+  assert(html.includes('data-market-live-rank="'), 'live competitive rank projection missing');
+  assert(html.includes('Sua posição hoje: '), 'rank copy missing');
+  assert(html.includes('const rank=1+o.filter('), 'rank must be derived from the owner comparable set');
+  assert(!html.includes('À frente') && !html.includes('Atrás'), 'ahead/behind wording must not return alongside the rank');
+  // Compact row: the cascade lives in an expandable row, not inline in the cell.
+  assert(html.includes('data-row-density="compact"'), 'compact row density binding missing');
+  assert(/data-disclosure-for="'\+esc\(r\.key\)\+'" aria-expanded="false"[^>]*>▸<\/button><\/div>/.test(html), 'the disclosure arrow must sit right after the create button, closing the price line');
   // Waterfall behind an expand/collapse disclosure.
   assert(html.includes('data-waterfall-disclosure="collapsible"'), 'waterfall disclosure binding missing');
   assert(/class="disclosure hidden" type="button" data-disclosure-for="[^"]*" aria-expanded="false"/.test(html), 'waterfall disclosure must start collapsed with aria-expanded');
@@ -142,6 +153,10 @@ const controls = [
   ['market anchor ungated from evidence', (value) => value.split('data-anchor-gate="evidence_sufficiency"').join('')],
   ['anchor started auto-applying', (value) => value.split('data-anchor-apply="fills-input-only"').join('data-anchor-apply="auto-submit"')],
   ['waterfall stripped from the evaluation', (value) => value.split('data-waterfall="owner-components"').join('data-waterfall="none"')],
+  ['market rank removed from the column', (value) => value.split('data-market-cell="range-plus-rank"').join('data-market-cell="range-only"')],
+  ['market cell frozen against the typed price', (value) => value.split('data-market-cell-live="true"').join('data-market-cell-live="false"')],
+  ['live indicator lost its label', (value) => value.split('data-live-labels="explicit"').join('data-live-labels="none"')],
+  ['row density expanded back inline', (value) => value.split('data-row-density="compact"').join('data-row-density="expanded"')],
   ['ledger view regained a create form', (value) => value.split('data-intents-view="ledger-only"').join('data-intents-view="create-and-ledger"')],
 ];
 for (const [label, mutate] of controls) expectFailure(label, mutate);

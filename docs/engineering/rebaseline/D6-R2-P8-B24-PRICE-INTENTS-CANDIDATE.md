@@ -75,7 +75,26 @@ Third operator alignment. The typed-price box was still inert until an explicit 
 
 Revised proof: verifier **24/24 negative controls** (adds: debounce removed, screen computing locally, current margin dropped, market range removed, waterfall forced always-open); browser operation re-passed (live update at two different prices, delta in p.p., policy verdict flip at R$ 265, range bar, collapse/expand cycle, anchor refilling and re-evaluating, insufficient-market honesty) with **0 console issues** and no 390px overflow.
 
-## 7. P8 operator gate
+## 7. Revision 5 — compact row, competitive rank in the Mercado column (2026-08-26)
+
+Operator finding on revision 4: the live evaluation block was unlabeled ("R$ 17,60 · 5,3%" carried no meaning), and it made the row tall enough that pricing several listings in one pass became unworkable. The requested structure moves the dynamism into the column that already existed instead of growing the row.
+
+Bounded change:
+
+| Concern | Revision 5 structure |
+| --- | --- |
+| Live indicator label | Explicit `Margem nova (contribuição · % sobre o preço)`; the preserved current margin reads `margem atual R$ … · % · ± p.p.` |
+| Row density | Compact: the dashed live box and the inline range bar left the price cell; the cell is input + `✓ Criar intenção` + a `▸/▾` arrow |
+| Waterfall placement | Behind that arrow, in the adjacent expandable row (unchanged owner components + reference anchors) |
+| Mercado column | Owner-issued delivered range + **our competitive rank** (`Sua posição hoje: 3º de 11`) + positional bar; the typed price updates it live (`Com R$ 265,00: 6º de 11`) |
+| Ahead/behind wording | Removed — the rank and the range carry the position without a judgment word |
+| Attention basis | `below_policy` OR rank > 1, both server-issued facts; still `data-filter-basis="server-facts"` |
+
+Preserved laws: rank and range come from the Market owner's comparable set (`data-market-cell="range-plus-rank"`), never computed on the screen; economics stays a debounced `EvaluatePriceScenario` call; no bulk apply; supersede-only; anchors fill the input only.
+
+Proof: `node scripts/verify-d6-r-b24-price-intents-wireframe.mjs` → **28/28** negative controls (added: market rank removed, market cell frozen against the typed price, live indicator lost its label, row density expanded back inline). Browser: 0 console issues, no 390px overflow, priced row height 156px.
+
+## 8. P8 operator gate
 
 Current disposition:
 
@@ -87,6 +106,6 @@ LOCK / REVISE / UPSTREAM FINDING
 
 The assistant, verifier and reviewer cannot set `LOCKED`. P9 must not run for B24 until the operator explicitly LOCKs this candidate.
 
-## 8. Reopen triggers
+## 9. Reopen triggers
 
 Reopen only if operation of this candidate proves that: the supersede model cannot express a real pricing decision; a required pricing fact is missing from the reads; per-variation pricing is materially required (would be a new upstream finding against PriceIntent targets); or responsive/accessible operation cannot preserve the pricing job.

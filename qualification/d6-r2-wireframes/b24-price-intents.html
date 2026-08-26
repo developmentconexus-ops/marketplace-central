@@ -15,10 +15,11 @@
 .list-tools{display:flex;gap:10px;align-items:end;margin:14px 0 4px;flex-wrap:wrap}.btn{border:1px solid var(--ink);background:#fff;padding:8px 11px;min-height:38px}.btn.primary{background:var(--ink);color:#fff}.btn.small{min-height:30px;padding:4px 8px;font-size:12px}.btn:disabled{color:#999;border-color:var(--line);cursor:not-allowed}.notice,.list-state{border:1px dashed var(--line);padding:9px 10px;color:var(--muted);margin-top:10px}.list-state{padding:14px}.list-state h2{margin:0 0 4px;font-size:15px}.list-state p{margin:0}
 table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1px solid var(--line);text-align:left;vertical-align:top;padding:10px}th{font-size:11px;color:var(--muted)}.row-note{font-size:12px;color:var(--muted);margin-top:3px}.tag{display:inline-block;border:1px solid var(--ink);padding:2px 7px;font-size:11px}.tag.dashed{border-style:dashed;color:var(--muted)}.mono{font:12px ui-monospace,monospace}.warn{font-weight:700}
 .list-wrap{overflow:auto}.list-table{min-width:1120px}
-.price-cell{min-width:280px}.price-line{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.price-line input{width:104px;border:1px solid var(--ink);padding:6px 8px;min-height:34px;background:#fff}
-.live{border:1px dashed var(--line);padding:7px 8px;margin-top:7px;font-size:13px}.live.hidden{display:none}.live strong{font-size:14px}.delta{color:var(--muted);font-size:12px}
+.price-cell{min-width:250px}.price-line{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.price-line input{width:104px;border:1px solid var(--ink);padding:6px 8px;min-height:34px;background:#fff}
+.live{margin-top:6px;font-size:13px}.live.hidden{display:none}.live .k{color:var(--muted);font-size:12px;display:block}.live strong{font-size:14px}.delta{color:var(--muted);font-size:12px}
 .rangebar{position:relative;height:6px;border:1px solid var(--line);margin:7px 0 3px}.rangebar i{position:absolute;top:-4px;width:2px;height:12px;background:var(--ink)}.rangebar u{position:absolute;top:-6px;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid var(--ink)}
-.disclosure{display:inline-flex;gap:5px;align-items:center;border:1px solid var(--line);background:#fff;padding:3px 8px;font-size:12px;min-height:28px;margin-top:7px}
+.disclosure{display:inline-flex;gap:4px;align-items:center;border:1px solid var(--line);background:#fff;padding:4px 8px;font-size:12px;min-height:34px}
+.market-live{font-size:12px;color:var(--muted);margin-top:3px}.rank{font-weight:700;color:var(--ink)}
 .eval-row td{background:#fafafa;border-bottom:2px solid var(--ink)}
 .eval-grid{display:grid;grid-template-columns:minmax(260px,1fr) minmax(260px,1fr);gap:14px}
 .waterfall{width:100%;border-collapse:collapse}.waterfall td{border:0;border-bottom:1px dashed var(--line);padding:5px 2px;font-size:13px}.waterfall td:last-child{text-align:right}.waterfall tr.total td{border-bottom:0;border-top:2px solid var(--ink);font-weight:700;padding-top:7px}
@@ -54,6 +55,10 @@ table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1p
   data-waterfall-disclosure="collapsible"
   data-anchor-apply="fills-input-only"
   data-market-anchor-gate="evidence_sufficiency"
+  data-market-cell="range-plus-rank"
+  data-market-cell-live="true"
+  data-row-density="compact"
+  data-live-labels="explicit"
   data-context-facts-kind="inline-read-only"
   data-ambiguous-retry="forbidden"
   data-external-effect="simulated"
@@ -97,7 +102,7 @@ table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1p
 <div class="content">
   <div class="page-head">
     <h1>Preços</h1>
-    <p>Decida o preço na linha do anúncio: ao digitar, o dono Economia reavalia e mostra a margem nova ao lado da atual. Mudar preço cria uma nova intenção que substitui a anterior.</p>
+    <p>Decida o preço na própria linha: ao digitar, o dono Economia devolve a margem nova ao lado da atual e o dono Mercado devolve a sua posição na faixa. A seta ao lado de <em>Criar intenção</em> abre a cascata. Mudar preço cria uma nova intenção que substitui a anterior.</p>
   </div>
 
   <div class="tabs" role="tablist">
@@ -108,7 +113,7 @@ table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1p
   <section id="decideView">
     <div class="list-tools">
       <div><label class="label" for="accountFilter">Conta do marketplace</label><select id="accountFilter" class="control" style="min-width:220px"><option value="all">Todas as contas</option><option value="ml-a">Mercado Livre · Conta A</option></select></div>
-      <label style="display:flex;gap:6px;align-items:center;margin-bottom:8px"><input type="checkbox" id="attentionOnly" data-filter-basis="server-facts"> Só quem precisa de atenção (abaixo da política ou atrás no mercado)</label>
+      <label style="display:flex;gap:6px;align-items:center;margin-bottom:8px"><input type="checkbox" id="attentionOnly" data-filter-basis="server-facts"> Só quem precisa de atenção (abaixo da política ou fora do menor preço)</label>
     </div>
     <div id="wbUnknown" class="list-state hidden" data-workbench-population="unknown" role="status"><h2>Anúncios ainda desconhecidos</h2><p>Ainda não foi possível compor a mesa de precificação.</p></div>
     <div id="wbUnavailable" class="list-state hidden" data-workbench-population="unavailable" role="status"><h2>Consulta indisponível</h2><p>Não conseguimos consultar agora. Isso não significa que não existam anúncios.</p></div>
@@ -116,7 +121,7 @@ table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1p
     <div id="wbHost" data-workbench-population="known">
       <div class="list-wrap">
       <table class="list-table" aria-label="Mesa de precificação">
-        <thead><tr><th>Anúncio</th><th>Preço atual</th><th>Contribuição atual</th><th>Mercado</th><th>Intenção ativa</th><th>Novo preço e margem nova</th></tr></thead>
+        <thead><tr><th>Anúncio</th><th>Preço atual</th><th>Contribuição atual</th><th>Mercado</th><th>Intenção ativa</th><th>Novo preço</th></tr></thead>
         <tbody id="wbBody"></tbody>
       </table>
       </div>
@@ -164,6 +169,8 @@ table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1p
     <div class="technical-cell"><span>client computation</span><strong>none</strong></div>
     <div class="technical-cell"><span>policy judgment</span><strong>owner: acceptable / below_policy</strong></div>
     <div class="technical-cell"><span>market anchor gate</span><strong>evidence_sufficiency</strong></div>
+    <div class="technical-cell"><span>market cell</span><strong>range-plus-rank · live</strong></div>
+    <div class="technical-cell"><span>row density</span><strong>compact · cascata em linha expansível</strong></div>
     <div class="technical-cell"><span>economics conclusion</span><strong>known / insufficient / unavailable</strong></div>
     <div class="technical-cell"><span>states</span><strong>pending/applied/rejected/ambiguous/superseded</strong></div>
     <div class="technical-cell"><span>ambiguous law</span><strong>verify, never blind retry</strong></div>
@@ -186,11 +193,10 @@ const organization=document.getElementById('organization'),listScenario=document
 const DEBOUNCE_MS=400;
 const stateLabels={pending:'Pendente',applied:'Aplicada',rejected:'Rejeitada',ambiguous:'Resultado incerto',superseded:'Substituída'};
 const convLabels={pending:'Aguardando',converged:'Anúncio já reflete',divergent:'Divergente',unknown:'Ainda não determinável',not_applicable:'—'};
-const relLabels={ahead:'À frente',equal:'Igual',behind:'Atrás',unknown:'Ainda não determinável'};
 // Fixtures que simulam as respostas dos donos (Economia / Mercado). A tela nunca calcula: pede e mostra.
 const rows=[
- {key:'MLB-3849201',name:'Torneira monocomando Deca cromada',kind:'existing',account:'ml-a',price:389.90,buyerShipping:0,econ:{state:'known',feeRate:.12,taxRate:.08,shipping:18,promotion:0,cost:230,policyMinRate:.12},market:{sufficiency:'sufficient',low:399.00,high:449.00,cheapestDelivered:399.00},intent:null},
- {key:'MLB-2214977',name:'Cuba inox 50 cm com válvula',kind:'existing',account:'ml-a',price:249.00,buyerShipping:0,econ:{state:'known',feeRate:.13,taxRate:.08,shipping:22,promotion:0,cost:150,policyMinRate:.12},market:{sufficiency:'sufficient',low:237.00,high:289.00,cheapestDelivered:237.00},intent:{price:'R$ 239,00',state:'pending'}},
+ {key:'MLB-3849201',name:'Torneira monocomando Deca cromada',kind:'existing',account:'ml-a',price:389.90,buyerShipping:0,econ:{state:'known',feeRate:.12,taxRate:.08,shipping:18,promotion:0,cost:230,policyMinRate:.12},market:{sufficiency:'sufficient',others:[399.00,409.90,415.00,419.00,424.90,429.00,432.00,438.00,441.00,445.00,449.00]},intent:null},
+ {key:'MLB-2214977',name:'Cuba inox 50 cm com válvula',kind:'existing',account:'ml-a',price:249.00,buyerShipping:0,econ:{state:'known',feeRate:.13,taxRate:.08,shipping:22,promotion:0,cost:150,policyMinRate:.12},market:{sufficiency:'sufficient',others:[237.00,244.90,251.00,258.00,262.00,269.90,274.00,279.00,283.00,289.00]},intent:{price:'R$ 239,00',state:'pending'}},
  {key:'MLB-1093310',name:'Kit misturador cozinha parede',kind:'existing',account:'ml-a',price:189.00,buyerShipping:0,econ:{state:'known',feeRate:.12,taxRate:.08,shipping:16,promotion:0,cost:110,policyMinRate:.12},market:{sufficiency:'insufficient'},intent:null},
  {key:'PRE-42664',name:'Torneira monocomando alta · SKU 42664',kind:'pre_creation',account:'ml-a',price:null,buyerShipping:0,econ:{state:'known',feeRate:.12,taxRate:.08,shipping:18,promotion:0,cost:268,policyMinRate:.12},market:{sufficiency:'unavailable'},intent:null}
 ];
@@ -207,34 +213,33 @@ function pp(n){const v=(n*100);return (v>=0?'+':'')+v.toFixed(1).replace('.',','
 // Simula a resposta de EvaluatePriceScenario (dono Economia).
 function ownerEvaluate(r,price){const e=r.econ;if(e.state!=='known')return{state:e.state};const fee=price*e.feeRate,tax=price*e.taxRate;const contribution=price-fee-tax-e.shipping-e.promotion-e.cost;const rate=contribution/price;return{state:'known',components:{sale_price:price,marketplace_fee:fee,tax:tax,seller_borne_shipping:e.shipping,promotion:e.promotion,cost:e.cost},contribution:contribution,rate:rate,profitability:rate>=e.policyMinRate?'acceptable':'below_policy'};}
 // Simula a resposta do dono Mercado para um preço candidato.
-function ownerMarket(r,price){const m=r.market;if(m.sufficiency!=='sufficient')return{state:m.sufficiency};const delivered=price+r.buyerShipping;const gap=delivered-m.cheapestDelivered;const relation=gap<0?'ahead':(Math.abs(gap)<0.005?'equal':'behind');return{state:'sufficient',delivered:delivered,gap:gap,relation:relation,low:m.low,high:m.high};}
+function ownerMarket(r,price){const m=r.market;if(m.sufficiency!=='sufficient')return{state:m.sufficiency};const delivered=price+r.buyerShipping;const o=m.others;const low=Math.min.apply(null,o),high=Math.max.apply(null,o);const cheapest=low;const gap=delivered-cheapest;const rank=1+o.filter(v=>v<delivered-0.005).length;return{state:'sufficient',delivered:delivered,gap:gap,rank:rank,total:o.length+1,low:low,high:high,cheapestDelivered:cheapest};}
+function marketRange(r){const o=r.market.others;return{low:Math.min.apply(null,o),high:Math.max.apply(null,o)};}
+function ord(n){return n+'\u00ba';}
 function policyFloor(r){const e=r.econ;return (e.shipping+e.promotion+e.cost)/(1-e.feeRate-e.taxRate-e.policyMinRate);}
 function currentEval(r){if(r.price===null||r.econ.state!=='known')return null;return ownerEvaluate(r,r.price);}
-function needsAttention(r){const j=currentEval(r);const mk=r.price===null?null:ownerMarket(r,r.price);return (j&&j.profitability==='below_policy')||(mk&&mk.state==='sufficient'&&mk.relation==='behind');}
+function needsAttention(r){const j=currentEval(r);const mk=r.price===null?null:ownerMarket(r,r.price);return (j&&j.profitability==='below_policy')||(mk&&mk.state==='sufficient'&&mk.rank>1);}
 function openDrawer(){document.body.classList.add('drawer-open');menu.setAttribute('aria-expanded','true');}
 function closeDrawer(returnFocus=true){document.body.classList.remove('drawer-open');menu.setAttribute('aria-expanded','false');if(returnFocus)menu.focus();}
 function showView(v){const decide=v==='decide';decideView.classList.toggle('hidden',!decide);intentsView.classList.toggle('hidden',decide);tabDecide.classList.toggle('active',decide);tabIntents.classList.toggle('active',!decide);tabDecide.setAttribute('aria-selected',String(decide));tabIntents.setAttribute('aria-selected',String(!decide));}
 function rangeBar(low,high,value){const span=high-low||1;let ratio=(value-low)/span;ratio=Math.max(0,Math.min(1,ratio));return '<div class="rangebar" data-market-range="low-high" aria-hidden="true"><i style="left:0"></i><i style="right:0"></i><u style="left:calc('+(ratio*100).toFixed(1)+'% - 5px)"></u></div><div class="small">'+money(low)+' <span style="float:right">'+money(high)+'</span></div>';}
-function marketCell(r){const m=r.market;if(m.sufficiency==='unavailable')return '<td data-fact-owner="Market" data-market-evidence="unavailable">Consulta indisponível<div class="row-note">Não significa ausência de concorrência.</div></td>';if(m.sufficiency==='insufficient')return '<td data-fact-owner="Market" data-market-evidence="insufficient">Evidência insuficiente<div class="row-note">Comparáveis conhecidos não bastam para posicionar.</div></td>';const mk=r.price===null?null:ownerMarket(r,r.price);const rel=mk?relLabels[mk.relation]:'—';const behind=mk&&mk.relation==='behind';return '<td data-fact-owner="Market" data-market-evidence="sufficient"'+(behind?' class="warn"':'')+'><strong>'+rel+'</strong><div class="row-note" data-market-range="low-high">Faixa entregue: '+money(m.low)+' – '+money(m.high)+'</div>'+(mk?'<div class="row-note">Mais barato '+money(m.cheapestDelivered)+' · diferença '+money(Math.abs(mk.gap))+'</div>':'')+'</td>';}
+function marketCell(r){const m=r.market;if(m.sufficiency==='unavailable')return '<td data-fact-owner="Market" data-market-evidence="unavailable">Consulta indisponível<div class="row-note">Não significa ausência de concorrência.</div></td>';if(m.sufficiency==='insufficient')return '<td data-fact-owner="Market" data-market-evidence="insufficient">Evidência insuficiente<div class="row-note">Comparáveis conhecidos não bastam para posicionar.</div></td>';const rg=marketRange(r);const mk=r.price===null?null:ownerMarket(r,r.price);return '<td data-fact-owner="Market" data-market-evidence="sufficient">'+'<strong data-market-range="low-high">'+money(rg.low)+' – '+money(rg.high)+'</strong>'+'<div class="row-note">Faixa entregue de '+(r.market.others.length+1)+' anúncios comparáveis.</div>'+(mk?'<div class="row-note" data-market-rank="'+mk.rank+'">Sua posição hoje: <span class="rank">'+ord(mk.rank)+' de '+mk.total+'</span></div>':'<div class="row-note">Sem preço publicado para posicionar.</div>')+rangeBar(rg.low,rg.high,mk?mk.delivered:rg.low)+'<div class="market-live hidden" data-market-live="'+esc(r.key)+'" role="status"></div></td>';}
 function contributionCell(r){const j=currentEval(r);if(r.kind==='pre_creation')return '<td data-fact-owner="Economics" data-current-margin="none">—<div class="row-note">Sem preço publicado ainda.</div></td>';if(!j||j.state!=='known')return '<td data-fact-owner="Economics" data-economics-conclusion="'+esc(j?j.state:'unavailable')+'">Não determinável</td>';const bad=j.profitability==='below_policy';return '<td data-fact-owner="Economics" data-economics-conclusion="known" data-current-margin="known" data-profitability="'+esc(j.profitability)+'"'+(bad?' class="warn"':'')+'>'+money(j.contribution)+' · '+pct(j.rate)+'<div class="row-note">'+(bad?'Abaixo da política':'Aceitável')+'</div></td>';}
 function wbRow(r){const intent=r.intent?'<span class="tag'+(r.intent.state==='pending'?'':' dashed')+'">'+esc(r.intent.price)+' · '+stateLabels[r.intent.state]+'</span>':'<span class="small">—</span>';
 return '<tr data-row-key="'+esc(r.key)+'" data-target-kind="'+esc(r.kind)+'" data-attention="'+String(needsAttention(r))+'">'
 +'<td><strong>'+esc(r.name)+'</strong><div class="row-note">'+(r.kind==='pre_creation'?'Alvo pré-criação · anúncio ainda não criado':'ML Conta A · '+esc(r.key))+'</div></td>'
 +'<td>'+(r.price===null?'<span class="small">—</span>':money(r.price))+'</td>'
 +contributionCell(r)+marketCell(r)+'<td>'+intent+'</td>'
-+'<td class="price-cell"><div class="price-line"><input type="number" step="0.01" min="0" aria-label="Novo preço para '+esc(r.name)+'" data-row-price="'+esc(r.key)+'"><button class="btn small row-confirm" type="button" data-row-target="'+esc(r.key)+'" disabled>✓ Criar intenção</button></div>'
++'<td class="price-cell"><div class="price-line"><input type="number" step="0.01" min="0" aria-label="Novo preço para '+esc(r.name)+'" data-row-price="'+esc(r.key)+'"><button class="btn small row-confirm" type="button" data-row-target="'+esc(r.key)+'" disabled>✓ Criar intenção</button>'
++'<button class="disclosure hidden" type="button" data-disclosure-for="'+esc(r.key)+'" aria-expanded="false" aria-label="Ver cascata e referências de '+esc(r.name)+'" title="Ver cascata e referências">▸</button></div>'
 +'<div class="live hidden" data-live-evaluation="'+esc(r.key)+'" role="status"></div>'
-+'<button class="disclosure hidden" type="button" data-disclosure-for="'+esc(r.key)+'" aria-expanded="false">▸ Ver cascata e referências</button>'
 +(r.intent?'<div class="row-note" data-price-change="supersede-only">Substituirá a intenção atual.</div>':'')+'</td></tr>'
 +'<tr class="eval-row hidden" data-eval-for="'+esc(r.key)+'"><td colspan="6"></td></tr>';}
 function liveHtml(r,price){const ev=ownerEvaluate(r,price);if(ev.state!=='known')return '<span data-economics-conclusion="'+esc(ev.state)+'">'+(ev.state==='insufficient_evidence'?'Evidência insuficiente para avaliar este preço.':'Avaliação econômica indisponível agora.')+'</span>';
-const cur=currentEval(r);const delta=cur&&cur.state==='known'?'<span class="delta">vs atual '+pct(cur.rate)+' · '+pp(ev.rate-cur.rate)+'</span>':'<span class="delta">sem preço atual para comparar</span>';
-const bad=ev.profitability==='below_policy';
-let mk='';const m=ownerMarket(r,price);
-if(m.state==='sufficient'){mk='<div class="row-note" data-market-evidence="sufficient">'+relLabels[m.relation]+' · preço entregue '+money(m.delivered)+(m.relation==='equal'?'':' · diferença '+money(Math.abs(m.gap)))+'</div>'+rangeBar(m.low,m.high,m.delivered);}
-else{mk='<div class="row-note" data-market-evidence="'+esc(m.state)+'">Posição no mercado não determinável ('+(m.state==='unavailable'?'consulta indisponível':'comparáveis insuficientes')+').</div>';}
-return '<div data-live-contribution><strong'+(bad?' class="warn"':'')+'>'+money(ev.contribution)+' · '+pct(ev.rate)+'</strong> '+delta+'</div>'
-+'<div class="row-note" data-profitability="'+esc(ev.profitability)+'">'+(bad?'Abaixo da política':'Aceitável')+'</div>'+mk;}
+const cur=currentEval(r);const bad=ev.profitability==='below_policy';
+const delta=cur&&cur.state==='known'?'<span class="delta" data-current-margin="known">margem atual '+money(cur.contribution)+' · '+pct(cur.rate)+' · '+pp(ev.rate-cur.rate)+'</span>':'<span class="delta">sem preço atual para comparar</span>';
+return '<div data-live-contribution><span class="k">Margem nova (contribuição · % sobre o preço)</span><strong'+(bad?' class="warn"':'')+'>'+money(ev.contribution)+' · '+pct(ev.rate)+'</strong> <span class="delta" data-profitability="'+esc(ev.profitability)+'">'+(bad?'Abaixo da política':'Aceitável')+'</span><br>'+delta+'</div>';}
+function marketLiveHtml(r,price){const m=ownerMarket(r,price);if(m.state!=='sufficient')return '<span data-market-evidence="'+esc(m.state)+'">Posição não determinável.</span>';return '<span data-market-live-rank="'+m.rank+'">Com '+money(price)+': <span class="rank">'+ord(m.rank)+' de '+m.total+'</span></span>';}
 function evalHtml(r,price){const ev=ownerEvaluate(r,price);let left='',right='';
 if(ev.state!=='known'){left='<p class="small" data-economics-conclusion="'+esc(ev.state)+'">O dono Economia não pôde avaliar este preço agora.</p>';}
 else{const c=ev.components;left='<strong>Cascata do preço</strong><table class="waterfall" data-waterfall="owner-components"><tbody>'
@@ -250,19 +255,20 @@ const anchors=[];
 if(r.price!==null)anchors.push({label:'Preço atual',value:r.price,note:'Referência publicada hoje'});
 if(r.intent)anchors.push({label:'Intenção ativa',value:Number(String(r.intent.price).replace(/[^0-9,]/g,'').replace(',','.')),note:'Preço já pedido, aguardando resultado'});
 if(r.econ.state==='known')anchors.push({label:'Piso da política',value:policyFloor(r),note:'Abaixo disso a margem deixa de ser aceitável'});
-if(r.market.sufficiency==='sufficient')anchors.push({label:'Igualar o mais barato',value:r.market.cheapestDelivered-r.buyerShipping,note:'Preço entregue do concorrente mais barato',gated:true});
+if(r.market.sufficiency==='sufficient')anchors.push({label:'Igualar o mais barato',value:marketRange(r).low-r.buyerShipping,note:'Preço entregue do concorrente mais barato',gated:true});
 right='<strong>Pontos de referência</strong>'+anchors.map(a=>{const ae=ownerEvaluate(r,a.value);const sub=ae.state==='known'?money(ae.contribution)+' · '+pct(ae.rate):'sem avaliação';return '<button class="btn anchor" type="button" data-anchor-for="'+esc(r.key)+'" data-anchor-value="'+a.value.toFixed(2)+'"'+(a.gated?' data-anchor-gate="evidence_sufficiency"':'')+'><strong>'+esc(a.label)+' · '+money(a.value)+'</strong><span class="small">'+esc(a.note)+' — '+sub+'</span></button>';}).join('')
 +'<p class="small" data-anchor-apply="fills-input-only">Clicar preenche o campo; nada é aplicado sem sua confirmação.</p>'
 +(r.market.sufficiency!=='sufficient'?'<p class="small" data-anchor-missing="market">A referência de mercado não aparece: este marketplace não forneceu comparáveis suficientes agora.</p>':'');
 return '<div class="eval-grid" data-evaluation-source="EvaluatePriceScenario"><div>'+left+'</div><div>'+right+'</div></div>';}
 function renderWorkbench(){wbBody.innerHTML='';wbKnownEmpty.classList.add('hidden');wbUnknown.classList.add('hidden');wbUnavailable.classList.add('hidden');wbHost.classList.add('hidden');if(listScenario.value==='unknown'){wbUnknown.classList.remove('hidden');return}if(listScenario.value==='unavailable'){wbUnavailable.classList.remove('hidden');return}let items=listScenario.value==='known-empty'?[]:rows.filter(r=>accountFilter.value==='all'||r.account===accountFilter.value);if(attentionOnly.checked)items=items.filter(needsAttention);if(!items.length){wbKnownEmpty.classList.remove('hidden');return}wbHost.classList.remove('hidden');wbBody.innerHTML=items.map(wbRow).join('');bindWorkbench();}
 function requestEvaluation(key){const r=rows.find(x=>x.key===key);const inp=document.querySelector('[data-row-price="'+key+'"]');const price=parseFloat(inp.value);const live=document.querySelector('[data-live-evaluation="'+key+'"]');const disc=document.querySelector('[data-disclosure-for="'+key+'"]');const panel=document.querySelector('.eval-row[data-eval-for="'+key+'"]');
-if(!(price>0)){live.classList.add('hidden');live.innerHTML='';disc.classList.add('hidden');panel.classList.add('hidden');disc.setAttribute('aria-expanded','false');return}
+if(!(price>0)){live.classList.add('hidden');live.innerHTML='';disc.classList.add('hidden');panel.classList.add('hidden');disc.setAttribute('aria-expanded','false');const ml0=document.querySelector('[data-market-live="'+key+'"]');if(ml0){ml0.classList.add('hidden');ml0.innerHTML='';}return}
 lastEval[key]=price;live.innerHTML=liveHtml(r,price);live.classList.remove('hidden');disc.classList.remove('hidden');
+const ml=document.querySelector('[data-market-live="'+key+'"]');if(ml){ml.innerHTML=marketLiveHtml(r,price);ml.classList.remove('hidden');const mm=ownerMarket(r,price);const bar=ml.closest('td').querySelector('.rangebar u');if(bar&&mm.state==='sufficient'){const span=mm.high-mm.low||1;let ratio=Math.max(0,Math.min(1,(mm.delivered-mm.low)/span));bar.style.left='calc('+(ratio*100).toFixed(1)+'% - 5px)';}}
 if(disc.getAttribute('aria-expanded')==='true'){panel.querySelector('td').innerHTML=evalHtml(r,price);bindAnchors();}}
 function bindWorkbench(){
 document.querySelectorAll('[data-row-price]').forEach(inp=>{inp.oninput=()=>{const key=inp.dataset.rowPrice;const ok=parseFloat(inp.value)>0;const cf=document.querySelector('.row-confirm[data-row-target="'+key+'"]');if(cf)cf.disabled=!ok;clearTimeout(timers[key]);timers[key]=setTimeout(()=>requestEvaluation(key),DEBOUNCE_MS);};});
-document.querySelectorAll('[data-disclosure-for]').forEach(b=>{b.onclick=()=>{const key=b.dataset.disclosureFor;const panel=document.querySelector('.eval-row[data-eval-for="'+key+'"]');const open=b.getAttribute('aria-expanded')!=='true';b.setAttribute('aria-expanded',String(open));b.textContent=(open?'▾':'▸')+' Ver cascata e referências';panel.classList.toggle('hidden',!open);if(open){const r=rows.find(x=>x.key===key);panel.querySelector('td').innerHTML=evalHtml(r,lastEval[key]);bindAnchors();}};});
+document.querySelectorAll('[data-disclosure-for]').forEach(b=>{b.onclick=()=>{const key=b.dataset.disclosureFor;const panel=document.querySelector('.eval-row[data-eval-for="'+key+'"]');const open=b.getAttribute('aria-expanded')!=='true';b.setAttribute('aria-expanded',String(open));b.textContent=open?'▾':'▸';panel.classList.toggle('hidden',!open);if(open){const r=rows.find(x=>x.key===key);panel.querySelector('td').innerHTML=evalHtml(r,lastEval[key]);bindAnchors();}};});
 document.querySelectorAll('.row-confirm').forEach(b=>{b.onclick=()=>{if(b.disabled)return;const key=b.dataset.rowTarget;const r=rows.find(x=>x.key===key);const price=parseFloat(document.querySelector('[data-row-price="'+key+'"]').value);confirmIntent(r,price);};});}
 function bindAnchors(){document.querySelectorAll('[data-anchor-value]').forEach(a=>{a.onclick=()=>{const key=a.dataset.anchorFor;const inp=document.querySelector('[data-row-price="'+key+'"]');inp.value=a.dataset.anchorValue;const cf=document.querySelector('.row-confirm[data-row-target="'+key+'"]');if(cf)cf.disabled=false;requestEvaluation(key);};});}
 function intentRow(i){return '<tr data-price-state="'+esc(i.state)+'"><td><strong>'+esc(i.target)+'</strong>'+(i.note?'<div class="row-note">'+esc(i.note)+'</div>':'')+'</td><td>'+esc(i.price)+'</td><td><span class="tag'+(i.state==='pending'||i.state==='applied'?'':' dashed')+'">'+stateLabels[i.state]+'</span></td><td data-convergence="'+esc(i.conv)+'">'+convLabels[i.conv]+'</td><td>'+esc(i.at)+'</td></tr>';}
