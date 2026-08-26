@@ -13,7 +13,7 @@
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | Main baseline | **PR #76 — B23 listing-intent authoring integrated at `6ce3902bbd8e7593249c7f4a45658c9d0027bb96`; required CI PASS** |
 | Method profile | **local [`engineering-method.md`](development/engineering-method.md) + [`frontend-product-experience-planning-method.md`](development/frontend-product-experience-planning-method.md) v2.3** |
-| Current acceptance increment | **B24 — Preços / R24 — OPEN; P8 structural design adjudication NEXT** |
+| Current acceptance increment | **B24 — Preços / R24 — OPEN; P8 structural design OPERATOR-APPROVED 2026-08-26; browser-operable candidate rendered; operator walkthrough NEXT** |
 | B24 accepted input | **R24 `/publicacoes/precos` — PriceIntent collection/detail/create with Market/Economics handoff; Offering owns price writes (`price.manage`, H/A, Idempotency-Key); supersede model, no in-place price edit** |
 | Prior increment | **B23 — P8 LOCKED 2026-08-26 + P9 PASS / CLOSED (variations + category discovery repairs), integrated by PR #76** |
 | Read contract law | **Owner-specific typed read projections (Canonical Ref ≠ Current Read Projection ≠ Purpose/Historical Snapshot) are the only admitted human presentation basis (PR #70; extended by the PR #69 `source_product_link` repair)** |
@@ -22,7 +22,7 @@
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
 | Aggregate CI | **one required check / one `npm run gate`; universal checks always run; Product proof is diff-aware and fails safe when reliable changed-surface detection is unavailable** |
-| Exact next action | **Adjudicate the bounded B24 P8 structural design in chat. After explicit approval, render the browser-operable R24 candidate and run the operator walkthrough. No further blocks, Pre-D9/D9 or implementation before the B24 increment closes and integrates.** |
+| Exact next action | **Operate the browser-operable B24 R24 candidate (`qualification/d6-r2-wireframes/b24-price-intents.html`) and obtain operator disposition `LOCK / REVISE / UPSTREAM FINDING`. No B24 P9, further blocks, Pre-D9/D9 or implementation before explicit LOCK.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -58,9 +58,9 @@
 ```text
 PR #76 B23 integrated
 → B24 acceptance increment opened
-→ bounded P8 structural design adjudication   ← CURRENT
-→ render browser-operable R24 candidate only after approval
-→ operator LOCK / REVISE / UPSTREAM FINDING
+→ bounded P8 structural design adjudicated: operator approved (2026-08-26)
+→ browser-operable R24 candidate rendered + proof
+→ operator walkthrough: LOCK / REVISE / UPSTREAM FINDING   ← CURRENT
 → P9 bidirectional Screen Contract
 → P10 pattern consolidation
 → required CI
