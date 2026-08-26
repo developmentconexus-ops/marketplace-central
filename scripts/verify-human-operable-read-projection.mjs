@@ -90,9 +90,17 @@ function validateMarketplaceListing(doc) {
     'ListingObservedFieldKnown', 'ListingObservedFieldUnknown', 'ListingObservedFieldUnavailable', 'ListingObservedFieldNotApplicable', 'ListingObservedField',
     'MarketplaceListingMediaPresentationKnown', 'MarketplaceListingMediaPresentationUnavailable', 'MarketplaceListingMediaPresentation', 'MarketplaceListingObservedMedia', 'MarketplaceListingObservationProvenance',
   ]) assert(s[name], `missing schema ${name}`);
-  requireFieldsFrom(s, 'MarketplaceListingListItem', ['listing', 'presentation', 'lifecycle', 'observed_at']);
+  requireFieldsFrom(s, 'MarketplaceListingListItem', ['listing', 'presentation', 'lifecycle', 'source_product_link', 'observed_at']);
   requirePropertyRef(s, 'MarketplaceListingListItem', 'presentation', 'MarketplaceListingPresentation');
-  requireFieldsFrom(s, 'MarketplaceListing', ['listing', 'presentation', 'lifecycle', 'publication_context', 'observed_fields', 'observed_media', 'observed_at', 'provenance']);
+  requirePropertyRef(s, 'MarketplaceListingListItem', 'source_product_link', 'ListingSourceProductLink');
+  requireFieldsFrom(s, 'MarketplaceListing', ['listing', 'presentation', 'lifecycle', 'source_product_link', 'publication_context', 'observed_fields', 'observed_media', 'observed_at', 'provenance']);
+  requirePropertyRef(s, 'MarketplaceListing', 'source_product_link', 'ListingSourceProductLink');
+  requireClosedDiscriminant(s, 'ListingSourceProductLinkResolved', 'state', 'resolved');
+  requireClosedDiscriminant(s, 'ListingSourceProductLinkUnresolved', 'state', 'unresolved');
+  requireClosedDiscriminant(s, 'ListingSourceProductLinkUnknown', 'state', 'unknown');
+  requireClosedDiscriminant(s, 'ListingSourceProductLinkUnavailable', 'state', 'unavailable');
+  requireUnionRefs(s, 'ListingSourceProductLink', ['ListingSourceProductLinkResolved', 'ListingSourceProductLinkUnresolved', 'ListingSourceProductLinkUnknown', 'ListingSourceProductLinkUnavailable']);
+  requirePropertyRef(s, 'ListingSourceProductLinkResolved', 'presentation', 'SourceProductPresentation');
   requirePropertyRef(s, 'MarketplaceListing', 'presentation', 'MarketplaceListingPresentation');
   requirePropertyRef(s, 'MarketplaceListing', 'publication_context', 'PublicationContextView');
   requireClosedDiscriminant(s, 'MarketplaceListingPresentationKnown', 'state', 'known');

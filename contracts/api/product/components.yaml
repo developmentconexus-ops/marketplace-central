@@ -691,25 +691,44 @@ schemas:
   MarketplaceListing:
     type: object
     additionalProperties: false
-    required: [listing, presentation, lifecycle, publication_context, observed_fields, observed_media, observed_at, provenance]
+    required: [listing, presentation, lifecycle, source_product_link, publication_context, observed_fields, observed_media, observed_at, provenance]
     properties:
       listing: {$ref: '#/schemas/MarketplaceListingRef'}
       presentation: {$ref: '#/schemas/MarketplaceListingPresentation'}
       lifecycle: {type: string, enum: [active, paused, closed, unknown]}
+      source_product_link: {$ref: '#/schemas/ListingSourceProductLink'}
       publication_context: {$ref: '#/schemas/PublicationContextView'}
       observed_fields: {type: array, items: {$ref: '#/schemas/ListingObservedField'}}
       observed_media: {type: array, items: {$ref: '#/schemas/MarketplaceListingObservedMedia'}}
       observed_price: {$ref: '#/schemas/Money'}
       observed_at: {$ref: '#/schemas/Instant'}
       provenance: {$ref: '#/schemas/MarketplaceListingObservationProvenance'}
+  ListingSourceProductLinkResolved:
+    type: object
+    additionalProperties: false
+    required: [state, source_product, presentation]
+    properties:
+      state: {const: resolved}
+      source_product: {$ref: '#/schemas/SourceProductRef'}
+      presentation: {$ref: '#/schemas/SourceProductPresentation'}
+  ListingSourceProductLinkUnresolved: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unresolved}}}
+  ListingSourceProductLinkUnknown: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unknown}}}
+  ListingSourceProductLinkUnavailable: {type: object, additionalProperties: false, required: [state], properties: {state: {const: unavailable}}}
+  ListingSourceProductLink:
+    oneOf:
+      - {$ref: '#/schemas/ListingSourceProductLinkResolved'}
+      - {$ref: '#/schemas/ListingSourceProductLinkUnresolved'}
+      - {$ref: '#/schemas/ListingSourceProductLinkUnknown'}
+      - {$ref: '#/schemas/ListingSourceProductLinkUnavailable'}
   MarketplaceListingListItem:
     type: object
     additionalProperties: false
-    required: [listing, presentation, lifecycle, observed_at]
+    required: [listing, presentation, lifecycle, source_product_link, observed_at]
     properties:
       listing: {$ref: '#/schemas/MarketplaceListingRef'}
       presentation: {$ref: '#/schemas/MarketplaceListingPresentation'}
       lifecycle: {type: string, enum: [active, paused, closed, unknown]}
+      source_product_link: {$ref: '#/schemas/ListingSourceProductLink'}
       observed_at: {$ref: '#/schemas/Instant'}
   MarketplaceListingsCollection:
     type: object

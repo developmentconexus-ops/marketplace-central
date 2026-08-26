@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Marketplace Central — D6-R2 B20 Publicações</title>
+<style>
+:root{--paper:#fff;--canvas:#f4f4f4;--ink:#111;--muted:#666;--line:#bbb;--sidebar:260px;--space:22px}
+*{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}button,input,select{font:inherit;color:inherit}button{cursor:pointer}.hidden{display:none!important}.small{font-size:12px;color:var(--muted)}.machine{display:none!important}
+.prototype{padding:8px 12px;border-bottom:1px solid var(--ink);background:#fff;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.prototype-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.prototype select,.prototype button{background:#fff;border:1px solid var(--line);padding:5px 8px}
+.app{min-height:calc(100vh - 42px);display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr)}.sidebar{background:#fff;border-right:1px solid var(--ink);padding:18px 14px;position:sticky;top:0;height:100vh;overflow:auto}.brand{font-weight:800;font-size:17px;padding:0 8px 14px;border-bottom:1px solid var(--line)}.organization-block{padding:14px 6px;border-bottom:1px solid var(--line)}.label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px}.organization-select,.installation-select,.control{width:100%;min-height:38px;background:#fff;border:1px solid var(--ink);padding:7px 9px}.nav-group{margin-top:16px}.group-label{font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--muted);padding:0 8px 4px}.nav-item{width:100%;border:0;background:transparent;text-align:left;padding:8px 9px;min-height:36px}.nav-item.active{background:var(--ink);color:#fff}.nav-item.sub{padding-left:26px;font-size:13px}
+.main{min-width:0;background:#fff}.header{position:sticky;top:0;z-index:3;background:#fff;border-bottom:1px solid var(--ink);padding:10px var(--space);display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,420px);gap:18px;align-items:center}.title-row{display:flex;align-items:center;gap:10px}.menu-toggle{display:none;background:#fff;border:1px solid var(--ink);width:38px;height:36px}.page-title{font-size:18px;margin:0}.content{max-width:1480px;margin:auto;padding:26px var(--space) 42px}.page-head h1{margin:0 0 5px;font-size:25px}.page-head p{margin:0;color:var(--muted);max-width:900px}
+.state-box,.region,.next-step,.boundary,.technical{background:#fff;border:1px solid var(--ink);padding:14px}.state-box{border-width:2px;margin-top:18px}.region,.next-step,.boundary,.technical{margin-top:12px}.boundary{border-style:dashed;border-width:2px}.state-box h2,.region h3,.next-step h3,.boundary h3,.technical h3{margin:0 0 5px}.state-box p,.region p,.next-step p,.boundary p,.technical p{margin:0;color:var(--muted)}
+.list-tools{display:grid;grid-template-columns:minmax(260px,1fr) auto;gap:10px;align-items:end;margin:20px 0 10px}.field label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px}.btn{border:1px solid var(--ink);background:#fff;padding:8px 11px;min-height:38px}.btn.primary{background:var(--ink);color:#fff}.btn:disabled{color:#999;border-color:var(--line);cursor:not-allowed}.notice,.list-state{border:1px dashed var(--line);padding:9px 10px;color:var(--muted);margin-top:10px}.list-state{padding:14px}.list-state h2{margin:0 0 4px;font-size:15px}.list-state p{margin:0}
+table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1px solid var(--line);text-align:left;vertical-align:top;padding:10px}th{font-size:11px;color:var(--muted)}.row-note{font-size:12px;color:var(--muted);margin-top:3px}.tag{display:inline-block;border:1px solid var(--ink);padding:2px 7px;font-size:11px}.tag.dashed{border-style:dashed;color:var(--muted)}.mono{font:12px ui-monospace,monospace}
+.list-wrap{overflow:auto}.list-table{min-width:880px}
+.detail-toolbar{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:18px 0 10px}.subject-header{border:2px solid var(--ink);padding:14px}.subject-top{display:flex;justify-content:space-between;gap:12px;align-items:start}.subject-top h2{margin:0 0 4px}.context-human{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}.context-human div{border:1px dashed var(--line);padding:8px}.context-human span{display:block;font-size:10px;color:var(--muted);text-transform:uppercase}
+.observed-wrap{overflow:auto}.observed-table{min-width:640px}.media-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.media-thumb{width:92px;border:1px solid var(--line);padding:6px;text-align:center}.media-thumb .ph{height:64px;border:1px dashed var(--line);display:grid;place-items:center;color:var(--muted);font-size:11px}.media-thumb figcaption{font-size:10px;color:var(--muted);margin-top:4px}
+.region-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}.owner-region{border:1px solid var(--ink);padding:12px}.owner-region h4{margin:0 0 4px}.owner-region p{margin:0;color:var(--muted)}.owner-tag{font-size:10px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}.action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.region-facts{width:100%;border-collapse:collapse;margin-top:8px}.region-facts td{border-bottom:1px dashed var(--line);padding:6px 4px;font-size:13px}.region-facts td:last-child{text-align:right}.region-facts tr:last-child td{border-bottom:0}
+.drawer-backdrop{display:none;border:0}.technical-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}.technical-cell{border:1px dashed var(--line);padding:8px}.technical-cell span{display:block;font-size:10px;color:var(--muted);text-transform:uppercase}.technical-cell strong{font:12px ui-monospace,monospace}.trace{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;font:10px ui-monospace,monospace;color:var(--muted)}.trace span{border:1px solid var(--line);padding:3px 5px}
+@media(max-width:1020px){:root{--sidebar:210px}.header{grid-template-columns:1fr 300px}.list-tools{grid-template-columns:1fr}.context-human,.technical-grid{grid-template-columns:1fr 1fr}.region-grid{grid-template-columns:1fr}}
+@media(max-width:760px){:root{--space:14px}.app{display:block}.sidebar{position:fixed;z-index:20;top:0;left:0;width:min(86vw,310px);transform:translateX(-105%);transition:transform .12s linear}.drawer-open .sidebar{transform:translateX(0)}.drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.18);z-index:19;width:100%;height:100%}.drawer-open .drawer-backdrop{display:block}.header{grid-template-columns:1fr;gap:8px}.menu-toggle{display:inline-grid;place-items:center}.context-human,.technical-grid{grid-template-columns:1fr}.subject-top,.detail-toolbar{display:block}}
+</style>
+</head>
+<body
+  data-p8-status="candidate"
+  data-surface="R20-R21"
+  data-wire-prerequisite="pr70-integrated"
+  data-b20-role="listing-collection-and-owner-separated-detail"
+  data-owner="Offering"
+  data-required-permission="offering.read"
+  data-mutation-home="none"
+  data-read-projection="typed-presentation"
+  data-presentation-fields="display_name"
+  data-presentation-write="never"
+  data-source-link-read="source_product_link"
+  data-region-facts-kind="inline-read-only"
+  data-responsive-law="list-detail-mobile-stack">
+<div class="prototype">
+  <div><strong>Protótipo · Publicações</strong> — revisão 3: coluna "Seu produto", detalhe enriquecido e informações das áreas direto nos cartões.</div>
+  <div class="prototype-controls">
+    <label for="listScenario">Resultado da lista</label>
+    <select id="listScenario"><option value="normal">Normal</option><option value="known-empty">Nenhum anúncio</option><option value="unknown">Ainda desconhecido</option><option value="unavailable">Consulta indisponível</option></select>
+    <label for="detailScenario">Cenário do detalhe</label>
+    <select id="detailScenario"><option value="normal">Regiões conhecidas</option><option value="degraded">Regiões desconhecidas/indisponíveis</option></select>
+    <button id="reset" type="button">Reiniciar</button>
+  </div>
+</div>
+
+<!-- OPERATOR_SURFACE_START -->
+<button class="drawer-backdrop" id="backdrop" type="button" aria-label="Fechar navegação"></button>
+<div class="app">
+<aside class="sidebar" id="sidebar" aria-label="Navegação principal">
+  <div class="brand">Marketplace Central</div>
+  <div class="organization-block">
+    <label class="label" for="organization">Organização</label>
+    <select id="organization" class="organization-select"><option value="org-a">Organização Exemplo A</option><option value="org-b">Organização Exemplo B</option></select>
+  </div>
+  <nav>
+    <div class="nav-group"><div class="group-label">VISÃO GERAL</div><button class="nav-item">Visão geral</button></div>
+    <div class="nav-group"><div class="group-label">OFERTA</div><button class="nav-item">Preparação</button><button class="nav-item active">Anúncios</button><button class="nav-item">Preços</button><button class="nav-item">Disponibilidade</button></div>
+    <div class="nav-group"><div class="group-label">OPERAÇÃO</div><button class="nav-item">Visão operacional</button><button class="nav-item">Vendas</button><button class="nav-item">Expedição</button><button class="nav-item">Pós-venda</button></div>
+    <div class="nav-group"><div class="group-label">ESTRATÉGIA E INTELIGÊNCIA</div><button class="nav-item">Performance</button><button class="nav-item sub">Resumo</button><button class="nav-item sub">Anúncios</button><button class="nav-item sub">Mídia</button><button class="nav-item">Mercado</button><button class="nav-item">Economia</button></div>
+    <div class="nav-group"><div class="group-label">CONTROLE</div><button class="nav-item">Trabalho</button><button class="nav-item">Aprovações</button></div>
+    <div class="nav-group"><div class="group-label">CONFIGURAÇÕES</div><button class="nav-item">Configurações</button></div>
+  </nav>
+</aside>
+
+<main class="main">
+<header class="header">
+  <div class="title-row"><button id="menu" class="menu-toggle" type="button" aria-label="Abrir navegação" aria-controls="sidebar" aria-expanded="false">☰</button><h1 class="page-title">Anúncios</h1></div>
+  <div><label class="label" for="installation">Conta do marketplace</label><select id="installation" class="installation-select"><option value="">Selecione uma conta…</option><option value="ml-a">Mercado Livre · Conta A</option><option value="ml-b">Mercado Livre · Conta B</option></select></div>
+</header>
+
+<div class="content">
+  <div class="page-head">
+    <h1 id="pageHeading">Anúncios publicados</h1>
+    <p>Acompanhe o que está publicado nesta conta do marketplace. Esta área mostra o que foi observado; alterações acontecem nas áreas responsáveis.</p>
+  </div>
+
+  <section id="missingInstallation" class="state-box">
+    <h2>Selecione uma conta do marketplace</h2>
+    <p>Os anúncios pertencem a uma conta específica. Nenhuma conta é escolhida automaticamente.</p>
+  </section>
+
+  <section id="listMode" class="hidden">
+    <div class="list-tools">
+      <div class="field"><label for="query">Filtrar por nome ou SKU</label><input id="query" class="control" value="" placeholder="Nome do anúncio, nome do produto ou SKU"></div>
+      <button id="filter" class="btn" type="button">Filtrar</button>
+    </div>
+    <div id="listUnknown" class="list-state hidden" data-listing-population="unknown" role="status"><h2>Anúncios ainda desconhecidos</h2><p>Ainda não foi possível determinar quais anúncios existem nesta conta.</p></div>
+    <div id="listUnavailable" class="list-state hidden" data-listing-population="unavailable" role="status"><h2>Consulta indisponível</h2><p>Não conseguimos consultar os anúncios agora. Isso não significa que não existam anúncios.</p></div>
+    <div id="listKnownEmpty" class="list-state hidden" data-listing-population="known" data-listing-count="0" role="status"><h2>Nenhum anúncio observado</h2><p>A consulta foi concluída e não há anúncios observados nesta conta.</p></div>
+    <div id="listHost" data-listing-population="known">
+      <div class="list-wrap">
+      <table class="list-table" aria-label="Anúncios observados">
+        <thead><tr><th>Anúncio</th><th>Seu produto</th><th>Situação</th><th>Observado em</th><th>Ação</th></tr></thead>
+        <tbody id="listBody"></tbody>
+      </table>
+      </div>
+      <div class="notice" data-collection-grammar="cursor">Lista paginada por cursor conforme a coleção do Produto; sem seleção em massa e sem visões salvas.</div>
+    </div>
+  </section>
+
+  <section id="detailMode" class="hidden">
+    <div class="detail-toolbar"><button id="back" class="btn" type="button">← Voltar aos anúncios</button><span class="small">Anúncio observado nesta conta.</span></div>
+
+    <div class="subject-header">
+      <div class="subject-top">
+        <div><h2 id="subjectName">—</h2><p class="small" id="subjectObserved">—</p></div>
+        <span class="tag" id="subjectLifecycle" data-lifecycle="active">Ativo</span>
+      </div>
+      <div class="context-human">
+        <div><span>Marketplace · Conta</span><strong id="subjectAccount">—</strong></div>
+        <div><span>Categoria</span><strong id="subjectCategory">—</strong></div>
+        <div><span>Tipo de produto</span><strong id="subjectType">—</strong></div>
+      </div>
+      <div id="subjectSourceLink" class="notice" data-source-link-read="source_product_link"></div>
+    </div>
+
+    <section class="region" id="offeringRegion" data-region-owner="Offering" data-write-controls="none">
+      <h3>Anúncio observado</h3>
+      <p>O que o marketplace mostra hoje para este anúncio, conforme a última observação. Nada aqui edita o anúncio.</p>
+      <div class="observed-wrap">
+      <table class="observed-table" aria-label="Campos observados do anúncio">
+        <thead><tr><th>Campo</th><th>Valor observado</th></tr></thead>
+        <tbody>
+          <tr data-observed-state="known"><td><strong>Título</strong></td><td id="obsTitle">—</td></tr>
+          <tr data-observed-state="known"><td><strong>Preço observado</strong></td><td id="obsPrice">—</td></tr>
+          <tr data-observed-state="known"><td><strong>Marca</strong></td><td>Deca</td></tr>
+          <tr data-observed-state="known"><td><strong>Material</strong></td><td>Metal cromado</td></tr>
+          <tr data-observed-state="known"><td><strong>Largura</strong></td><td>220 mm</td></tr>
+          <tr data-observed-state="known"><td><strong>Condição</strong></td><td>Novo</td></tr>
+          <tr data-observed-state="unknown"><td><strong>Garantia</strong></td><td>Ainda não foi possível determinar.</td></tr>
+          <tr data-observed-state="unavailable"><td><strong>Termos de busca</strong></td><td>Consulta indisponível agora.</td></tr>
+          <tr data-observed-state="not_applicable"><td><strong>Bateria inclusa</strong></td><td>Não se aplica a este anúncio.</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="media-row" aria-label="Mídia observada">
+        <figure class="media-thumb"><div class="ph">Foto 1</div><figcaption>Principal · observada</figcaption></figure>
+        <figure class="media-thumb"><div class="ph">Foto 2</div><figcaption>Observada</figcaption></figure>
+        <figure class="media-thumb"><div class="ph">Foto 3</div><figcaption>Observada</figcaption></figure>
+        <figure class="media-thumb"><div class="ph">—</div><figcaption data-media-state="unavailable">Indisponível agora</figcaption></figure>
+      </div>
+      <p class="small" data-provenance="current_source_observation">Proveniência: observação atual do marketplace (custódia: observação corrente), obtida em <span id="obsWhen">—</span>.</p>
+    </section>
+
+    <section class="region">
+      <h3>Situação por área responsável</h3>
+      <p>Cada área abaixo tem seu próprio dono no sistema. As informações já aparecem aqui, somente-leitura; "Ver em…" leva à área responsável para trabalhar.</p>
+      <div class="region-grid" id="ownerRegions">
+        <div class="owner-region" data-region-owner="Availability" data-knowledge-state="known"><span class="owner-tag">Disponibilidade</span><h4 data-region-headline>Disponível para venda</h4><p class="small" data-region-copy></p><table class="region-facts" data-region-facts><tbody></tbody></table><div class="action-row"><button class="btn nav-continuation" type="button" data-continuation="availability">Ver em Disponibilidade</button></div></div>
+        <div class="owner-region" data-region-owner="Performance" data-knowledge-state="known"><span class="owner-tag">Performance</span><h4 data-region-headline>Últimos 30 dias</h4><p class="small" data-region-copy></p><table class="region-facts" data-region-facts><tbody></tbody></table><div class="action-row"><button class="btn nav-continuation" type="button" data-continuation="performance">Ver em Performance</button></div></div>
+        <div class="owner-region" data-region-owner="Market" data-knowledge-state="known"><span class="owner-tag">Mercado</span><h4 data-region-headline>Posição competitiva</h4><p class="small" data-region-copy></p><table class="region-facts" data-region-facts><tbody></tbody></table><div class="action-row"><button class="btn nav-continuation" type="button" data-continuation="market">Ver em Mercado</button></div></div>
+        <div class="owner-region" data-region-owner="Economics" data-knowledge-state="known"><span class="owner-tag">Economia</span><h4 data-region-headline>Economia prevista</h4><p class="small" data-region-copy></p><table class="region-facts" data-region-facts><tbody></tbody></table><div class="action-row"><button class="btn nav-continuation" type="button" data-continuation="economics">Ver em Economia</button></div></div>
+        <div class="owner-region" data-region-owner="Work" data-knowledge-state="known"><span class="owner-tag">Trabalho</span><h4 data-region-headline>Trabalho relacionado</h4><p class="small" data-region-copy></p><table class="region-facts" data-region-facts><tbody></tbody></table><div class="action-row"><button class="btn nav-continuation" type="button" data-continuation="work">Ver em Trabalho</button></div></div>
+      </div>
+      <p class="small">Resumo somente-leitura do que já foi consultado: nenhuma ação destas áreas acontece aqui.</p>
+    </section>
+
+    <section class="next-step">
+      <h3>Próximo passo</h3>
+      <p>Para alterar este anúncio, edite a intenção de anúncio na área responsável. Nada é criado ou alterado só por navegar.</p>
+      <div class="small" data-progression="navigation-only">Esta tela mostra o que foi observado; a edição acontece na intenção de anúncio.</div>
+      <div class="action-row"><button id="goIntent" class="btn primary" type="button">Ir para intenções de anúncio</button></div>
+    </section>
+
+    <section id="intentBoundary" class="boundary hidden" data-boundary="listing-intent" data-continuation-kind="navigation-only" tabindex="-1">
+      <h3>Próxima etapa: intenções de anúncio</h3>
+      <p>Os Anúncios terminam aqui. A criação e edição de intenções tem sua própria área e regras; nenhum rascunho foi criado por esta navegação.</p>
+    </section>
+
+    <div class="action-row"><button id="technicalToggle" class="btn" type="button" aria-expanded="false" aria-controls="technicalDetails">Ver detalhes técnicos</button></div>
+  </section>
+</div>
+</main>
+</div>
+
+<!-- OPERATOR_SURFACE_END -->
+
+<section id="technicalDetails" class="technical hidden" aria-label="Detalhes técnicos do protótipo">
+  <h3>Detalhes técnicos · suporte e auditoria</h3>
+  <p>Identidade canônica e rastreabilidade técnica fora do fluxo operacional principal.</p>
+  <div class="technical-grid">
+    <div class="technical-cell"><span>native listing key</span><strong id="techListingKey">—</strong></div>
+    <div class="technical-cell"><span>Marketplace Installation</span><strong id="techInstallation">—</strong></div>
+    <div class="technical-cell"><span>source_product_link</span><strong id="techSourceLink">—</strong></div>
+    <div class="technical-cell"><span>native product key</span><strong id="techProductKey">—</strong></div>
+    <div class="technical-cell"><span>lifecycle</span><strong id="techLifecycle">—</strong></div>
+    <div class="technical-cell"><span>observed_at</span><strong id="techObservedAt">—</strong></div>
+    <div class="technical-cell"><span>read identity law</span><strong>ref != presentation</strong></div>
+    <div class="technical-cell"><span>mutation home</span><strong>none in R20/R21</strong></div>
+  </div>
+  <div class="trace">
+    <span data-operation="ListMarketplaceListings">ListMarketplaceListings</span>
+    <span data-operation="GetMarketplaceListing">GetMarketplaceListing</span>
+    <span data-operation="GetSellableAvailability">GetSellableAvailability</span>
+    <span data-operation="GetMarketplaceListingPerformance">GetMarketplaceListingPerformance</span>
+    <span data-operation="GetCompetitivePosition">GetCompetitivePosition</span>
+    <span data-operation="GetExpectedEconomics">GetExpectedEconomics</span>
+    <span>presentation.display_name</span><span>source_product_link</span><span>lifecycle observed</span><span>cursor collection</span><span>navigation-only continuation</span><span>inline read-only region facts</span>
+  </div>
+</section>
+
+<script>
+const organization=document.getElementById('organization'),installation=document.getElementById('installation'),missing=document.getElementById('missingInstallation'),listMode=document.getElementById('listMode'),detailMode=document.getElementById('detailMode'),listScenario=document.getElementById('listScenario'),detailScenario=document.getElementById('detailScenario'),query=document.getElementById('query'),listHost=document.getElementById('listHost'),listBody=document.getElementById('listBody'),listKnownEmpty=document.getElementById('listKnownEmpty'),listUnknown=document.getElementById('listUnknown'),listUnavailable=document.getElementById('listUnavailable'),pageHeading=document.getElementById('pageHeading'),subjectName=document.getElementById('subjectName'),subjectObserved=document.getElementById('subjectObserved'),subjectLifecycle=document.getElementById('subjectLifecycle'),subjectAccount=document.getElementById('subjectAccount'),subjectCategory=document.getElementById('subjectCategory'),subjectType=document.getElementById('subjectType'),subjectSourceLink=document.getElementById('subjectSourceLink'),obsTitle=document.getElementById('obsTitle'),obsPrice=document.getElementById('obsPrice'),obsWhen=document.getElementById('obsWhen'),ownerRegions=document.getElementById('ownerRegions'),intentBoundary=document.getElementById('intentBoundary'),technicalToggle=document.getElementById('technicalToggle'),technicalDetails=document.getElementById('technicalDetails'),techListingKey=document.getElementById('techListingKey'),techInstallation=document.getElementById('techInstallation'),techSourceLink=document.getElementById('techSourceLink'),techProductKey=document.getElementById('techProductKey'),techLifecycle=document.getElementById('techLifecycle'),techObservedAt=document.getElementById('techObservedAt'),menu=document.getElementById('menu'),backdrop=document.getElementById('backdrop');
+let selected=null;
+const lifecycleLabels={active:'Ativo',paused:'Pausado',closed:'Encerrado',unknown:'Situação desconhecida'};
+const listings=[
+ {key:'MLB-3849201',presentation:{state:'known',display_name:'Torneira monocomando alta Deca cromada'},lifecycle:'active',observed:'hoje 09:12',price:'R$ 389,90',category:'Torneiras',type:'Torneira',sourceLink:{state:'resolved',name:'Torneira monocomando alta',sku:'42664',source:'Sankhya',productKey:'42664'}},
+ {key:'MLB-2214977',presentation:{state:'known',display_name:'Cuba inox 50 cm com válvula'},lifecycle:'paused',observed:'hoje 09:12',price:'R$ 249,00',category:'Cubas e pias',type:'Cuba',sourceLink:{state:'unresolved'}},
+ {key:'MLB-1093310',presentation:{state:'known',display_name:'Kit misturador cozinha parede'},lifecycle:'closed',observed:'ontem 18:40',price:'R$ 199,00',category:'Misturadores',type:'Misturador',sourceLink:{state:'resolved',name:'Kit misturador cozinha',sku:'SKU-9912',source:'Catálogo legado',productKey:'SKU-9912'}},
+ {key:'MLB-7731544',presentation:{state:'unknown'},lifecycle:'unknown',observed:'ontem 18:40',price:null,category:null,type:null,sourceLink:{state:'unknown'}}
+];
+function esc(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function presentationLabel(l){if(l.presentation.state==='known')return '<strong>'+esc(l.presentation.display_name)+'</strong>';if(l.presentation.state==='unavailable')return '<span data-presentation-state="unavailable">Nome indisponível no momento</span><div class="row-note">A identificação continua válida; só a apresentação não pôde ser consultada.</div>';return '<span data-presentation-state="unknown">Nome ainda desconhecido</span><div class="row-note">Ainda não foi possível observar como este anúncio se apresenta.</div>';}
+function sourceLinkCell(link){if(link.state==='resolved')return '<td data-source-link-state="resolved"><strong>'+esc(link.name)+'</strong><div class="row-note"><span class="mono">SKU '+esc(link.sku)+'</span> · '+esc(link.source)+'</div></td>';if(link.state==='unresolved')return '<td data-source-link-state="unresolved"><span>Sem vínculo definido</span><div class="row-note">Defina o vínculo na Preparação.</div></td>';if(link.state==='unavailable')return '<td data-source-link-state="unavailable"><span>Consulta indisponível</span><div class="row-note">Não conseguimos consultar o vínculo agora.</div></td>';return '<td data-source-link-state="unknown"><span>Vínculo ainda desconhecido</span><div class="row-note">Ainda não foi possível determinar o vínculo.</div></td>';}
+function openDrawer(){document.body.classList.add('drawer-open');menu.setAttribute('aria-expanded','true');}
+function closeDrawer(returnFocus=true){document.body.classList.remove('drawer-open');menu.setAttribute('aria-expanded','false');if(returnFocus)menu.focus();}
+function hideTechnical(){technicalDetails.classList.add('hidden');technicalToggle.setAttribute('aria-expanded','false');}
+function invalidateOrganizationContext(){installation.value='';selected=null;intentBoundary.classList.add('hidden');hideTechnical();renderRoot();}
+function renderRoot(){const ok=!!installation.value;missing.classList.toggle('hidden',ok);if(!ok){listMode.classList.add('hidden');detailMode.classList.add('hidden');selected=null;pageHeading.textContent='Anúncios publicados';return}pageHeading.textContent='Anúncios publicados no Mercado Livre';if(selected){listMode.classList.add('hidden');detailMode.classList.remove('hidden');renderDetail()}else{detailMode.classList.add('hidden');listMode.classList.remove('hidden');renderList();}}
+function row(l){const state=l.presentation.state;return '<tr data-presentation-state="'+esc(state)+'" data-lifecycle="'+esc(l.lifecycle)+'"><td>'+presentationLabel(l)+'</td>'+sourceLinkCell(l.sourceLink)+'<td><span class="tag'+(l.lifecycle==='unknown'?' dashed':'')+'">'+lifecycleLabels[l.lifecycle]+'</span></td><td>'+esc(l.observed)+'</td><td><button class="btn open-detail" type="button" data-listing="'+esc(l.key)+'">Ver anúncio</button></td></tr>';}
+function bindRows(){document.querySelectorAll('.open-detail').forEach(b=>b.onclick=()=>{selected=b.dataset.listing;intentBoundary.classList.add('hidden');hideTechnical();renderRoot();});}
+function matchesTerm(l,term){if(!term)return true;const hay=[l.presentation.state==='known'?l.presentation.display_name:''];if(l.sourceLink.state==='resolved'){hay.push(l.sourceLink.name,l.sourceLink.sku);}return hay.some(v=>v&&v.toLowerCase().includes(term));}
+function renderList(){listBody.innerHTML='';listKnownEmpty.classList.add('hidden');listUnknown.classList.add('hidden');listUnavailable.classList.add('hidden');listHost.classList.add('hidden');if(listScenario.value==='unknown'){listUnknown.classList.remove('hidden');return}if(listScenario.value==='unavailable'){listUnavailable.classList.remove('hidden');return}const term=query.value.trim().toLowerCase();let matches=listings.filter(l=>matchesTerm(l,term));if(listScenario.value==='known-empty')matches=[];if(!matches.length){listKnownEmpty.classList.remove('hidden');return}listHost.classList.remove('hidden');listBody.innerHTML=matches.map(row).join('');bindRows();}
+function subjectSourceLinkHtml(link){if(link.state==='resolved')return '<strong>Seu produto:</strong> '+esc(link.name)+' · <span class="mono">SKU '+esc(link.sku)+'</span> · '+esc(link.source);if(link.state==='unresolved')return '<strong>Seu produto:</strong> sem vínculo definido — defina o vínculo na Preparação.';if(link.state==='unavailable')return '<strong>Seu produto:</strong> consulta do vínculo indisponível agora.';return '<strong>Seu produto:</strong> vínculo ainda desconhecido.';}
+const regionFacts=[
+ [['Vendável agora','128 unidades'],['Origem do estoque','Sankhya · depósito principal'],['Última observação','hoje 09:10']],
+ [['Visitas · 30 dias','1.240'],['Vendas · 30 dias','36'],['Conversão observada','2,9%']],
+ [['Ofertas comparáveis','3'],['Faixa de preço observada','R$ 359 – R$ 419'],['Sua posição','2ª mais barata']],
+ [['Preço observado','R$ 389,90'],['Margem prevista','18,4%'],['Cenário','Custos e tarifas atuais']],
+ [['Itens de trabalho abertos','0']]
+];
+function regionState(region,state,headline,copy,facts){region.dataset.knowledgeState=state;region.querySelector('[data-region-headline]').textContent=headline;const copyEl=region.querySelector('[data-region-copy]');const tbody=region.querySelector('[data-region-facts] tbody');if(state==='known'){copyEl.textContent='';copyEl.classList.add('hidden');tbody.parentElement.classList.remove('hidden');tbody.innerHTML=facts.map(([k,v])=>'<tr><td>'+esc(k)+'</td><td><strong>'+esc(v)+'</strong></td></tr>').join('');}else{copyEl.textContent=copy;copyEl.classList.remove('hidden');tbody.innerHTML='';tbody.parentElement.classList.add('hidden');}}
+function renderDetail(){const l=listings.find(x=>x.key===selected)||listings[0];subjectName.textContent=l.presentation.state==='known'?l.presentation.display_name:'Nome ainda desconhecido';subjectObserved.textContent='Última observação: '+l.observed+'.';subjectLifecycle.textContent=lifecycleLabels[l.lifecycle];subjectLifecycle.dataset.lifecycle=l.lifecycle;subjectAccount.textContent='Mercado Livre · '+installation.options[installation.selectedIndex].text.replace('Mercado Livre · ','');subjectCategory.textContent=l.category||'Ainda não determinada';subjectType.textContent=l.type||'Ainda não determinado';subjectSourceLink.innerHTML=subjectSourceLinkHtml(l.sourceLink);subjectSourceLink.dataset.sourceLinkState=l.sourceLink.state;obsTitle.textContent=l.presentation.state==='known'?l.presentation.display_name:'Ainda não foi possível determinar.';obsPrice.textContent=l.price?l.price:'Ainda não foi possível determinar.';obsWhen.textContent=l.observed;techListingKey.textContent=l.key;techInstallation.textContent=installation.value;techSourceLink.textContent=l.sourceLink.state;techProductKey.textContent=l.sourceLink.state==='resolved'?l.sourceLink.productKey:'—';techLifecycle.textContent=l.lifecycle;techObservedAt.textContent=l.observed;intentBoundary.classList.add('hidden');const degraded=detailScenario.value==='degraded';const regions=ownerRegions.querySelectorAll('.owner-region');regionState(regions[0],degraded?'unavailable':'known',degraded?'Consulta indisponível':'Disponível para venda',degraded?'Não conseguimos consultar a disponibilidade agora. Isso não significa que não haja estoque.':'',regionFacts[0]);regionState(regions[1],degraded?'unknown':'known',degraded?'Ainda desconhecido':'Últimos 30 dias',degraded?'Ainda não foi possível observar a performance deste anúncio.':'',regionFacts[1]);regionState(regions[2],degraded?'unavailable':'known',degraded?'Consulta indisponível':'Posição competitiva',degraded?'Não conseguimos consultar o mercado agora.':'',regionFacts[2]);regionState(regions[3],degraded?'unknown':'known',degraded?'Ainda desconhecido':'Economia prevista',degraded?'Ainda não há avaliação econômica para este anúncio.':'',regionFacts[3]);regionState(regions[4],'known','Trabalho relacionado','',regionFacts[4]);}
+function toggleTechnical(){const opening=technicalDetails.classList.contains('hidden');technicalDetails.classList.toggle('hidden',!opening);technicalToggle.setAttribute('aria-expanded',String(opening));if(opening)technicalDetails.scrollIntoView({block:'nearest'});}
+organization.onchange=invalidateOrganizationContext;
+installation.onchange=()=>{selected=null;intentBoundary.classList.add('hidden');hideTechnical();renderRoot();};
+document.getElementById('filter').onclick=renderList;
+query.onkeydown=e=>{if(e.key==='Enter')renderList();};
+listScenario.onchange=()=>{selected=null;renderRoot();};
+detailScenario.onchange=()=>{if(!selected)selected='MLB-3849201';renderRoot();};
+document.getElementById('back').onclick=()=>{selected=null;intentBoundary.classList.add('hidden');hideTechnical();renderRoot();};
+document.getElementById('reset').onclick=()=>{installation.value='';selected=null;query.value='';listScenario.value='normal';detailScenario.value='normal';intentBoundary.classList.add('hidden');hideTechnical();renderRoot();};
+document.getElementById('goIntent').onclick=()=>{intentBoundary.classList.remove('hidden');intentBoundary.focus();};
+technicalToggle.onclick=toggleTechnical;
+document.querySelectorAll('.nav-continuation').forEach(b=>{if(!b.onclick)b.onclick=()=>{};});
+menu.onclick=()=>document.body.classList.contains('drawer-open')?closeDrawer():openDrawer();
+backdrop.onclick=()=>closeDrawer();
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.body.classList.contains('drawer-open'))closeDrawer();});
+renderRoot();
+</script>
+</body>
+</html>

@@ -22,6 +22,7 @@ P8 HTML decides structural hierarchy/placement/density/navigation/state placemen
 | **B12 Notification Routing Settings** | **LOCKED** 2026-08-23 | `qualification/d6-r2-wireframes/b12-notification-routing-settings.html` + Notifications P8 ratification |
 | **B110 Approvals** | **LOCKED** 2026-08-24 | `qualification/d6-r2-wireframes/b110-approvals.html` + B110 P8 ratification |
 | **B10 Preparação** | **LOCKED** 2026-08-26 (correspondence region re-LOCK) | `qualification/d6-r2-wireframes/b10-preparation.html` + B10 P8 ratification + bounded correspondence revalidation |
+| **B20 Publicações** | **LOCKED** 2026-08-26 | `qualification/d6-r2-wireframes/b20-publications.html` + [B20 P8 ratification](D6-R2-P8-B20-PUBLICATIONS-CANDIDATE.md) |
 
 No other D6-R2 block inherits a LOCK by proximity. Only the operator can add/change a LOCK.
 

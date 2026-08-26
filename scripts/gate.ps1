@@ -155,9 +155,29 @@ if ($b10CorrespondenceProofAffected) {
     $b10CorrespondenceProofStatus = 'SKIPPED_NOT_AFFECTED'
 }
 
+$b20PublicationsProofPatterns = @(
+    '^qualification/d6-r2-wireframes/b20-publications\.html$',
+    '^scripts/verify-d6-r-b20-publications-wireframe\.mjs$',
+    '^docs/engineering/rebaseline/D6-R2-P8-B20-',
+    '^docs/engineering/rebaseline/D6-R2-P9-B20-',
+    '^docs/engineering/rebaseline/D6-R2-P8-BLOCK-LEDGER\.md$'
+)
+$b20PublicationsProofAffected = if (-not $base) { $true } else { Test-ChangedPathMatches $b20PublicationsProofPatterns }
+
+if ($b20PublicationsProofAffected) {
+    $b20PublicationsProof = & node 'scripts/verify-d6-r-b20-publications-wireframe.mjs' 2>&1
+    $b20PublicationsProofExit = $LASTEXITCODE
+    $b20PublicationsProof | ForEach-Object { Write-Host $_ }
+    if ($b20PublicationsProofExit -ne 0) { Fail 'B20 publications wireframe proof failed' }
+    $b20PublicationsProofStatus = 'PASS'
+} else {
+    $b20PublicationsProofStatus = 'SKIPPED_NOT_AFFECTED'
+}
+
 Write-Host 'gate: PASS'
 Write-Host "required_files: $($requiredFiles.Count)"
 Write-Host "implementation_blocked: $implementationBlocked"
 Write-Host "diff_range: $diffRange changed_files: $($changedFiles.Count)"
 Write-Host "product_oad_proof: $productProofStatus"
 Write-Host "b10_correspondence_proof: $b10CorrespondenceProofStatus"
+Write-Host "b20_publications_proof: $b20PublicationsProofStatus"
