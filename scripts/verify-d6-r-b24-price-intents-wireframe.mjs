@@ -40,15 +40,26 @@ function validate(html) {
   assert(html.includes('nunca é reenviado às cegas'), 'ambiguous law copy missing');
   assert(html.includes('data-provider-feedback="verbatim"'), 'rejection must surface provider feedback');
 
-  // Read-only Market/Economics context facts; targets typed.
+  // Pricing workbench: listing-centric grid, per-row explicit writes, fixed views only.
+  assert(html.includes('data-views="decide intents"'), 'the two fixed views (decide/intents) are missing');
+  assert(html.includes('data-view="decide"') && html.includes('data-view="intents"'), 'view tabs missing');
+  assert(html.includes('data-row-write="one-intent-per-row"'), 'per-row explicit write law missing');
+  assert(html.includes('data-workbench-composition="page-level-owner-collections"'), 'workbench must compose owner collections page-level');
+  assert(html.includes('data-fact-owner="Economics"') && html.includes('data-fact-owner="Market"'), 'owner-attributed row facts missing');
+  assert(html.includes('data-filter-basis="server-facts"'), 'attention filter must project server facts, not client scoring');
+  assert(/class="btn row-confirm"[^>]*disabled/.test(html), 'row confirm must stay disabled until an explicit price is typed');
+  assert(html.includes('data-workbench-population="known" data-workbench-count="0"'), 'workbench known-empty marker missing');
+  assert(html.includes('data-workbench-population="unknown"'), 'workbench unknown population missing');
+  assert(html.includes('data-workbench-population="unavailable"'), 'workbench unavailable population missing');
+
+  // Read-only context facts; targets typed.
   assert(html.includes('data-context-facts-kind="inline-read-only"'), 'inline read-only context facts binding missing');
-  assert(html.includes('data-region-owner="Market"') && html.includes('data-region-owner="Economics"'), 'owner-separated context facts missing');
   assert(html.includes('nenhum preço é calculado ou aplicado automaticamente'), 'no-auto-pricing law copy missing');
   assert(html.includes('anúncio ainda não criado'), 'pre-creation target presentation missing');
   assert(html.includes('data-collection-grammar="cursor"'), 'cursor collection grammar note missing');
   assert(html.includes('sem reprecificação em massa'), 'bulk repricing rejection missing');
 
-  for (const operationId of ['ListPriceIntents', 'CreatePriceIntent', 'GetPriceIntent', 'GetCompetitivePosition', 'GetExpectedEconomics']) {
+  for (const operationId of ['ListMarketplaceListings', 'ListPriceIntents', 'ListExpectedEconomics', 'ListCompetitivePositions', 'CreatePriceIntent', 'GetPriceIntent']) {
     assert(html.includes(`data-operation="${operationId}"`), `B24 operation trace missing: ${operationId}`);
   }
   assert(!html.includes('data-operation="SubmitListingIntent"'), 'B24 must not carry listing mutations');
@@ -75,7 +86,10 @@ const controls = [
   ['unavailable population collapsed', (value) => value.split('data-intent-population="unavailable"').join('data-intent-population="unknown"')],
   ['create idempotency dropped', (value) => value.split('data-create-idempotency="Idempotency-Key"').join('')],
   ['provider feedback hidden', (value) => value.split('data-provider-feedback="verbatim"').join('')],
-  ['listing mutation smuggled in', (value) => value.replace('<span data-operation="GetExpectedEconomics">', '<span data-operation="SubmitListingIntent"></span><span data-operation="GetExpectedEconomics">')],
+  ['listing mutation smuggled in', (value) => value.replace('<span data-operation="ListExpectedEconomics">', '<span data-operation="SubmitListingIntent"></span><span data-operation="ListExpectedEconomics">')],
+  ['bulk apply introduced', (value) => value.split('data-row-write="one-intent-per-row"').join('data-row-write="bulk-apply"')],
+  ['row confirm enabled without input', (value) => value.replace('class="btn row-confirm" type="button" data-row-target="\'+esc(l.key)+\'" disabled', 'class="btn row-confirm" type="button" data-row-target="\'+esc(l.key)+\'"')],
+  ['attention filter became client scoring', (value) => value.replace('data-filter-basis="server-facts"', 'data-filter-basis="client-score"')],
 ];
 for (const [label, mutate] of controls) expectFailure(label, mutate);
 

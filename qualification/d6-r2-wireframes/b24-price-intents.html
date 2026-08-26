@@ -10,37 +10,41 @@
 .prototype{padding:8px 12px;border-bottom:1px solid var(--ink);background:#fff;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.prototype-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.prototype select,.prototype button{background:#fff;border:1px solid var(--line);padding:5px 8px}
 .app{min-height:calc(100vh - 42px);display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr)}.sidebar{background:#fff;border-right:1px solid var(--ink);padding:18px 14px;position:sticky;top:0;height:100vh;overflow:auto}.brand{font-weight:800;font-size:17px;padding:0 8px 14px;border-bottom:1px solid var(--line)}.organization-block{padding:14px 6px;border-bottom:1px solid var(--line)}.label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px}.organization-select,.control{width:100%;min-height:38px;background:#fff;border:1px solid var(--ink);padding:7px 9px}.nav-group{margin-top:16px}.group-label{font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--muted);padding:0 8px 4px}.nav-item{width:100%;border:0;background:transparent;text-align:left;padding:8px 9px;min-height:36px}.nav-item.active{background:var(--ink);color:#fff}.nav-item.sub{padding-left:26px;font-size:13px}
 .main{min-width:0;background:#fff}.header{position:sticky;top:0;z-index:3;background:#fff;border-bottom:1px solid var(--ink);padding:10px var(--space);display:flex;gap:10px;align-items:center}.menu-toggle{display:none;background:#fff;border:1px solid var(--ink);width:38px;height:36px}.page-title{font-size:18px;margin:0}.content{max-width:1480px;margin:auto;padding:26px var(--space) 42px}.page-head h1{margin:0 0 5px;font-size:25px}.page-head p{margin:0;color:var(--muted);max-width:900px}
-.state-box,.region,.boundary,.technical{background:#fff;border:1px solid var(--ink);padding:14px}.state-box{border-width:2px;margin-top:18px}.region,.boundary,.technical{margin-top:12px}.boundary{border-style:dashed;border-width:2px}.state-box h2,.region h3,.boundary h3,.technical h3{margin:0 0 5px}.state-box p,.region p,.boundary p,.technical p{margin:0;color:var(--muted)}
-.list-tools{display:flex;justify-content:space-between;gap:10px;align-items:end;margin:20px 0 10px;flex-wrap:wrap}.btn{border:1px solid var(--ink);background:#fff;padding:8px 11px;min-height:38px}.btn.primary{background:var(--ink);color:#fff}.btn:disabled{color:#999;border-color:var(--line);cursor:not-allowed}.notice,.list-state{border:1px dashed var(--line);padding:9px 10px;color:var(--muted);margin-top:10px}.list-state{padding:14px}.list-state h2{margin:0 0 4px;font-size:15px}.list-state p{margin:0}
-table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1px solid var(--line);text-align:left;vertical-align:top;padding:10px}th{font-size:11px;color:var(--muted)}.row-note{font-size:12px;color:var(--muted);margin-top:3px}.tag{display:inline-block;border:1px solid var(--ink);padding:2px 7px;font-size:11px}.tag.dashed{border-style:dashed;color:var(--muted)}.mono{font:12px ui-monospace,monospace}
-.list-wrap{overflow:auto}.list-table{min-width:880px}
-.create-grid{display:grid;grid-template-columns:minmax(280px,1fr) minmax(200px,260px) auto;gap:10px;align-items:end;margin-top:10px}.facts-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}.owner-region{border:1px solid var(--ink);padding:12px}.owner-region h4{margin:0 0 4px}.owner-tag{font-size:10px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}.region-facts{width:100%;border-collapse:collapse;margin-top:8px}.region-facts td{border-bottom:1px dashed var(--line);padding:6px 4px;font-size:13px}.region-facts td:last-child{text-align:right}.region-facts tr:last-child td{border-bottom:0}.action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.tabs{display:flex;gap:0;border-bottom:2px solid var(--ink);margin-top:18px}.tab{border:1px solid var(--line);border-bottom:0;background:#fff;padding:9px 16px;color:var(--muted)}.tab.active{border-color:var(--ink);border-bottom:2px solid #fff;margin-bottom:-2px;color:var(--ink);font-weight:700}
+.state-box,.region,.boundary,.technical{background:#fff;border:1px solid var(--ink);padding:14px}.region,.boundary,.technical{margin-top:12px}.boundary{border-style:dashed;border-width:2px}.region h3,.boundary h3,.technical h3{margin:0 0 5px}.region p,.boundary p,.technical p{margin:0;color:var(--muted)}
+.list-tools{display:flex;gap:10px;align-items:end;margin:14px 0 4px;flex-wrap:wrap}.btn{border:1px solid var(--ink);background:#fff;padding:8px 11px;min-height:38px}.btn.primary{background:var(--ink);color:#fff}.btn:disabled{color:#999;border-color:var(--line);cursor:not-allowed}.notice,.list-state{border:1px dashed var(--line);padding:9px 10px;color:var(--muted);margin-top:10px}.list-state{padding:14px}.list-state h2{margin:0 0 4px;font-size:15px}.list-state p{margin:0}
+table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1px solid var(--line);text-align:left;vertical-align:top;padding:10px}th{font-size:11px;color:var(--muted)}.row-note{font-size:12px;color:var(--muted);margin-top:3px}.tag{display:inline-block;border:1px solid var(--ink);padding:2px 7px;font-size:11px}.tag.dashed{border-style:dashed;color:var(--muted)}.mono{font:12px ui-monospace,monospace}.warn{font-weight:700}
+.list-wrap{overflow:auto}.list-table{min-width:980px}.price-cell{display:flex;gap:6px;align-items:center}.price-cell input{width:110px;border:1px solid var(--ink);padding:6px 8px;min-height:34px;background:#fff}
+.create-grid{display:grid;grid-template-columns:minmax(280px,1fr) minmax(180px,240px) auto;gap:10px;align-items:end;margin-top:10px}
 .effect-box{border:2px dashed var(--ink);padding:12px;margin-top:12px}
 .drawer-backdrop{display:none;border:0}.technical-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}.technical-cell{border:1px dashed var(--line);padding:8px}.technical-cell span{display:block;font-size:10px;color:var(--muted);text-transform:uppercase}.technical-cell strong{font:12px ui-monospace,monospace}.trace{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;font:10px ui-monospace,monospace;color:var(--muted)}.trace span{border:1px solid var(--line);padding:3px 5px}
-@media(max-width:1020px){:root{--sidebar:210px}.create-grid{grid-template-columns:1fr}.facts-grid,.technical-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:760px){:root{--space:14px}.app{display:block}.sidebar{position:fixed;z-index:20;top:0;left:0;width:min(86vw,310px);transform:translateX(-105%);transition:transform .12s linear}.drawer-open .sidebar{transform:translateX(0)}.drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.18);z-index:19;width:100%;height:100%}.drawer-open .drawer-backdrop{display:block}.menu-toggle{display:inline-grid;place-items:center}.facts-grid,.technical-grid{grid-template-columns:1fr}}
+@media(max-width:1020px){:root{--sidebar:210px}.create-grid{grid-template-columns:1fr}.technical-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:760px){:root{--space:14px}.app{display:block}.sidebar{position:fixed;z-index:20;top:0;left:0;width:min(86vw,310px);transform:translateX(-105%);transition:transform .12s linear}.drawer-open .sidebar{transform:translateX(0)}.drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.18);z-index:19;width:100%;height:100%}.drawer-open .drawer-backdrop{display:block}.menu-toggle{display:inline-grid;place-items:center}.technical-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body
   data-p8-status="candidate"
   data-surface="R24"
-  data-b24-role="price-intent-collection-detail-create"
+  data-b24-role="pricing-workbench-and-intent-ledger"
   data-owner="Offering"
   data-read-permission="offering.read"
   data-write-permission="price.manage"
   data-write-principals="H-A"
   data-create-idempotency="Idempotency-Key"
   data-price-change="supersede-only"
+  data-row-write="one-intent-per-row"
   data-repricing-engine="none"
+  data-views="decide intents"
+  data-workbench-composition="page-level-owner-collections"
   data-context-facts-kind="inline-read-only"
   data-ambiguous-retry="forbidden"
   data-external-effect="simulated"
-  data-responsive-law="list-create-mobile-stack">
+  data-responsive-law="workbench-mobile-stack">
 <div class="prototype">
-  <div><strong>Protótipo · Preços</strong> — intenções de preço com substituição explícita; efeitos externos apenas simulados.</div>
+  <div><strong>Protótipo · Preços</strong> — mesa de precificação por anúncio + histórico de intenções; efeitos externos apenas simulados.</div>
   <div class="prototype-controls">
-    <label for="listScenario">Resultado da lista</label>
-    <select id="listScenario"><option value="normal">Normal</option><option value="known-empty">Nenhuma intenção</option><option value="unknown">Ainda desconhecido</option><option value="unavailable">Consulta indisponível</option></select>
+    <label for="listScenario">Resultado das consultas</label>
+    <select id="listScenario"><option value="normal">Normal</option><option value="known-empty">Nenhum anúncio/intenção</option><option value="unknown">Ainda desconhecido</option><option value="unavailable">Consulta indisponível</option></select>
     <label for="outcomeScenario">Resultado da nova intenção</label>
     <select id="outcomeScenario"><option value="pending">Pendente</option><option value="applied">Aplicada</option><option value="rejected">Rejeitada</option><option value="ambiguous">Resultado incerto</option></select>
     <button id="reset" type="button">Reiniciar</button>
@@ -74,45 +78,64 @@ table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1p
 
 <div class="content">
   <div class="page-head">
-    <h1>Intenções de preço</h1>
-    <p>Decida e acompanhe o preço de cada anúncio. Mudar preço cria uma nova intenção que substitui a anterior — o histórico do que você pediu é preservado.</p>
+    <h1>Preços</h1>
+    <p>Veja seus anúncios com margem e mercado lado a lado e decida o preço na própria linha. Mudar preço cria uma nova intenção que substitui a anterior — o histórico é preservado.</p>
   </div>
 
-  <section class="region" id="createRegion" data-operation-intent="CreatePriceIntent" data-idempotency="required">
-    <h3>Nova intenção de preço</h3>
-    <p>Escolha o alvo e o preço desejado. A margem prevista e o mercado aparecem ao lado para você decidir; quem calcula é o dono de cada fato.</p>
-    <div class="create-grid">
-      <div><label class="label" for="targetPick">Alvo</label><select id="targetPick" class="control"><option value="">Selecione…</option><option value="t1">Torneira monocomando Deca (anúncio MLB-3849201 · ML Conta A)</option><option value="t2">Cuba inox 50 cm (anúncio MLB-2214977 · ML Conta A)</option><option value="t3">Torneira monocomando · SKU 42664 (anúncio ainda não criado)</option></select></div>
-      <div><label class="label" for="priceInput">Preço desejado (R$)</label><input id="priceInput" class="control" type="number" step="0.01" min="0" placeholder="0,00"></div>
-      <button id="createIntent" class="btn primary" type="button" disabled>Criar intenção de preço</button>
-    </div>
-    <div id="supersedeNote" class="notice hidden" data-price-change="supersede-only"><strong>Este alvo já tem uma intenção ativa (R$ 389,90).</strong><div class="row-note">A nova intenção substituirá a atual; a anterior fica no histórico como "substituída". Preço não é editado no lugar.</div></div>
-    <div class="facts-grid">
-      <div class="owner-region" data-region-owner="Market" data-knowledge-state="known"><span class="owner-tag">Mercado</span><h4>Posição competitiva</h4><table class="region-facts" data-region-facts><tbody><tr><td>Faixa dos comparáveis</td><td><strong>R$ 359 – R$ 419</strong></td></tr><tr><td>Sua posição no preço digitado</td><td><strong id="marketPosition">—</strong></td></tr></tbody></table><div class="action-row"><button class="btn nav-continuation" type="button" data-continuation="market">Ver em Mercado</button></div></div>
-      <div class="owner-region" data-region-owner="Economics" data-knowledge-state="known"><span class="owner-tag">Economia</span><h4>Margem prevista</h4><table class="region-facts" data-region-facts><tbody><tr><td>No preço digitado</td><td><strong id="marginPreview">—</strong></td></tr><tr><td>Cenário</td><td>Custos e tarifas atuais</td></tr></tbody></table><div class="action-row"><button class="btn nav-continuation" type="button" data-continuation="economics">Ver em Economia</button></div></div>
-    </div>
-    <p class="small">Resumo somente-leitura do que já foi consultado: nenhuma ação destas áreas acontece aqui, e nenhum preço é calculado ou aplicado automaticamente.</p>
-  </section>
+  <div class="tabs" role="tablist">
+    <button class="tab active" id="tabDecide" role="tab" aria-selected="true" data-view="decide">Decidir</button>
+    <button class="tab" id="tabIntents" role="tab" aria-selected="false" data-view="intents">Intenções</button>
+  </div>
 
-  <section id="effectHost"></section>
-
-  <section id="listRegion" class="region">
-    <h3>Intenções desta organização</h3>
-    <div id="listUnknown" class="list-state hidden" data-intent-population="unknown" role="status"><h2>Intenções ainda desconhecidas</h2><p>Ainda não foi possível determinar quais intenções de preço existem.</p></div>
-    <div id="listUnavailable" class="list-state hidden" data-intent-population="unavailable" role="status"><h2>Consulta indisponível</h2><p>Não conseguimos consultar as intenções agora. Isso não significa que não existam intenções.</p></div>
-    <div id="listKnownEmpty" class="list-state hidden" data-intent-population="known" data-intent-count="0" role="status"><h2>Nenhuma intenção de preço</h2><p>A consulta foi concluída e não há intenções nesta organização.</p></div>
-    <div id="listHost" data-intent-population="known">
+  <section id="decideView">
+    <div class="list-tools">
+      <div><label class="label" for="accountFilter">Conta do marketplace</label><select id="accountFilter" class="control" style="min-width:220px"><option value="all">Todas as contas</option><option value="ml-a">Mercado Livre · Conta A</option></select></div>
+      <label style="display:flex;gap:6px;align-items:center;margin-bottom:8px"><input type="checkbox" id="attentionOnly" data-filter-basis="server-facts"> Só quem precisa de atenção (margem baixa ou fora da faixa)</label>
+    </div>
+    <div id="wbUnknown" class="list-state hidden" data-workbench-population="unknown" role="status"><h2>Anúncios ainda desconhecidos</h2><p>Ainda não foi possível compor a mesa de precificação.</p></div>
+    <div id="wbUnavailable" class="list-state hidden" data-workbench-population="unavailable" role="status"><h2>Consulta indisponível</h2><p>Não conseguimos consultar agora. Isso não significa que não existam anúncios.</p></div>
+    <div id="wbKnownEmpty" class="list-state hidden" data-workbench-population="known" data-workbench-count="0" role="status"><h2>Nenhum anúncio para precificar</h2><p>A consulta foi concluída e não há anúncios observados nesta seleção.</p></div>
+    <div id="wbHost" data-workbench-population="known">
       <div class="list-wrap">
-      <table class="list-table" aria-label="Intenções de preço">
-        <thead><tr><th>Alvo</th><th>Preço desejado</th><th>Situação</th><th>Convergência</th></tr></thead>
-        <tbody id="listBody"></tbody>
+      <table class="list-table" aria-label="Mesa de precificação">
+        <thead><tr><th>Anúncio</th><th>Preço atual</th><th>Margem</th><th>Mercado</th><th>Intenção ativa</th><th>Novo preço</th></tr></thead>
+        <tbody id="wbBody"></tbody>
       </table>
       </div>
-      <div class="notice" data-collection-grammar="cursor">Lista paginada por cursor conforme a coleção do Produto; sem reprecificação em massa e sem visões salvas.</div>
+      <div class="notice" data-collection-grammar="cursor">Grade composta das coleções dos donos (anúncios, intenções, economia, mercado), paginada por cursor. Cada linha grava uma intenção explícita; <strong>sem reprecificação em massa</strong> e sem visões salvas.</div>
+      <p class="small">Margem e mercado são fatos somente-leitura dos seus donos: nenhum preço é calculado ou aplicado automaticamente. Preço não é editado no lugar.</p>
     </div>
+    <div id="effectHost"></div>
   </section>
 
-  <div class="action-row"><button id="technicalToggle" class="btn" type="button" aria-expanded="false" aria-controls="technicalDetails">Ver detalhes técnicos</button></div>
+  <section id="intentsView" class="hidden">
+    <section class="region" id="createRegion" data-operation-intent="CreatePriceIntent" data-idempotency="required">
+      <h3>Intenção para anúncio ainda não criado</h3>
+      <p>Caso especial: defina o preço antes de o anúncio existir (alvo pré-criação, vindo das intenções de anúncio).</p>
+      <div class="create-grid">
+        <div><label class="label" for="targetPick">Alvo pré-criação</label><select id="targetPick" class="control"><option value="">Selecione…</option><option value="t3">Torneira monocomando · SKU 42664 (anúncio ainda não criado)</option></select></div>
+        <div><label class="label" for="priceInput">Preço desejado (R$)</label><input id="priceInput" class="control" type="number" step="0.01" min="0" placeholder="0,00"></div>
+        <button id="createIntent" class="btn primary" type="button" disabled>Criar intenção de preço</button>
+      </div>
+    </section>
+    <section class="region">
+      <h3>Histórico de intenções</h3>
+      <div id="listUnknown" class="list-state hidden" data-intent-population="unknown" role="status"><h2>Intenções ainda desconhecidas</h2><p>Ainda não foi possível determinar quais intenções de preço existem.</p></div>
+      <div id="listUnavailable" class="list-state hidden" data-intent-population="unavailable" role="status"><h2>Consulta indisponível</h2><p>Não conseguimos consultar as intenções agora. Isso não significa que não existam intenções.</p></div>
+      <div id="listKnownEmpty" class="list-state hidden" data-intent-population="known" data-intent-count="0" role="status"><h2>Nenhuma intenção de preço</h2><p>A consulta foi concluída e não há intenções nesta organização.</p></div>
+      <div id="listHost" data-intent-population="known">
+        <div class="list-wrap">
+        <table class="list-table" aria-label="Intenções de preço">
+          <thead><tr><th>Alvo</th><th>Preço desejado</th><th>Situação</th><th>Convergência</th></tr></thead>
+          <tbody id="listBody"></tbody>
+        </table>
+        </div>
+        <div class="notice" data-collection-grammar="cursor">Lista paginada por cursor conforme a coleção do Produto.</div>
+      </div>
+    </section>
+  </section>
+
+  <div class="list-tools"><button id="technicalToggle" class="btn" type="button" aria-expanded="false" aria-controls="technicalDetails">Ver detalhes técnicos</button></div>
 </div>
 </main>
 </div>
@@ -125,6 +148,8 @@ table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1p
     <div class="technical-cell"><span>write identity</span><strong>canonical target refs only</strong></div>
     <div class="technical-cell"><span>create idempotency</span><strong>Idempotency-Key</strong></div>
     <div class="technical-cell"><span>price change law</span><strong>supersede, never edit</strong></div>
+    <div class="technical-cell"><span>row write law</span><strong>one explicit intent per row</strong></div>
+    <div class="technical-cell"><span>workbench composition</span><strong>page-level owner collections</strong></div>
     <div class="technical-cell"><span>states</span><strong>pending/applied/rejected/ambiguous/superseded</strong></div>
     <div class="technical-cell"><span>convergence</span><strong>pending/converged/divergent/unknown/n-a</strong></div>
     <div class="technical-cell"><span>ambiguous law</span><strong>verify, never blind retry</strong></div>
@@ -132,51 +157,66 @@ table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1p
     <div class="technical-cell"><span>repricing engine</span><strong>none</strong></div>
   </div>
   <div class="trace">
+    <span data-operation="ListMarketplaceListings">ListMarketplaceListings</span>
     <span data-operation="ListPriceIntents">ListPriceIntents</span>
+    <span data-operation="ListExpectedEconomics">ListExpectedEconomics</span>
+    <span data-operation="ListCompetitivePositions">ListCompetitivePositions</span>
     <span data-operation="CreatePriceIntent">CreatePriceIntent</span>
     <span data-operation="GetPriceIntent">GetPriceIntent</span>
-    <span data-operation="GetCompetitivePosition">GetCompetitivePosition</span>
-    <span data-operation="GetExpectedEconomics">GetExpectedEconomics</span>
     <span>target_presentation</span><span>supersedes_price_intent_id</span><span>cursor collection</span><span>inline read-only context facts</span>
   </div>
 </section>
 
 <script>
-const organization=document.getElementById('organization'),listScenario=document.getElementById('listScenario'),outcomeScenario=document.getElementById('outcomeScenario'),listBody=document.getElementById('listBody'),listHost=document.getElementById('listHost'),listKnownEmpty=document.getElementById('listKnownEmpty'),listUnknown=document.getElementById('listUnknown'),listUnavailable=document.getElementById('listUnavailable'),targetPick=document.getElementById('targetPick'),priceInput=document.getElementById('priceInput'),createIntent=document.getElementById('createIntent'),supersedeNote=document.getElementById('supersedeNote'),marketPosition=document.getElementById('marketPosition'),marginPreview=document.getElementById('marginPreview'),effectHost=document.getElementById('effectHost'),technicalToggle=document.getElementById('technicalToggle'),technicalDetails=document.getElementById('technicalDetails'),menu=document.getElementById('menu'),backdrop=document.getElementById('backdrop');
-let created=null;
+const organization=document.getElementById('organization'),listScenario=document.getElementById('listScenario'),outcomeScenario=document.getElementById('outcomeScenario'),tabDecide=document.getElementById('tabDecide'),tabIntents=document.getElementById('tabIntents'),decideView=document.getElementById('decideView'),intentsView=document.getElementById('intentsView'),accountFilter=document.getElementById('accountFilter'),attentionOnly=document.getElementById('attentionOnly'),wbBody=document.getElementById('wbBody'),wbHost=document.getElementById('wbHost'),wbKnownEmpty=document.getElementById('wbKnownEmpty'),wbUnknown=document.getElementById('wbUnknown'),wbUnavailable=document.getElementById('wbUnavailable'),listBody=document.getElementById('listBody'),listHost=document.getElementById('listHost'),listKnownEmpty=document.getElementById('listKnownEmpty'),listUnknown=document.getElementById('listUnknown'),listUnavailable=document.getElementById('listUnavailable'),targetPick=document.getElementById('targetPick'),priceInput=document.getElementById('priceInput'),createIntent=document.getElementById('createIntent'),effectHost=document.getElementById('effectHost'),technicalToggle=document.getElementById('technicalToggle'),technicalDetails=document.getElementById('technicalDetails'),menu=document.getElementById('menu'),backdrop=document.getElementById('backdrop');
 const stateLabels={pending:'Pendente',applied:'Aplicada',rejected:'Rejeitada',ambiguous:'Resultado incerto',superseded:'Substituída'};
 const convLabels={pending:'Aguardando',converged:'Anúncio já reflete',divergent:'Divergente',unknown:'Ainda não determinável',not_applicable:'—'};
+const listings=[
+ {key:'MLB-3849201',name:'Torneira monocomando Deca cromada',account:'ml-a',price:389.90,cost:318,market:{low:359,high:419,pos:'2ª mais barata'},intent:null,attention:false},
+ {key:'MLB-2214977',name:'Cuba inox 50 cm com válvula',account:'ml-a',price:249.00,cost:226,market:{low:199,high:239,pos:'acima da faixa'},intent:{price:'R$ 239,00',state:'pending'},attention:true},
+ {key:'MLB-1093310',name:'Kit misturador cozinha parede',account:'ml-a',price:189.00,cost:171,market:{low:179,high:219,pos:'dentro da faixa'},intent:null,attention:true}
+];
 const intents=[
- {target:'Torneira monocomando Deca · MLB-3849201 · ML Conta A',price:'R$ 389,90',state:'applied',conv:'converged'},
  {target:'Cuba inox 50 cm · MLB-2214977 · ML Conta A',price:'R$ 239,00',state:'pending',conv:'pending'},
  {target:'Torneira monocomando · SKU 42664 · anúncio ainda não criado',price:'R$ 399,90',state:'superseded',conv:'not_applicable',note:'Substituída por uma intenção mais recente.'},
- {target:'Kit misturador cozinha · MLB-1093310 · ML Conta A',price:'R$ 189,00',state:'rejected',conv:'divergent',note:'Marketplace rejeitou: preço abaixo do mínimo da categoria.'}
+ {target:'Kit misturador cozinha · MLB-1093310 · ML Conta A',price:'R$ 150,00',state:'rejected',conv:'divergent',note:'Marketplace rejeitou: preço abaixo do mínimo da categoria.'}
 ];
+let createdRows=[];
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function money(n){return 'R$ '+n.toFixed(2).replace('.',',');}
+function margin(l){return ((l.price-l.cost)/l.price)*100;}
 function openDrawer(){document.body.classList.add('drawer-open');menu.setAttribute('aria-expanded','true');}
 function closeDrawer(returnFocus=true){document.body.classList.remove('drawer-open');menu.setAttribute('aria-expanded','false');if(returnFocus)menu.focus();}
-function row(i){return '<tr data-price-state="'+esc(i.state)+'"><td><strong>'+esc(i.target)+'</strong>'+(i.note?'<div class="row-note">'+esc(i.note)+'</div>':'')+'</td><td>'+esc(i.price)+'</td><td><span class="tag'+(i.state==='pending'||i.state==='applied'?'':' dashed')+'">'+stateLabels[i.state]+'</span></td><td data-convergence="'+esc(i.conv)+'">'+convLabels[i.conv]+'</td></tr>';}
-function renderList(){listBody.innerHTML='';listKnownEmpty.classList.add('hidden');listUnknown.classList.add('hidden');listUnavailable.classList.add('hidden');listHost.classList.add('hidden');if(listScenario.value==='unknown'){listUnknown.classList.remove('hidden');return}if(listScenario.value==='unavailable'){listUnavailable.classList.remove('hidden');return}let items=listScenario.value==='known-empty'?[]:(created?[created,...intents]:intents);if(!items.length){listKnownEmpty.classList.remove('hidden');return}listHost.classList.remove('hidden');listBody.innerHTML=items.map(row).join('');}
-function refreshCreateGate(){const price=parseFloat(priceInput.value);const ok=!!targetPick.value&&price>0;createIntent.disabled=!ok;supersedeNote.classList.toggle('hidden',targetPick.value!=='t1');if(price>0){marketPosition.textContent=price<359?'Abaixo da faixa':price>419?'Acima da faixa':'Dentro da faixa · 2ª mais barata';marginPreview.textContent=(((price-318)/price)*100).toFixed(1).replace('.',',')+'%';}else{marketPosition.textContent='—';marginPreview.textContent='—';}}
-function renderEffect(state){const price='R$ '+Number(priceInput.value||0).toFixed(2).replace('.',',');let html='';if(state==='pending')html='<h3>Intenção criada · pendente</h3><p>O pedido foi aceito para processamento; aguardando o resultado do marketplace.</p><div class="action-row"><button class="btn" id="verifyPrice" type="button" data-verify-action="authoritative-reread">Verificar situação atual</button></div>';
+function showView(v){const decide=v==='decide';decideView.classList.toggle('hidden',!decide);intentsView.classList.toggle('hidden',decide);tabDecide.classList.toggle('active',decide);tabIntents.classList.toggle('active',!decide);tabDecide.setAttribute('aria-selected',String(decide));tabIntents.setAttribute('aria-selected',String(!decide));}
+function wbRow(l){const m=margin(l);const low=m<12;const out=l.price>l.market.high||l.price<l.market.low;const intent=l.intent?'<span class="tag'+(l.intent.state==='pending'?'':' dashed')+'">'+esc(l.intent.price)+' · '+stateLabels[l.intent.state]+'</span>':'<span class="small">—</span>';
+return '<tr data-listing="'+esc(l.key)+'" data-attention="'+String(low||out)+'"><td><strong>'+esc(l.name)+'</strong><div class="row-note">ML Conta A · '+esc(l.key)+'</div></td><td>'+money(l.price)+'</td><td data-fact-owner="Economics"'+(low?' class="warn"':'')+'>'+m.toFixed(1).replace('.',',')+'%'+(low?' ⚠':'')+'</td><td data-fact-owner="Market"'+(out?' class="warn"':'')+'>'+esc(l.market.pos)+'<div class="row-note">Faixa R$ '+l.market.low+' – R$ '+l.market.high+'</div></td><td>'+intent+'</td><td class="price-cell"><input type="number" step="0.01" min="0" aria-label="Novo preço para '+esc(l.name)+'" data-row-price="'+esc(l.key)+'"><button class="btn row-confirm" type="button" data-row-target="'+esc(l.key)+'" disabled>✓</button>'+(l.intent?'<div class="row-note" data-price-change="supersede-only">Substituirá a intenção atual.</div>':'')+'</td></tr>';}
+function renderWorkbench(){wbBody.innerHTML='';wbKnownEmpty.classList.add('hidden');wbUnknown.classList.add('hidden');wbUnavailable.classList.add('hidden');wbHost.classList.add('hidden');if(listScenario.value==='unknown'){wbUnknown.classList.remove('hidden');return}if(listScenario.value==='unavailable'){wbUnavailable.classList.remove('hidden');return}let items=listScenario.value==='known-empty'?[]:listings.filter(l=>(accountFilter.value==='all'||l.account===accountFilter.value));if(attentionOnly.checked)items=items.filter(l=>{const m=margin(l);return m<12||l.price>l.market.high||l.price<l.market.low;});if(!items.length){wbKnownEmpty.classList.remove('hidden');return}wbHost.classList.remove('hidden');wbBody.innerHTML=items.map(wbRow).join('');bindWorkbench();}
+function bindWorkbench(){document.querySelectorAll('[data-row-price]').forEach(inp=>{inp.oninput=()=>{const b=document.querySelector('.row-confirm[data-row-target="'+inp.dataset.rowPrice+'"]');if(b)b.disabled=!(parseFloat(inp.value)>0);};});document.querySelectorAll('.row-confirm').forEach(b=>{b.onclick=()=>{if(b.disabled)return;const key=b.dataset.rowTarget;const inp=document.querySelector('[data-row-price="'+key+'"]');const l=listings.find(x=>x.key===key);confirmIntent(l.name+' · '+key+' · ML Conta A',parseFloat(inp.value),l);};});}
+function intentRow(i){return '<tr data-price-state="'+esc(i.state)+'"><td><strong>'+esc(i.target)+'</strong>'+(i.note?'<div class="row-note">'+esc(i.note)+'</div>':'')+'</td><td>'+esc(i.price)+'</td><td><span class="tag'+(i.state==='pending'||i.state==='applied'?'':' dashed')+'">'+stateLabels[i.state]+'</span></td><td data-convergence="'+esc(i.conv)+'">'+convLabels[i.conv]+'</td></tr>';}
+function renderIntents(){listBody.innerHTML='';listKnownEmpty.classList.add('hidden');listUnknown.classList.add('hidden');listUnavailable.classList.add('hidden');listHost.classList.add('hidden');if(listScenario.value==='unknown'){listUnknown.classList.remove('hidden');return}if(listScenario.value==='unavailable'){listUnavailable.classList.remove('hidden');return}let items=listScenario.value==='known-empty'?[]:[...createdRows,...intents];if(!items.length){listKnownEmpty.classList.remove('hidden');return}listHost.classList.remove('hidden');listBody.innerHTML=items.map(intentRow).join('');}
+function confirmIntent(targetLabel,price,listing){const st=outcomeScenario.value;const rec={target:targetLabel,price:money(price),state:st==='ambiguous'?'ambiguous':st,conv:st==='applied'?'converged':st==='ambiguous'?'unknown':'pending',note:listing&&listing.intent?'Substitui a intenção anterior ('+listing.intent.price+').':''};createdRows.unshift(rec);if(listing)listing.intent={price:money(price),state:rec.state==='applied'?'applied':'pending'};renderEffect(st,targetLabel,price,rec);renderWorkbench();renderIntents();}
+function renderEffect(state,targetLabel,price,rec){let html='';if(state==='pending')html='<h3>Intenção criada · pendente</h3><p>O pedido foi aceito para processamento; aguardando o resultado do marketplace.</p><div class="list-tools"><button class="btn" id="verifyPrice" type="button" data-verify-action="authoritative-reread">Verificar situação atual</button></div>';
 if(state==='applied')html='<h3>Preço aplicado</h3><p>O marketplace aplicou o preço desejado.</p><p class="small" data-convergence="converged">Convergência: o anúncio observado já reflete o preço.</p>';
-if(state==='rejected')html='<h3>Preço rejeitado</h3><p>O marketplace rejeitou o pedido.</p><div class="notice" data-provider-feedback="verbatim"><strong>Retorno do marketplace</strong><div class="row-note">Preço abaixo do mínimo permitido para a categoria.</div></div><div class="action-row"><button class="btn" id="resubstitute" type="button">Criar intenção substituta</button></div>';
-if(state==='ambiguous')html='<h3>Resultado incerto</h3><p>Enviamos o pedido, mas não foi possível confirmar se o marketplace o recebeu.</p><div class="action-row"><button class="btn" id="verifyPrice" type="button" data-verify-action="authoritative-reread">Verificar situação atual</button></div><p class="small" data-ambiguous-retry="forbidden">Resultado incerto nunca é reenviado às cegas: primeiro verificamos a situação atual.</p>';
-effectHost.innerHTML='<section class="effect-box" data-external-effect-state="'+esc(state)+'">'+html+'<p class="small">Intenção: '+esc(targetPick.options[targetPick.selectedIndex].text)+' · '+esc(price)+'. Nenhum efeito real acontece neste protótipo.</p></section>';
-const v=document.getElementById('verifyPrice');if(v)v.onclick=()=>{renderEffect('applied');if(created){created.state='applied';created.conv='converged';renderList();}};
-const r=document.getElementById('resubstitute');if(r)r.onclick=()=>{effectHost.innerHTML='';priceInput.focus();};}
-createIntent.onclick=()=>{if(createIntent.disabled)return;const st=outcomeScenario.value;created={target:targetPick.options[targetPick.selectedIndex].text,price:'R$ '+Number(priceInput.value).toFixed(2).replace('.',','),state:st==='ambiguous'?'ambiguous':st,conv:st==='applied'?'converged':st==='ambiguous'?'unknown':'pending',note:targetPick.value==='t1'?'Substitui a intenção anterior (R$ 389,90).':''};renderEffect(st);renderList();};
+if(state==='rejected')html='<h3>Preço rejeitado</h3><p>O marketplace rejeitou o pedido.</p><div class="notice" data-provider-feedback="verbatim"><strong>Retorno do marketplace</strong><div class="row-note">Preço abaixo do mínimo permitido para a categoria.</div></div><div class="list-tools"><button class="btn" id="resubstitute" type="button">Criar intenção substituta</button></div>';
+if(state==='ambiguous')html='<h3>Resultado incerto</h3><p>Enviamos o pedido, mas não foi possível confirmar se o marketplace o recebeu.</p><div class="list-tools"><button class="btn" id="verifyPrice" type="button" data-verify-action="authoritative-reread">Verificar situação atual</button></div><p class="small" data-ambiguous-retry="forbidden">Resultado incerto nunca é reenviado às cegas: primeiro verificamos a situação atual.</p>';
+effectHost.innerHTML='<section class="effect-box" data-external-effect-state="'+esc(state)+'">'+html+'<p class="small">Intenção: '+esc(targetLabel)+' · '+esc(money(price))+'. Nenhum efeito real acontece neste protótipo.</p></section>';
+const v=document.getElementById('verifyPrice');if(v)v.onclick=()=>{rec.state='applied';rec.conv='converged';renderEffect('applied',targetLabel,price,rec);renderWorkbench();renderIntents();};
+const r=document.getElementById('resubstitute');if(r)r.onclick=()=>{effectHost.innerHTML='';};}
+function refreshCreateGate(){createIntent.disabled=!(targetPick.value&&parseFloat(priceInput.value)>0);}
+createIntent.onclick=()=>{if(createIntent.disabled)return;confirmIntent(targetPick.options[targetPick.selectedIndex].text,parseFloat(priceInput.value),null);showView('intents');};
 targetPick.onchange=refreshCreateGate;priceInput.oninput=refreshCreateGate;
-listScenario.onchange=renderList;
+tabDecide.onclick=()=>showView('decide');tabIntents.onclick=()=>showView('intents');
+accountFilter.onchange=renderWorkbench;attentionOnly.onchange=renderWorkbench;
+listScenario.onchange=()=>{renderWorkbench();renderIntents();};
 outcomeScenario.onchange=()=>{};
-organization.onchange=()=>{created=null;effectHost.innerHTML='';renderList();};
-document.getElementById('reset').onclick=()=>{created=null;effectHost.innerHTML='';targetPick.value='';priceInput.value='';listScenario.value='normal';outcomeScenario.value='pending';refreshCreateGate();renderList();};
+organization.onchange=()=>{createdRows=[];effectHost.innerHTML='';renderWorkbench();renderIntents();};
+document.getElementById('reset').onclick=()=>{createdRows=[];effectHost.innerHTML='';listScenario.value='normal';outcomeScenario.value='pending';accountFilter.value='all';attentionOnly.checked=false;targetPick.value='';priceInput.value='';listings[0].intent=null;refreshCreateGate();showView('decide');renderWorkbench();renderIntents();};
 function toggleTechnical(){const opening=technicalDetails.classList.contains('hidden');technicalDetails.classList.toggle('hidden',!opening);technicalToggle.setAttribute('aria-expanded',String(opening));if(opening)technicalDetails.scrollIntoView({block:'nearest'});}
 technicalToggle.onclick=toggleTechnical;
 menu.onclick=()=>document.body.classList.contains('drawer-open')?closeDrawer():openDrawer();
 backdrop.onclick=()=>closeDrawer();
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.body.classList.contains('drawer-open'))closeDrawer();});
-refreshCreateGate();renderList();
+refreshCreateGate();showView('decide');renderWorkbench();renderIntents();
 </script>
 </body>
 </html>

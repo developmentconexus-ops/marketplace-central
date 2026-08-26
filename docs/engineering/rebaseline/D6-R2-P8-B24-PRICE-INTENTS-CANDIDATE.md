@@ -37,7 +37,15 @@ The bounded B24 P8 structural design was adjudicated in chat on 2026-08-26 and *
 - browser-operated flow (Chromium): create gate (target+price explicit) → supersede notice on an already-priced target → live market-position/margin facts at the typed price → create → pending → verify resolves to applied and the list updates → ambiguous shows the verification-only law → rejected shows verbatim feedback + substitute path → population states distinct;
 - 390px viewport: no horizontal document overflow; mobile drawer law active; browser console: **0** warnings/errors.
 
-## 4. P8 operator gate
+## 4. Revision 2 — pricing workbench (operator-aligned, 2026-08-26)
+
+The operator's walkthrough of revision 1 found the intent-first shape non-dynamic for the real pricing job ("one target at a time"). The alignment conversation approved a listing-centric restructure, verified as PRESENT-IN-AUTHORITY (the workbench composes the existing cursor collections — listings, price intents, expected economics, competitive positions — page-level, with no N+1 and no new endpoint):
+
+- **two fixed views** (not a saved-view platform): **Decidir** (default) — the pricing workbench: one row per listing with current price, Economics margin fact, Market range/position fact, active intent, and an inline "new price" input with an explicit per-row confirm (`data-row-write="one-intent-per-row"`); attention filter projects server facts (low margin / out of range); **Intenções** — the intent ledger (states, supersessions, outcomes) plus the pre-creation special case;
+- the per-row confirm creates a normal PriceIntent (Idempotency-Key, supersede law, honest outcome flow) — bulk apply remains rejected;
+- verifier extended to **13/13 negative controls** (bulk apply, premature row confirm, client-scored attention filter, listing-mutation smuggling); browser proof re-passed end to end (default view, attention filter, inline confirm → pending → verify → applied reflected in row and ledger, workbench population honesty) with **0 console issues** and no 390px overflow.
+
+## 5. P8 operator gate
 
 Current disposition:
 
@@ -49,6 +57,6 @@ LOCK / REVISE / UPSTREAM FINDING
 
 The assistant, verifier and reviewer cannot set `LOCKED`. P9 must not run for B24 until the operator explicitly LOCKs this candidate.
 
-## 5. Reopen triggers
+## 6. Reopen triggers
 
 Reopen only if operation of this candidate proves that: the supersede model cannot express a real pricing decision; a required pricing fact is missing from the reads; per-variation pricing is materially required (would be a new upstream finding against PriceIntent targets); or responsive/accessible operation cannot preserve the pricing job.
