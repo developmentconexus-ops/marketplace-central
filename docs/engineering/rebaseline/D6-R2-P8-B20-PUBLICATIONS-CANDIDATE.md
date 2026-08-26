@@ -51,7 +51,17 @@ P6/P7 remain NOT TRIGGERED per P5: conventional collection/detail with authority
 - 390px viewport: no horizontal document overflow; mobile drawer navigation law active;
 - browser console warnings/errors: **0**.
 
-## 5. P8 operator gate
+## 5. Revision 2 — operator walkthrough round 1 (`REVISE`, 2026-08-26)
+
+The operator's first walkthrough returned `REVISE` with three findings; all three were adjudicated and the revised design approved in chat:
+
+1. **Source-product identity in R20 (upstream repair executed).** The Listing reads carried no source-product identity, so an operator could not recognize their own SKU/reference. This reused the accepted PR #70 pattern: the OAD gained a required typed `source_product_link` on `MarketplaceListingListItem` and `MarketplaceListing` — `resolved` (SourceProductRef + `SourceProductPresentation` with display name/SKU/GTIN/source instance), `unresolved`, `unknown`, `unavailable`. Product surface remains **106/31/H-A-S**; no operation, path or Permission changed; the repair is protected by `verify-human-operable-read-projection.mjs`. The R20 table now carries a `Seu produto` column (name + SKU + source), with honest unresolved/unknown/unavailable states, and unresolved routes the human to Preparação.
+2. **Richer observed detail (no wire change needed).** The wire already carried more than the first candidate rendered. The detail now shows publication context (category/product type), the full observed-field census including `not_applicable`, an observed-media gallery with per-item availability, and provenance with evidence custody.
+3. **Faster in-context inspection (read-only peek).** Region continuations felt navigation-heavy. Following the common platform side-peek pattern, each owner region gained `Ver rápido`: a read-only slide-over summary (`data-peek-kind="read-only-summary"`, `data-peek-writes="none"`) that closes on Esc/backdrop and contains the `Abrir na área responsável` continuation. The peek renders only already-consulted owner reads, respects degraded region states, and grants no mutation authority — it is LOCAL_EPHEMERAL disclosure state only.
+
+Revised proof: verifier **10/10 negative controls** (adds source-link collapse and peek-write widening controls); browser operation re-passed end to end (SKU filtering, subject link line, 9-row observed census, media gallery, peek open/Esc/degraded/mobile) with **0 console issues** and no 390px overflow.
+
+## 6. P8 operator gate
 
 Current disposition:
 
@@ -63,7 +73,7 @@ LOCK / REVISE / UPSTREAM FINDING
 
 The assistant, verifier and reviewer cannot set `LOCKED`. P9 must not run for B20 until the operator explicitly LOCKs this candidate.
 
-## 6. Reopen triggers
+## 7. Reopen triggers
 
 Reopen only if operation of this candidate proves that:
 

@@ -44,6 +44,21 @@ function validate(html) {
   assert(html.includes('data-continuation-kind="navigation-only"'), 'ListingIntent continuation must be navigation-only');
   assert(html.includes('nenhum rascunho foi criado por esta navegação'), 'boundary must state that navigation creates nothing');
 
+  // Source-product link: typed states, SKU shown only from resolved presentation, never a write carrier.
+  assert(html.includes('data-source-link-read="source_product_link"'), 'source_product_link read binding missing');
+  for (const state of ['resolved', 'unresolved', 'unknown', 'unavailable']) {
+    assert(html.includes(`data-source-link-state="${state}"`), `source link state missing: ${state}`);
+  }
+  assert(html.includes('Seu produto'), 'human source-product column missing');
+  assert(html.includes('SKU '), 'resolved source link must show the SKU');
+  assert(html.includes('Defina o vínculo na Preparação.'), 'unresolved link must route to Preparação, not invent a link');
+  assert(!html.includes('data-source-link-write'), 'source link must never become write authority');
+
+  // Peek panel: read-only summary, never a second mutation surface.
+  assert(html.includes('data-peek-kind="read-only-summary"'), 'peek panel must be a read-only summary');
+  assert(html.includes('data-peek-writes="none"'), 'peek panel must declare no writes');
+  assert(html.includes('Espiada somente-leitura'), 'peek read-only law copy missing');
+
   // Collection grammar and boundaries.
   assert(html.includes('data-collection-grammar="cursor"'), 'cursor collection grammar note missing');
   assert(html.includes('sem seleção em massa'), 'bulk-selection rejection missing');
@@ -75,6 +90,8 @@ const controls = [
   ['mutation home introduced', (value) => value.replace('data-mutation-home="none"', 'data-mutation-home="inline"')],
   ['owner separation dropped', (value) => value.replace('data-region-owner="Availability"', 'data-region-owner="Offering"')],
   ['continuation became a draft-creating call', (value) => value.replace('data-continuation-kind="navigation-only"', 'data-continuation-kind="create-draft"') .replace('<span data-operation="GetExpectedEconomics">', '<span data-operation="CreateListingIntentDraft"></span><span data-operation="GetExpectedEconomics">')],
+  ['unresolved source link collapsed into resolved', (value) => value.split('data-source-link-state="unresolved"').join('data-source-link-state="resolved"')],
+  ['peek widened into a write surface', (value) => value.split('data-peek-writes="none"').join('data-peek-writes="inline"')],
 ];
 for (const [label, mutate] of controls) expectFailure(label, mutate);
 

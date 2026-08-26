@@ -13,7 +13,7 @@
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | Main baseline | **PR #75 — B10 correspondence revalidation integrated at `ad06e70cb31c1037b5ffcebc116a57749e4728d4` over the PR #70 read-projection prerequisite; required CI PASS** |
 | Method profile | **local [`engineering-method.md`](development/engineering-method.md) + [`frontend-product-experience-planning-method.md`](development/frontend-product-experience-planning-method.md) v2.3** |
-| Current acceptance increment | **B20 — Publicações core / R20–R21 — OPEN; P8 structural design OPERATOR-APPROVED 2026-08-26; browser-operable candidate rendered; operator walkthrough NEXT** |
+| Current acceptance increment | **B20 — Publicações core / R20–R21 — OPEN; walkthrough round 1 `REVISE` executed (source_product_link OAD repair + richer detail + read-only peek); revised candidate awaits operator walkthrough** |
 | B20 accepted input | **R20 Marketplace Listing collection + exact Installation context; R21 one source-qualified Listing detail with owner-separated material regions; no screen-shaped Product capability** |
 | B20 read contract | **Repaired by PR #70 and revalidated through PR #75: owner-specific typed read projections (Canonical Ref ≠ Current Read Projection ≠ Purpose/Historical Snapshot) are the only admitted human presentation basis** |
 | Prior increment | **B10 — fully LOCKED (correspondence region RE-LOCKED 2026-08-26); P9 PASS / CLOSED; integrated through PR #64 + PR #75** |
