@@ -41,22 +41,38 @@ function validate(html) {
 
   // Owner-evaluated pricing indicators: waterfall, contribution+margin, policy judgment, delivered-price position.
   assert(html.includes('data-evaluation-source="EvaluatePriceScenario"'), 'evaluation must come from the owner operation');
-  assert(html.includes('data-evaluation-trigger="explicit"'), 'evaluation must be explicitly triggered, not per keystroke');
+  assert(html.includes('data-evaluation-trigger="debounced-owner-call"'), 'evaluation must be a debounced owner call');
+  assert(html.includes('data-evaluation-debounce-ms="400"'), 'debounce window binding missing');
+  assert(html.includes('data-client-computation="none"'), 'the screen must declare it computes nothing');
+  assert(html.includes('setTimeout(()=>requestEvaluation(key),DEBOUNCE_MS)'), 'typing must schedule a debounced owner evaluation');
   assert(html.includes('data-waterfall="owner-components"'), 'price waterfall from owner components missing');
   for (const line of ['Tarifa do marketplace', 'Frete que você paga', 'Imposto', 'Promoção', 'Custo do produto', 'Contribuição']) {
     assert(html.includes(line), `waterfall line missing: ${line}`);
   }
   assert(html.includes('data-policy-judgment="owner"'), 'policy judgment must be owner-issued');
   assert(html.includes('data-profitability="'), 'acceptable/below_policy projection missing');
-  assert(html.includes('Margem de contribuição'), 'contribution margin indicator missing');
-  assert(html.includes('Posição no preço entregue'), 'delivered-price position indicator missing');
+  assert(html.includes('Novo preço e margem nova'), 'new-margin column heading missing');
+  assert(html.includes('preço entregue '), 'delivered-price position indicator missing');
   assert(html.includes('data-economics-conclusion='), 'honest economics conclusion states missing');
   assert(html.includes('data-market-evidence="insufficient"') && html.includes('data-market-evidence="unavailable"'), 'honest market evidence states missing');
   assert(html.includes('data-anchor-apply="fills-input-only"'), 'anchors must only fill the input');
   assert(html.includes('data-market-anchor-gate="evidence_sufficiency"') && html.includes('data-anchor-gate="evidence_sufficiency"'), 'market anchor must be gated by evidence sufficiency');
   assert(html.includes('data-anchor-missing="market"'), 'missing-market-anchor explanation required');
   assert(html.includes('Piso da política'), 'policy floor anchor missing');
-  assert(/class="btn small row-eval"[^>]*disabled/.test(html), 'evaluate must stay disabled until a price is typed');
+  // Live indicators while typing, with the current margin preserved.
+  assert(html.includes('data-live-evaluation="'), 'live evaluation region missing');
+  assert(html.includes('data-live-contribution'), 'live contribution/margin indicator missing');
+  assert(html.includes('vs atual '), 'the current margin must stay visible next to the new one');
+  assert(html.includes('data-current-margin-preserved="true"') && html.includes('data-current-margin="known"'), 'current margin column must be preserved');
+  assert(html.includes("' p.p.'") || html.includes('p.p.'), 'percentage-point delta missing');
+  // Market range restored in the column, plus the positional bar on the typed price.
+  assert(html.includes('data-market-range="low-high"'), 'market range must be shown in the Mercado column');
+  assert(html.includes('Faixa entregue: '), 'delivered-price range copy missing');
+  assert(html.includes('class="rangebar"'), 'positional range bar missing');
+  // Waterfall behind an expand/collapse disclosure.
+  assert(html.includes('data-waterfall-disclosure="collapsible"'), 'waterfall disclosure binding missing');
+  assert(/class="disclosure hidden" type="button" data-disclosure-for="[^"]*" aria-expanded="false"/.test(html), 'waterfall disclosure must start collapsed with aria-expanded');
+  assert(html.includes('▸') && html.includes('▾'), 'expand/collapse affordance missing');
 
   // Single create home: the ledger view never creates.
   assert(html.includes('data-create-home="workbench-only"'), 'single create home binding missing');
@@ -114,10 +130,14 @@ const controls = [
   ['listing mutation smuggled in', (value) => value.replace('<span data-operation="ListExpectedEconomics">', '<span data-operation="SubmitListingIntent"></span><span data-operation="ListExpectedEconomics">')],
   ['bulk apply introduced', (value) => value.split('data-row-write="one-intent-per-row"').join('data-row-write="bulk-apply"')],
   ['row confirm enabled without input', (value) => value.replace('<button class="btn small row-confirm" type="button" data-row-target="\'+esc(r.key)+\'" disabled>', '<button class="btn small row-confirm" type="button" data-row-target="\'+esc(r.key)+\'">')],
-  ['evaluate enabled without input', (value) => value.replace('<button class="btn small row-eval" type="button" data-row-eval="\'+esc(r.key)+\'" disabled>', '<button class="btn small row-eval" type="button" data-row-eval="\'+esc(r.key)+\'">')],
   ['attention filter became client scoring', (value) => value.replace('data-filter-basis="server-facts"', 'data-filter-basis="client-score"')],
   ['evaluation detached from the owner operation', (value) => value.split('data-evaluation-source="EvaluatePriceScenario"').join('data-evaluation-source="client-formula"')],
-  ['evaluation fired per keystroke', (value) => value.split('data-evaluation-trigger="explicit"').join('data-evaluation-trigger="keystroke"')],
+  ['evaluation fired per keystroke', (value) => value.split('data-evaluation-trigger="debounced-owner-call"').join('data-evaluation-trigger="keystroke"')],
+  ['debounce removed from typing', (value) => value.replace('setTimeout(()=>requestEvaluation(key),DEBOUNCE_MS)', 'requestEvaluation(key)')],
+  ['screen started computing locally', (value) => value.replace('data-client-computation="none"', 'data-client-computation="local-formula"')],
+  ['current margin dropped in favour of the new one', (value) => value.split('data-current-margin-preserved="true"').join('data-current-margin-preserved="false"')],
+  ['market range removed from the column', (value) => value.split('data-market-range="low-high"').join('data-market-range="none"')],
+  ['waterfall forced always-open', (value) => value.split('data-waterfall-disclosure="collapsible"').join('data-waterfall-disclosure="always-open"')],
   ['policy judgment taken over by the screen', (value) => value.split('data-policy-judgment="owner"').join('data-policy-judgment="client"')],
   ['market anchor ungated from evidence', (value) => value.split('data-anchor-gate="evidence_sufficiency"').join('')],
   ['anchor started auto-applying', (value) => value.split('data-anchor-apply="fills-input-only"').join('data-anchor-apply="auto-submit"')],

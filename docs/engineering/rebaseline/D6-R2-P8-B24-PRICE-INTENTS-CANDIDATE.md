@@ -63,7 +63,19 @@ Honest degradation is rendered throughout: economics `insufficient_evidence` / `
 
 Revised proof: verifier **20/20 negative controls** (adds: evaluation detached from the owner operation, per-keystroke evaluation, screen-owned policy judgment, ungated market anchor, auto-applying anchor, stripped waterfall, ledger regaining a create form, evaluate enabled without input); browser operation re-passed end to end (7-line waterfall, 4 indicators, policy floor anchor filling and re-evaluating at R$ 420,59, market anchor absent with explanation on the insufficient-evidence row, confirm → pending → verify → applied, ledger with zero create controls) with **0 console issues** and no 390px overflow.
 
-## 6. P8 operator gate
+## 6. Revision 4 — live owner evaluation while typing (2026-08-26)
+
+Third operator alignment. The typed-price box was still inert until an explicit click, the Mercado column had lost the price range, and the waterfall was always expanded. Resolved without breaking the "the screen never computes" law:
+
+- **Live evaluation, still owner-owned.** Typing schedules a **debounced** `EvaluatePriceScenario` call (`data-evaluation-trigger="debounced-owner-call"`, `data-evaluation-debounce-ms="400"`, `data-client-computation="none"`): the owner still produces every number, but the operator sees it update as they work instead of clicking. Never per keystroke.
+- **New margin next to the current one.** The row keeps its current contribution/margin column (`data-current-margin-preserved="true"`) and the price cell shows the new contribution + margin with an explicit **percentage-point delta** (`vs atual 9,9% · +4,2 p.p.`), plus the owner policy verdict for the typed price.
+- **Market range restored** in the Mercado column (`Faixa entregue: R$ 237,00 – R$ 289,00`) and a positional bar under the live evaluation showing where the typed delivered price falls inside that range.
+- **Waterfall behind a disclosure** (`▸ / ▾`, `aria-expanded`, `data-waterfall-disclosure="collapsible"`), collapsed by default and holding the reference anchors, so the fast read stays in the row and the detail is one click away.
+- Fixtures were re-based so the demo reads truthfully: an acceptable row, an attention row (below policy and behind), and one with insufficient market evidence — the policy-floor anchor lands exactly on the 12% threshold and *igualar o mais barato* honestly shows 6,4% (below policy), i.e. the real trade-off.
+
+Revised proof: verifier **24/24 negative controls** (adds: debounce removed, screen computing locally, current margin dropped, market range removed, waterfall forced always-open); browser operation re-passed (live update at two different prices, delta in p.p., policy verdict flip at R$ 265, range bar, collapse/expand cycle, anchor refilling and re-evaluating, insufficient-market honesty) with **0 console issues** and no 390px overflow.
+
+## 7. P8 operator gate
 
 Current disposition:
 
@@ -75,6 +87,6 @@ LOCK / REVISE / UPSTREAM FINDING
 
 The assistant, verifier and reviewer cannot set `LOCKED`. P9 must not run for B24 until the operator explicitly LOCKs this candidate.
 
-## 7. Reopen triggers
+## 8. Reopen triggers
 
 Reopen only if operation of this candidate proves that: the supersede model cannot express a real pricing decision; a required pricing fact is missing from the reads; per-variation pricing is materially required (would be a new upstream finding against PriceIntent targets); or responsive/accessible operation cannot preserve the pricing job.
