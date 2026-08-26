@@ -13,7 +13,7 @@
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | Main baseline | **PR #75 — B10 correspondence revalidation integrated at `ad06e70cb31c1037b5ffcebc116a57749e4728d4` over the PR #70 read-projection prerequisite; required CI PASS** |
 | Method profile | **local [`engineering-method.md`](development/engineering-method.md) + [`frontend-product-experience-planning-method.md`](development/frontend-product-experience-planning-method.md) v2.3** |
-| Current acceptance increment | **B20 — Publicações core / R20–R21 — RESUMED / OPEN; P6/P7 NOT TRIGGERED; P8 structural design adjudication NEXT** |
+| Current acceptance increment | **B20 — Publicações core / R20–R21 — OPEN; P8 structural design OPERATOR-APPROVED 2026-08-26; browser-operable candidate rendered; operator walkthrough NEXT** |
 | B20 accepted input | **R20 Marketplace Listing collection + exact Installation context; R21 one source-qualified Listing detail with owner-separated material regions; no screen-shaped Product capability** |
 | B20 read contract | **Repaired by PR #70 and revalidated through PR #75: owner-specific typed read projections (Canonical Ref ≠ Current Read Projection ≠ Purpose/Historical Snapshot) are the only admitted human presentation basis** |
 | Prior increment | **B10 — fully LOCKED (correspondence region RE-LOCKED 2026-08-26); P9 PASS / CLOSED; integrated through PR #64 + PR #75** |
@@ -23,7 +23,7 @@
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
 | Aggregate CI | **one required check / one `npm run gate`; universal checks always run; Product proof is diff-aware and fails safe when reliable changed-surface detection is unavailable** |
-| Exact next action | **Adjudicate the bounded B20 P8 structural design against the repaired Listing read projections. After explicit approval, render the browser-operable R20/R21 candidate and run the operator walkthrough. Do not begin B23, Pre-D9/D9 or Product implementation before the B20 acceptance increment closes and integrates.** |
+| Exact next action | **Operate the browser-operable B20 R20/R21 candidate (`qualification/d6-r2-wireframes/b20-publications.html`) and obtain operator disposition `LOCK / REVISE / UPSTREAM FINDING`. Do not run B20 P9, begin B23, Pre-D9/D9 or Product implementation before explicit LOCK.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -64,9 +64,9 @@
 PR #70 read-projection prerequisite integrated
 → PR #75 B10 correspondence re-LOCK + P9 rerun PASS integrated
 → B20 acceptance increment RESUMED on reanchored PR #69
-→ bounded P8 structural design adjudication   ← CURRENT
-→ render browser-operable R20/R21 candidate only after approval
-→ operator LOCK / REVISE / UPSTREAM FINDING
+→ bounded P8 structural design adjudicated: operator approved (2026-08-26)
+→ browser-operable R20/R21 candidate rendered + proof
+→ operator walkthrough: LOCK / REVISE / UPSTREAM FINDING   ← CURRENT
 → P9 bidirectional Screen Contract
 → P10 pattern consolidation
 → required CI
