@@ -38,6 +38,15 @@ Shape (deliberately write-free):
 
 **Proposed: DEFERRED (Product reason), operator may overrule.** The entry job (find the exact product to prepare/publish) is covered by the locked B10 search; a browsable all-products projection is a convenience whose scale/pagination/refresh semantics deserve their own bounded increment after B23 closes, over the same stored evidence (D3 projection class). Deferral is recorded with a reopen trigger: if operating B10/B20 proves discovery-by-search insufficient for a real catalog size, this becomes the next ratified finding.
 
+## 2A. Hub neutrality clause (explicit)
+
+MPC is a multi-marketplace control plane; C1/C2 are provider-neutral by construction:
+
+- `SearchPublicationContexts` is shaped by the exact Marketplace Installation; the D4 adapter fulfils it with whatever that provider effectively offers (prediction + tree, tree only, or nothing), under the accepted Provider Effective Capability pattern;
+- `suggestion_basis` is a closed typed vocabulary (`provider_prediction | text_search | organization_history`); a provider without prediction simply never emits `provider_prediction`, and a provider without a consultable vocabulary yields honest `unknown/unavailable` population states — never a faked tree;
+- C2 (`organization_history`) is provider-independent and works for every marketplace, including capability-poor ones; equivalence memory is always **per marketplace** ("source category → context in THIS marketplace"), never a cross-marketplace average;
+- per the Provider Richness Invariant, Mercado Livre's richer prediction is used where it exists without becoming required ontology for other providers; Mercado Livre remains only the first proving realization of the adapter.
+
 ## 3. Rejected in all cases
 
 MPC-owned category taxonomy (any level count) as authority; editable product mirror-master; automatic category application without human confirmation; universal cross-marketplace category ontology; provider DTO leakage past the D4 port.
