@@ -38,7 +38,19 @@ All operations are owned by Offering. `ListingIntent` carries `source_product_pr
 - 390px viewport: no horizontal document overflow; mobile drawer navigation law active;
 - browser console warnings/errors: **0**.
 
-## 4. P8 operator gate
+## 4. Revision 2 — P8 resumed after the variations repair (2026-08-26)
+
+The ratified variations upstream finding was repaired (see the [adjudicated design](../../superpowers/specs/2026-08-26-listing-variations-global-maximum-design.md) and the D4-R1 §16 amendment); B23 P8 resumed applying every PRESENT-IN-AUTHORITY disposition from the [P6 study](D6-R2-P6-B23-LISTING-INTENT-REFERENCE-STUDY.md):
+
+- **publication context region** (category/product type with human descriptors; applying context re-evaluates the census);
+- **grouped typed technical sheet**: Obrigatórios with live pendency count → Recomendados → progressive "Exibir todos os campos" for Opcionais/Condicionais; each field rendered by its `value_spec` (text with 60-char title counter, option selects, number+unit, boolean with `not_applicable`, text list, exact decimal);
+- **Variações region**: provider axis vocabulary (`variation_axes`: Cor obrigatório com opções, Voltagem opcional), coordinate-keyed options, per-option SKU-level source product, per-option photos and per-variation-scoped fields; per-option dispatch blockers ("Opção Cor: Inox sem foto") resolve interactively; price/quantity explicitly excluded (owners compose at dispatch);
+- **primary photo emphasis** in the listing media region;
+- R22 list gains a variation summary column.
+
+Revised proof: verifier **14/14 negative controls** (adds: variation write widened past coordinate keys, per-variation scope collapse, price/quantity pulled into authoring, title limit removed); browser operation re-passed end to end (two blockers resolving independently → submit enable → pending; ambiguous law intact) with **0 console issues** and no 390px overflow.
+
+## 5. P8 operator gate
 
 Current disposition:
 
@@ -50,7 +62,7 @@ LOCK / REVISE / UPSTREAM FINDING
 
 The assistant, verifier and reviewer cannot set `LOCKED`. P9 must not run for B23 until the operator explicitly LOCKs this candidate.
 
-## 5. Reopen triggers
+## 6. Reopen triggers
 
 Reopen only if operation of this candidate proves that:
 

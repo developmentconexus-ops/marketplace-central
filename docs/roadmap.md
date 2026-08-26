@@ -13,8 +13,8 @@
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | Main baseline | **PR #69 — B20 publications core integrated at `675ca74e09e46ff8abe5b3d77635e25d314913ea` over the PR #75/#70 baseline; required CI PASS** |
 | Method profile | **local [`engineering-method.md`](development/engineering-method.md) + [`frontend-product-experience-planning-method.md`](development/frontend-product-experience-planning-method.md) v2.3** |
-| Current acceptance increment | **B23 — ListingIntent authoring / R22–R23 — P8 PAUSED by ratified blocking upstream finding; P6 reference study COMPLETE ([study](engineering/rebaseline/D6-R2-P6-B23-LISTING-INTENT-REFERENCE-STUDY.md))** |
-| Ratified upstream finding | **Listing variations (color/size/voltage, per-option quantities) are a material Mercado Livre capability with no model in D4-R1/W2/OAD — RATIFIED by the operator 2026-08-26; smallest owning authority reopen: D4-R1 + D5 W2 + canonical OAD** |
+| Current acceptance increment | **B23 — ListingIntent authoring / R22–R23 — P8 RESUMED after the integrated variations repair; revised candidate rendered; operator walkthrough NEXT** |
+| Resolved upstream finding | **Listing variations RATIFIED 2026-08-26 and REPAIRED: census scope + variation_axes, ListingIntentDesired.variations (coordinate-keyed, SKU-level source refs), observed_variations; 106/31/H-A-S preserved; projection proof 16/16** |
 | B23 accepted input | **R22 `/publicacoes/intencoes` ListingIntent collection/work context; R23 revision-aware ListingIntent authoring/editor/media/evidence/submit-discard outcome; Offering owns all ListingIntent writes** |
 | Read contract law | **Owner-specific typed read projections (Canonical Ref ≠ Current Read Projection ≠ Purpose/Historical Snapshot) are the only admitted human presentation basis (PR #70; extended by the PR #69 `source_product_link` repair)** |
 | Prior increments | **B10 fully LOCKED + P9 CLOSED (PR #64/#75); B20 P8 LOCKED 2026-08-26 + P9 PASS / CLOSED, integrated by PR #69** |
@@ -23,7 +23,7 @@
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
 | Aggregate CI | **one required check / one `npm run gate`; universal checks always run; Product proof is diff-aware and fails safe when reliable changed-surface detection is unavailable** |
-| Exact next action | **Author the bounded variations Global Maximum design (D4-R1 + W2 + OAD) and obtain operator adjudication; only after the repair integrates does B23 P8 resume (applying all PRESENT-IN-AUTHORITY dispositions from the P6 study). No further blocks, Pre-D9/D9 or implementation before B23 closes.** |
+| Exact next action | **Operate the revised B23 R22/R23 candidate (`qualification/d6-r2-wireframes/b23-listing-intents.html`) and obtain operator disposition `LOCK / REVISE / UPSTREAM FINDING`. No B23 P9, further blocks, Pre-D9/D9 or implementation before explicit LOCK.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -64,8 +64,9 @@ PR #69 B20 integrated
 → first browser-operable R22/R23 candidate rendered + proof
 → operator walkthrough exposed authoring simplicity → P6 reference study run
 → variations upstream finding RATIFIED; B23 P8 PAUSED
-→ bounded variations Global Maximum design (D4-R1 + W2 + OAD) + operator adjudication   ← CURRENT
-→ repair integration → B23 P8 resumes with full P6 dispositions
+→ variations Global Maximum design adjudicated + repair applied with proof
+→ B23 P8 RESUMED with full P6 dispositions + Variações region
+→ operator walkthrough: LOCK / REVISE / UPSTREAM FINDING   ← CURRENT
 → P9 bidirectional Screen Contract
 → P10 pattern consolidation
 → required CI

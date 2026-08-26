@@ -43,6 +43,29 @@ function validate(html) {
   assert(html.includes('data-provider-feedback="verbatim"'), 'rejection must surface provider feedback');
   assert(html.includes('data-convergence'), 'convergence projection missing');
 
+  // Publication context, typed technical sheet and grouped census.
+  assert(html.includes('data-publication-context="category product_type"'), 'publication context region missing');
+  assert(html.includes('data-value-specs="text exact_decimal boolean option option_list text_list number_unit"'), 'typed value-spec binding missing');
+  for (const spec of ['data-value-spec="text"', 'data-value-spec="option"', 'data-value-spec="number_unit"', 'data-value-spec="boolean"', 'data-value-spec="text_list"', 'data-value-spec="exact_decimal"']) {
+    assert(html.includes(spec), `typed field rendering missing: ${spec}`);
+  }
+  assert(html.includes('maxlength="60"'), 'title character limit missing');
+  assert(html.includes('data-requirement-class="required"'), 'required group with pendency count missing');
+  assert(html.includes('Exibir todos os campos'), 'progressive show-all-fields disclosure missing');
+  assert(html.includes('data-resolution="not_applicable"'), 'not-applicable resolution missing');
+  assert(html.includes('data-media-role="primary"'), 'primary photo emphasis missing');
+
+  // Variations: provider vocabulary read, coordinate-keyed writes, per-variation scope, excluded owners.
+  assert(html.includes('data-variation-axes-read="variation_axes"'), 'variation axes vocabulary read binding missing');
+  assert(html.includes('data-variation-write="coordinate-keys-only"'), 'variation write identity must be coordinate keys only');
+  assert(html.includes('data-requirement-scope="listing"'), 'listing-scoped requirement marker missing');
+  assert(html.includes('data-variation-scoped-fields="per_variation"'), 'per-variation scope binding missing');
+  assert(html.includes('data-axis-kind="option"'), 'option-kind axis rendering missing');
+  assert(html.includes('data-option-coordinates='), 'variation options must carry coordinate identity');
+  assert(html.includes('data-variation-excluded="price quantity"'), 'price/quantity exclusion note missing');
+  assert(html.includes('Cor: Inox') && html.includes('sem foto'.toLowerCase() ? 'Sem foto' : 'Sem foto'), 'per-option blocker evidence missing');
+  assert(html.includes('data-operation="GetPublicationRequirements"'), 'census read trace missing');
+
   // Lifecycle and revision honesty.
   for (const lifecycle of ['draft', 'submitted', 'discarded']) {
     assert(html.includes(`${lifecycle}:`) || html.includes(`'${lifecycle}'`), `intent lifecycle missing: ${lifecycle}`);
@@ -85,6 +108,10 @@ const controls = [
   ['unavailable population collapsed', (value) => value.split('data-intent-population="unavailable"').join('data-intent-population="unknown"')],
   ['stale revision warning removed', (value) => value.replace('data-revision-state="stale"', 'data-revision-state="current"')],
   ['live external effect claimed', (value) => value.replace('data-external-effect="simulated"', 'data-external-effect="live"')],
+  ['variation write widened past coordinate keys', (value) => value.split('data-variation-write="coordinate-keys-only"').join('data-variation-write="labels"')],
+  ['per-variation scope collapsed', (value) => value.split('data-variation-scoped-fields="per_variation"').join('data-variation-scoped-fields="listing"')],
+  ['price/quantity pulled into variation authoring', (value) => value.split('data-variation-excluded="price quantity"').join('data-variation-excluded="none"')],
+  ['title limit removed', (value) => value.replace('maxlength="60"', '')],
 ];
 for (const [label, mutate] of controls) expectFailure(label, mutate);
 
