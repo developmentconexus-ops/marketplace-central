@@ -13,7 +13,7 @@
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | Main baseline | **PR #69 — B20 publications core integrated at `675ca74e09e46ff8abe5b3d77635e25d314913ea` over the PR #75/#70 baseline; required CI PASS** |
 | Method profile | **local [`engineering-method.md`](development/engineering-method.md) + [`frontend-product-experience-planning-method.md`](development/frontend-product-experience-planning-method.md) v2.3** |
-| Current acceptance increment | **B23 — ListingIntent authoring / R22–R23 — OPEN; P8 structural design adjudication NEXT** |
+| Current acceptance increment | **B23 — ListingIntent authoring / R22–R23 — OPEN; P8 structural design OPERATOR-APPROVED 2026-08-26; browser-operable candidate rendered; operator walkthrough NEXT** |
 | B23 accepted input | **R22 `/publicacoes/intencoes` ListingIntent collection/work context; R23 revision-aware ListingIntent authoring/editor/media/evidence/submit-discard outcome; Offering owns all ListingIntent writes** |
 | Read contract law | **Owner-specific typed read projections (Canonical Ref ≠ Current Read Projection ≠ Purpose/Historical Snapshot) are the only admitted human presentation basis (PR #70; extended by the PR #69 `source_product_link` repair)** |
 | Prior increments | **B10 fully LOCKED + P9 CLOSED (PR #64/#75); B20 P8 LOCKED 2026-08-26 + P9 PASS / CLOSED, integrated by PR #69** |
@@ -22,7 +22,7 @@
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
 | Aggregate CI | **one required check / one `npm run gate`; universal checks always run; Product proof is diff-aware and fails safe when reliable changed-surface detection is unavailable** |
-| Exact next action | **Adjudicate the bounded B23 P8 structural design in chat. After explicit approval, render the browser-operable R22/R23 candidate and run the operator walkthrough. Do not begin further blocks, Pre-D9/D9 or Product implementation before the B23 acceptance increment closes and integrates.** |
+| Exact next action | **Operate the browser-operable B23 R22/R23 candidate (`qualification/d6-r2-wireframes/b23-listing-intents.html`) and obtain operator disposition `LOCK / REVISE / UPSTREAM FINDING`. Do not run B23 P9, begin further blocks, Pre-D9/D9 or Product implementation before explicit LOCK.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
@@ -59,9 +59,9 @@
 ```text
 PR #69 B20 integrated
 → B23 acceptance increment opened
-→ bounded P8 structural design adjudication   ← CURRENT
-→ render browser-operable R22/R23 candidate only after approval
-→ operator LOCK / REVISE / UPSTREAM FINDING
+→ bounded P8 structural design adjudicated: operator approved (2026-08-26)
+→ browser-operable R22/R23 candidate rendered + proof
+→ operator walkthrough: LOCK / REVISE / UPSTREAM FINDING   ← CURRENT
 → P9 bidirectional Screen Contract
 → P10 pattern consolidation
 → required CI
