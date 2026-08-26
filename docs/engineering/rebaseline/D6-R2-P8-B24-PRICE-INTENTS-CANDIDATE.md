@@ -45,7 +45,25 @@ The operator's walkthrough of revision 1 found the intent-first shape non-dynami
 - the per-row confirm creates a normal PriceIntent (Idempotency-Key, supersede law, honest outcome flow) — bulk apply remains rejected;
 - verifier extended to **13/13 negative controls** (bulk apply, premature row confirm, client-scored attention filter, listing-mutation smuggling); browser proof re-passed end to end (default view, attention filter, inline confirm → pending → verify → applied reflected in row and ledger, workbench population honesty) with **0 console issues** and no 390px overflow.
 
-## 5. P8 operator gate
+## 5. Revision 3 — owner-evaluated pricing indicators + single create home (2026-08-26)
+
+The operator's second alignment produced two changes, both verified as PRESENT-IN-AUTHORITY:
+
+**(a) Single create home.** Having a create form in the ledger view was ambiguous. The workbench now also carries **pre-creation target rows** (products with a draft listing intent, no listing yet), so every price decision happens in **Decidir**; **Intenções** is a pure ledger (`data-intents-view="ledger-only"`, `data-create-home="workbench-only"`) that creates and alters nothing.
+
+**(b) Pricing indicators from the owner.** The typed price is no longer a bare box. `EvaluatePriceScenario` (an already-admitted stateless C operation, `economics.read`) is triggered **explicitly** (never per keystroke) and the row expands with:
+
+- the **price waterfall** from owner components: price − marketplace fee − seller-borne shipping − tax − promotion − product cost = **contribution**;
+- **contribution (R$) and contribution margin (%)** side by side;
+- the **owner's policy judgment** (`acceptable` / `below_policy`) — the screen never sets the threshold;
+- **position at the delivered price** (product + shipping) versus comparables, with the gap;
+- **reference anchors** already evaluated — current price, active intent, **policy floor**, and *igualar o mais barato*, the last one **gated by `evidence_sufficiency`**: where a marketplace gives no sufficient comparables the anchor is absent and the screen explains why (`data-anchor-missing="market"`). Clicking an anchor only fills the input (`data-anchor-apply="fills-input-only"`); confirmation stays explicit.
+
+Honest degradation is rendered throughout: economics `insufficient_evidence` / `unavailable` and market `insufficient` / `unavailable` never masquerade as a number.
+
+Revised proof: verifier **20/20 negative controls** (adds: evaluation detached from the owner operation, per-keystroke evaluation, screen-owned policy judgment, ungated market anchor, auto-applying anchor, stripped waterfall, ledger regaining a create form, evaluate enabled without input); browser operation re-passed end to end (7-line waterfall, 4 indicators, policy floor anchor filling and re-evaluating at R$ 420,59, market anchor absent with explanation on the insufficient-evidence row, confirm → pending → verify → applied, ledger with zero create controls) with **0 console issues** and no 390px overflow.
+
+## 6. P8 operator gate
 
 Current disposition:
 
@@ -57,6 +75,6 @@ LOCK / REVISE / UPSTREAM FINDING
 
 The assistant, verifier and reviewer cannot set `LOCKED`. P9 must not run for B24 until the operator explicitly LOCKs this candidate.
 
-## 6. Reopen triggers
+## 7. Reopen triggers
 
 Reopen only if operation of this candidate proves that: the supersede model cannot express a real pricing decision; a required pricing fact is missing from the reads; per-variation pricing is materially required (would be a new upstream finding against PriceIntent targets); or responsive/accessible operation cannot preserve the pricing job.

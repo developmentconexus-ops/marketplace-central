@@ -20,7 +20,6 @@ function validate(html) {
   assert(html.includes('data-price-change="supersede-only"'), 'price change must be supersede-only');
   assert(html.includes('Preço não é editado no lugar.'), 'supersede-instead-of-edit law copy missing');
   assert(html.includes('data-repricing-engine="none"'), 'automatic repricing must be excluded');
-  assert(/id="createIntent"[^>]*disabled/.test(html), 'create must start disabled until target and price are explicit');
 
   // Honest states: full PriceIntent state and convergence vocabularies.
   for (const state of ['pending', 'applied', 'rejected', 'ambiguous', 'superseded']) {
@@ -40,6 +39,33 @@ function validate(html) {
   assert(html.includes('nunca é reenviado às cegas'), 'ambiguous law copy missing');
   assert(html.includes('data-provider-feedback="verbatim"'), 'rejection must surface provider feedback');
 
+  // Owner-evaluated pricing indicators: waterfall, contribution+margin, policy judgment, delivered-price position.
+  assert(html.includes('data-evaluation-source="EvaluatePriceScenario"'), 'evaluation must come from the owner operation');
+  assert(html.includes('data-evaluation-trigger="explicit"'), 'evaluation must be explicitly triggered, not per keystroke');
+  assert(html.includes('data-waterfall="owner-components"'), 'price waterfall from owner components missing');
+  for (const line of ['Tarifa do marketplace', 'Frete que você paga', 'Imposto', 'Promoção', 'Custo do produto', 'Contribuição']) {
+    assert(html.includes(line), `waterfall line missing: ${line}`);
+  }
+  assert(html.includes('data-policy-judgment="owner"'), 'policy judgment must be owner-issued');
+  assert(html.includes('data-profitability="'), 'acceptable/below_policy projection missing');
+  assert(html.includes('Margem de contribuição'), 'contribution margin indicator missing');
+  assert(html.includes('Posição no preço entregue'), 'delivered-price position indicator missing');
+  assert(html.includes('data-economics-conclusion='), 'honest economics conclusion states missing');
+  assert(html.includes('data-market-evidence="insufficient"') && html.includes('data-market-evidence="unavailable"'), 'honest market evidence states missing');
+  assert(html.includes('data-anchor-apply="fills-input-only"'), 'anchors must only fill the input');
+  assert(html.includes('data-market-anchor-gate="evidence_sufficiency"') && html.includes('data-anchor-gate="evidence_sufficiency"'), 'market anchor must be gated by evidence sufficiency');
+  assert(html.includes('data-anchor-missing="market"'), 'missing-market-anchor explanation required');
+  assert(html.includes('Piso da política'), 'policy floor anchor missing');
+  assert(/class="btn small row-eval"[^>]*disabled/.test(html), 'evaluate must stay disabled until a price is typed');
+
+  // Single create home: the ledger view never creates.
+  assert(html.includes('data-create-home="workbench-only"'), 'single create home binding missing');
+  assert(html.includes('data-intents-view="ledger-only"'), 'intents view must be ledger-only');
+  assert(html.includes('Esta visão não cria nem altera intenções.'), 'ledger-only law copy missing');
+  assert(!html.includes('id="createIntent"'), 'the ledger view must not carry a create form');
+  assert(html.includes("kind:'pre_creation'") && html.includes('Alvo pré-criação'), 'pre-creation rows must live in the workbench');
+  assert(html.includes('data-target-kind="'), 'workbench rows must carry their target kind');
+
   // Pricing workbench: listing-centric grid, per-row explicit writes, fixed views only.
   assert(html.includes('data-views="decide intents"'), 'the two fixed views (decide/intents) are missing');
   assert(html.includes('data-view="decide"') && html.includes('data-view="intents"'), 'view tabs missing');
@@ -47,14 +73,14 @@ function validate(html) {
   assert(html.includes('data-workbench-composition="page-level-owner-collections"'), 'workbench must compose owner collections page-level');
   assert(html.includes('data-fact-owner="Economics"') && html.includes('data-fact-owner="Market"'), 'owner-attributed row facts missing');
   assert(html.includes('data-filter-basis="server-facts"'), 'attention filter must project server facts, not client scoring');
-  assert(/class="btn row-confirm"[^>]*disabled/.test(html), 'row confirm must stay disabled until an explicit price is typed');
+  assert(/class="btn small row-confirm"[^>]*disabled/.test(html), 'row confirm must stay disabled until an explicit price is typed');
   assert(html.includes('data-workbench-population="known" data-workbench-count="0"'), 'workbench known-empty marker missing');
   assert(html.includes('data-workbench-population="unknown"'), 'workbench unknown population missing');
   assert(html.includes('data-workbench-population="unavailable"'), 'workbench unavailable population missing');
 
   // Read-only context facts; targets typed.
   assert(html.includes('data-context-facts-kind="inline-read-only"'), 'inline read-only context facts binding missing');
-  assert(html.includes('nenhum preço é calculado ou aplicado automaticamente'), 'no-auto-pricing law copy missing');
+  assert(html.includes('nenhum preço é calculado nesta tela, sugerido como recomendado, nem aplicado automaticamente'), 'no-auto-pricing law copy missing');
   assert(html.includes('anúncio ainda não criado'), 'pre-creation target presentation missing');
   assert(html.includes('data-collection-grammar="cursor"'), 'cursor collection grammar note missing');
   assert(html.includes('sem reprecificação em massa'), 'bulk repricing rejection missing');
@@ -79,7 +105,6 @@ validate(html);
 const controls = [
   ['price edit-in-place admitted', (value) => value.split('data-price-change="supersede-only"').join('data-price-change="edit-in-place"')],
   ['repricing engine introduced', (value) => value.replace('data-repricing-engine="none"', 'data-repricing-engine="rules"')],
-  ['create enabled before explicit input', (value) => value.replace('id="createIntent" class="btn primary" type="button" disabled', 'id="createIntent" class="btn primary" type="button"')],
   ['ambiguous blind retry admitted', (value) => value.split('data-ambiguous-retry="forbidden"').join('data-ambiguous-retry="allowed"')],
   ['context facts widened into writes', (value) => value.replace('data-context-facts-kind="inline-read-only"', 'data-context-facts-kind="inline-actions"')],
   ['known-empty marker removed', (value) => value.replace('data-intent-population="known" data-intent-count="0"', 'data-intent-population="known" data-intent-count="1"')],
@@ -88,8 +113,16 @@ const controls = [
   ['provider feedback hidden', (value) => value.split('data-provider-feedback="verbatim"').join('')],
   ['listing mutation smuggled in', (value) => value.replace('<span data-operation="ListExpectedEconomics">', '<span data-operation="SubmitListingIntent"></span><span data-operation="ListExpectedEconomics">')],
   ['bulk apply introduced', (value) => value.split('data-row-write="one-intent-per-row"').join('data-row-write="bulk-apply"')],
-  ['row confirm enabled without input', (value) => value.replace('class="btn row-confirm" type="button" data-row-target="\'+esc(l.key)+\'" disabled', 'class="btn row-confirm" type="button" data-row-target="\'+esc(l.key)+\'"')],
+  ['row confirm enabled without input', (value) => value.replace('<button class="btn small row-confirm" type="button" data-row-target="\'+esc(r.key)+\'" disabled>', '<button class="btn small row-confirm" type="button" data-row-target="\'+esc(r.key)+\'">')],
+  ['evaluate enabled without input', (value) => value.replace('<button class="btn small row-eval" type="button" data-row-eval="\'+esc(r.key)+\'" disabled>', '<button class="btn small row-eval" type="button" data-row-eval="\'+esc(r.key)+\'">')],
   ['attention filter became client scoring', (value) => value.replace('data-filter-basis="server-facts"', 'data-filter-basis="client-score"')],
+  ['evaluation detached from the owner operation', (value) => value.split('data-evaluation-source="EvaluatePriceScenario"').join('data-evaluation-source="client-formula"')],
+  ['evaluation fired per keystroke', (value) => value.split('data-evaluation-trigger="explicit"').join('data-evaluation-trigger="keystroke"')],
+  ['policy judgment taken over by the screen', (value) => value.split('data-policy-judgment="owner"').join('data-policy-judgment="client"')],
+  ['market anchor ungated from evidence', (value) => value.split('data-anchor-gate="evidence_sufficiency"').join('')],
+  ['anchor started auto-applying', (value) => value.split('data-anchor-apply="fills-input-only"').join('data-anchor-apply="auto-submit"')],
+  ['waterfall stripped from the evaluation', (value) => value.split('data-waterfall="owner-components"').join('data-waterfall="none"')],
+  ['ledger view regained a create form', (value) => value.split('data-intents-view="ledger-only"').join('data-intents-view="create-and-ledger"')],
 ];
 for (const [label, mutate] of controls) expectFailure(label, mutate);
 

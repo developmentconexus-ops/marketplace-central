@@ -13,7 +13,7 @@
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | Main baseline | **PR #76 — B23 listing-intent authoring integrated at `6ce3902bbd8e7593249c7f4a45658c9d0027bb96`; required CI PASS** |
 | Method profile | **local [`engineering-method.md`](development/engineering-method.md) + [`frontend-product-experience-planning-method.md`](development/frontend-product-experience-planning-method.md) v2.3** |
-| Current acceptance increment | **B24 — Preços / R24 — OPEN; P8 structural design OPERATOR-APPROVED 2026-08-26; workbench revision rendered after operator alignment; operator walkthrough NEXT** |
+| Current acceptance increment | **B24 — Preços / R24 — OPEN; P8 structural design OPERATOR-APPROVED 2026-08-26; workbench + owner-evaluated indicators rendered after two operator alignments; operator walkthrough NEXT** |
 | B24 accepted input | **R24 `/publicacoes/precos` — PriceIntent collection/detail/create with Market/Economics handoff; Offering owns price writes (`price.manage`, H/A, Idempotency-Key); supersede model, no in-place price edit** |
 | Prior increment | **B23 — P8 LOCKED 2026-08-26 + P9 PASS / CLOSED (variations + category discovery repairs), integrated by PR #76** |
 | Read contract law | **Owner-specific typed read projections (Canonical Ref ≠ Current Read Projection ≠ Purpose/Historical Snapshot) are the only admitted human presentation basis (PR #70; extended by the PR #69 `source_product_link` repair)** |
@@ -61,6 +61,8 @@ PR #76 B23 integrated
 → bounded P8 structural design adjudicated: operator approved (2026-08-26)
 → first R24 candidate rendered; operator alignment → listing-centric pricing workbench approved
 → workbench revision rendered + proof (13/13)
+→ second alignment: owner-evaluated waterfall/indicators + single create home
+→ revision 3 rendered + proof (20/20)
 → operator walkthrough: LOCK / REVISE / UPSTREAM FINDING   ← CURRENT
 → P9 bidirectional Screen Contract
 → P10 pattern consolidation
