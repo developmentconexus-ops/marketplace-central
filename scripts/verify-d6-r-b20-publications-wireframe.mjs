@@ -54,10 +54,11 @@ function validate(html) {
   assert(html.includes('Defina o vínculo na Preparação.'), 'unresolved link must route to Preparação, not invent a link');
   assert(!html.includes('data-source-link-write'), 'source link must never become write authority');
 
-  // Peek panel: read-only summary, never a second mutation surface.
-  assert(html.includes('data-peek-kind="read-only-summary"'), 'peek panel must be a read-only summary');
-  assert(html.includes('data-peek-writes="none"'), 'peek panel must declare no writes');
-  assert(html.includes('Espiada somente-leitura'), 'peek read-only law copy missing');
+  // Owner-region facts render inline, read-only; degraded states never fake facts.
+  assert(html.includes('data-region-facts-kind="inline-read-only"'), 'inline read-only region facts binding missing');
+  assert(html.includes('data-region-facts'), 'region facts tables missing');
+  assert(html.includes('Resumo somente-leitura do que já foi consultado'), 'region facts read-only law copy missing');
+  assert(html.includes("tbody.innerHTML='';tbody.parentElement.classList.add('hidden')"), 'degraded regions must hide facts instead of faking them');
 
   // Collection grammar and boundaries.
   assert(html.includes('data-collection-grammar="cursor"'), 'cursor collection grammar note missing');
@@ -91,7 +92,8 @@ const controls = [
   ['owner separation dropped', (value) => value.replace('data-region-owner="Availability"', 'data-region-owner="Offering"')],
   ['continuation became a draft-creating call', (value) => value.replace('data-continuation-kind="navigation-only"', 'data-continuation-kind="create-draft"') .replace('<span data-operation="GetExpectedEconomics">', '<span data-operation="CreateListingIntentDraft"></span><span data-operation="GetExpectedEconomics">')],
   ['unresolved source link collapsed into resolved', (value) => value.split('data-source-link-state="unresolved"').join('data-source-link-state="resolved"')],
-  ['peek widened into a write surface', (value) => value.split('data-peek-writes="none"').join('data-peek-writes="inline"')],
+  ['region facts widened into a write surface', (value) => value.split('data-region-facts-kind="inline-read-only"').join('data-region-facts-kind="inline-actions"')],
+  ['degraded region kept fake facts', (value) => value.split("tbody.innerHTML='';tbody.parentElement.classList.add('hidden')").join("tbody.parentElement.classList.remove('hidden')")],
 ];
 for (const [label, mutate] of controls) expectFailure(label, mutate);
 

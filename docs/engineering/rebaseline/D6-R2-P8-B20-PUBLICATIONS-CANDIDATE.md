@@ -61,7 +61,18 @@ The operator's first walkthrough returned `REVISE` with three findings; all thre
 
 Revised proof: verifier **10/10 negative controls** (adds source-link collapse and peek-write widening controls); browser operation re-passed end to end (SKU filtering, subject link line, 9-row observed census, media gallery, peek open/Esc/degraded/mobile) with **0 console issues** and no 390px overflow.
 
-## 6. P8 operator gate
+## 6. Revision 3 — operator walkthrough round 2 (`REVISE`, 2026-08-26)
+
+The operator liked the round-2 candidate but found the peek indirection unnecessary: the summary facts fit the region cards themselves. Applied as the simpler Global Maximum:
+
+- each owner region card now renders its read-only facts inline (e.g. Disponibilidade: vendável agora / origem do estoque / última observação) — same already-consulted owner reads, zero extra clicks;
+- the side-peek panel was removed entirely (redundant mechanism once facts are inline);
+- degraded regions hide the facts table and state unknown/unavailable honestly — facts are never faked;
+- the read-only law moved to the cards: `data-region-facts-kind="inline-read-only"`, with negative controls against widening cards into a write surface and against fake facts in degraded states.
+
+Revised proof: verifier **11/11 negative controls**; browser operation re-passed (5 inline fact tables, degraded hides facts, Work region keeps facts) with **0 console issues** and no 390px overflow.
+
+## 7. P8 operator gate
 
 Current disposition:
 
@@ -73,7 +84,7 @@ LOCK / REVISE / UPSTREAM FINDING
 
 The assistant, verifier and reviewer cannot set `LOCKED`. P9 must not run for B20 until the operator explicitly LOCKs this candidate.
 
-## 7. Reopen triggers
+## 8. Reopen triggers
 
 Reopen only if operation of this candidate proves that:
 
