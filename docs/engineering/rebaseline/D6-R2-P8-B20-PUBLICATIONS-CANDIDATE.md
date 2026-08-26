@@ -1,6 +1,6 @@
 # D6-R2 P8 — B20 Publicações Candidate
 
-> **Status:** CANDIDATE / OPERATOR WALKTHROUGH REQUIRED — no LOCK claimed
+> **Status:** OPERATOR-RATIFIED / LOCKED 2026-08-26 (revision 3)
 > **Block:** B20 — Publicações core / R20–R21
 > **Methods:** [DevelopmentConexus Engineering Method v1.0.0](../../development/engineering-method.md) + [Frontend Product Experience Planning Method v2.3](../../development/frontend-product-experience-planning-method.md)
 > **Candidate evidence:** `qualification/d6-r2-wireframes/b20-publications.html`
@@ -72,17 +72,18 @@ The operator liked the round-2 candidate but found the peek indirection unnecess
 
 Revised proof: verifier **11/11 negative controls**; browser operation re-passed (5 inline fact tables, degraded hides facts, Work region keeps facts) with **0 console issues** and no 390px overflow.
 
-## 7. P8 operator gate
+## 7. P8 operator gate — resolved
 
-Current disposition:
+The operator walked through revision 3 and returned **`Aprovado`** on 2026-08-26. Under the stated choice set (`LOCK / REVISE / UPSTREAM FINDING`):
 
 ```text
-CANDIDATE
-operator walkthrough required
-LOCK / REVISE / UPSTREAM FINDING
+final disposition: LOCK on 2026-08-26 (revision 3)
+walkthrough rounds: 2 × REVISE executed, then LOCK
+material revision requested: NONE outstanding
+upstream finding raised: NONE (the source_product_link gap was repaired in-increment)
 ```
 
-The assistant, verifier and reviewer cannot set `LOCKED`. P9 must not run for B20 until the operator explicitly LOCKs this candidate.
+**P8 is OPERATOR-RATIFIED / LOCKED for B20.** This authorized the B20 P9 run, recorded in [`D6-R2-P9-B20-PUBLICATIONS-SCREEN-CONTRACT.md`](D6-R2-P9-B20-PUBLICATIONS-SCREEN-CONTRACT.md).
 
 ## 8. Reopen triggers
 

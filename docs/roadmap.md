@@ -13,7 +13,7 @@
 | Accepted baseline | **D0–D8 ACCEPTED / CLOSED / INTEGRATED; D5-R2 + D8-R2 ACCEPTED** |
 | Main baseline | **PR #75 — B10 correspondence revalidation integrated at `ad06e70cb31c1037b5ffcebc116a57749e4728d4` over the PR #70 read-projection prerequisite; required CI PASS** |
 | Method profile | **local [`engineering-method.md`](development/engineering-method.md) + [`frontend-product-experience-planning-method.md`](development/frontend-product-experience-planning-method.md) v2.3** |
-| Current acceptance increment | **B20 — Publicações core / R20–R21 — OPEN; walkthrough round 1 `REVISE` executed (source_product_link OAD repair + richer detail + read-only peek); revised candidate awaits operator walkthrough** |
+| Current acceptance increment | **B20 — Publicações core / R20–R21 — P8 OPERATOR-LOCKED 2026-08-26 (after 2 REVISE rounds incl. source_product_link OAD repair); P9 PASS / CLOSED; awaiting operator-authorized integration** |
 | B20 accepted input | **R20 Marketplace Listing collection + exact Installation context; R21 one source-qualified Listing detail with owner-separated material regions; no screen-shaped Product capability** |
 | B20 read contract | **Repaired by PR #70 and revalidated through PR #75: owner-specific typed read projections (Canonical Ref ≠ Current Read Projection ≠ Purpose/Historical Snapshot) are the only admitted human presentation basis** |
 | Prior increment | **B10 — fully LOCKED (correspondence region RE-LOCKED 2026-08-26); P9 PASS / CLOSED; integrated through PR #64 + PR #75** |
@@ -23,7 +23,7 @@
 | Stable origin | `https://conexus.fun` |
 | Active runtime baseline | **NONE** |
 | Aggregate CI | **one required check / one `npm run gate`; universal checks always run; Product proof is diff-aware and fails safe when reliable changed-surface detection is unavailable** |
-| Exact next action | **Operate the browser-operable B20 R20/R21 candidate (`qualification/d6-r2-wireframes/b20-publications.html`) and obtain operator disposition `LOCK / REVISE / UPSTREAM FINDING`. Do not run B20 P9, begin B23, Pre-D9/D9 or Product implementation before explicit LOCK.** |
+| Exact next action | **Obtain explicit operator authorization to integrate PR #69 (B20 increment incl. the source_product_link OAD repair) into `main`. B23 and further D6-R2 blocks open only after integration.** |
 | Pre-D9 readiness | **BLOCKED UNTIL D6-R2 ACCEPTED / CLOSED** |
 | D9 | **BLOCKED** |
 | Implementation | **BLOCKED UNTIL D9** |
