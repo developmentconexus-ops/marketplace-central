@@ -174,6 +174,25 @@ if ($b20PublicationsProofAffected) {
     $b20PublicationsProofStatus = 'SKIPPED_NOT_AFFECTED'
 }
 
+$b23ListingIntentsProofPatterns = @(
+    '^qualification/d6-r2-wireframes/b23-listing-intents\.html$',
+    '^scripts/verify-d6-r-b23-listing-intents-wireframe\.mjs$',
+    '^docs/engineering/rebaseline/D6-R2-P8-B23-',
+    '^docs/engineering/rebaseline/D6-R2-P9-B23-',
+    '^docs/engineering/rebaseline/D6-R2-P8-BLOCK-LEDGER\.md$'
+)
+$b23ListingIntentsProofAffected = if (-not $base) { $true } else { Test-ChangedPathMatches $b23ListingIntentsProofPatterns }
+
+if ($b23ListingIntentsProofAffected) {
+    $b23ListingIntentsProof = & node 'scripts/verify-d6-r-b23-listing-intents-wireframe.mjs' 2>&1
+    $b23ListingIntentsProofExit = $LASTEXITCODE
+    $b23ListingIntentsProof | ForEach-Object { Write-Host $_ }
+    if ($b23ListingIntentsProofExit -ne 0) { Fail 'B23 listing intents wireframe proof failed' }
+    $b23ListingIntentsProofStatus = 'PASS'
+} else {
+    $b23ListingIntentsProofStatus = 'SKIPPED_NOT_AFFECTED'
+}
+
 Write-Host 'gate: PASS'
 Write-Host "required_files: $($requiredFiles.Count)"
 Write-Host "implementation_blocked: $implementationBlocked"
@@ -181,3 +200,4 @@ Write-Host "diff_range: $diffRange changed_files: $($changedFiles.Count)"
 Write-Host "product_oad_proof: $productProofStatus"
 Write-Host "b10_correspondence_proof: $b10CorrespondenceProofStatus"
 Write-Host "b20_publications_proof: $b20PublicationsProofStatus"
+Write-Host "b23_listing_intents_proof: $b23ListingIntentsProofStatus"

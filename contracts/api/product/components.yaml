@@ -536,12 +536,13 @@ schemas:
   PublicationRequirement:
     type: object
     additionalProperties: false
-    required: [requirement_key, display_name, requirement_class, applicability, value_spec, not_applicable_allowed, source_evidence]
+    required: [requirement_key, display_name, requirement_class, applicability, scope, value_spec, not_applicable_allowed, source_evidence]
     properties:
       requirement_key: {$ref: '#/schemas/OpaqueKey'}
       display_name: {type: string, minLength: 1}
       requirement_class: {type: string, enum: [required, recommended, optional, conditional]}
       applicability: {type: string, enum: [current, draft_dependent]}
+      scope: {type: string, enum: [listing, per_variation]}
       value_spec: {$ref: '#/schemas/PublicationRequirementValueSpec'}
       not_applicable_allowed: {type: boolean}
       source_evidence: {$ref: '#/schemas/PublicationSourceEvidence'}
@@ -578,16 +579,82 @@ schemas:
       source_media_candidate_key: {$ref: '#/schemas/OpaqueKey'}
       content_type: {type: string, minLength: 1}
       presentation: {$ref: '#/schemas/SourceMediaPresentation'}
+  PublicationContextCandidate:
+    type: object
+    additionalProperties: false
+    required: [category_key, display_name, path_presentation, suggestion_basis]
+    properties:
+      category_key: {$ref: '#/schemas/OpaqueKey'}
+      product_type_key: {$ref: '#/schemas/OpaqueKey'}
+      display_name: {type: string, minLength: 1}
+      path_presentation: {type: array, minItems: 1, items: {type: string, minLength: 1}}
+      suggestion_basis: {type: string, enum: [provider_prediction, text_search, organization_history]}
+      confidence: {type: number, minimum: 0, maximum: 1}
+      organization_usage_count: {type: integer, minimum: 1}
+  PublicationContextCandidatesKnown:
+    type: object
+    additionalProperties: false
+    required: [state, candidates]
+    properties:
+      state: {const: known}
+      candidates: {type: array, items: {$ref: '#/schemas/PublicationContextCandidate'}}
+      next_cursor: {$ref: '#/schemas/OpaqueKey'}
+  PublicationContextCandidatesUnknown:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: unknown}}
+  PublicationContextCandidatesUnavailable:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties: {state: {const: unavailable}}
+  PublicationContextCandidates:
+    oneOf:
+      - {$ref: '#/schemas/PublicationContextCandidatesKnown'}
+      - {$ref: '#/schemas/PublicationContextCandidatesUnknown'}
+      - {$ref: '#/schemas/PublicationContextCandidatesUnavailable'}
+  VariationAxisOption:
+    type: object
+    additionalProperties: false
+    required: [option_key, display_name]
+    properties:
+      option_key: {$ref: '#/schemas/OpaqueKey'}
+      display_name: {type: string, minLength: 1}
+  VariationAxisSpecOptionKind:
+    type: object
+    additionalProperties: false
+    required: [axis_key, display_name, axis_class, kind, options]
+    properties:
+      axis_key: {$ref: '#/schemas/OpaqueKey'}
+      display_name: {type: string, minLength: 1}
+      axis_class: {type: string, enum: [required, optional]}
+      kind: {const: option}
+      options: {type: array, items: {$ref: '#/schemas/VariationAxisOption'}}
+  VariationAxisSpecTextKind:
+    type: object
+    additionalProperties: false
+    required: [axis_key, display_name, axis_class, kind]
+    properties:
+      axis_key: {$ref: '#/schemas/OpaqueKey'}
+      display_name: {type: string, minLength: 1}
+      axis_class: {type: string, enum: [required, optional]}
+      kind: {const: text}
+  VariationAxisSpec:
+    oneOf:
+      - {$ref: '#/schemas/VariationAxisSpecOptionKind'}
+      - {$ref: '#/schemas/VariationAxisSpecTextKind'}
   PublicationRequirements:
     type: object
     additionalProperties: false
-    required: [subject, subject_presentation, publication_context, requirements_revision, requirements, source_media_candidates, evaluated_at]
+    required: [subject, subject_presentation, publication_context, requirements_revision, requirements, variation_axes, source_media_candidates, evaluated_at]
     properties:
       subject: {$ref: '#/schemas/ProductChannelReadinessSubject'}
       subject_presentation: {$ref: '#/schemas/SourceProductPresentation'}
       publication_context: {$ref: '#/schemas/PublicationContextView'}
       requirements_revision: {$ref: '#/schemas/OpaqueKey'}
       requirements: {type: array, items: {$ref: '#/schemas/PublicationRequirement'}}
+      variation_axes: {type: array, items: {$ref: '#/schemas/VariationAxisSpec'}}
       source_media_candidates: {type: array, items: {$ref: '#/schemas/SourceMediaCandidate'}}
       evaluated_at: {$ref: '#/schemas/Instant'}
 
@@ -701,8 +768,18 @@ schemas:
       observed_fields: {type: array, items: {$ref: '#/schemas/ListingObservedField'}}
       observed_media: {type: array, items: {$ref: '#/schemas/MarketplaceListingObservedMedia'}}
       observed_price: {$ref: '#/schemas/Money'}
+      observed_variations: {type: array, items: {$ref: '#/schemas/MarketplaceListingObservedVariation'}}
       observed_at: {$ref: '#/schemas/Instant'}
       provenance: {$ref: '#/schemas/MarketplaceListingObservationProvenance'}
+  MarketplaceListingObservedVariation:
+    type: object
+    additionalProperties: false
+    required: [option_coordinates, presentation]
+    properties:
+      option_coordinates: {type: array, minItems: 1, items: {$ref: '#/schemas/VariationCoordinate'}}
+      presentation: {$ref: '#/schemas/MarketplaceListingPresentation'}
+      observed_fields: {type: array, items: {$ref: '#/schemas/ListingObservedField'}}
+      observed_price: {$ref: '#/schemas/Money'}
   ListingSourceProductLinkResolved:
     type: object
     additionalProperties: false
@@ -768,6 +845,36 @@ schemas:
     required: [kind, listing_intent_media_id]
     properties: {kind: {const: authored_media}, listing_intent_media_id: {$ref: '#/schemas/OpaqueId'}}
   MediaSelection: {oneOf: [{$ref: '#/schemas/SourceMediaSelection'}, {$ref: '#/schemas/AuthoredMediaSelection'}]}
+  VariationCoordinateOption:
+    type: object
+    additionalProperties: false
+    required: [kind, axis_key, option_key]
+    properties: {kind: {const: option}, axis_key: {$ref: '#/schemas/OpaqueKey'}, option_key: {$ref: '#/schemas/OpaqueKey'}}
+  VariationCoordinateText:
+    type: object
+    additionalProperties: false
+    required: [kind, axis_key, text_value]
+    properties: {kind: {const: text}, axis_key: {$ref: '#/schemas/OpaqueKey'}, text_value: {type: string, minLength: 1}}
+  VariationCoordinate:
+    oneOf:
+      - {$ref: '#/schemas/VariationCoordinateOption'}
+      - {$ref: '#/schemas/VariationCoordinateText'}
+  ListingIntentVariationOption:
+    type: object
+    additionalProperties: false
+    required: [option_coordinates, requirement_resolutions, media_selection]
+    properties:
+      option_coordinates: {type: array, minItems: 1, items: {$ref: '#/schemas/VariationCoordinate'}}
+      source_product: {$ref: '#/schemas/SourceProductRef'}
+      requirement_resolutions: {type: array, items: {$ref: '#/schemas/RequirementResolution'}}
+      media_selection: {type: array, items: {$ref: '#/schemas/MediaSelection'}}
+  ListingIntentVariations:
+    type: object
+    additionalProperties: false
+    required: [axes, options]
+    properties:
+      axes: {type: array, minItems: 1, uniqueItems: true, items: {$ref: '#/schemas/OpaqueKey'}}
+      options: {type: array, minItems: 1, items: {$ref: '#/schemas/ListingIntentVariationOption'}}
   ListingIntentDesired:
     type: object
     additionalProperties: false
@@ -777,6 +884,7 @@ schemas:
       publication_context: {$ref: '#/schemas/PublicationContextRef'}
       requirement_resolutions: {type: array, items: {$ref: '#/schemas/RequirementResolution'}}
       media_selection: {type: array, items: {$ref: '#/schemas/MediaSelection'}}
+      variations: {$ref: '#/schemas/ListingIntentVariations'}
   ListingIntentResolvedValueKnown:
     type: object
     additionalProperties: false

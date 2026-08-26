@@ -19,6 +19,8 @@ const go = process.platform === 'win32' ? 'go.exe' : 'go';
 const HTTP_METHODS = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);
 const NOTIF_START = '  # NOTIF-01 paths start';
 const NOTIF_END = '  # NOTIF-01 paths end';
+const CAT_START = '  # CAT-01 paths start';
+const CAT_END = '  # CAT-01 paths end';
 const NOTIFICATION_IDS = [
   'ListMyNotifications',
   'UpdateMyNotificationAwarenessState',
@@ -121,6 +123,7 @@ function historical99Proof() {
   const historicalEntry = join(historicalContractDir, 'openapi.yaml');
   let openapiSource = readFileSync(historicalEntry, 'utf8');
   openapiSource = stripMarkedBlock(openapiSource, NOTIF_START, NOTIF_END, 'NOTIF-01 paths');
+  openapiSource = stripMarkedBlock(openapiSource, CAT_START, CAT_END, 'CAT-01 paths');
   openapiSource = rewindAuthorizationRequestSurface(openapiSource);
   writeFileSync(historicalEntry, openapiSource, 'utf8');
 
@@ -177,8 +180,8 @@ function validateAuth(document) {
   assert(profile?.machine?.grant === 'client_credentials', 'machine bearer must use Client Credentials baseline');
 
   const all = operations(document);
-  assert(all.length === 106, `current Product surface must contain 106 operations, found ${all.length}`);
-  assert(new Set(all.map((entry) => entry.operation.operationId)).size === 106, 'current operationId values are not unique');
+  assert(all.length === 107, `current Product surface must contain 107 operations, found ${all.length}`);
+  assert(new Set(all.map((entry) => entry.operation.operationId)).size === 107, 'current operationId values are not unique');
   for (const entry of all) {
     assert(!Object.hasOwn(entry.operation, 'security'), `${entry.operation.operationId} must not shadow the canonical split auth profile`);
     const kinds = entry.operation['x-mpc-principal-kinds'] ?? [];
@@ -266,7 +269,7 @@ function currentAuthProof() {
   currentProjectionProof(bundleA);
   const humanProjection = run(process.execPath, [humanOperableReadProjectionVerifier, bundleA]);
   if (humanProjection.stdout?.trim()) console.log(humanProjection.stdout.trim());
-  console.log(`product_oad_operations=${all.length}/106`);
+  console.log(`product_oad_operations=${all.length}/107`);
   console.log('product_oad_auth_human=OIDC_SERVER_SESSION_COOKIE_CSRF');
   console.log('product_oad_auth_machine=CLIENT_CREDENTIALS_BEARER_A_S');
   console.log(`product_oad_auth_negative_controls=${negativeControls}/5`);

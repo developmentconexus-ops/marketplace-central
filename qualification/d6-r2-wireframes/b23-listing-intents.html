@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Marketplace Central — D6-R2 B23 Intenções de anúncio</title>
+<style>
+:root{--paper:#fff;--canvas:#f4f4f4;--ink:#111;--muted:#666;--line:#bbb;--sidebar:260px;--space:22px}
+*{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}button,input,select,textarea{font:inherit;color:inherit}button{cursor:pointer}.hidden{display:none!important}.small{font-size:12px;color:var(--muted)}.machine{display:none!important}
+.prototype{padding:8px 12px;border-bottom:1px solid var(--ink);background:#fff;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.prototype-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.prototype select,.prototype button{background:#fff;border:1px solid var(--line);padding:5px 8px}
+.app{min-height:calc(100vh - 42px);display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr)}.sidebar{background:#fff;border-right:1px solid var(--ink);padding:18px 14px;position:sticky;top:0;height:100vh;overflow:auto}.brand{font-weight:800;font-size:17px;padding:0 8px 14px;border-bottom:1px solid var(--line)}.organization-block{padding:14px 6px;border-bottom:1px solid var(--line)}.label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px}.organization-select,.control{width:100%;min-height:38px;background:#fff;border:1px solid var(--ink);padding:7px 9px}.nav-group{margin-top:16px}.group-label{font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--muted);padding:0 8px 4px}.nav-item{width:100%;border:0;background:transparent;text-align:left;padding:8px 9px;min-height:36px}.nav-item.active{background:var(--ink);color:#fff}.nav-item.sub{padding-left:26px;font-size:13px}
+.main{min-width:0;background:#fff}.header{position:sticky;top:0;z-index:3;background:#fff;border-bottom:1px solid var(--ink);padding:10px var(--space);display:flex;gap:10px;align-items:center}.menu-toggle{display:none;background:#fff;border:1px solid var(--ink);width:38px;height:36px}.page-title{font-size:18px;margin:0}.content{max-width:1480px;margin:auto;padding:26px var(--space) 42px}.page-head h1{margin:0 0 5px;font-size:25px}.page-head p{margin:0;color:var(--muted);max-width:900px}
+.state-box,.region,.next-step,.boundary,.technical{background:#fff;border:1px solid var(--ink);padding:14px}.state-box{border-width:2px;margin-top:18px}.region,.next-step,.boundary,.technical{margin-top:12px}.boundary{border-style:dashed;border-width:2px}.state-box h2,.region h3,.next-step h3,.boundary h3,.technical h3{margin:0 0 5px}.state-box p,.region p,.next-step p,.boundary p,.technical p{margin:0;color:var(--muted)}
+.list-tools{display:flex;justify-content:space-between;gap:10px;align-items:end;margin:20px 0 10px;flex-wrap:wrap}.btn{border:1px solid var(--ink);background:#fff;padding:8px 11px;min-height:38px}.btn.primary{background:var(--ink);color:#fff}.btn:disabled{color:#999;border-color:var(--line);cursor:not-allowed}.notice,.list-state{border:1px dashed var(--line);padding:9px 10px;color:var(--muted);margin-top:10px}.list-state{padding:14px}.list-state h2{margin:0 0 4px;font-size:15px}.list-state p{margin:0}
+table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1px solid var(--line);text-align:left;vertical-align:top;padding:10px}th{font-size:11px;color:var(--muted)}.row-note{font-size:12px;color:var(--muted);margin-top:3px}.tag{display:inline-block;border:1px solid var(--ink);padding:2px 7px;font-size:11px}.tag.dashed{border-style:dashed;color:var(--muted)}.mono{font:12px ui-monospace,monospace}
+.list-wrap{overflow:auto}.list-table{min-width:880px}
+.editor-toolbar{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:18px 0 10px}.subject-header{border:2px solid var(--ink);padding:14px}.subject-top{display:flex;justify-content:space-between;gap:12px;align-items:start}.subject-top h2{margin:0 0 4px}.context-human{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}.context-human div{border:1px dashed var(--line);padding:8px}.context-human span{display:block;font-size:10px;color:var(--muted);text-transform:uppercase}
+.context-pick{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;margin-top:10px}
+.group-head{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--ink);padding:8px 0 6px;margin-top:14px}.group-head h4{margin:0}.pendency{font-size:12px;font-weight:700}
+.fields-wrap{overflow:auto}.fields-table{min-width:820px}.fields-table th:nth-child(1){width:22%}.fields-table th:nth-child(2){width:44%}.fields-table th:nth-child(3){width:34%}.resolution-choice label{display:flex;gap:7px;align-items:start;border:1px solid var(--line);padding:8px;margin-top:6px;cursor:pointer}.resolution-choice input[type=radio]{margin-top:3px}.override-input,.override-select{width:100%;margin-top:6px;border:1px solid var(--ink);padding:7px 9px;min-height:36px;background:#fff}.unit{font-size:12px;color:var(--muted);margin-left:6px}.counter{font-size:11px;color:var(--muted);text-align:right;margin-top:3px}
+.media-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.media-thumb{width:104px;border:1px solid var(--line);padding:6px;text-align:center}.media-thumb.primary{border:2px solid var(--ink)}.media-thumb .ph{height:64px;border:1px dashed var(--line);display:grid;place-items:center;color:var(--muted);font-size:11px}.media-thumb figcaption{font-size:10px;color:var(--muted);margin-top:4px}.media-thumb label{display:block;font-size:11px;margin-top:5px}
+.axis-row{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px}.axis-box{border:1px solid var(--line);padding:9px;min-width:200px}.axis-box strong{display:block}.axis-box label{display:block;font-size:13px;margin-top:5px}
+.variation-wrap{overflow:auto}.variation-table{min-width:760px}
+.dispatch-box{border:2px solid var(--ink);padding:12px;margin-top:12px}.blockers li{color:var(--muted)}.action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.effect-box{border:2px dashed var(--ink);padding:12px;margin-top:12px}
+.drawer-backdrop{display:none;border:0}.technical-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}.technical-cell{border:1px dashed var(--line);padding:8px}.technical-cell span{display:block;font-size:10px;color:var(--muted);text-transform:uppercase}.technical-cell strong{font:12px ui-monospace,monospace}.trace{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;font:10px ui-monospace,monospace;color:var(--muted)}.trace span{border:1px solid var(--line);padding:3px 5px}
+@media(max-width:1020px){:root{--sidebar:210px}.context-human,.technical-grid{grid-template-columns:1fr 1fr}.context-pick{grid-template-columns:1fr}}
+@media(max-width:760px){:root{--space:14px}.app{display:block}.sidebar{position:fixed;z-index:20;top:0;left:0;width:min(86vw,310px);transform:translateX(-105%);transition:transform .12s linear}.drawer-open .sidebar{transform:translateX(0)}.drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.18);z-index:19;width:100%;height:100%}.drawer-open .drawer-backdrop{display:block}.menu-toggle{display:inline-grid;place-items:center}.context-human,.technical-grid{grid-template-columns:1fr}.subject-top,.editor-toolbar{display:block}}
+</style>
+</head>
+<body
+  data-p8-status="candidate"
+  data-surface="R22-R23"
+  data-b23-role="listing-intent-authoring"
+  data-owner="Offering"
+  data-read-permission="offering.read"
+  data-write-permission="listing.manage"
+  data-write-principals="H-A"
+  data-write-identity="canonical-keys-only"
+  data-create-idempotency="Idempotency-Key"
+  data-resolution-kinds="follow_source explicit_override"
+  data-submit-gate="server-dispatchability"
+  data-ambiguous-retry="forbidden"
+  data-external-effect="simulated"
+  data-census-read="PublicationRequirements"
+  data-requirement-scopes="listing per_variation"
+  data-variation-axes-read="variation_axes"
+  data-variation-write="coordinate-keys-only"
+  data-variation-excluded-owners="price quantity"
+  data-responsive-law="list-editor-mobile-stack">
+<div class="prototype">
+  <div><strong>Protótipo · Intenções de anúncio</strong> — retomada pós-reparo de variações: contexto, ficha técnica tipada e variações.</div>
+  <div class="prototype-controls">
+    <label for="listScenario">Resultado da lista</label>
+    <select id="listScenario"><option value="normal">Normal</option><option value="known-empty">Nenhuma intenção</option><option value="unknown">Ainda desconhecido</option><option value="unavailable">Consulta indisponível</option></select>
+    <label for="editorScenario">Cenário do editor</label>
+    <select id="editorScenario"><option value="draft-blocked">Rascunho bloqueado</option><option value="draft-dispatchable">Rascunho pronto</option><option value="stale-revision">Exigências mudaram</option><option value="submitted-pending">Enviado · pendente</option><option value="accepted">Enviado · aceito</option><option value="rejected">Enviado · rejeitado</option><option value="ambiguous">Enviado · resultado incerto</option></select>
+    <button id="reset" type="button">Reiniciar</button>
+  </div>
+</div>
+
+<!-- OPERATOR_SURFACE_START -->
+<button class="drawer-backdrop" id="backdrop" type="button" aria-label="Fechar navegação"></button>
+<div class="app">
+<aside class="sidebar" id="sidebar" aria-label="Navegação principal">
+  <div class="brand">Marketplace Central</div>
+  <div class="organization-block">
+    <label class="label" for="organization">Organização</label>
+    <select id="organization" class="organization-select"><option value="org-a">Organização Exemplo A</option><option value="org-b">Organização Exemplo B</option></select>
+  </div>
+  <nav>
+    <div class="nav-group"><div class="group-label">VISÃO GERAL</div><button class="nav-item">Visão geral</button></div>
+    <div class="nav-group"><div class="group-label">OFERTA</div><button class="nav-item">Preparação</button><button class="nav-item active">Anúncios</button><button class="nav-item">Preços</button><button class="nav-item">Disponibilidade</button></div>
+    <div class="nav-group"><div class="group-label">OPERAÇÃO</div><button class="nav-item">Visão operacional</button><button class="nav-item">Vendas</button><button class="nav-item">Expedição</button><button class="nav-item">Pós-venda</button></div>
+    <div class="nav-group"><div class="group-label">ESTRATÉGIA E INTELIGÊNCIA</div><button class="nav-item">Performance</button><button class="nav-item sub">Resumo</button><button class="nav-item sub">Anúncios</button><button class="nav-item sub">Mídia</button><button class="nav-item">Mercado</button><button class="nav-item">Economia</button></div>
+    <div class="nav-group"><div class="group-label">CONTROLE</div><button class="nav-item">Trabalho</button><button class="nav-item">Aprovações</button></div>
+    <div class="nav-group"><div class="group-label">CONFIGURAÇÕES</div><button class="nav-item">Configurações</button></div>
+  </nav>
+</aside>
+
+<main class="main">
+<header class="header">
+  <button id="menu" class="menu-toggle" type="button" aria-label="Abrir navegação" aria-controls="sidebar" aria-expanded="false">☰</button>
+  <h1 class="page-title">Intenções de anúncio</h1>
+</header>
+
+<div class="content">
+  <div class="page-head">
+    <h1 id="pageHeading">Intenções de anúncio</h1>
+    <p>Monte ou corrija um anúncio aqui e envie quando estiver pronto. Nada acontece no marketplace antes do envio explícito.</p>
+  </div>
+
+  <section id="listMode">
+    <div class="list-tools">
+      <span class="small">Rascunhos e envios desta organização.</span>
+      <button id="newIntent" class="btn primary" type="button" data-operation-intent="CreateListingIntentDraft" data-idempotency="required">Criar intenção</button>
+    </div>
+    <div id="listUnknown" class="list-state hidden" data-intent-population="unknown" role="status"><h2>Intenções ainda desconhecidas</h2><p>Ainda não foi possível determinar quais intenções existem.</p></div>
+    <div id="listUnavailable" class="list-state hidden" data-intent-population="unavailable" role="status"><h2>Consulta indisponível</h2><p>Não conseguimos consultar as intenções agora. Isso não significa que não existam intenções.</p></div>
+    <div id="listKnownEmpty" class="list-state hidden" data-intent-population="known" data-intent-count="0" role="status"><h2>Nenhuma intenção</h2><p>A consulta foi concluída e não há intenções nesta organização.</p></div>
+    <div id="listHost" data-intent-population="known">
+      <div class="list-wrap">
+      <table class="list-table" aria-label="Intenções de anúncio">
+        <thead><tr><th>Produto</th><th>Destino</th><th>Variações</th><th>Situação</th><th>Pronto para envio?</th><th>Ação</th></tr></thead>
+        <tbody id="listBody"></tbody>
+      </table>
+      </div>
+      <div class="notice" data-collection-grammar="cursor">Lista paginada por cursor conforme a coleção do Produto; sem seleção em massa e sem visões salvas.</div>
+    </div>
+  </section>
+
+  <section id="editorMode" class="hidden">
+    <div class="editor-toolbar"><button id="back" class="btn" type="button">← Voltar às intenções</button><span class="small">Intenção desta organização.</span></div>
+
+    <div class="subject-header">
+      <div class="subject-top">
+        <div><h2 id="subjectName">—</h2><p class="small" id="subjectTarget">—</p></div>
+        <span class="tag" id="subjectLifecycle" data-lifecycle="draft">Rascunho</span>
+      </div>
+      <div class="context-human">
+        <div><span>Seu produto</span><strong id="subjectProduct">—</strong></div>
+        <div><span>Conta de destino</span><strong>Mercado Livre · Conta A</strong></div>
+        <div><span>Base de exigências</span><strong id="subjectRevision">ml-req-rev-44</strong></div>
+      </div>
+      <div id="staleRevision" class="notice hidden" data-revision-state="stale" role="status"><strong>As exigências do marketplace mudaram</strong><div class="row-note">Este rascunho foi montado sobre uma revisão anterior. Revise os campos antes de enviar; o envio usa sempre a verdade atual do servidor.</div></div>
+    </div>
+
+    <section class="region" id="contextRegion" data-publication-context="category product_type" data-context-discovery-read="SearchPublicationContexts" data-suggestion-bases="provider_prediction text_search organization_history" data-context-selection="explicit-human-choice">
+      <h3>Categoria no marketplace</h3>
+      <p>A categoria decide quais campos e variações o marketplace exige. O sistema sugere a partir do seu produto e do histórico da sua organização; a escolha final é sempre sua.</p>
+      <div class="context-pick">
+        <div><label class="label" for="contextQuery">Buscar categoria</label><input id="contextQuery" class="control" placeholder="Ex.: torneira cozinha"></div>
+        <button id="contextSearch" class="btn" type="button">Buscar</button>
+      </div>
+      <div id="contextCandidates" data-population-state="known">
+        <label class="resolution-choice" style="display:block">
+          <label><input type="radio" name="contextCandidate" data-suggestion-basis="provider_prediction"><span><strong>Torneiras &gt; Torneiras de Cozinha</strong><div class="row-note">Sugerida pelo marketplace a partir do seu produto · confiança 92%</div></span></label>
+          <label><input type="radio" name="contextCandidate" data-suggestion-basis="organization_history"><span><strong>Torneiras &gt; Torneiras Monocomando</strong><div class="row-note">Sua organização usou esta categoria em 12 anúncios de produtos da categoria "Torneiras" do Sankhya</div></span></label>
+          <label><input type="radio" name="contextCandidate" data-suggestion-basis="text_search"><span><strong>Casa &gt; Cozinha &gt; Misturadores</strong><div class="row-note">Resultado da busca na árvore do marketplace</div></span></label>
+        </label>
+        <div class="action-row"><button id="applyContext" class="btn" type="button" disabled>Usar categoria selecionada</button></div>
+      </div>
+      <div id="contextUnavailable" class="notice hidden" data-population-state="unavailable" role="status"><strong>Categorias indisponíveis agora</strong><div class="row-note">Não conseguimos consultar as categorias deste marketplace. Isso não significa que não existam.</div></div>
+      <div id="contextNote" class="notice hidden" role="status">Categoria aplicada no protótipo: o servidor reavaliou o censo de campos e os eixos de variação.</div>
+      <p class="small">Nem todo marketplace oferece sugestão: onde não houver, aparece só a busca — e onde nada for consultável, a tela diz isso honestamente.</p>
+    </section>
+
+    <section class="region" id="fieldsRegion" data-resolution-kinds="follow_source explicit_override" data-value-specs="text exact_decimal boolean option option_list text_list number_unit">
+      <h3>Ficha técnica do anúncio</h3>
+      <p>Para cada campo, decida: seguir o valor do cadastro de origem ou definir um valor aqui. Cada campo usa o tipo de valor que o marketplace exige; o envio carrega apenas as chaves canônicas.</p>
+
+      <div class="group-head"><h4>Obrigatórios</h4><span class="pendency" id="requiredPendency" data-requirement-class="required">1 pendência</span></div>
+      <div class="fields-wrap">
+      <table class="fields-table" aria-label="Campos obrigatórios">
+        <tbody>
+          <tr data-requirement-key="title" data-requirement-scope="listing" data-value-spec="text">
+            <td><strong>Título</strong><div class="row-note">Texto · até 60 caracteres</div></td>
+            <td class="resolution-choice">
+              <label><input type="radio" name="res-title" data-kind="follow_source"><span>Seguir o cadastro de origem<div class="row-note">"Torneira monocomando alta" (Sankhya)</div></span></label>
+              <label><input type="radio" name="res-title" checked data-kind="explicit_override"><span>Valor definido aqui<input id="titleInput" class="override-input" maxlength="60" value="Torneira Monocomando Alta Deca Cromada Cozinha" aria-label="Título do anúncio"><div class="counter"><span id="titleCount">46</span>/60</div></span></label>
+            </td>
+            <td class="small">Sem pendência.</td>
+          </tr>
+          <tr data-requirement-key="brand" data-requirement-scope="listing" data-value-spec="option">
+            <td><strong>Marca</strong><div class="row-note">Opção do marketplace</div></td>
+            <td class="resolution-choice">
+              <label><input type="radio" name="res-brand" checked data-kind="follow_source"><span>Seguir o cadastro de origem<div class="row-note">Valor atual: Deca (Sankhya)</div></span></label>
+              <label><input type="radio" name="res-brand" data-kind="explicit_override"><span>Valor definido aqui<select class="override-select" aria-label="Marca"><option>Deca</option><option>Docol</option><option>Lorenzetti</option></select></span></label>
+            </td>
+            <td class="small">Sem pendência.</td>
+          </tr>
+          <tr data-requirement-key="material" data-requirement-scope="listing" data-value-spec="option" id="materialRow">
+            <td><strong>Material</strong><div class="row-note">Opção do marketplace</div></td>
+            <td class="resolution-choice">
+              <label><input type="radio" name="res-material" data-kind="follow_source" disabled><span>Seguir o cadastro de origem<div class="row-note">A origem não tem valor para este campo.</div></span></label>
+              <label><input type="radio" name="res-material" checked data-kind="explicit_override"><span>Valor definido aqui<select id="materialInput" class="override-select" aria-label="Valor de Material"><option value="">Selecione…</option><option>Metal cromado</option><option>Inox</option><option>Plástico ABS</option></select></span></label>
+            </td>
+            <td class="small" id="materialStatus"><strong>Pendente</strong> — escolha para liberar o envio.</td>
+          </tr>
+          <tr data-requirement-key="width" data-requirement-scope="listing" data-value-spec="number_unit">
+            <td><strong>Largura</strong><div class="row-note">Número + unidade</div></td>
+            <td class="resolution-choice">
+              <label><input type="radio" name="res-width" checked data-kind="follow_source"><span>Seguir o cadastro de origem<div class="row-note">Valor atual: 220 mm (Sankhya)</div></span></label>
+              <label><input type="radio" name="res-width" data-kind="explicit_override"><span>Valor definido aqui<span><input class="override-input" type="number" value="220" style="max-width:140px" aria-label="Largura"><span class="unit">mm</span></span></span></label>
+            </td>
+            <td class="small">Sem pendência.</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div class="group-head"><h4>Recomendados</h4><span class="pendency" data-requirement-class="recommended">0 pendências</span></div>
+      <div class="fields-wrap">
+      <table class="fields-table" aria-label="Campos recomendados">
+        <tbody>
+          <tr data-requirement-key="search_terms" data-requirement-scope="listing" data-value-spec="text_list">
+            <td><strong>Termos de busca</strong><div class="row-note">Lista de textos</div></td>
+            <td class="resolution-choice">
+              <label><input type="radio" name="res-terms" checked data-kind="explicit_override"><span>Valor definido aqui<input class="override-input" value="torneira cozinha, monocomando, deca" aria-label="Termos de busca"><div class="row-note">Separe por vírgula.</div></span></label>
+            </td>
+            <td class="small">Sem pendência.</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div class="action-row"><button id="showAllFields" class="btn" type="button" aria-expanded="false">Exibir todos os campos (opcionais e condicionais)</button></div>
+      <div id="optionalFields" class="hidden">
+        <div class="group-head"><h4>Opcionais e condicionais</h4><span class="pendency" data-requirement-class="optional">0 pendências</span></div>
+        <div class="fields-wrap">
+        <table class="fields-table" aria-label="Campos opcionais e condicionais">
+          <tbody>
+            <tr data-requirement-key="battery_included" data-requirement-scope="listing" data-value-spec="boolean" data-not-applicable-allowed="true">
+              <td><strong>Bateria inclusa</strong><div class="row-note">Sim/Não · condicional</div></td>
+              <td class="resolution-choice">
+                <label><input type="radio" name="res-battery" data-kind="explicit_override"><span>Sim</span></label>
+                <label><input type="radio" name="res-battery" data-kind="explicit_override"><span>Não</span></label>
+                <label><input type="radio" name="res-battery" checked data-resolution="not_applicable"><span>Não se aplica a este anúncio</span></label>
+              </td>
+              <td class="small">Sem pendência.</td>
+            </tr>
+            <tr data-requirement-key="reference_price" data-requirement-scope="listing" data-value-spec="exact_decimal">
+              <td><strong>Preço de referência</strong><div class="row-note">Decimal exato · opcional</div></td>
+              <td class="resolution-choice">
+                <label><input type="radio" name="res-refprice" checked data-kind="explicit_override"><span>Valor definido aqui<input class="override-input" value="399.90" style="max-width:160px" aria-label="Preço de referência"></span></label>
+              </td>
+              <td class="small">Informativo do marketplace; não é o preço de venda (o preço de venda é do dono Preços).</td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="region" id="variationsRegion" data-variation-axes-read="variation_axes" data-variation-write="coordinate-keys-only" data-variation-scoped-fields="per_variation">
+      <h3>Variações</h3>
+      <p>Eixos e opções vêm do vocabulário do marketplace para esta categoria. Cada opção pode ter seu próprio SKU de origem, fotos e campos por variação.</p>
+      <div class="axis-row" aria-label="Eixos de variação disponíveis">
+        <div class="axis-box" data-axis-key="COLOR" data-axis-kind="option" data-axis-class="required"><strong>Cor · obrigatório</strong><label><input type="checkbox" checked disabled> Usar este eixo</label><div class="row-note">Opções do marketplace: Cromado, Inox</div></div>
+        <div class="axis-box" data-axis-key="VOLTAGE" data-axis-kind="option" data-axis-class="optional"><strong>Voltagem · opcional</strong><label><input type="checkbox" id="voltageAxis"> Usar este eixo</label><div class="row-note">Opções do marketplace: 110V, 220V</div></div>
+      </div>
+      <div class="variation-wrap">
+      <table class="variation-table" aria-label="Opções de variação">
+        <thead><tr><th>Opção</th><th>SKU de origem</th><th>Fotos da opção</th><th>Campos por variação</th><th></th></tr></thead>
+        <tbody id="variationBody"></tbody>
+      </table>
+      </div>
+      <div class="action-row"><button id="addOption" class="btn" type="button">Adicionar opção</button></div>
+      <div class="notice" data-variation-excluded="price quantity">Quantidade e preço por opção não são definidos aqui: continuam em Disponibilidade e Preços, e o envio compõe tudo automaticamente.</div>
+    </section>
+
+    <section class="region" data-media-selection="source_media authored_media">
+      <h3>Fotos e mídia do anúncio</h3>
+      <p>A primeira foto é a principal do anúncio. Fotos específicas de cada opção ficam na região de variações.</p>
+      <div class="media-row">
+        <figure class="media-thumb primary" data-media-role="primary"><div class="ph">Foto 1</div><figcaption><strong>Principal</strong> · Sankhya</figcaption><label><input type="checkbox" checked> Usar</label></figure>
+        <figure class="media-thumb"><div class="ph">Foto 2</div><figcaption>Sankhya</figcaption><label><input type="checkbox" checked> Usar</label></figure>
+        <figure class="media-thumb"><div class="ph">Própria 1</div><figcaption>Adicionada aqui</figcaption><label><input type="checkbox" checked> Usar</label></figure>
+        <figure class="media-thumb"><div class="ph">+</div><figcaption>Adicionar foto</figcaption><label class="small" data-operation-intent="CreateListingIntentMedia" data-idempotency="required">nova mídia da intenção</label></figure>
+      </div>
+    </section>
+
+    <section class="dispatch-box" id="dispatchBox" data-dispatchability="blocked">
+      <h3 id="dispatchTitle">Envio bloqueado</h3>
+      <p class="small" id="dispatchCopy">O servidor decide quando a intenção está pronta; a tela apenas mostra os bloqueios — inclusive por opção de variação.</p>
+      <ul class="blockers" id="blockersList"></ul>
+      <div class="action-row">
+        <button id="saveDraft" class="btn" type="button">Salvar rascunho</button>
+        <button id="submitIntent" class="btn primary" type="button" disabled>Enviar para o marketplace</button>
+        <button id="discardIntent" class="btn" type="button">Descartar rascunho</button>
+      </div>
+      <p class="small">O envio é uma ação explícita e consequente. Nenhum efeito real acontece neste protótipo.</p>
+    </section>
+
+    <section class="effect-box hidden" id="effectBox" data-external-effect-state="not_attempted">
+      <h3 id="effectTitle">—</h3>
+      <p id="effectCopy">—</p>
+      <div id="rejectionFeedback" class="notice hidden" data-provider-feedback="verbatim"><strong>Retorno do marketplace</strong><div class="row-note" id="rejectionText"></div></div>
+      <div class="action-row">
+        <button id="verifyEffect" class="btn hidden" type="button" data-verify-action="authoritative-reread">Verificar situação atual</button>
+        <button id="fixAndResubmit" class="btn hidden" type="button">Corrigir campos</button>
+      </div>
+      <p class="small hidden" id="ambiguousLaw" data-ambiguous-retry="forbidden">Resultado incerto nunca é reenviado às cegas: primeiro verificamos a situação atual.</p>
+      <p class="small" id="convergenceLine" data-convergence="pending">Convergência: aguardando o anúncio observado refletir o que foi pedido.</p>
+    </section>
+
+    <div class="action-row"><button id="technicalToggle" class="btn" type="button" aria-expanded="false" aria-controls="technicalDetails">Ver detalhes técnicos</button></div>
+  </section>
+</div>
+</main>
+</div>
+<!-- OPERATOR_SURFACE_END -->
+
+<section id="technicalDetails" class="technical hidden" aria-label="Detalhes técnicos do protótipo">
+  <h3>Detalhes técnicos · suporte e auditoria</h3>
+  <p>Identidade canônica e rastreabilidade técnica fora do fluxo operacional principal.</p>
+  <div class="technical-grid">
+    <div class="technical-cell"><span>listing_intent_id</span><strong id="techIntentId">—</strong></div>
+    <div class="technical-cell"><span>source_product</span><strong>SANKHYA-PROD · 42664</strong></div>
+    <div class="technical-cell"><span>target</span><strong id="techTarget">—</strong></div>
+    <div class="technical-cell"><span>requirements_revision</span><strong id="techRevision">—</strong></div>
+    <div class="technical-cell"><span>publication_context</span><strong id="techContext">MLB27140 · TORNEIRAS</strong></div>
+    <div class="technical-cell"><span>variation identity</span><strong>axis_key + option_key</strong></div>
+    <div class="technical-cell"><span>write identity</span><strong>canonical keys only</strong></div>
+    <div class="technical-cell"><span>create idempotency</span><strong>Idempotency-Key</strong></div>
+    <div class="technical-cell"><span>submit gate</span><strong>server dispatchability</strong></div>
+    <div class="technical-cell"><span>ambiguous law</span><strong>verify, never blind retry</strong></div>
+    <div class="technical-cell"><span>requirement scopes</span><strong>listing / per_variation</strong></div>
+    <div class="technical-cell"><span>excluded here</span><strong>price / quantity (owners compose)</strong></div>
+  </div>
+  <div class="trace">
+    <span data-operation="ListListingIntents">ListListingIntents</span>
+    <span data-operation="CreateListingIntentDraft">CreateListingIntentDraft</span>
+    <span data-operation="GetListingIntent">GetListingIntent</span>
+    <span data-operation="UpdateListingIntentDraft">UpdateListingIntentDraft</span>
+    <span data-operation="DiscardListingIntentDraft">DiscardListingIntentDraft</span>
+    <span data-operation="SubmitListingIntent">SubmitListingIntent</span>
+    <span data-operation="CreateListingIntentMedia">CreateListingIntentMedia</span>
+    <span data-operation="GetPublicationRequirements">GetPublicationRequirements</span>
+    <span data-operation="SearchPublicationContexts">SearchPublicationContexts</span>
+    <span>follow_source / explicit_override</span><span>variation_axes</span><span>dispatchability + blockers</span><span>external_effect_state</span><span>convergence</span>
+  </div>
+</section>
+
+<script>
+const organization=document.getElementById('organization'),listMode=document.getElementById('listMode'),editorMode=document.getElementById('editorMode'),listScenario=document.getElementById('listScenario'),editorScenario=document.getElementById('editorScenario'),listHost=document.getElementById('listHost'),listBody=document.getElementById('listBody'),listKnownEmpty=document.getElementById('listKnownEmpty'),listUnknown=document.getElementById('listUnknown'),listUnavailable=document.getElementById('listUnavailable'),subjectName=document.getElementById('subjectName'),subjectTarget=document.getElementById('subjectTarget'),subjectLifecycle=document.getElementById('subjectLifecycle'),subjectProduct=document.getElementById('subjectProduct'),subjectRevision=document.getElementById('subjectRevision'),staleRevision=document.getElementById('staleRevision'),dispatchBox=document.getElementById('dispatchBox'),dispatchTitle=document.getElementById('dispatchTitle'),blockersList=document.getElementById('blockersList'),saveDraft=document.getElementById('saveDraft'),submitIntent=document.getElementById('submitIntent'),discardIntent=document.getElementById('discardIntent'),effectBox=document.getElementById('effectBox'),effectTitle=document.getElementById('effectTitle'),effectCopy=document.getElementById('effectCopy'),rejectionFeedback=document.getElementById('rejectionFeedback'),rejectionText=document.getElementById('rejectionText'),verifyEffect=document.getElementById('verifyEffect'),fixAndResubmit=document.getElementById('fixAndResubmit'),ambiguousLaw=document.getElementById('ambiguousLaw'),convergenceLine=document.getElementById('convergenceLine'),materialInput=document.getElementById('materialInput'),materialStatus=document.getElementById('materialStatus'),requiredPendency=document.getElementById('requiredPendency'),titleInput=document.getElementById('titleInput'),titleCount=document.getElementById('titleCount'),showAllFields=document.getElementById('showAllFields'),optionalFields=document.getElementById('optionalFields'),applyContext=document.getElementById('applyContext'),contextNote=document.getElementById('contextNote'),variationBody=document.getElementById('variationBody'),addOption=document.getElementById('addOption'),technicalToggle=document.getElementById('technicalToggle'),technicalDetails=document.getElementById('technicalDetails'),techIntentId=document.getElementById('techIntentId'),techTarget=document.getElementById('techTarget'),techRevision=document.getElementById('techRevision'),menu=document.getElementById('menu'),backdrop=document.getElementById('backdrop');
+let selected=null,materialFilled=false,inoxPhotoFixed=false;
+const lifecycleLabels={draft:'Rascunho',submitted:'Enviado',discarded:'Descartado'};
+const dispatchLabels={dispatchable:'Pronto para envio',blocked:'Bloqueado',unknown:'Ainda desconhecido',unavailable:'Consulta indisponível'};
+const intents=[
+ {id:'li-01',product:'Torneira monocomando alta · SKU 42664 · Sankhya',target:{kind:'new_listing',label:'Anúncio novo · Mercado Livre · Conta A'},variations:'2 opções (Cor)',lifecycle:'draft',dispatchability:'blocked',blockers:['Campo obrigatório "Material" sem valor.','Opção "Cor: Inox" sem foto.']},
+ {id:'li-02',product:'Cuba inox 50 cm · SKU 15723 · Sankhya',target:{kind:'existing_listing',label:'Anúncio existente MLB-2214977'},variations:'Sem variações',lifecycle:'submitted',dispatchability:'dispatchable',blockers:[]},
+ {id:'li-03',product:'Kit misturador cozinha · SKU-9912 · Catálogo legado',target:{kind:'new_listing',label:'Anúncio novo · Mercado Livre · Conta A'},variations:'Sem variações',lifecycle:'discarded',dispatchability:'unknown',blockers:[]}
+];
+function esc(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function openDrawer(){document.body.classList.add('drawer-open');menu.setAttribute('aria-expanded','true');}
+function closeDrawer(returnFocus=true){document.body.classList.remove('drawer-open');menu.setAttribute('aria-expanded','false');if(returnFocus)menu.focus();}
+function hideTechnical(){technicalDetails.classList.add('hidden');technicalToggle.setAttribute('aria-expanded','false');}
+function renderRoot(){if(selected){listMode.classList.add('hidden');editorMode.classList.remove('hidden');renderEditor();}else{editorMode.classList.add('hidden');listMode.classList.remove('hidden');renderList();}}
+function row(i){const ready=i.lifecycle==='draft'?('<span class="tag'+(i.dispatchability==='dispatchable'?'':' dashed')+'" data-dispatchability="'+esc(i.dispatchability)+'">'+dispatchLabels[i.dispatchability]+'</span>'+(i.blockers.length?'<div class="row-note">'+esc(i.blockers[0])+(i.blockers.length>1?' (+'+(i.blockers.length-1)+')':'')+'</div>':'')):(i.lifecycle==='submitted'?'<span class="tag dashed">Aguardando marketplace</span>':'<span class="tag dashed">—</span>');return '<tr data-lifecycle="'+esc(i.lifecycle)+'"><td><strong>'+esc(i.product)+'</strong></td><td>'+esc(i.target.label)+'</td><td>'+esc(i.variations)+'</td><td><span class="tag'+(i.lifecycle==='draft'?'':' dashed')+'">'+lifecycleLabels[i.lifecycle]+'</span></td><td>'+ready+'</td><td><button class="btn open-editor" type="button" data-intent="'+esc(i.id)+'">Abrir</button></td></tr>';}
+function bindRows(){document.querySelectorAll('.open-editor').forEach(b=>b.onclick=()=>{selected=b.dataset.intent;editorScenario.value=selected==='li-02'?'submitted-pending':'draft-blocked';materialFilled=false;inoxPhotoFixed=false;hideTechnical();renderRoot();});}
+function renderList(){listBody.innerHTML='';listKnownEmpty.classList.add('hidden');listUnknown.classList.add('hidden');listUnavailable.classList.add('hidden');listHost.classList.add('hidden');if(listScenario.value==='unknown'){listUnknown.classList.remove('hidden');return}if(listScenario.value==='unavailable'){listUnavailable.classList.remove('hidden');return}let matches=listScenario.value==='known-empty'?[]:intents;if(!matches.length){listKnownEmpty.classList.remove('hidden');return}listHost.classList.remove('hidden');listBody.innerHTML=matches.map(row).join('');bindRows();}
+function variationRows(){return [
+ '<tr data-option-coordinates=\'[{"kind":"option","axis_key":"COLOR","option_key":"COLOR-CHROME"}]\'><td><strong>Cor: Cromado</strong></td><td><select class="override-select" aria-label="SKU de origem da opção Cromado"><option>SKU 42664 · Sankhya</option><option>Sem SKU próprio</option></select></td><td>2 fotos · principal definida</td><td class="small">GTIN preenchido.</td><td><button class="btn" type="button" disabled>Remover</button></td></tr>',
+ '<tr data-option-coordinates=\'[{"kind":"option","axis_key":"COLOR","option_key":"COLOR-INOX"}]\'><td><strong>Cor: Inox</strong></td><td><select class="override-select" aria-label="SKU de origem da opção Inox"><option>SKU 42665 · Sankhya</option><option>Sem SKU próprio</option></select></td><td id="inoxPhotos">'+(inoxPhotoFixed?'1 foto da origem em uso':'<strong>Sem foto</strong> · <button class="btn" type="button" id="useInoxPhoto">Usar foto da origem</button>')+'</td><td class="small">GTIN pendente (campo por variação).</td><td><button class="btn" type="button" disabled>Remover</button></td></tr>'
+].join('');}
+function bindVariations(){const b=document.getElementById('useInoxPhoto');if(b)b.onclick=()=>{inoxPhotoFixed=true;renderEditor();};}
+function currentBlockers(){const list=[];if(!materialFilled)list.push('Campo obrigatório "Material" sem valor.');if(!inoxPhotoFixed)list.push('Opção "Cor: Inox" sem foto.');return list;}
+function setDispatch(state,blockers){dispatchBox.dataset.dispatchability=state;dispatchTitle.textContent=state==='dispatchable'?'Pronto para envio':state==='blocked'?'Envio bloqueado':state==='unknown'?'Prontidão ainda desconhecida':'Prontidão indisponível agora';blockersList.innerHTML=blockers.map(b=>'<li>'+esc(b)+'</li>').join('');submitIntent.disabled=state!=='dispatchable';}
+function setEffect(state,title,copy){effectBox.dataset.externalEffectState=state;effectTitle.textContent=title;effectCopy.textContent=copy;}
+function renderEditor(){const i=intents.find(x=>x.id===selected)||intents[0];subjectName.textContent='Intenção · '+i.product.split(' · ')[0];subjectTarget.textContent=i.target.label;subjectProduct.textContent=i.product;techIntentId.textContent=i.id;techTarget.textContent=i.target.kind;variationBody.innerHTML=variationRows();bindVariations();materialStatus.innerHTML=materialFilled?'Preenchido.':'<strong>Pendente</strong> — escolha para liberar o envio.';requiredPendency.textContent=(materialFilled?0:1)+(materialFilled?' pendências':' pendência');const scenario=editorScenario.value;const isDraft=['draft-blocked','draft-dispatchable','stale-revision'].includes(scenario);subjectLifecycle.textContent=isDraft?'Rascunho':'Enviado';subjectLifecycle.dataset.lifecycle=isDraft?'draft':'submitted';staleRevision.classList.toggle('hidden',scenario!=='stale-revision');subjectRevision.textContent=scenario==='stale-revision'?'ml-req-rev-43 (atual: 44)':'ml-req-rev-44';techRevision.textContent=subjectRevision.textContent;effectBox.classList.toggle('hidden',isDraft);dispatchBox.classList.toggle('hidden',!isDraft);verifyEffect.classList.add('hidden');fixAndResubmit.classList.add('hidden');rejectionFeedback.classList.add('hidden');ambiguousLaw.classList.add('hidden');convergenceLine.dataset.convergence='pending';convergenceLine.textContent='Convergência: aguardando o anúncio observado refletir o que foi pedido.';if(scenario==='draft-blocked'){const blockers=currentBlockers();setDispatch(blockers.length?'blocked':'dispatchable',blockers);}
+if(scenario==='draft-dispatchable')setDispatch('dispatchable',[]);
+if(scenario==='stale-revision')setDispatch('blocked',['As exigências mudaram; revise os campos sobre a revisão atual.']);
+if(scenario==='submitted-pending'){setEffect('pending','Envio pendente','O pedido foi aceito para processamento; aguardando o resultado do marketplace.');verifyEffect.classList.remove('hidden');}
+if(scenario==='accepted'){setEffect('accepted','Envio aceito','O marketplace aceitou o pedido.');convergenceLine.dataset.convergence='converged';convergenceLine.textContent='Convergência: o anúncio observado já reflete o que foi pedido.';}
+if(scenario==='rejected'){setEffect('rejected','Envio rejeitado','O marketplace rejeitou o pedido. Corrija os campos e envie novamente.');rejectionFeedback.classList.remove('hidden');rejectionText.textContent='Categoria exige o atributo "Voltagem" para este tipo de produto.';fixAndResubmit.classList.remove('hidden');}
+if(scenario==='ambiguous'){setEffect('ambiguous','Resultado incerto','Enviamos o pedido, mas não foi possível confirmar se o marketplace o recebeu.');verifyEffect.classList.remove('hidden');ambiguousLaw.classList.remove('hidden');convergenceLine.dataset.convergence='unknown';convergenceLine.textContent='Convergência: ainda não determinável.';}}
+materialInput&&(materialInput.onchange=()=>{materialFilled=!!materialInput.value;renderEditor();});
+titleInput&&(titleInput.oninput=()=>{titleCount.textContent=String(titleInput.value.length);});
+showAllFields.onclick=()=>{const opening=optionalFields.classList.contains('hidden');optionalFields.classList.toggle('hidden',!opening);showAllFields.setAttribute('aria-expanded',String(opening));showAllFields.textContent=opening?'Ocultar campos opcionais e condicionais':'Exibir todos os campos (opcionais e condicionais)';};
+applyContext.onclick=()=>{if(!applyContext.disabled)contextNote.classList.remove('hidden');};
+document.querySelectorAll('input[name="contextCandidate"]').forEach(r=>r.onchange=()=>{applyContext.disabled=false;});
+document.getElementById('contextSearch').onclick=()=>{};
+addOption.onclick=()=>{};
+saveDraft.onclick=()=>{if(editorScenario.value==='draft-blocked')renderEditor();};
+submitIntent.onclick=()=>{if(!submitIntent.disabled){editorScenario.value='submitted-pending';renderEditor();}};
+discardIntent.onclick=()=>{selected=null;hideTechnical();renderRoot();};
+verifyEffect.onclick=()=>{editorScenario.value='accepted';renderEditor();};
+fixAndResubmit.onclick=()=>{editorScenario.value='draft-blocked';materialFilled=false;inoxPhotoFixed=false;renderEditor();};
+organization.onchange=()=>{selected=null;hideTechnical();renderRoot();};
+listScenario.onchange=()=>{selected=null;renderRoot();};
+editorScenario.onchange=()=>{if(!selected)selected='li-01';materialFilled=false;inoxPhotoFixed=false;renderRoot();};
+document.getElementById('newIntent').onclick=()=>{selected='li-01';editorScenario.value='draft-blocked';materialFilled=false;inoxPhotoFixed=false;renderRoot();};
+document.getElementById('back').onclick=()=>{selected=null;hideTechnical();renderRoot();};
+document.getElementById('reset').onclick=()=>{selected=null;listScenario.value='normal';editorScenario.value='draft-blocked';materialFilled=false;inoxPhotoFixed=false;hideTechnical();renderRoot();};
+function toggleTechnical(){const opening=technicalDetails.classList.contains('hidden');technicalDetails.classList.toggle('hidden',!opening);technicalToggle.setAttribute('aria-expanded',String(opening));if(opening)technicalDetails.scrollIntoView({block:'nearest'});}
+technicalToggle.onclick=toggleTechnical;
+menu.onclick=()=>document.body.classList.contains('drawer-open')?closeDrawer():openDrawer();
+backdrop.onclick=()=>closeDrawer();
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.body.classList.contains('drawer-open'))closeDrawer();});
+renderRoot();
+</script>
+</body>
+</html>

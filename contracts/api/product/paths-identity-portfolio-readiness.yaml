@@ -252,6 +252,31 @@ pathItems:
         '422': {$ref: './components.yaml#/responses/ValidationError'}
         '500': {$ref: './components.yaml#/responses/InternalError'}
 
+  PublicationContextsSearch:
+    parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
+    get:
+      operationId: SearchPublicationContexts
+      summary: Search publication contexts
+      x-mpc-operation-class: Q
+      x-mpc-required-permission: readiness.read
+      x-mpc-principal-kinds: [H, A, S]
+      x-mpc-semantic-owner: ProductChannelReadiness
+      parameters:
+        - {$ref: './components.yaml#/parameters/MarketplaceInstallationQuery'}
+        - {name: q, in: query, required: false, schema: {type: string, minLength: 1}}
+        - {$ref: './components.yaml#/parameters/SourceInstanceQuery'}
+        - {$ref: './components.yaml#/parameters/NativeProductKeyQuery'}
+        - {$ref: './components.yaml#/parameters/Limit'}
+        - {$ref: './components.yaml#/parameters/Cursor'}
+      responses:
+        '200': {description: Publication context candidates., content: {'application/json': {schema: {$ref: './components.yaml#/schemas/PublicationContextCandidates'}}}}
+        '400': {$ref: './components.yaml#/responses/BadRequest'}
+        '401': {$ref: './components.yaml#/responses/AuthenticationRequired'}
+        '403': {$ref: './components.yaml#/responses/AccessDenied'}
+        '404': {$ref: './components.yaml#/responses/ResourceNotFound'}
+        '422': {$ref: './components.yaml#/responses/ValidationError'}
+        '500': {$ref: './components.yaml#/responses/InternalError'}
+
   PublicationRequirements:
     parameters: [{$ref: './components.yaml#/parameters/OrganizationId'}]
     get:
